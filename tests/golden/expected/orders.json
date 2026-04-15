@@ -1,0 +1,57 @@
+{
+    "cancelled_orders": [],
+    "data_contract": {
+        "completeness_status": "complete",
+        "coverage_end": "2026-03-31",
+        "coverage_start": "2026-03-01",
+        "data_mode": "reconciled",
+        "dataset": "orders",
+        "delay_present": false,
+        "freshness_at": "2026-04-01 08:00:00",
+        "has_retry_or_delay": false,
+        "open_divergences": 0,
+        "origin": "historical-snapshot",
+        "pending_backlog_total": 0,
+        "reconcile_status": "reconciled",
+        "reconciled_until": "2026-03-31 23:59:59",
+        "reconciliation_pct": 100,
+        "retry_present": false,
+        "source": "legacy",
+        "staleness_reason": null
+    },
+    "meta": {
+        "generated_at": "2026-04-01 08:00:00",
+        "last_sync": "2026-04-01 08:00:00",
+        "served_from": "historical-snapshot"
+    },
+    "mode": "live",
+    "ok": true,
+    "orders": [
+        {
+            "discount_total": 100,
+            "gross_total": 3200,
+            "merchandise_total": 3100,
+            "order_id": "P-4101",
+            "stage": "Faturado",
+            "vendor_id": "001",
+            "vendor_name": "Ana"
+        }
+    ],
+    "pending_orders": [],
+    "period": {
+        "end": "2026-03-31",
+        "label": "01/03/2026 ate 31/03/2026",
+        "start": "2026-03-01"
+    },
+    "source": "legacy",
+    "summary": {
+        "active_vendors": 1,
+        "avg_ticket": 3200,
+        "discounts_total": 100,
+        "gross_revenue": 3200,
+        "merchandise_total": 3100,
+        "net_after_discount": 3000,
+        "orders": 1,
+        "revenue": 3200
+    }
+}

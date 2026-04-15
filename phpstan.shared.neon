@@ -1,0 +1,16 @@
+parameters:
+    level: 6
+    tmpDir: storage/cache/phpstan
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+    parallel:
+        maximumNumberOfProcesses: 1
+    reportUnmatchedIgnoredErrors: true
+    checkUninitializedProperties: true
+    excludePaths:
+        analyse:
+            - storage/*
+            - assets/*
+            - images/*
+            - views/*
+            - .vscode/*

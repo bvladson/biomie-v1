@@ -1,0 +1,18 @@
+/vendor/
+/storage/cache/*.json
+/storage/cache/jobs/*.json
+/storage/logs/*.log
+/storage/cache/phpstan/
+/storage/releases/*
+!/storage/releases/.gitkeep
+/config/.env.local.php
+.env
+*.map
+.DS_Store
+Thumbs.db
+
+# Bloquear arquivos de teste e debug em versionamento
+test*.php
+debug*.php
+tmp*.php
+phpinfo*.php

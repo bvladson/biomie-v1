@@ -1,0 +1,28 @@
+DirectoryIndex index.php index.html
+AddType application/json .json
+AddType application/manifest+json .webmanifest
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(index|vendedores|pedidos|mercadorias|financeiro|plano_voo|plano_voo_metas|integracoes)\.html$ $1.php [R=302,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "DENY"
+
+  <FilesMatch "^(sw\\.js|site\\.webmanifest)$">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://app.omie.com.br"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteRule ^config/ - [F,L]
+  RewriteRule ^storage/ - [F,L]
+  RewriteRule ^app/ - [F,L]
+  RewriteRule ^\.env - [F,L]
+</IfModule>

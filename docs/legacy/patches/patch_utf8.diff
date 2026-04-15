@@ -1,0 +1,1894 @@
+﻿diff --git a/./.gitignore b/../biomie_with_async_perf_patch_files/biomie/.gitignore
+index 776b520..3629827 100644
+--- a/./.gitignore
++++ b/../biomie_with_async_perf_patch_files/biomie/.gitignore
+@@ -1,15 +1,8 @@
+ /vendor/
+ /storage/cache/*.json
+-/storage/cache/jobs/*.json
+-/storage/logs/*.log
++/storage/logs/biomie.log
+ /config/.env.local.php
+ .env
+ *.map
+ .DS_Store
+ Thumbs.db
+-
+-# Bloquear arquivos de teste e debug em versionamento
+-test*.php
+-debug*.php
+-tmp*.php
+-phpinfo*.php
+diff --git a/./api/finance_overview.php b/../biomie_with_async_perf_patch_files/biomie/api/finance_overview.php
+index 2f44a0d..a1e6459 100644
+--- a/./api/finance_overview.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/finance_overview.php
+@@ -40,9 +40,5 @@ try {
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/finance_overview.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao carregar o financeiro. Tente novamente.'], 500);
++    Http::json(['ok' => false, 'message' => $exception->getMessage()], 500);
+ }
+diff --git a/./api/finance_sync.php b/../biomie_with_async_perf_patch_files/biomie/api/finance_sync.php
+index 15e3c6a..18b6b71 100644
+--- a/./api/finance_sync.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/finance_sync.php
+@@ -3,6 +3,7 @@
+ declare(strict_types=1);
+ 
+ use BIomie\Http;
++use BIomie\RequestContext;
+ 
+ require __DIR__ . '/bootstrap_finance.php';
+ 
+@@ -18,37 +19,42 @@ try {
+         Http::json(['ok' => false, 'message' => 'Credenciais Omie n├úo configuradas.'], 500);
+     }
+ 
++    Http::enforceCsrf($logger);
+     $range = Http::resolveDateRange();
+     Http::validateDateRange($range['start'], $range['end']);
+-    $mode = Http::query('mode', 'immediate');
++    $key = sprintf('finance_snapshot_%s_%s', $range['start'], $range['end']);
+ 
+-    if ($mode === 'immediate') {
++    if (!Http::wantsAsync()) {
+         $snapshot = $finance->getSnapshot($range['start'], $range['end'], true);
+         Http::json([
+             'ok' => true,
+-            'message' => 'Atualiza├º├úo financeira conclu├¡da com rec├ílculo imediato do per├¡odo.',
++            'message' => 'Atualiza├º├úo financeira conclu├¡da.',
+             'mode' => $snapshot['mode'],
+             'served_from' => $snapshot['meta']['served_from'] ?? 'manual-refresh',
+             'meta' => $snapshot['meta'],
+-        ]);
+-    } else {
+-        $key = sprintf('finance_snapshot_%s_%s', $range['start'], $range['end']);
+-        $queueResult = $queue->enqueue('finance', $key, ['start' => $range['start'], 'end' => $range['end']]);
+-        Http::json([
+-            'ok' => true,
+-            'message' => $queueResult['queued']
+-                ? 'Atualiza├º├úo financeira agendada.'
+-                : 'Atualiza├º├úo j├í na fila.',
+-            'mode' => 'queued',
+-            'queue' => $queueResult,
++            'request_id' => RequestContext::id(),
+         ]);
+     }
++
++    $queueResult = $queue->enqueue('finance', $key, ['start' => $range['start'], 'end' => $range['end']]);
++    Http::accepted([
++        'ok' => true,
++        'message' => $queueResult['queued']
++            ? 'Atualiza├º├úo financeira agendada. A p├ígina ser├í recarregada quando o snapshot ficar pronto.'
++            : 'Atualiza├º├úo financeira j├í est├í em andamento para esse per├¡odo.',
++        'mode' => 'queued',
++        'queue' => $queueResult,
++        'request_id' => RequestContext::id(),
++    ], [
++        'Location' => sprintf('refresh_status.php?service=finance&start=%s&end=%s', rawurlencode($range['start']), rawurlencode($range['end'])),
++    ]);
+ } catch (\InvalidArgumentException $e) {
+     Http::json(['ok' => false, 'message' => $e->getMessage()], 400);
+ } catch (Throwable $e) {
+-    $logger->error('Falha em api/finance_sync.', [
+-        'message' => $e->getMessage(),
+-        'trace'   => $e->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao sincronizar o financeiro. Tente novamente.'], 500);
++    $logger->error('Falha ao sincronizar financeiro', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
++    Http::json([
++        'ok' => false,
++        'message' => 'N├úo foi poss├¡vel iniciar a atualiza├º├úo financeira agora.',
++        'request_id' => RequestContext::id(),
++    ], 500);
+ }
+diff --git a/./api/finance_titles.php b/../biomie_with_async_perf_patch_files/biomie/api/finance_titles.php
+index e7275d5..79ab395 100644
+--- a/./api/finance_titles.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/finance_titles.php
+@@ -34,9 +34,5 @@ try {
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/finance_titles.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao carregar t├¡tulos. Tente novamente.'], 500);
++    Http::json(['ok' => false, 'message' => $exception->getMessage()], 500);
+ }
+diff --git a/./api/flight_plan.php b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan.php
+index c369957..865f97c 100644
+--- a/./api/flight_plan.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan.php
+@@ -55,7 +55,14 @@ try {
+ } catch (InvalidArgumentException $exception) {
+     Http::json([
+         'ok' => false,
+-        'message' => $exception->getMessage(),
++        'message' => 'Par├ómetros inv├ílidos.',
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/invalid-parameter',
++            'Invalid request parameters',
++            400,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 400);
+ } catch (Throwable $exception) {
+     $logger->error('Falha ao gerar Plano de Voo.', [
+@@ -65,7 +72,14 @@ try {
+ 
+     Http::json([
+         'ok' => false,
+-        'message' => 'N├úo foi poss├¡vel gerar o Plano de Voo. Tente novamente.',
++        'message' => 'Falha ao gerar o Plano de Voo.',
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/flight-plan-failure',
++            'Flight plan generation failed',
++            500,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 500);
+ }
+ 
+diff --git a/./api/flight_plan_targets_editor.php b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_targets_editor.php
+index 6f86813..7730b23 100644
+--- a/./api/flight_plan_targets_editor.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_targets_editor.php
+@@ -5,13 +5,13 @@ declare(strict_types=1);
+ use BIomie\Database;
+ use BIomie\FlightPlanService;
+ use BIomie\Http;
++use BIomie\ProblemDetails;
+ use BIomie\Support;
+ use BIomie\TargetsRepository;
+ 
+ require __DIR__ . '/bootstrap.php';
+ 
+-// Timeout generoso para evitar 503 no gateway
+-set_time_limit(180);
++$instance = $_SERVER['REQUEST_URI'] ?? '/api/flight_plan_targets_editor.php';
+ 
+ try {
+     $yearMonthParam = trim((string) Http::query('year_month'));
+@@ -24,8 +24,9 @@ try {
+     $page = max(1, (int) Http::query('page', '1'));
+     $perPage = max(1, (int) Http::query('per_page', '100'));
+ 
+-    // ÔöÇÔöÇ 1. Cache r├ípido ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+     $cacheKey = "flightplan:targets:editor:{$yearMonth}:p{$page}:{$perPage}";
++    
++    // Cache-Aside
+     $cached = $cache->get($cacheKey, 120); // 2 minutos
+     if ($cached !== null) {
+         Http::json($cached);
+@@ -34,63 +35,36 @@ try {
+     $start = $yearMonth . '-01';
+     $end = date('Y-m-t', strtotime($start));
+ 
+-    // ÔöÇÔöÇ 2. Conex├úo com banco de metas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+     $targetsConnection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+     $targetsRepository = null;
+-
+     if (Database::isConfigured($config, $targetsConnection)) {
+         try {
+             $pdo = Database::connect($config, $targetsConnection);
++            
++            // Retry wrapper for Connection Drops (MySQL 2006/2013)
++            try {
++                $pdo->query('SELECT 1');
++            } catch (\PDOException $e) {
++                if (in_array((string)$e->errorInfo[1], ['2006', '2013'])) {
++                    $pdo = Database::connect($config, $targetsConnection);
++                } else {
++                    throw $e;
++                }
++            }
++
+             $targetsRepository = new TargetsRepository($pdo, $logger);
+-        } catch (Throwable $e) {
+-            $logger->warning('Targets editor: sem conex├úo MySQL.', ['message' => $e->getMessage()]);
+-        }
++        } catch (Throwable $e) {}
+     }
+ 
+-    // ÔöÇÔöÇ 3. Tentativa principal: build completo (snapshot + Omie) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-    $vendors = [];
+-    $source = 'empty';
+-
+-    try {
+-        $service = new FlightPlanService($config, $cache, $logger, $analytics, $targetsRepository);
+-        $payload = $service->build($start, $end, false);
+-        $vendors = $payload['vendors'] ?? [];
+-        $source = 'merged';
+-    } catch (Throwable $buildException) {
+-        $logger->warning('Targets editor: build completo falhou, tentando fallback.', [
+-            'message' => $buildException->getMessage(),
+-        ]);
+-    }
++    // Fetch snapshot + targets
++    $service = new FlightPlanService($config, $cache, $logger, $analytics, $targetsRepository);
++    $payload = $service->build($start, $end, false);
+ 
+-    // ÔöÇÔöÇ 4. Fallback: se o build falhou, montar lista s├│ com o banco de metas ÔöÇ
+-    if (empty($vendors) && $targetsRepository !== null && $targetsRepository->isAvailable()) {
+-        try {
+-            $targetsMap = $targetsRepository->getTargetsForMonths([$yearMonth]);
+-            foreach ($targetsMap as $row) {
+-                $vendors[] = [
+-                    'vendor_id'       => $row['vendor_id'],
+-                    'vendor_name'     => $row['vendor_name'],
+-                    'realized_period' => 0,
+-                    'target_period'   => Support::toFloat($row['target_amount']),
+-                    'target_month'    => Support::toFloat($row['target_amount']),
+-                ];
+-            }
+-            $source = 'targets_db_only';
+-            $logger->info('Targets editor: carregado via fallback do banco de metas.', [
+-                'vendors' => count($vendors),
+-                'year_month' => $yearMonth,
+-            ]);
+-        } catch (Throwable $dbException) {
+-            $logger->error('Targets editor: fallback de banco tamb├®m falhou.', [
+-                'message' => $dbException->getMessage(),
+-            ]);
+-        }
+-    }
+-
+-    // ÔöÇÔöÇ 5. Ordenar e paginar ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-    usort($vendors, static function ($a, $b) {
+-        $nameA = trim(mb_strtolower((string) ($a['vendor_name'] ?? '')));
+-        $nameB = trim(mb_strtolower((string) ($b['vendor_name'] ?? '')));
++    $vendors = $payload['vendors'] ?? [];
++    
++    usort($vendors, static function($a, $b) {
++        $nameA = trim(mb_strtolower((string)($a['vendor_name'] ?? '')));
++        $nameB = trim(mb_strtolower((string)($b['vendor_name'] ?? '')));
+         return strcmp($nameA, $nameB);
+     });
+ 
+@@ -107,14 +81,11 @@ try {
+             'per_page' => $perPage,
+             'total' => $total,
+             'year_month' => $yearMonth,
+-            'source' => $source,
+-        ],
++            'source' => 'merged'
++        ]
+     ];
+ 
+-    // Cachear s├│ se veio do build completo (dados ricos)
+-    if ($source === 'merged' && $total > 0) {
+-        $cache->put($cacheKey, $response);
+-    }
++    $cache->put($cacheKey, $response);
+ 
+     Http::json($response);
+ 
+@@ -126,6 +97,13 @@ try {
+ 
+     Http::json([
+         'ok' => false,
+-        'message' => 'N├úo foi poss├¡vel carregar as metas do editor. Tente novamente.',
++        'message' => 'Falha ao buscar metas para o editor: ' . $exception->getMessage(),
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/targets-editor-failure',
++            'Targets Editor failure',
++            500,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 500);
+ }
+diff --git a/./api/flight_plan_targets_list.php b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_targets_list.php
+index eaf198c..4241099 100644
+--- a/./api/flight_plan_targets_list.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_targets_list.php
+@@ -50,11 +50,10 @@ try {
+ } catch (Throwable $exception) {
+     $logger->error('Falha ao listar metas do Plano de Voo.', [
+         'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+     ]);
+ 
+     Http::json([
+         'ok'      => false,
+-        'message' => 'N├úo foi poss├¡vel carregar as metas. Tente novamente.',
++        'message' => 'Falha ao carregar metas: ' . $exception->getMessage(),
+     ], 500);
+ }
+diff --git a/./api/flight_plan_targets_upsert.php b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_targets_upsert.php
+index 71b3501..f47f3df 100644
+--- a/./api/flight_plan_targets_upsert.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_targets_upsert.php
+@@ -2,7 +2,6 @@
+ 
+ declare(strict_types=1);
+ 
+-use BIomie\Auth;
+ use BIomie\Database;
+ use BIomie\Http;
+ use BIomie\ProblemDetails;
+@@ -11,9 +10,6 @@ use BIomie\TargetsRepository;
+ 
+ require __DIR__ . '/bootstrap.php';
+ 
+-// ÔöÇÔöÇ Autoriza├º├úo: apenas administradores podem gravar metas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-Auth::requireAdmin(true);
+-
+ $instance = $_SERVER['REQUEST_URI'] ?? '/api/flight_plan_targets_upsert.php';
+ 
+ try {
+@@ -50,15 +46,6 @@ try {
+     $service = new \BIomie\FlightPlanTargetsService($pdo, $repository, $cache, $logger);
+     $result = $service->saveTargetsBatch($rows);
+ 
+-    // ÔöÇÔöÇ Trilha de auditoria ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-    $currentUser = Auth::currentUser();
+-    $logger->info('Metas do plano de voo atualizadas.', [
+-        'user_id'   => $currentUser['id'] ?? null,
+-        'username'  => $currentUser['username'] ?? null,
+-        'saved'     => $result['saved'],
+-        'vendors'   => count($rows),
+-    ]);
+-
+     Http::json([
+         'ok'      => true,
+         'message' => 'Lote de metas salvo com sucesso.',
+@@ -69,6 +56,13 @@ try {
+     Http::json([
+         'ok'      => false,
+         'message' => $exception->getMessage(),
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/invalid-parameter',
++            'Invalid request parameters',
++            400,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 400);
+ } catch (Throwable $exception) {
+     $logger->error('Falha ao salvar meta no Plano de Voo.', [
+@@ -78,6 +72,13 @@ try {
+ 
+     Http::json([
+         'ok'      => false,
+-        'message' => 'N├úo foi poss├¡vel salvar as metas. Tente novamente ou contate o administrador.',
++        'message' => 'Falha ao salvar a meta: ' . $exception->getMessage(),
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/targets-upsert-failure',
++            'Targets upsert failed',
++            500,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 500);
+ }
+diff --git a/./api/flight_plan_vendor_detail.php b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_vendor_detail.php
+index 8d2e440..c2164c7 100644
+--- a/./api/flight_plan_vendor_detail.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/flight_plan_vendor_detail.php
+@@ -100,6 +100,13 @@ try {
+     Http::json([
+         'ok' => false,
+         'message' => $exception->getMessage(),
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/invalid-parameter',
++            'Invalid request parameters',
++            400,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 400);
+ } catch (Throwable $exception) {
+     $logger->error('Falha ao gerar Vendor Detail.', [
+@@ -109,6 +116,13 @@ try {
+ 
+     Http::json([
+         'ok' => false,
+-        'message' => 'N├úo foi poss├¡vel carregar os detalhes do vendedor. Tente novamente.',
++        'message' => 'Falha ao buscar detalhes do lojista.',
++        'problem' => ProblemDetails::create(
++            'https://magmoveiscorporativos.com.br/problems/vendor-detail-failure',
++            'Vendor Detail failure',
++            500,
++            $exception->getMessage(),
++            $instance,
++        ),
+     ], 500);
+ }
+diff --git a/./api/orders.php b/../biomie_with_async_perf_patch_files/biomie/api/orders.php
+index c51a9ba..e9aecce 100644
+--- a/./api/orders.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/orders.php
+@@ -34,18 +34,16 @@ try {
+         }
+     }
+ 
+-    // ÔöÇÔöÇ Filtro expl├¡cito por status (via query string ?status=faturado|autorizado|cancelado) ÔöÇÔöÇ
+-    $statusFilter = Http::query('status', '');
+-    if ($statusFilter !== '') {
+-        $allowedStatuses = array_map('trim', explode(',', strtolower($statusFilter)));
+-        $orders = array_values(array_filter($orders, static function (array $row) use ($allowedStatuses): bool {
+-            $stage = strtolower(trim((string) ($row['stage'] ?? '')));
+-            if ($stage === '') return in_array('sem_status', $allowedStatuses, true);
+-            foreach ($allowedStatuses as $filter) {
+-                if (str_contains($stage, $filter)) return true;
+-            }
+-            return false;
+-        }));
++    $rowsWithStage = array_values(array_filter($orders, static function (array $row): bool {
++        return trim((string) ($row['stage'] ?? '')) !== '';
++    }));
++    $authorizedOrders = array_values(array_filter($orders, static function (array $row): bool {
++        $stage = strtolower(trim((string) ($row['stage'] ?? '')));
++        return $stage !== '' && str_contains($stage, 'autoriz');
++    }));
++
++    if ($rowsWithStage !== [] && $authorizedOrders !== []) {
++        $orders = $authorizedOrders;
+     }
+ 
+     $summary = $snapshot['summary'];
+@@ -64,11 +62,7 @@ try {
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/orders.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao carregar pedidos. Tente novamente.'], 500);
++    Http::json(['ok' => false, 'message' => $exception->getMessage()], 500);
+ }
+ 
+ 
+diff --git a/./api/overview.php b/../biomie_with_async_perf_patch_files/biomie/api/overview.php
+index 5f8dfaf..9f68250 100644
+--- a/./api/overview.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/overview.php
+@@ -15,12 +15,8 @@ try {
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/overview.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+     Http::json([
+         'ok' => false,
+-        'message' => 'Erro interno ao carregar o painel. Tente novamente.',
++        'message' => $exception->getMessage(),
+     ], 500);
+ }
+diff --git a/./api/products.php b/../biomie_with_async_perf_patch_files/biomie/api/products.php
+index 5d26ab7..a5f2be4 100644
+--- a/./api/products.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/products.php
+@@ -21,9 +21,5 @@ try {
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/products.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao carregar mercadorias. Tente novamente.'], 500);
++    Http::json(['ok' => false, 'message' => $exception->getMessage()], 500);
+ }
+diff --git a/../biomie_with_async_perf_patch_files/biomie/api/refresh_status.php b/../biomie_with_async_perf_patch_files/biomie/api/refresh_status.php
+new file mode 100644
+index 0000000..6300360
+--- /dev/null
++++ b/../biomie_with_async_perf_patch_files/biomie/api/refresh_status.php
+@@ -0,0 +1,61 @@
++<?php
++
++declare(strict_types=1);
++
++use BIomie\Auth;
++use BIomie\Bootstrap;
++use BIomie\Cache;
++use BIomie\Config;
++use BIomie\Http;
++use BIomie\Logger;
++use BIomie\RefreshQueue;
++use BIomie\RequestContext;
++
++require_once dirname(__DIR__) . '/app/Bootstrap.php';
++Bootstrap::init();
++
++$config = new Config();
++$logger = new Logger(dirname(__DIR__) . '/storage/logs/biomie.log');
++$cache = new Cache(dirname(__DIR__) . '/storage/cache');
++$queue = new RefreshQueue(dirname(__DIR__) . '/storage/cache', $logger);
++
++Auth::boot($config, $logger);
++Auth::requireLogin(true);
++
++try {
++    $service = strtolower((string) Http::query('service', 'sales'));
++    if (!in_array($service, ['sales', 'finance'], true)) {
++        Http::json(['ok' => false, 'message' => 'Servi├ºo inv├ílido.'], 400);
++    }
++
++    $range = Http::resolveDateRange();
++    Http::validateDateRange($range['start'], $range['end']);
++    $key = sprintf($service === 'finance' ? 'finance_snapshot_%s_%s' : 'snapshot_%s_%s', $range['start'], $range['end']);
++    $job = $queue->findBySnapshot($service, $key);
++    $cacheMeta = $cache->getMeta($key);
++
++    $state = 'idle';
++    if (is_array($job)) {
++        $state = (string) ($job['status'] ?? 'idle');
++    } elseif (($cacheMeta['exists'] ?? false) === true) {
++        $state = 'ready';
++    }
++
++    Http::json([
++        'ok' => true,
++        'service' => $service,
++        'state' => $state,
++        'job' => $job,
++        'cache' => $cacheMeta,
++        'queue' => $queue->summary(),
++    ]);
++} catch (\InvalidArgumentException $exception) {
++    Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
++} catch (Throwable $exception) {
++    $logger->error('Falha ao consultar status de refresh', ['message' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
++    Http::json([
++        'ok' => false,
++        'message' => 'N├úo foi poss├¡vel consultar o status da atualiza├º├úo.',
++        'request_id' => RequestContext::id(),
++    ], 500);
++}
+diff --git a/./api/sync.php b/../biomie_with_async_perf_patch_files/biomie/api/sync.php
+index 63ce68e..8d3b61d 100644
+--- a/./api/sync.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/sync.php
+@@ -3,7 +3,7 @@
+ declare(strict_types=1);
+ 
+ use BIomie\Http;
+-use BIomie\RefreshQueue;
++use BIomie\RequestContext;
+ 
+ require __DIR__ . '/bootstrap.php';
+ 
+@@ -16,11 +16,12 @@ try {
+         Http::json(['ok' => false, 'message' => 'Use POST para sincronizar.'], 405);
+     }
+ 
++    Http::enforceCsrf($logger);
+     $range = Http::resolveDateRange();
+     Http::validateDateRange($range['start'], $range['end']);
+-    $mode = Http::query('mode', 'queue'); // 'queue' (default) ou 'immediate'
++    $key = sprintf('snapshot_%s_%s', $range['start'], $range['end']);
+ 
+-    if ($mode === 'immediate') {
++    if (!Http::wantsAsync()) {
+         $snapshot = $analytics->getSnapshot($range['start'], $range['end'], true);
+         Http::json([
+             'ok' => true,
+@@ -30,25 +31,29 @@ try {
+             'summary' => $snapshot['summary'],
+             'served_from' => $snapshot['meta']['served_from'] ?? 'manual-refresh',
+             'meta' => $snapshot['meta'],
+-        ]);
+-    } else {
+-        $key = sprintf('snapshot_%s_%s', $range['start'], $range['end']);
+-        $queueResult = $queue->enqueue('sales', $key, ['start' => $range['start'], 'end' => $range['end']]);
+-        Http::json([
+-            'ok' => true,
+-            'message' => $queueResult['queued']
+-                ? 'Atualiza├º├úo agendada. Os n├║meros ser├úo atualizados em instantes.'
+-                : 'Atualiza├º├úo j├í est├í na fila. Recarregue em alguns segundos.',
+-            'mode' => 'queued',
+-            'queue' => $queueResult,
++            'request_id' => RequestContext::id(),
+         ]);
+     }
++
++    $queueResult = $queue->enqueue('sales', $key, ['start' => $range['start'], 'end' => $range['end']]);
++    Http::accepted([
++        'ok' => true,
++        'message' => $queueResult['queued']
++            ? 'Atualiza├º├úo agendada. A p├ígina ser├í recarregada quando o snapshot ficar pronto.'
++            : 'Atualiza├º├úo j├í est├í em andamento para esse per├¡odo.',
++        'mode' => 'queued',
++        'queue' => $queueResult,
++        'request_id' => RequestContext::id(),
++    ], [
++        'Location' => sprintf('refresh_status.php?service=sales&start=%s&end=%s', rawurlencode($range['start']), rawurlencode($range['end'])),
++    ]);
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/sync.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao sincronizar. Tente novamente.'], 500);
++    $logger->error('Falha ao sincronizar comercial', ['message' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
++    Http::json([
++        'ok' => false,
++        'message' => 'N├úo foi poss├¡vel iniciar a atualiza├º├úo comercial agora.',
++        'request_id' => RequestContext::id(),
++    ], 500);
+ }
+diff --git a/./api/vendors.php b/../biomie_with_async_perf_patch_files/biomie/api/vendors.php
+index d486e1b..ec47b51 100644
+--- a/./api/vendors.php
++++ b/../biomie_with_async_perf_patch_files/biomie/api/vendors.php
+@@ -26,9 +26,5 @@ try {
+ } catch (\InvalidArgumentException $exception) {
+     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
+ } catch (Throwable $exception) {
+-    $logger->error('Falha em api/vendors.', [
+-        'message' => $exception->getMessage(),
+-        'trace'   => $exception->getTraceAsString(),
+-    ]);
+-    Http::json(['ok' => false, 'message' => 'Erro interno ao carregar vendedores. Tente novamente.'], 500);
++    Http::json(['ok' => false, 'message' => $exception->getMessage()], 500);
+ }
+diff --git a/./app/Auth.php b/../biomie_with_async_perf_patch_files/biomie/app/Auth.php
+index ff2d659..ad628ee 100644
+--- a/./app/Auth.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/Auth.php
+@@ -14,6 +14,7 @@ final class Auth
+     private static ?AuthRepository $repository = null;
+     private static ?array $currentUser = null;
+     private static ?string $basePath = null;
++    private static bool $schemaEnsured = false;
+ 
+     /**
+      * Detecta o subdiret├│rio onde o BIomie est├í instalado.
+@@ -93,7 +94,15 @@ final class Auth
+ 
+         $pdo = Database::connect(self::$config, 'db');
+         self::$repository = new AuthRepository($pdo, self::$logger);
+-        self::$repository->ensureSchema();
++
++        if (!self::$schemaEnsured) {
++            $marker = Bootstrap::rootPath('storage/cache/auth_schema_v1.ready');
++            if (!is_file($marker)) {
++                self::$repository->ensureSchema();
++                @file_put_contents($marker, date(DATE_ATOM), LOCK_EX);
++            }
++            self::$schemaEnsured = true;
++        }
+ 
+         return self::$repository;
+     }
+diff --git a/./app/Bootstrap.php b/../biomie_with_async_perf_patch_files/biomie/app/Bootstrap.php
+index d9775d0..3a06be9 100644
+--- a/./app/Bootstrap.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/Bootstrap.php
+@@ -15,7 +15,21 @@ final class Bootstrap
+         if (self::$initialized) return;
+         self::$initialized = true;
+ 
++        spl_autoload_register(static function (string $class): void {
++            $prefix = 'BIomie\\';
++            if (!str_starts_with($class, $prefix)) {
++                return;
++            }
++
++            $relative = substr($class, strlen($prefix));
++            $path = __DIR__ . '/' . str_replace('\\', '/', $relative) . '.php';
++            if (is_file($path)) {
++                require_once $path;
++            }
++        });
++
+         date_default_timezone_set('America/Fortaleza');
++        RequestContext::boot();
+ 
+         // Preflight: extens├Áes obrigat├│rias
+         $missing = [];
+diff --git a/./app/Cache.php b/../biomie_with_async_perf_patch_files/biomie/app/Cache.php
+index 26e6a2f..a7abbb0 100644
+--- a/./app/Cache.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/Cache.php
+@@ -27,13 +27,7 @@ final class Cache
+             return null;
+         }
+ 
+-        $json = file_get_contents($path);
+-        if ($json === false) {
+-            return null;
+-        }
+-
+-        $data = json_decode($json, true);
+-        return is_array($data) ? $data : null;
++        return $this->read($key);
+     }
+ 
+     public function put(string $key, array $value): void
+@@ -42,10 +36,17 @@ final class Cache
+             @mkdir($this->cacheDir, 0775, true);
+         }
+ 
+-        file_put_contents(
+-            $this->filePath($key),
+-            json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+-        );
++        $path = $this->filePath($key);
++        $temp = $path . '.tmp';
++        $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
++        if ($json === false) {
++            return;
++        }
++
++        if (@file_put_contents($temp, $json, LOCK_EX) === false) {
++            return;
++        }
++        @rename($temp, $path);
+     }
+ 
+     public function getMeta(string $key): array
+@@ -63,10 +64,6 @@ final class Cache
+         ];
+     }
+ 
+-    /**
+-     * L├¬ o snapshot ignorando TTL ÔÇö para stale-while-revalidate.
+-     * Retorna null s├│ se o arquivo n├úo existir ou for inv├ílido.
+-     */
+     public function read(string $key): ?array
+     {
+         $path = $this->filePath($key);
+diff --git a/./app/Http.php b/../biomie_with_async_perf_patch_files/biomie/app/Http.php
+index eeb6092..a513bd9 100644
+--- a/./app/Http.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/Http.php
+@@ -9,15 +9,25 @@ use InvalidArgumentException;
+ 
+ final class Http
+ {
+-    public static function json(array $payload, int $status = 200): never
++    public static function json(array $payload, int $status = 200, array $headers = [], bool $cacheable = false): never
+     {
+         http_response_code($status);
+         header('Content-Type: application/json; charset=utf-8');
+-        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+-        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
++        header('X-Request-Id: ' . RequestContext::id());
++        header('Vary: Accept');
++        header($cacheable ? 'Cache-Control: private, no-cache, must-revalidate' : 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
++        foreach ($headers as $name => $value) {
++            header($name . ': ' . $value);
++        }
++        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+         exit;
+     }
+ 
++    public static function accepted(array $payload, array $headers = []): never
++    {
++        self::json($payload, 202, $headers);
++    }
++
+     public static function query(string $key, ?string $default = null): ?string
+     {
+         $value = $_GET[$key] ?? $default;
+@@ -27,6 +37,16 @@ final class Http
+         return is_string($value) ? trim($value) : $default;
+     }
+ 
++    public static function headerValue(string $name, ?string $default = null): ?string
++    {
++        $serverKey = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
++        $value = $_SERVER[$serverKey] ?? $default;
++        if ($value === null) {
++            return null;
++        }
++        return is_string($value) ? trim($value) : $default;
++    }
++
+     public static function boolQuery(string $key, bool $default = false): bool
+     {
+         $value = self::query($key);
+@@ -36,6 +56,43 @@ final class Http
+         return in_array(strtolower($value), ['1', 'true', 'sim', 'yes', 'y'], true);
+     }
+ 
++    public static function isWriteMethod(): bool
++    {
++        return in_array(strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
++    }
++
++    public static function wantsAsync(): bool
++    {
++        $prefer = strtolower((string) self::headerValue('Prefer', ''));
++        if (str_contains($prefer, 'respond-async')) {
++            return true;
++        }
++
++        $mode = strtolower((string) self::query('mode', 'queue'));
++        return $mode !== 'immediate';
++    }
++
++    public static function enforceCsrf(?Logger $logger = null): void
++    {
++        if (!self::isWriteMethod()) {
++            return;
++        }
++
++        $token = self::headerValue('X-CSRF-Token');
++        if ($token === null || $token === '') {
++            $token = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : null;
++        }
++
++        if (!Auth::verifyCsrf($token)) {
++            $logger?->warning('CSRF inv├ílido', ['request_id' => RequestContext::id()]);
++            self::json([
++                'ok' => false,
++                'message' => 'Sess├úo do formul├írio expirada. Recarregue a p├ígina e tente novamente.',
++                'request_id' => RequestContext::id(),
++            ], 419);
++        }
++    }
++
+     /**
+      * @return array{start:string,end:string,label:string}
+      */
+@@ -65,11 +122,6 @@ final class Http
+         ];
+     }
+ 
+-    /**
+-     * Valida que start/end est├úo no formato YYYY-MM-DD, start <= end e intervalo <= $maxDays.
+-     *
+-     * @throws InvalidArgumentException
+-     */
+     public static function validateDateRange(string $start, string $end, int $maxDays = 370): void
+     {
+         $startDate = DateTimeImmutable::createFromFormat('Y-m-d', $start);
+diff --git a/./app/Logger.php b/../biomie_with_async_perf_patch_files/biomie/app/Logger.php
+index 90771fa..5bb2434 100644
+--- a/./app/Logger.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/Logger.php
+@@ -27,19 +27,24 @@ final class Logger
+ 
+     private function write(string $level, string $message, array $context = []): void
+     {
+-        $line = sprintf(
+-            "[%s] %s %s %s\n",
+-            date('Y-m-d H:i:s'),
+-            $level,
+-            $message,
+-            $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : ''
+-        );
++        $entry = [
++            'timestamp' => date(DATE_ATOM),
++            'level' => $level,
++            'message' => $message,
++            'request_id' => RequestContext::id(),
++            'route' => RequestContext::route(),
++            'context' => $context,
++        ];
+ 
+         $dir = dirname($this->logFile);
+         if (!is_dir($dir)) {
+             @mkdir($dir, 0775, true);
+         }
+ 
+-        @file_put_contents($this->logFile, $line, FILE_APPEND);
++        @file_put_contents(
++            $this->logFile,
++            json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL,
++            FILE_APPEND | LOCK_EX
++        );
+     }
+ }
+diff --git a/./app/PageRenderer.php b/../biomie_with_async_perf_patch_files/biomie/app/PageRenderer.php
+index 3e54d46..1674be6 100644
+--- a/./app/PageRenderer.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/PageRenderer.php
+@@ -32,6 +32,14 @@ final class PageRenderer
+         ];
+         $html = str_replace(array_keys($replacements), array_values($replacements), $html);
+ 
++        $metaTags = sprintf(
++            '<meta name="biomie-csrf" content="%s" />' .
++            '<meta name="biomie-request-id" content="%s" />',
++            htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8'),
++            htmlspecialchars(RequestContext::id(), ENT_QUOTES, 'UTF-8')
++        );
++        $html = preg_replace('/<\/head>/', $metaTags . '</head>', $html, 1) ?: $html;
++
+         if (is_array($user)) {
+             $initial = strtoupper(mb_substr(trim((string) ($user['full_name'] ?? 'U')), 0, 1));
+             $safeName = htmlspecialchars((string) ($user['full_name'] ?? 'Usu├írio'), ENT_QUOTES, 'UTF-8');
+diff --git a/./app/RefreshQueue.php b/../biomie_with_async_perf_patch_files/biomie/app/RefreshQueue.php
+index f0c6d80..f4f005f 100644
+--- a/./app/RefreshQueue.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/RefreshQueue.php
+@@ -24,10 +24,15 @@ final class RefreshQueue
+         if (is_file($running)) return ['queued' => false, 'job_id' => $jobId, 'status' => 'already_running'];
+ 
+         $job = [
+-            'job_id' => $jobId, 'service' => $service, 'snapshot_key' => $key,
+-            'payload' => $payload, 'status' => 'queued', 'requested_at' => date(DATE_ATOM), 'attempts' => 0,
++            'job_id' => $jobId,
++            'service' => $service,
++            'snapshot_key' => $key,
++            'payload' => $payload,
++            'status' => 'queued',
++            'requested_at' => date(DATE_ATOM),
++            'attempts' => 0,
+         ];
+-        file_put_contents($queued, json_encode($job, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
++        $this->writeJson($queued, $job);
+         return ['queued' => true, 'job_id' => $jobId, 'status' => 'queued'];
+     }
+ 
+@@ -48,7 +53,7 @@ final class RefreshQueue
+             $job['attempts'] = ($job['attempts'] ?? 0) + 1;
+             $job['started_at'] = date(DATE_ATOM);
+             $job['_path'] = $runPath;
+-            file_put_contents($runPath, json_encode($job, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
++            $this->writeJson($runPath, $job);
+             return $job;
+         }
+         return null;
+@@ -58,9 +63,11 @@ final class RefreshQueue
+     {
+         $path = (string)($job['_path'] ?? '');
+         if (!$path || !is_file($path)) return;
+-        $job['status'] = 'done'; $job['finished_at'] = date(DATE_ATOM); $job['result'] = $result;
++        $job['status'] = 'done';
++        $job['finished_at'] = date(DATE_ATOM);
++        $job['result'] = $result;
+         unset($job['_path']);
+-        file_put_contents($path, json_encode($job, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
++        $this->writeJson($path, $job);
+         @rename($path, str_replace('/running_', '/done_', $path));
+         $this->pruneOld();
+     }
+@@ -69,9 +76,11 @@ final class RefreshQueue
+     {
+         $path = (string)($job['_path'] ?? '');
+         if (!$path || !is_file($path)) return;
+-        $job['status'] = 'failed'; $job['finished_at'] = date(DATE_ATOM); $job['last_error'] = $message;
++        $job['status'] = 'failed';
++        $job['finished_at'] = date(DATE_ATOM);
++        $job['last_error'] = $message;
+         unset($job['_path']);
+-        file_put_contents($path, json_encode($job, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
++        $this->writeJson($path, $job);
+         @rename($path, str_replace('/running_', '/failed_', $path));
+         $this->logger?->error('Job falhou', ['service' => $job['service'] ?? '', 'message' => $message]);
+     }
+@@ -85,6 +94,22 @@ final class RefreshQueue
+         return $counts;
+     }
+ 
++    public function findBySnapshot(string $service, string $snapshotKey): ?array
++    {
++        $jobId = sha1($service . '|' . $snapshotKey);
++        foreach (['queued', 'running', 'done', 'failed'] as $status) {
++            $path = $this->jobPath($status, $service, $jobId);
++            if (!is_file($path)) {
++                continue;
++            }
++            $job = $this->readJson($path);
++            if (is_array($job)) {
++                return $job;
++            }
++        }
++        return null;
++    }
++
+     private function jobPath(string $status, string $service, string $jobId): string
+     {
+         return $this->jobsDir . "/{$status}_{$service}_{$jobId}.json";
+@@ -98,6 +123,17 @@ final class RefreshQueue
+         return is_array($data) ? $data : null;
+     }
+ 
++    private function writeJson(string $path, array $payload): void
++    {
++        $temp = $path . '.tmp';
++        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
++        if ($json === false) {
++            return;
++        }
++        @file_put_contents($temp, $json, LOCK_EX);
++        @rename($temp, $path);
++    }
++
+     private function pruneOld(int $maxDone = 20): void
+     {
+         foreach (['done', 'failed'] as $status) {
+diff --git a/../biomie_with_async_perf_patch_files/biomie/app/RequestContext.php b/../biomie_with_async_perf_patch_files/biomie/app/RequestContext.php
+new file mode 100644
+index 0000000..7296141
+--- /dev/null
++++ b/../biomie_with_async_perf_patch_files/biomie/app/RequestContext.php
+@@ -0,0 +1,67 @@
++<?php
++
++declare(strict_types=1);
++
++namespace BIomie;
++
++final class RequestContext
++{
++    private static bool $booted = false;
++    private static string $requestId = '';
++    private static string $startedAt = '';
++
++    public static function boot(): void
++    {
++        if (self::$booted) {
++            return;
++        }
++        self::$booted = true;
++        self::$startedAt = date(DATE_ATOM);
++
++        $incoming = '';
++        if (PHP_SAPI !== 'cli') {
++            $incoming = trim((string) ($_SERVER['HTTP_X_REQUEST_ID'] ?? ''));
++        }
++
++        self::$requestId = self::sanitize($incoming);
++        if (self::$requestId === '') {
++            try {
++                self::$requestId = bin2hex(random_bytes(12));
++            } catch (\Throwable) {
++                self::$requestId = sha1(uniqid('biomie_', true));
++            }
++        }
++    }
++
++    public static function id(): string
++    {
++        self::boot();
++        return self::$requestId;
++    }
++
++    public static function startedAt(): string
++    {
++        self::boot();
++        return self::$startedAt;
++    }
++
++    public static function route(): string
++    {
++        if (PHP_SAPI === 'cli') {
++            return implode(' ', $_SERVER['argv'] ?? []);
++        }
++
++        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
++        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
++        return trim($method . ' ' . $uri);
++    }
++
++    private static function sanitize(string $value): string
++    {
++        if ($value === '') {
++            return '';
++        }
++
++        return preg_replace('/[^a-zA-Z0-9._:-]/', '', $value) ?? '';
++    }
++}
+diff --git a/./app/SalesAnalyticsService.php b/../biomie_with_async_perf_patch_files/biomie/app/SalesAnalyticsService.php
+index bf976d3..07f15d6 100644
+--- a/./app/SalesAnalyticsService.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/SalesAnalyticsService.php
+@@ -131,11 +131,6 @@ final class SalesAnalyticsService
+         $grossRevenue = 0.0;
+         $merchandiseRevenue = 0.0;
+         $discountsTotal = 0.0;
+-        $billedRevenue = 0.0;
+-        $billedCount = 0;
+-        $authorizedRevenue = 0.0;
+-        $authorizedCount = 0;
+-        $revenueOrdersCount = 0;
+         $daily = [];
+         $vendorRanking = [];
+         $productRanking = [];
+@@ -169,16 +164,6 @@ final class SalesAnalyticsService
+                 $grossRevenue += $grossTotal;
+                 $merchandiseRevenue += $merchandiseTotal;
+                 $discountsTotal += $discountTotal;
+-                $revenueOrdersCount++;
+-
+-                // Acumular por status para ticket m├®dio segmentado
+-                if ($orderStatus === 'faturado') {
+-                    $billedRevenue += $grossTotal;
+-                    $billedCount++;
+-                } elseif ($orderStatus === 'autorizado') {
+-                    $authorizedRevenue += $grossTotal;
+-                    $authorizedCount++;
+-                }
+             }
+ 
+             $billingDate = (string) ($order['billing_date'] ?? '');
+@@ -269,10 +254,7 @@ final class SalesAnalyticsService
+         }
+ 
+         $ordersCount = count($orders);
+-        // Ticket m├®dio usa apenas pedidos que contam como receita (exclui cancelados)
+-        $ticketAverage = $revenueOrdersCount > 0 ? $grossRevenue / $revenueOrdersCount : 0;
+-        $ticketBilled = $billedCount > 0 ? $billedRevenue / $billedCount : 0;
+-        $ticketAuthorized = $authorizedCount > 0 ? $authorizedRevenue / $authorizedCount : 0;
++        $ticketAverage = $ordersCount > 0 ? $grossRevenue / $ordersCount : 0;
+         $baseMonthlyTarget = Support::toFloat($this->config->get('analytics.monthly_target', 0));
+         $targetForPeriod = $this->calculateTargetForPeriod($start, $end, $baseMonthlyTarget);
+         $daysTotal = count(Support::eachDate($start, $end));
+@@ -372,14 +354,7 @@ final class SalesAnalyticsService
+                 'discounts_total' => Support::money($discountsTotal),
+                 'net_after_discount' => Support::money($merchandiseRevenue - $discountsTotal),
+                 'orders' => $ordersCount,
+-                'orders_revenue' => $revenueOrdersCount,
+                 'avg_ticket' => Support::money($ticketAverage),
+-                'avg_ticket_billed' => Support::money($ticketBilled),
+-                'avg_ticket_authorized' => Support::money($ticketAuthorized),
+-                'billed_revenue' => Support::money($billedRevenue),
+-                'billed_count' => $billedCount,
+-                'authorized_revenue' => Support::money($authorizedRevenue),
+-                'authorized_count' => $authorizedCount,
+                 'active_vendors' => count(array_filter($vendorRanking, static fn (array $row): bool => ($row['vendor_name'] ?? '') !== 'Sem vendedor')),
+                 'target' => Support::money($targetForPeriod),
+                 'forecast' => Support::money($forecast),
+diff --git a/./app/page_bootstrap.php b/../biomie_with_async_perf_patch_files/biomie/app/page_bootstrap.php
+index 452dc15..d6e10d1 100644
+--- a/./app/page_bootstrap.php
++++ b/../biomie_with_async_perf_patch_files/biomie/app/page_bootstrap.php
+@@ -22,40 +22,16 @@ set_exception_handler(function (Throwable $e) use ($config) {
+         http_response_code(500);
+         header('Content-Type: text/html; charset=utf-8');
+     }
+-
+-    // Detecta se o erro ├® de configura├º├úo (banco n├úo configurado / credenciais ausentes)
+-    $msg = strtolower($e->getMessage());
+-    $isConfigIssue = str_contains($msg, 'n├úo configurada')
+-        || str_contains($msg, 'access denied')
+-        || str_contains($msg, 'unknown database')
+-        || str_contains($msg, 'connection refused')
+-        || str_contains($msg, 'no such file')
+-        || ($e instanceof \PDOException);
+-
+     echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Erro | BIomie</title>';
+     echo '<style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f6f3f2}';
+-    echo '.box{max-width:540px;padding:32px;background:#fff;border-radius:20px;border:1px solid #e5e1e1;text-align:center}';
+-    echo 'h1{color:#96140a;font-size:1.3rem}a{color:#96140a}pre{text-align:left;font-size:11px;color:#828282;background:#f6f3f2;padding:12px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}';
+-    echo '.steps{text-align:left;font-size:.9rem;color:#303030;line-height:1.7;margin:16px 0}</style>';
++    echo '.box{max-width:500px;padding:32px;background:#fff;border-radius:20px;border:1px solid #e5e1e1;text-align:center}';
++    echo 'h1{color:#96140a;font-size:1.3rem}a{color:#96140a}pre{text-align:left;font-size:11px;color:#828282;background:#f6f3f2;padding:12px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}</style>';
+     echo '</head><body><div class="box">';
+-
+-    if ($isConfigIssue && !$debug) {
+-        echo '<h1>Configura├º├úo pendente</h1>';
+-        echo '<p>O BIomie n├úo conseguiu conectar ao banco de dados.</p>';
+-        echo '<div class="steps">';
+-        echo '<strong>Verifique se existe o arquivo:</strong><br>';
+-        echo '<code>config/.env.local.php</code><br><br>';
+-        echo '<strong>Ele deve conter:</strong><br>';
+-        echo 'DB_HOST, DB_NAME, DB_USER, DB_PASS,<br>OMIE_APP_KEY e OMIE_APP_SECRET<br><br>';
+-        echo '<strong>Modelo dispon├¡vel em:</strong><br>';
+-        echo '<code>config/env.example.php</code>';
+-        echo '</div>';
+-    } elseif ($debug) {
+-        echo '<h1>Erro interno</h1>';
++    echo '<h1>Erro interno</h1>';
++    if ($debug) {
+         echo '<p><strong>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</strong></p>';
+         echo '<pre>' . htmlspecialchars($e->getFile() . ':' . $e->getLine(), ENT_QUOTES, 'UTF-8') . '</pre>';
+     } else {
+-        echo '<h1>Erro interno</h1>';
+         echo '<p>Algo deu errado. Tente novamente em alguns segundos.</p>';
+     }
+     echo '<p><a href="login.php">Ir para o login</a></p>';
+diff --git a/./assets/js/app.js b/../biomie_with_async_perf_patch_files/biomie/assets/js/app.js
+index 56b67f5..a99d874 100644
+--- a/./assets/js/app.js
++++ b/../biomie_with_async_perf_patch_files/biomie/assets/js/app.js
+@@ -80,15 +80,11 @@
+     return numberBR.format(Number(value || 0));
+   }
+ 
+-  /**
+-   * Formata uma Date como YYYY-MM-DD no fuso local (sem converter para UTC).
+-   * Resolve o bug cl├íssico de toISOString() virar o dia em fusos negativos.
+-   */
+   function toLocalIso(date) {
+-    const y = date.getFullYear();
+-    const m = String(date.getMonth() + 1).padStart(2, '0');
+-    const d = String(date.getDate()).padStart(2, '0');
+-    return `${y}-${m}-${d}`;
++    const year = date.getFullYear();
++    const month = String(date.getMonth() + 1).padStart(2, '0');
++    const day = String(date.getDate()).padStart(2, '0');
++    return `${year}-${month}-${day}`;
+   }
+ 
+   function todayIso() {
+@@ -125,10 +121,11 @@
+     }
+   }
+ 
+-  // fetchJson vem de window.fetchJson (shell.js) ÔÇö cliente HTTP ├║nico do projeto.
+-  // Wrapper local apenas para manter compatibilidade com chamadas internas.
+-  async function fetchJson(url) {
+-    return window.fetchJson(url);
++  async function fetchJson(url, options = {}) {
++    if (typeof window.fetchJson === 'function') {
++      return window.fetchJson(url, options);
++    }
++    throw new Error('Cliente HTTP global indispon├¡vel.');
+   }
+ 
+   function buildApiUrl(path, force) {
+@@ -304,8 +301,8 @@
+     }).join('');
+   }
+ 
+-  async function loadDashboard(force) {
+-    const data = await fetchJson(buildApiUrl('api/overview.php', force));
++  async function loadDashboard(force, options = {}) {
++    const data = await fetchJson(buildApiUrl('api/overview.php', force), options);
+     updateGlobalMeta(data);
+     renderSummaryCards(data.summary, data.mode);
+     createLineChart(
+@@ -331,8 +328,8 @@
+     renderAlerts(data.alerts || []);
+   }
+ 
+-  async function loadVendors(force) {
+-    const data = await fetchJson(buildApiUrl('api/vendors.php', force));
++  async function loadVendors(force, options = {}) {
++    const data = await fetchJson(buildApiUrl('api/vendors.php', force), options);
+     updateGlobalMeta(data);
+     renderSummaryCards(data.summary, data.mode);
+ 
+@@ -471,8 +468,8 @@
+     }).join('');
+   }
+ 
+-  async function loadOrders(force) {
+-    const data = await fetchJson(buildApiUrl('api/orders.php', force));
++  async function loadOrders(force, options = {}) {
++    const data = await fetchJson(buildApiUrl('api/orders.php', force), options);
+     updateGlobalMeta(data);
+     renderSummaryCards(data.summary, data.mode);
+     renderTable('ordersTable', [
+@@ -485,8 +482,8 @@
+     ], data.orders);
+   }
+ 
+-  async function loadProducts(force) {
+-    const data = await fetchJson(buildApiUrl('api/products.php', force));
++  async function loadProducts(force, options = {}) {
++    const data = await fetchJson(buildApiUrl('api/products.php', force), options);
+     updateGlobalMeta(data);
+     renderSummaryCards(data.summary, data.mode);
+     createBarChart('productsRevenueChart', data.products.slice(0, 8).map((row) => row.description), data.products.slice(0, 8).map((row) => row.revenue));
+@@ -498,8 +495,8 @@
+     ], data.products);
+   }
+ 
+-  async function loadIntegrations() {
+-    const data = await fetchJson(buildApiUrl('api/status.php', false));
++  async function loadIntegrations(options = {}) {
++    const data = await fetchJson(buildApiUrl('api/status.php', false), options);
+     setHtml('#integrationModeBadge', renderStatusBadge(data.mode));
+     setText('#integrationAppName', data.app_name || 'BIomie Comercial MAG');
+     setText('#integrationTimezone', data.timezone || 'America/Fortaleza');
+@@ -525,20 +522,20 @@
+   async function syncNow(event) {
+     if (event) { event.preventDefault(); event.stopPropagation(); }
+     const feedback = document.getElementById('syncFeedback');
+-    if (feedback) feedback.innerHTML = '<div class="alert alert-secondary">Sincronizando com o backend...</div>';
++    if (feedback) feedback.innerHTML = '<div class="alert alert-secondary">Agendando atualiza├º├úoÔÇª</div>';
+     try {
+-      const resp = await fetch(buildApiUrl('api/sync.php', true), {
++      const { response, payload } = await window.fetchApi(buildApiUrl('api/sync.php', false), {
+         method: 'POST',
+         cache: 'no-store',
+-        headers: { Accept: 'application/json', 'X-Requested-With': 'fetch' }
++        headers: { Prefer: 'respond-async' },
++        timeoutMs: 15000
+       });
+-      if (resp.redirected) throw new Error('Sess├úo expirada. Recarregue a p├ígina e fa├ºa login novamente.');
+-      const ct = resp.headers.get('content-type') || '';
+-      const data = ct.includes('application/json')
+-        ? await resp.json()
+-        : { ok: false, message: 'Resposta inesperada do servidor.' };
+-      if (!resp.ok || data.ok === false) throw new Error(data.message || 'Falha na sincroniza├º├úo.');
+-      if (feedback) feedback.innerHTML = `<div class="alert alert-success">${escapeHtml(data.message)} Modo atual: ${escapeHtml(data.mode)}.</div>`;
++      if (feedback) feedback.innerHTML = `<div class="alert alert-success">${escapeHtml(payload.message || 'Atualiza├º├úo iniciada.')}</div>`;
++      if (response.status === 202 || String(payload.mode || '').toLowerCase() === 'queued') {
++        await pollRefreshStatus('sales');
++        await loadCurrentPage(false);
++        return;
++      }
+       await loadCurrentPage(true);
+     } catch (error) {
+       if (feedback) feedback.innerHTML = `<div class="alert alert-danger">${escapeHtml(error.message)}</div>`;
+@@ -577,18 +574,39 @@
+     });
+   }
+ 
++  let loadController = null;
++
++  async function pollRefreshStatus(service) {
++    const feedback = document.getElementById('syncFeedback');
++    for (let attempt = 0; attempt < 20; attempt += 1) {
++      await new Promise((resolve) => window.setTimeout(resolve, 1500));
++      const data = await fetchJson(buildApiUrl(`api/refresh_status.php?service=${service}`, false), { cache: 'no-store', timeoutMs: 10000 });
++      if (['done', 'ready'].includes(String(data.state || '').toLowerCase())) {
++        return data;
++      }
++      if (String(data.state || '').toLowerCase() === 'failed') {
++        throw new Error(data.job?.last_error || 'A atualiza├º├úo falhou no worker.');
++      }
++      if (feedback) feedback.innerHTML = `<div class="alert alert-secondary">Atualiza├º├úo em andamento (${escapeHtml(String(data.state || 'queued'))})ÔÇª</div>`;
++    }
++    throw new Error('A atualiza├º├úo demorou al├®m do esperado. Recarregue em instantes.');
++  }
++
+   async function loadCurrentPage(force) {
+     const page = document.body.dataset.page || 'dashboard';
+     const loading = document.getElementById('pageLoading');
+     const errorTarget = document.getElementById('pageError');
+     if (loading) loading.classList.remove('d-none');
+     if (errorTarget) errorTarget.classList.add('d-none');
++    if (loadController) loadController.abort();
++    loadController = new AbortController();
+     try {
+-      if (page === 'vendors') await loadVendors(force);
+-      else if (page === 'orders') await loadOrders(force);
+-      else if (page === 'products') await loadProducts(force);
+-      else if (page === 'integrations') await loadIntegrations(force);
+-      else await loadDashboard(force);
++      const options = { cache: 'no-store', signal: loadController.signal, timeoutMs: 30000 };
++      if (page === 'vendors') await loadVendors(force, options);
++      else if (page === 'orders') await loadOrders(force, options);
++      else if (page === 'products') await loadProducts(force, options);
++      else if (page === 'integrations') await loadIntegrations(options);
++      else await loadDashboard(force, options);
+     } catch (error) {
+       if (errorTarget) {
+         errorTarget.classList.remove('d-none');
+diff --git a/./assets/js/finance.js b/../biomie_with_async_perf_patch_files/biomie/assets/js/finance.js
+index 81480b8..e868e6e 100644
+--- a/./assets/js/finance.js
++++ b/../biomie_with_async_perf_patch_files/biomie/assets/js/finance.js
+@@ -1048,23 +1048,39 @@
+       toggleLoading(false);
+     }
+   }
++  async function pollRefreshStatus(service) {
++    const feedback = document.getElementById('syncFeedback');
++    for (let attempt = 0; attempt < 20; attempt += 1) {
++      await new Promise((resolve) => window.setTimeout(resolve, 1500));
++      const data = await fetchJson(buildApiUrl(`api/refresh_status.php?service=${service}`, false), { cache: 'no-store', timeoutMs: 10000 });
++      if (['done', 'ready'].includes(String(data.state || '').toLowerCase())) {
++        return data;
++      }
++      if (String(data.state || '').toLowerCase() === 'failed') {
++        throw new Error(data.job?.last_error || 'A atualiza├º├úo falhou no worker.');
++      }
++      if (feedback) feedback.innerHTML = `<div class="alert alert-secondary fin-alert">Atualiza├º├úo em andamento (${escapeHtml(String(data.state || 'queued'))})ÔÇª</div>`;
++    }
++    throw new Error('A atualiza├º├úo demorou al├®m do esperado. Recarregue em instantes.');
++  }
++
+   async function syncNow(event) {
+     if (event) { event.preventDefault(); event.stopPropagation(); }
+     const feedback = document.getElementById('syncFeedback');
+-    if (feedback) feedback.innerHTML = '<div class="alert alert-secondary fin-alert">Sincronizando m├│dulo financeiro...</div>';
++    if (feedback) feedback.innerHTML = '<div class="alert alert-secondary fin-alert">Agendando atualiza├º├úo financeira...</div>';
+     try {
+-      const resp = await fetch(buildApiUrl('api/finance_sync.php', true), {
++      const { response, payload } = await window.fetchApi(buildApiUrl('api/finance_sync.php', false), {
+         method: 'POST',
+         cache: 'no-store',
+-        headers: { Accept: 'application/json', 'X-Requested-With': 'fetch' }
++        headers: { Prefer: 'respond-async' },
++        timeoutMs: 15000
+       });
+-      if (resp.redirected) throw new Error('Sess├úo expirada. Recarregue a p├ígina e fa├ºa login novamente.');
+-      const ct = resp.headers.get('content-type') || '';
+-      const data = ct.includes('application/json')
+-        ? await resp.json()
+-        : { ok: false, message: 'Resposta inesperada do servidor.' };
+-      if (!resp.ok || data.ok === false) throw new Error(data.message || 'Falha na sincroniza├º├úo.');
+-      if (feedback) feedback.innerHTML = `<div class="alert alert-success fin-alert">${escapeHtml(data.message)}</div>`;
++      if (feedback) feedback.innerHTML = `<div class="alert alert-success fin-alert">${escapeHtml(payload.message || 'Atualiza├º├úo iniciada.')}</div>`;
++      if (response.status === 202 || String(payload.mode || '').toLowerCase() === 'queued') {
++        await pollRefreshStatus('finance');
++        await loadFinance(false);
++        return;
++      }
+       await loadFinance(true);
+     } catch (error) {
+       if (feedback) feedback.innerHTML = `<div class="alert alert-danger fin-alert">${escapeHtml(error.message)}</div>`;
+diff --git a/./assets/js/flight-plan.js b/../biomie_with_async_perf_patch_files/biomie/assets/js/flight-plan.js
+index a166ab9..336e1f1 100644
+--- a/./assets/js/flight-plan.js
++++ b/../biomie_with_async_perf_patch_files/biomie/assets/js/flight-plan.js
+@@ -11,6 +11,14 @@
+   let _lastPayload = null;
+   let _fullFlightPlanLoaded = false;
+ 
++  function currentYM() {
++    const s = document.getElementById('dateStart');
++    if (s && s.value && s.value.length === 7) return s.value;
++    const r = getDates().start;
++    if (r && r.length >= 7) return r.substring(0, 7);
++    return new Date().toISOString().substring(0, 7);
++  }
++
+   function fmt(value) {
+     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
+   }
+@@ -25,10 +33,10 @@
+     return `rgba(${(b>>16)&255},${(b>>8)&255},${b&255},${a})`;
+   }
+   function toLocalIso(date) {
+-    const y = date.getFullYear();
+-    const m = String(date.getMonth() + 1).padStart(2, '0');
+-    const d = String(date.getDate()).padStart(2, '0');
+-    return `${y}-${m}-${d}`;
++    const year = date.getFullYear();
++    const month = String(date.getMonth() + 1).padStart(2, '0');
++    const day = String(date.getDate()).padStart(2, '0');
++    return `${year}-${month}-${day}`;
+   }
+   function todayIso() { return toLocalIso(new Date()); }
+   function setDates(s,e) {
+@@ -479,7 +487,7 @@
+   // ÔöÇÔöÇÔöÇ Metas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   function currentYM() {
+     const s=document.getElementById('dateStart'), v=s?.value||'';
+-    return v.length>=7?v.slice(0,7):toLocalIso(new Date()).slice(0,7);
++    return v.length>=7?v.slice(0,7):new Date().toISOString().slice(0,7);
+   }
+   function setStatus(msg,type) {
+     const el=document.getElementById('targetsSaveStatus');if(!el)return;
+@@ -553,15 +561,14 @@
+ 
+   // ÔöÇÔöÇÔöÇ Quick-load metas do MySQL via Editor Paginado ÔöÇÔöÇÔöÇ
+   async function quickLoad() {
+-    showLoading(true);
+     try{
+       const d = await fetchJ(`api/flight_plan_targets_editor.php?year_month=${encodeURIComponent(currentYM())}&page=1&per_page=150`);
+-      if(_fullFlightPlanLoaded) { showLoading(false); return; }
++      if(_fullFlightPlanLoaded) return;
+       const v = (d.data||[]).map(v=>({
+           vendor_id: v.vendor_id,
+           vendor_name: v.vendor_name,
+-          target_period: Number(v.target_month) || Number(v.target_period) || 0,
+-          target_month: Number(v.target_month) || Number(v.target_period) || 0,
++          target_period: Number(v.target_month) || 0,
++          target_month: Number(v.target_month) || 0,
+           realized_period: Number(v.realized_period) || 0
+       }));
+       if (v.length > 0) {
+@@ -570,38 +577,30 @@
+         if(ac&&!_fullFlightPlanLoaded) ac.innerHTML='<div class="module-alert module-alert--success"><strong>Tabela Sincronizada</strong><span>Carregado do Snapshot</span></div>';
+       } else {
+         const tb=document.getElementById('targetsFormTable');
+-        if (tb) tb.innerHTML='<tr><td colspan="5" class="empty-row">Nenhum vendedor encontrado ativo neste m├¬s. Sincronize o Plano de Voo primeiro.</td></tr>';
++        if (tb) tb.innerHTML='<tr><td colspan="5" class="empty-row">Nenhum vendedor encontrado ativo neste m├¬s.</td></tr>';
+       }
+     }catch(e){
+       console.warn('quickLoad falhou:',e);
+       const tb=document.getElementById('targetsFormTable');
+-      if (tb) tb.innerHTML=`<tr><td colspan="5" class="empty-row" style="color:var(--danger)">Erro ao carregar vendedores: ${e.message}</td></tr>`;
+-    }finally{
+-      showLoading(false);
++      if (tb) tb.innerHTML=`<tr><td colspan="5" class="empty-row" style="color:var(--danger)">Erro no servidor corporativo ao carregar metas: ${e.message}</td></tr>`;
+     }
+   }
+ 
+   // ÔöÇÔöÇÔöÇ Bot├Áes Gen├®ricos e Dispatchers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   function boot() {
+-    const isTargetsPage = !!document.querySelector('[data-page="flight-plan-targets"]');
+-
+-    // Na p├ígina de metas, o input ├® type="month" (YYYY-MM) ÔÇö n├úo usar preset de data completa
+-    if (!isTargetsPage) {
+-      preset('month');
+-    }
+-
++    preset('month');
+     document.querySelectorAll('.btn-preset').forEach(b=>{b.addEventListener('click',()=>{preset(b.dataset.preset);});});
+     document.getElementById('applyFilters')?.addEventListener('click',() => {
+-        if(isTargetsPage) quickLoad(); else loadFlightPlan(false);
++        if(document.querySelector('[data-page="flight-plan-targets"]')) quickLoad(); else loadFlightPlan(false);
+     });
+     
+     document.getElementById('syncNow')?.addEventListener('click',() => {
+-        if(isTargetsPage) quickLoad(); else loadFlightPlan(true);
++        if(document.querySelector('[data-page="flight-plan-targets"]')) quickLoad(); else loadFlightPlan(true);
+     });
+     
+     document.getElementById('saveAllTargets')?.addEventListener('click',saveAll);
+     
+-    if(isTargetsPage){
++    if(document.querySelector('[data-page="flight-plan-targets"]')){
+         quickLoad().catch(e=>console.warn(e));
+     } else {
+         quickLoad().catch(e=>console.warn(e));
+diff --git a/./assets/js/shell.js b/../biomie_with_async_perf_patch_files/biomie/assets/js/shell.js
+index 206cd79..edab67c 100644
+--- a/./assets/js/shell.js
++++ b/../biomie_with_async_perf_patch_files/biomie/assets/js/shell.js
+@@ -12,51 +12,95 @@
+     Chart.defaults.plugins.tooltip.bodyColor = '#4b5263';
+   }
+ 
+-  // --- Fun├º├úo Global de Fetch com Valida├º├úo JSON ---
+-  window.fetchJson = async function (url, options = {}) {
+-    // Merge defaults
+-    const config = Object.assign({ headers: { Accept: 'application/json' } }, options);
+-    
+-    let response;
+-    try {
+-      response = await fetch(url, config);
+-    } catch (err) {
+-      throw new Error('Falha de rede - Verifique sua conex├úo: ' + err.message);
++  const csrfMeta = document.querySelector('meta[name="biomie-csrf"]');
++  const requestIdMeta = document.querySelector('meta[name="biomie-request-id"]');
++
++  function biomieCsrf() {
++    return csrfMeta?.getAttribute('content') || '';
++  }
++
++  function biomieRequestId() {
++    return requestIdMeta?.getAttribute('content') || '';
++  }
++
++  function buildFetchConfig(options = {}) {
++    const headers = new Headers(options.headers || {});
++    if (!headers.has('Accept')) headers.set('Accept', 'application/json');
++    if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'fetch');
++    if (!headers.has('X-Request-Id') && biomieRequestId()) headers.set('X-Request-Id', biomieRequestId());
++
++    const method = String(options.method || 'GET').toUpperCase();
++    if (!['GET', 'HEAD'].includes(method) && !headers.has('X-CSRF-Token') && biomieCsrf()) {
++      headers.set('X-CSRF-Token', biomieCsrf());
++    }
++
++    const timeoutMs = Number(options.timeoutMs || 30000);
++    const controller = new AbortController();
++    const timeoutId = timeoutMs > 0 ? window.setTimeout(() => controller.abort(new DOMException('timeout', 'AbortError')), timeoutMs) : 0;
++    if (options.signal) {
++      options.signal.addEventListener('abort', () => controller.abort(options.signal.reason), { once: true });
+     }
+ 
++    const config = Object.assign({}, options, {
++      credentials: options.credentials || 'same-origin',
++      cache: options.cache || 'no-store',
++      headers,
++      signal: controller.signal
++    });
++
++    delete config.timeoutMs;
++
++    return { config, timeoutId };
++  }
++
++  async function parseApiResponse(response) {
+     if (response.redirected) {
+-      throw new Error('Sess├úo expirada. Redirecionamento detectado.');
++      throw new Error('Sess├úo expirada. Fa├ºa login novamente.');
+     }
+ 
+     const contentType = response.headers.get('content-type') || '';
+-    
+-    if (!response.ok) {
+-      if (contentType.includes('application/json')) {
+-        const d = await response.json();
+-        throw new Error(d.message || `Erro HTTP ${response.status}`);
++    const isJson = contentType.includes('application/json');
++    const payload = isJson ? await response.json() : null;
++
++    if (!response.ok || (payload && payload.ok === false)) {
++      if (payload && payload.message) {
++        throw new Error(payload.message);
+       }
+-      const text = await response.text();
+-      throw new Error(`HTTP ${response.status} - ${text.substring(0, 100)}...`);
++
++      const text = isJson ? JSON.stringify(payload) : await response.text();
++      throw new Error(text ? text.substring(0, 160) : `Erro HTTP ${response.status}`);
+     }
+ 
+-    if (!contentType.includes('application/json')) {
++    if (!isJson) {
+       const text = await response.text();
+-      // Otimiza├º├úo Low-Code para timeout de relat├│rios muito longos (Erro 503 HTTP Proxy)
+-      if (response.status === 503 || text.includes('503 Service Unavailable') || text.includes('DOCTYPE html')) {
+-        throw new Error('Aviso: O per├¡odo selecionado ├® muito longo e o ERP de origem sobrecarregou. Tente diminuir o intervalo em alguns meses.');
+-      }
+-      
+-      console.error('fetchJson: resposta n├úo-JSON:', text.substring(0, 200));
+-      throw new Error('Resposta inesperada do servidor (N├úo ├® JSON). Verifique se a sess├úo expirou.');
++      throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 120)}`);
+     }
+ 
+-    const payload = await response.json();
+-    if (payload && payload.ok === false) {
+-      throw new Error(payload.message || 'Falha ao processar requisi├º├úo');
++    return payload;
++  }
++
++  window.fetchApi = async function (url, options = {}) {
++    const { config, timeoutId } = buildFetchConfig(options);
++    try {
++      const response = await fetch(url, config);
++      const payload = await parseApiResponse(response);
++      return { response, payload };
++    } catch (err) {
++      if (err?.name === 'AbortError') {
++        throw new Error('A requisi├º├úo demorou demais. Tente novamente com um per├¡odo menor.');
++      }
++      throw err instanceof Error ? err : new Error('Falha ao comunicar com o servidor.');
++    } finally {
++      if (timeoutId) window.clearTimeout(timeoutId);
+     }
++  };
++
++  window.fetchJson = async function (url, options = {}) {
++    const { payload } = await window.fetchApi(url, options);
+     return payload;
+   };
+ 
++
+   // --- Controle de Sidebar (Desktop/Mobile) ---
+   document.addEventListener('DOMContentLoaded', function () {
+     var sidebar = document.getElementById('sidebar');
+diff --git a/./config/.env.local.php b/./config/.env.local.php
+deleted file mode 100644
+index f79c6c0..0000000
+--- a/./config/.env.local.php
++++ /dev/null
+@@ -1,15 +0,0 @@
+-<?php
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// Credenciais locais ÔÇö este arquivo N├âO entra no git (.gitignore j├í o ignora).
+-// Ele deve existir APENAS no servidor de produ├º├úo.
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-return [
+-    'OMIE_APP_KEY'    => '6986289013704',
+-    'OMIE_APP_SECRET' => '5927bd4313695f367a9b2c76313623e8',
+-    'DB_HOST'         => 'localhost',
+-    'DB_PORT'         => '3306',
+-    'DB_NAME'         => 'u106688109_Comercial',
+-    'DB_USER'         => 'u106688109_Comercial_user',
+-    'DB_PASS'         => 'Mag@6135',
+-    'APP_DEBUG'       => '0',
+-];
+diff --git a/./config/env.php b/../biomie_with_async_perf_patch_files/biomie/config/env.php
+index b32c504..5b66c78 100644
+--- a/./config/env.php
++++ b/../biomie_with_async_perf_patch_files/biomie/config/env.php
+@@ -1,17 +1,11 @@
+ <?php
+ 
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// CONFIGURA├ç├âO - BIomie
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// Segredos devem vir EXCLUSIVAMENTE de:
+-//   1. Vari├íveis de ambiente do sistema (Hostinger > PHP > Environment Variables)
+-//   2. Arquivo local config/.env.local.php (ignorado pelo git)
++// Secrets s├úo carregados de vari├íveis de ambiente com fallback para valores locais.
++// Em produ├º├úo, configure via painel da Hostinger > PHP > Environment Variables,
++// ou crie um arquivo .env.local.php (ignorado pelo git) que retorne os valores.
+ //
+-// Para configurar via arquivo local:
+-//   Copie config/env.example.php para config/.env.local.php e preencha os valores.
+-//
+-// NUNCA coloque credenciais reais neste arquivo ÔÇö ele ├® versionado.
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++// Para ativar .env.local.php:
++//   Crie config/.env.local.php com:  return ['OMIE_KEY'=>'...', 'DB_PASS'=>'...', ...];
+ 
+ $secrets = [];
+ $localEnvFile = __DIR__ . '/.env.local.php';
+@@ -27,9 +21,9 @@ function env(string $key, string $fallback, array $secrets): string
+     // 2. $_ENV / $_SERVER
+     if (!empty($_ENV[$key])) return (string) $_ENV[$key];
+     if (!empty($_SERVER[$key])) return (string) $_SERVER[$key];
+-    // 3. Arquivo local (.env.local.php)
++    // 3. Arquivo local
+     if (isset($secrets[$key]) && $secrets[$key] !== '') return (string) $secrets[$key];
+-    // 4. Fallback seguro (apenas valores n├úo sens├¡veis)
++    // 4. Fallback hardcoded (apenas para facilitar deploy inicial)
+     return $fallback;
+ }
+ 
+@@ -40,8 +34,8 @@ return [
+         'debug'     => (bool) env('APP_DEBUG', '0', $secrets),
+     ],
+     'omie' => [
+-        'app_key'          => env('OMIE_APP_KEY', '', $secrets),
+-        'app_secret'       => env('OMIE_APP_SECRET', '', $secrets),
++        'app_key'          => env('OMIE_APP_KEY', '6986289013704', $secrets),
++        'app_secret'       => env('OMIE_APP_SECRET', '5927bd4313695f367a9b2c76313623e8', $secrets),
+         'default_page_size' => 100,
+         'request_timeout'  => 20,
+         'endpoints'        => [
+@@ -66,18 +60,18 @@ return [
+         'driver'  => 'mysql',
+         'host'    => env('DB_HOST', 'localhost', $secrets),
+         'port'    => (int) env('DB_PORT', '3306', $secrets),
+-        'name'    => env('DB_NAME', '', $secrets),
+-        'user'    => env('DB_USER', '', $secrets),
+-        'pass'    => env('DB_PASS', '', $secrets),
++        'name'    => env('DB_NAME', 'u106688109_Comercial', $secrets),
++        'user'    => env('DB_USER', 'u106688109_Comercial_user', $secrets),
++        'pass'    => env('DB_PASS', 'Mag@6135', $secrets),
+         'charset' => 'utf8mb4',
+     ],
+     'flight_plan_db' => [
+         'driver'  => 'mysql',
+         'host'    => env('DB_HOST', 'localhost', $secrets),
+         'port'    => (int) env('DB_PORT', '3306', $secrets),
+-        'name'    => env('DB_NAME', '', $secrets),
+-        'user'    => env('DB_USER', '', $secrets),
+-        'pass'    => env('DB_PASS', '', $secrets),
++        'name'    => env('DB_NAME', 'u106688109_Comercial', $secrets),
++        'user'    => env('DB_USER', 'u106688109_Comercial_user', $secrets),
++        'pass'    => env('DB_PASS', 'Mag@6135', $secrets),
+         'charset' => 'utf8mb4',
+     ],
+     'features' => [
+diff --git a/./cron/sync_finance.php b/../biomie_with_async_perf_patch_files/biomie/cron/sync_finance.php
+index e000bf3..a81467b 100644
+--- a/./cron/sync_finance.php
++++ b/../biomie_with_async_perf_patch_files/biomie/cron/sync_finance.php
+@@ -2,6 +2,54 @@
+ 
+ declare(strict_types=1);
+ 
+-$_GET['force'] = '1';
++use BIomie\Bootstrap;
++use BIomie\Cache;
++use BIomie\Config;
++use BIomie\FinanceAnalyticsService;
++use BIomie\FinanceRepository;
++use BIomie\Logger;
++use BIomie\OmieClient;
++use BIomie\OmieRepository;
++use BIomie\RefreshQueue;
+ 
+-require dirname(__DIR__) . '/api/finance_sync.php';
++require dirname(__DIR__) . '/app/Bootstrap.php';
++Bootstrap::init();
++
++$config = new Config();
++$logger = new Logger(dirname(__DIR__) . '/storage/logs/biomie.log');
++$cache = new Cache(dirname(__DIR__) . '/storage/cache');
++$queue = new RefreshQueue(dirname(__DIR__) . '/storage/cache', $logger);
++
++if (!$config->hasOmieCredentials()) {
++    fwrite(STDERR, "Credenciais Omie n├úo configuradas para o m├│dulo financeiro.\n");
++    exit(1);
++}
++
++$client = new OmieClient(
++    (string) $config->get('omie.app_key'),
++    (string) $config->get('omie.app_secret'),
++    (int) $config->get('omie.request_timeout', 20),
++    $logger,
++);
++
++$salesRepository = new OmieRepository($client, $config);
++$financeRepository = new FinanceRepository($client, $config, $logger);
++$finance = new FinanceAnalyticsService($config, $cache, $logger, $financeRepository, $salesRepository, $queue);
++
++$start = $argv[1] ?? date('Y-m-01');
++$end = $argv[2] ?? date('Y-m-t');
++
++try {
++    $snapshot = $finance->getSnapshot((string) $start, (string) $end, true);
++    fwrite(STDOUT, json_encode([
++        'ok' => true,
++        'mode' => $snapshot['mode'] ?? 'live',
++        'period' => $snapshot['period'] ?? ['start' => $start, 'end' => $end],
++        'generated_at' => date(DATE_ATOM),
++    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL);
++    exit(0);
++} catch (Throwable $exception) {
++    $logger->error('Falha no cron financeiro', ['message' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
++    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
++    exit(1);
++}
+diff --git a/../biomie_with_async_perf_patch_files/biomie/healthz.php b/../biomie_with_async_perf_patch_files/biomie/healthz.php
+new file mode 100644
+index 0000000..55237f8
+--- /dev/null
++++ b/../biomie_with_async_perf_patch_files/biomie/healthz.php
+@@ -0,0 +1,24 @@
++<?php
++
++declare(strict_types=1);
++
++use BIomie\Bootstrap;
++use BIomie\Config;
++use BIomie\RequestContext;
++
++require_once __DIR__ . '/app/Bootstrap.php';
++Bootstrap::init();
++$config = new Config();
++
++http_response_code(200);
++header('Content-Type: application/json; charset=utf-8');
++header('Cache-Control: no-store');
++header('X-Request-Id: ' . RequestContext::id());
++
++echo json_encode([
++    'ok' => true,
++    'app' => (string) $config->get('app.name', 'BIomie'),
++    'timestamp' => date(DATE_ATOM),
++    'php' => PHP_VERSION,
++    'request_id' => RequestContext::id(),
++], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+diff --git a/./patch.diff b/./patch.diff
+deleted file mode 100644
+index 5bca2b9..0000000
+diff --git a/./plano_voo_metas.php b/../biomie_with_async_perf_patch_files/biomie/plano_voo_metas.php
+index 4b28dd9..e57f3ee 100644
+--- a/./plano_voo_metas.php
++++ b/../biomie_with_async_perf_patch_files/biomie/plano_voo_metas.php
+@@ -6,7 +6,7 @@ use BIomie\Auth;
+ use BIomie\PageRenderer;
+ 
+ require __DIR__ . '/app/page_bootstrap.php';
+-Auth::requireAdmin(false);
++Auth::requireLogin(false);
+ echo PageRenderer::render('plano_voo_metas.html', [
+     'user' => Auth::currentUser(),
+     'is_admin' => Auth::isAdmin(),
+diff --git a/./views/plano_voo_metas.html b/../biomie_with_async_perf_patch_files/biomie/views/plano_voo_metas.html
+index 266695c..656b59b 100644
+--- a/./views/plano_voo_metas.html
++++ b/../biomie_with_async_perf_patch_files/biomie/views/plano_voo_metas.html
+@@ -111,10 +111,7 @@
+   document.addEventListener('DOMContentLoaded', () => {
+     const s = document.getElementById('dateStart');
+     if (s && !s.value) {
+-      const now = new Date();
+-      const y = now.getFullYear();
+-      const m = String(now.getMonth() + 1).padStart(2, '0');
+-      s.value = `${y}-${m}`;
++      s.value = new Date().toISOString().slice(0, 7);
+     }
+   });
+ </script>

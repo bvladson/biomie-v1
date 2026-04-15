@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l c:/Users/Usuario/Downloads/biomie/app/*.php c:/Users/Usuario/Downloads/biomie/api/*.php)",
+      "Bash(grep -l \"flight-plan\" c:/Users/Usuario/Downloads/biomie/views/*.html)",
+      "Bash(grep -l \"flight.plan\" c:/Users/Usuario/Downloads/biomie/views/*.html)",
+      "Bash(grep -n \"use BIomie\\\\\\\\\\\\\\\\Support\\\\|Support::\" c:/Users/Usuario/Downloads/biomie/app/CanonicalRepository.php)",
+      "Bash(grep -n '$this->pdo' c:/Users/Usuario/Downloads/biomie/app/CanonicalRepository.php)"
+    ]
+  }
+}

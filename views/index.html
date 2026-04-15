@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="assets/js/theme-init.js?v=20260413dark1"></script>
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f3f2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#12151b" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="Painel comercial BIomie MAG com leitura fiscal, pipeline e saude financeira." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Painel Comercial | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260415sk1" />
+  <script src="assets/js/chart.umd.js"></script>
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260415sk5" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260415sk1" />
+  <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+</head>
+
+<body class="nav-md mag-page" data-page="index">
+<div class="overlay" id="overlay"></div>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="images/logo-mag-wide.png" alt="MAG Moveis Corporativos" onerror="this.style.display='none'" />
+      <span class="logo-pill">BIomie</span>
+    </div>
+    <div class="sidebar-profile">
+      <div class="profile-avatar">M</div>
+      <div class="profile-info">
+        <span>Bem-vindo,</span>
+        <strong>Comercial MAG</strong>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-menu">
+      <div class="nav-section-label">BIomie</div>
+      <a href="index.html" class="nav-item active">
+        <span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial
+      </a>
+      <a href="vendedores.html" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">groups</span>Time Comercial
+      </a>
+      <a href="pedidos.html" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo
+      </a>
+      <a href="mercadorias.html" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">inventory_2</span>Mix Faturado
+      </a>
+      <a href="financeiro.html" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro
+      </a>
+      <a href="plano_voo.html" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">flight</span>Rota Comercial
+      </a>
+      <a href="integracoes.html" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie
+      </a>
+      <div class="nav-section-label">Atalhos</div>
+      <a href="#cards" class="nav-item"><span class="material-symbols-rounded">insights</span>Radar</a>
+      <a href="#graficos" class="nav-item"><span class="material-symbols-rounded">monitoring</span>Ritmo</a>
+      <a href="#tabelas" class="nav-item"><span class="material-symbols-rounded">table_view</span>Mesa</a>
+    </nav>
+
+    <div class="sidebar-footer hidden-small">
+      <a href="integracoes.html" title="Conexao"><span class="material-symbols-rounded">settings</span></a>
+      <a href="index.html" title="Painel"><span class="material-symbols-rounded">dashboard</span></a>
+      <a href="pedidos.html" title="NF"><span class="material-symbols-rounded">shopping_bag</span></a>
+      <a href="mercadorias.html" title="Mix"><span class="material-symbols-rounded">chair</span></a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
+          <span class="material-symbols-rounded">menu</span>
+        </button>
+        <div class="topbar-badge">
+          <span class="material-symbols-rounded">partner_exchange</span>Base fiscal Omie
+        </div>
+        <div class="topbar-meta">
+          <span>Periodo: <strong data-bind="period-label">-</strong></span>
+          <span>Modo: <strong data-bind="summary-mode">-</strong></span>
+          <span>Atualizado: <strong data-bind="last-sync">-</strong></span>
+          <span><strong data-bind="summary-period-basis">Base fiscal: emissao</strong></span>
+          <span>Fonte: <strong data-bind="sync-source">-</strong></span>
+          <span>Cobertura: <strong data-bind="sync-coverage">-</strong></span>
+          <span>Reconcil.: <strong data-bind="sync-reconciled-until">-</strong></span>
+          <span data-bind="sync-warning"><span class="mag-status-chip mag-status-demo">Carregando</span></span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="weather-dock" id="weatherDock" title="Carregando clima em Fortaleza" aria-label="Resumo do clima local">
+          <span class="weather-dock-icon">
+            <span class="material-symbols-rounded" id="weatherIcon">partly_cloudy_day</span>
+          </span>
+          <span class="weather-dock-copy">
+            <strong id="weatherTemperature">--</strong>
+            <span id="weatherDescription">Carregando clima...</span>
+          </span>
+        </div>
+        <div class="live-dot" title="Status de sincronizacao"></div>
+        <button class="btn-icon" title="Ajuda"><span class="material-symbols-rounded">help</span></button>
+      </div>
+    </header>
+
+    <main class="page dashboard-shell">
+      <section class="dashboard-hero anim">
+        <div class="dashboard-hero-copy">
+          <div class="dashboard-kicker">
+            <span class="material-symbols-rounded">finance_mode</span>Painel comercial MAG
+          </div>
+          <div>
+            <h1>Leitura viva do dia, do mes e da rota comercial.</h1>
+            <p>Uma tela unica para acompanhar faturamento, pipeline, clientes, mix e saude financeira sem depender de navegar por varias paginas durante a operacao.</p>
+          </div>
+
+          <div class="hero-insights">
+            <article class="hero-chip">
+              <span class="hero-chip-label">Receita</span>
+              <span class="hero-chip-value" data-bind="summary-revenue"><span class="skeleton-text"></span></span>
+              <span class="hero-chip-sub">NF autorizada no periodo</span>
+            </article>
+            <article class="hero-chip">
+              <span class="hero-chip-label">Meta</span>
+              <span class="hero-chip-value" data-bind="summary-target"><span class="skeleton-text"></span></span>
+              <span class="hero-chip-sub">Ritmo alvo do periodo</span>
+            </article>
+            <article class="hero-chip">
+              <span class="hero-chip-label">Projecao</span>
+              <span class="hero-chip-value" data-bind="summary-forecast"><span class="skeleton-text"></span></span>
+              <span class="hero-chip-sub">Fechamento esperado</span>
+            </article>
+            <article class="hero-chip">
+              <span class="hero-chip-label">Cobertura</span>
+              <span class="hero-chip-value" data-bind="summary-coverage"><span class="skeleton-text"></span></span>
+              <span class="hero-chip-sub">NF + carteira versus meta</span>
+            </article>
+          </div>
+        </div>
+
+        <div class="dashboard-hero-side">
+          <article class="command-card anim d3">
+            <div class="command-card-top">
+              <div>
+                <div class="weather-card-label">Centro de comando</div>
+                <h3>Filtros, origem e saude dos dados</h3>
+              </div>
+              <span class="topbar-badge" style="padding:4px 10px;font-size:11px;box-shadow:none;" data-bind="summary-mode">-</span>
+            </div>
+            <p>Leitura unica para lideranca e operacao, priorizando origem clara, cobertura visivel e sincronizacao confiavel.</p>
+            <div class="command-chip-row">
+              <span class="command-chip"><span class="material-symbols-rounded">schedule</span><strong data-bind="last-sync">-</strong></span>
+              <span class="command-chip"><span class="material-symbols-rounded">date_range</span><strong data-bind="period-label">-</strong></span>
+              <span class="command-chip"><span class="material-symbols-rounded">database</span><strong data-bind="summary-period-basis">Base fiscal: emissao</strong></span>
+            </div>
+            <div class="status-meter">
+              <div class="status-meter-bar" id="statusMeterBar" style="--meter-billed:0%;--meter-auth:0%;--meter-cancel:0%">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="status-meter-legend">
+              <span><strong data-bind="pipeline-billed">-</strong> NF</span>
+              <span><strong data-bind="pipeline-authorized">-</strong> carteira</span>
+              <span><strong data-bind="pipeline-cancelled">-</strong> canceladas</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-controls">
+        <div class="filter-bar anim d1">
+          <div class="filter-group">
+            <label class="filter-label">Data inicial</label>
+            <input id="dateStart" type="date" class="filter-input" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Data final</label>
+            <input id="dateEnd" type="date" class="filter-input" />
+          </div>
+          <div class="filter-actions">
+            <button class="btn-preset" data-range-preset="month">Mes atual</button>
+            <button class="btn-preset" data-range-preset="year">Ano atual</button>
+            <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
+            <button id="applyFilters" type="button" class="btn-primary">
+              <span class="material-symbols-rounded">filter_alt</span>Aplicar
+            </button>
+            <button id="syncNow" type="button" class="btn-secondary">
+              <span class="material-symbols-rounded">sync</span>Atualizar
+            </button>
+          </div>
+        </div>
+
+        <div id="syncFeedback"></div>
+        <div id="pageError" class="d-none"></div>
+        <div id="pageLoading" class="module-loading-shell d-none" aria-live="polite" aria-busy="true">
+          <div class="module-loading-grid cols-2">
+            <div class="module-loading-card hero">
+              <span class="skeleton-badge"></span>
+              <span class="skeleton-line xl" style="width:74%"></span>
+              <span class="skeleton-line md" style="width:58%"></span>
+              <div class="module-loading-grid cols-4">
+                <span class="skeleton-block"></span>
+                <span class="skeleton-block"></span>
+                <span class="skeleton-block"></span>
+                <span class="skeleton-block"></span>
+              </div>
+            </div>
+            <div class="module-loading-card compact">
+              <span class="skeleton-line sm" style="width:36%"></span>
+              <span class="skeleton-line xl" style="width:42%"></span>
+              <div class="module-loading-grid cols-3">
+                <span class="skeleton-block" style="min-height:72px"></span>
+                <span class="skeleton-block" style="min-height:72px"></span>
+                <span class="skeleton-block" style="min-height:72px"></span>
+              </div>
+            </div>
+          </div>
+          <div class="module-loading-grid cols-4">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+          <div class="module-loading-grid cols-2">
+            <div class="module-loading-card chart"><div class="module-loading-chart tall"></div></div>
+            <div class="module-loading-card table">
+              <div class="module-loading-table">
+                <div class="module-loading-row"><span class="skeleton-dot"></span><span class="skeleton-line md" style="width:72%"></span><span class="skeleton-line md" style="width:22%"></span></div>
+                <div class="module-loading-row"><span class="skeleton-dot"></span><span class="skeleton-line md" style="width:64%"></span><span class="skeleton-line md" style="width:18%"></span></div>
+                <div class="module-loading-row"><span class="skeleton-dot"></span><span class="skeleton-line md" style="width:68%"></span><span class="skeleton-line md" style="width:20%"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-label anim d2" id="cards">Radar executivo</div>
+      <section class="tv-stat-grid">
+        <article class="tv-kpi anim d2" data-accent="green">
+          <span class="tv-kpi-label">Notas fiscais</span>
+          <div class="tv-kpi-value" data-bind="summary-orders"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Volume fiscal emitido</div>
+        </article>
+        <article class="tv-kpi anim d3" data-accent="blue">
+          <span class="tv-kpi-label">Mix faturado</span>
+          <div class="tv-kpi-value" data-bind="summary-merchandise"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Valor consolidado de mercadorias</div>
+        </article>
+        <article class="tv-kpi anim d4" data-accent="purple">
+          <span class="tv-kpi-label">Ticket medio</span>
+          <div class="tv-kpi-value" data-bind="summary-ticket"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Qualidade media por NF</div>
+        </article>
+        <article class="tv-kpi anim d4" data-accent="yellow">
+          <span class="tv-kpi-label">Desconto</span>
+          <div class="tv-kpi-value" data-bind="summary-discounts"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Desconto consolidado do periodo</div>
+        </article>
+        <article class="tv-kpi anim d4" data-accent="blue">
+          <span class="tv-kpi-label">Clientes ativos</span>
+          <div class="tv-kpi-value" data-bind="summary-clients"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Clientes com faturamento no recorte</div>
+        </article>
+        <article class="tv-kpi anim d5" data-accent="yellow">
+          <span class="tv-kpi-label">Carteira</span>
+          <div class="tv-kpi-value" data-bind="summary-pending-value"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Pedido autorizado fora do faturado</div>
+        </article>
+        <article class="tv-kpi anim d5" data-accent="red">
+          <span class="tv-kpi-label">Canceladas</span>
+          <div class="tv-kpi-value" data-bind="summary-cancelled-value"><span class="skeleton-text"></span></div>
+          <div class="tv-kpi-sub">Impacto fiscal perdido no periodo</div>
+        </article>
+      </section>
+
+      <div class="section-label anim d3" id="graficos">Painel de ritmo</div>
+      <section class="wallboard-grid">
+        <div class="wallboard-column">
+          <article class="wallboard-card anim d3">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Ritmo diario de faturamento</h3>
+                <small>Receita do dia versus volume de notas fiscais</small>
+              </div>
+              <div class="topbar-badge" style="padding:4px 10px;font-size:11px;box-shadow:none;">
+                <span class="material-symbols-rounded" style="font-size:13px;">monitoring</span>Leitura principal
+              </div>
+            </div>
+            <div class="wallboard-card-body short">
+              <canvas id="salesTimelineChart"></canvas>
+            </div>
+          </article>
+
+          <section class="focus-grid">
+            <article class="wallboard-card anim d4">
+              <div class="wallboard-card-header">
+                <div>
+                  <h3>Comparativo mensal</h3>
+                  <small>Mes atual versus meses anteriores com linha de tendencia</small>
+                </div>
+              </div>
+              <div class="wallboard-card-body medium">
+                <canvas id="monthComparisonChart"></canvas>
+              </div>
+            </article>
+
+            <article class="wallboard-card anim d4">
+              <div class="wallboard-card-header">
+                <div>
+                  <h3>Time comercial</h3>
+                  <small>Receita e ticket do time que mais produz</small>
+                </div>
+              </div>
+              <div class="wallboard-card-body medium">
+                <canvas id="vendorsBarChart"></canvas>
+              </div>
+            </article>
+          </section>
+        </div>
+
+        <div class="wallboard-column">
+          <article class="wallboard-card anim d4">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Pipeline do dia</h3>
+                <small>NF, carteira e canceladas por data</small>
+              </div>
+            </div>
+            <div class="wallboard-card-body medium">
+              <canvas id="dailyMixedChart"></canvas>
+            </div>
+          </article>
+
+          <article class="wallboard-card anim d4">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Clientes em foco</h3>
+                <small>Concentracao e recorrencia do faturamento</small>
+              </div>
+            </div>
+            <div class="wallboard-card-body compact" style="overflow-x:auto">
+              <table class="mag-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>NF</th>
+                    <th>Receita</th>
+                    <th>Share</th>
+                  </tr>
+                </thead>
+                <tbody id="topClientsTable"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="wallboard-card anim d5">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Recebimento e risco</h3>
+                <small>Camada financeira para leitura de caixa e atraso</small>
+              </div>
+              <div id="commercialHealthBadge" class="topbar-badge" style="padding:4px 10px;font-size:11px;box-shadow:none;">Carregando</div>
+            </div>
+            <div class="wallboard-card-body compact">
+              <div class="module-tiny-kpis" style="margin-bottom:12px;">
+                <div class="mini"><span>Recebido</span><strong data-bind="health-received">-</strong></div>
+                <div class="mini"><span>Em aberto</span><strong data-bind="health-open">-</strong></div>
+                <div class="mini"><span>Vencido</span><strong data-bind="health-overdue">-</strong></div>
+                <div class="mini"><span>Conv. caixa</span><strong data-bind="health-cash-conversion">-</strong></div>
+              </div>
+              <div id="commercialHealthInfo" class="module-alert module-alert--info"><strong>Carregando</strong><span>Buscando dados financeiros para enriquecer o painel.</span></div>
+              <div style="overflow-x:auto;margin-top:12px">
+                <table class="mag-table">
+                  <thead>
+                    <tr>
+                      <th>Cliente em atraso</th>
+                      <th>Vencido</th>
+                      <th>Titulos</th>
+                      <th>Max dias</th>
+                    </tr>
+                  </thead>
+                  <tbody id="commercialHealthClientsTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+
+          <article class="wallboard-card anim d5">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Sinais do periodo</h3>
+                <small>Risco, meta e destaques operacionais</small>
+              </div>
+            </div>
+            <div class="wallboard-card-body compact">
+              <div id="alertsList" class="insight-list"></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="section-label anim d4" id="tabelas">Mesa detalhada</div>
+      <section class="tv-footer-grid">
+        <article class="wallboard-card anim d5">
+          <div class="wallboard-card-header">
+            <div>
+              <h3>Top NF</h3>
+              <small>Maiores notas do periodo</small>
+            </div>
+          </div>
+          <div class="wallboard-card-body compact" style="overflow-x:auto">
+            <table class="mag-table">
+              <thead>
+                <tr>
+                  <th>NF</th>
+                  <th>Cliente / Doc</th>
+                  <th>Vendedor</th>
+                  <th>Itens</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody id="topOrdersTable"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="wallboard-card anim d6">
+          <div class="wallboard-card-header">
+            <div>
+              <h3>Top itens</h3>
+              <small>Itens com maior receita no recorte</small>
+            </div>
+          </div>
+          <div class="wallboard-card-body compact" style="overflow-x:auto">
+            <table class="mag-table">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Qtd</th>
+                  <th>NF</th>
+                  <th>Receita</th>
+                </tr>
+              </thead>
+              <tbody id="topProductsTable"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+</main>
+  </div>
+</div>
+
+<script src="assets/js/shell.js?v=20260415sk5"></script>
+<script src="assets/js/app.js?v=20260415sk4" defer></script>
+</body>
+</html>

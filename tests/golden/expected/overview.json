@@ -1,0 +1,161 @@
+{
+    "alerts": [
+        {
+            "level": "warning",
+            "message": "O principal cliente concentrou 27.6% da receita.",
+            "title": "Concentracao elevada em cliente"
+        }
+    ],
+    "daily_sales": [
+        {
+            "date": "2026-03-03",
+            "gross_revenue": 1800,
+            "orders": 2,
+            "revenue": 1800
+        },
+        {
+            "date": "2026-03-18",
+            "gross_revenue": 4200.5,
+            "orders": 4,
+            "revenue": 4200.5
+        }
+    ],
+    "data_contract": {
+        "completeness_status": "complete",
+        "coverage_end": "2026-03-31",
+        "coverage_start": "2026-03-01",
+        "data_mode": "reconciled",
+        "dataset": "overview",
+        "delay_present": false,
+        "freshness_at": "2026-04-01 08:00:00",
+        "has_retry_or_delay": false,
+        "open_divergences": 0,
+        "origin": "historical-snapshot",
+        "pending_backlog_total": 0,
+        "reconcile_status": "reconciled",
+        "reconciled_until": "2026-03-31 23:59:59",
+        "reconciliation_pct": 100,
+        "retry_present": false,
+        "source": "legacy",
+        "staleness_reason": null
+    },
+    "meta": {
+        "generated_at": "2026-04-01 08:00:00",
+        "last_sync": "2026-04-01 08:00:00",
+        "period_basis": "issue_date",
+        "served_from": "historical-snapshot"
+    },
+    "mode": "live",
+    "month_comparison": [
+        {
+            "attainment_pct": 84.29,
+            "competencia": "2025-12",
+            "forecast": 11800,
+            "is_current": false,
+            "label": "Dez/25",
+            "orders": 16,
+            "revenue": 11800,
+            "target": 14000
+        },
+        {
+            "attainment_pct": 84.45,
+            "competencia": "2026-03",
+            "forecast": 17650,
+            "is_current": true,
+            "label": "Mar/26",
+            "orders": 18,
+            "revenue": 15200.45,
+            "target": 18000
+        }
+    ],
+    "period": {
+        "end": "2026-03-31",
+        "label": "01/03/2026 ate 31/03/2026",
+        "start": "2026-03-01"
+    },
+    "source": "legacy",
+    "summary": {
+        "active_clients": 12,
+        "active_vendors": 3,
+        "avg_ticket": 844.47,
+        "cancelled_orders": 1,
+        "cancelled_value": 220,
+        "discounts_total": 330.5,
+        "forecast": 17650,
+        "goal_progress": 84.45,
+        "gross_revenue": 15200.45,
+        "merchandise_total": 14750.1,
+        "orders": 18,
+        "pending_orders": 4,
+        "pending_value": 2650.9,
+        "revenue": 15200.45,
+        "target": 18000,
+        "top5_client_concentration_pct": 48.4
+    },
+    "top_clients": [
+        {
+            "client_id": "200",
+            "client_name": "Cliente A",
+            "invoice_total": 4200,
+            "share_pct": 27.63
+        },
+        {
+            "client_id": "201",
+            "client_name": "Cliente B",
+            "invoice_total": 3100,
+            "share_pct": 20.39
+        }
+    ],
+    "top_orders": [
+        {
+            "client_name": "Cliente A",
+            "gross_total": 3200,
+            "order_id": "P-3001",
+            "stage": "Faturado"
+        },
+        {
+            "client_name": "Cliente B",
+            "gross_total": 2500.5,
+            "order_id": "P-3002",
+            "stage": "Faturado"
+        }
+    ],
+    "top_products": [
+        {
+            "description": "Produto 01",
+            "product_code": "PRD-01",
+            "quantity": 13,
+            "revenue": 4100
+        },
+        {
+            "description": "Produto 02",
+            "product_code": "PRD-02",
+            "quantity": 8,
+            "revenue": 2550.3
+        }
+    ],
+    "vendor_ranking": [
+        {
+            "discount_total": 120,
+            "gross_revenue": 7200.15,
+            "merchandise_total": 7000,
+            "orders": 8,
+            "revenue": 7200.15,
+            "share": 47.37,
+            "ticket_avg": 900.02,
+            "vendor_id": "10",
+            "vendor_name": "Ana"
+        },
+        {
+            "discount_total": 95,
+            "gross_revenue": 4900.3,
+            "merchandise_total": 4800,
+            "orders": 6,
+            "revenue": 4900.3,
+            "share": 32.24,
+            "ticket_avg": 816.72,
+            "vendor_id": "11",
+            "vendor_name": "Bruno"
+        }
+    ]
+}

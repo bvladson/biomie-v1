@@ -1,0 +1,3715 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Offset ''inserted'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: api/canonical_sync.php
+
+		-
+			message: '#^Offset ''updated'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/canonical_sync.php
+
+		-
+			message: '#^Offset ''vendors_synced'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/canonical_sync.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 11
+			path: api/canonical_sync.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: api/canonical_sync.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/canonical_vendors.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/canonical_vendors.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/canonical_vendors.php
+
+		-
+			message: '#^Offset ''invoice_total'' on array\{notes_count\: int, merchandise_total\: float, invoice_total\: float, discount_total\?\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/commercial_health.php
+
+		-
+			message: '#^Offset ''merchandise_total'' on array\{notes_count\: int, merchandise_total\: float, invoice_total\: float, discount_total\?\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/commercial_health.php
+
+		-
+			message: '#^Offset ''notes_count'' on array\{notes_count\: int, merchandise_total\: float, invoice_total\: float, discount_total\?\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/commercial_health.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/commercial_health.php
+
+		-
+			message: '#^Variable \$finance might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/commercial_health.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/commercial_health.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: api/domain_entity_map.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/domain_entity_map.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: api/finance_overview.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/finance_overview.php
+
+		-
+			message: '#^Variable \$finance might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/finance_overview.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: api/finance_overview.php
+
+		-
+			message: '#^Variable \$finance might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/finance_sync.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/finance_sync.php
+
+		-
+			message: '#^Variable \$queue might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/finance_sync.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: api/finance_titles.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/finance_titles.php
+
+		-
+			message: '#^Variable \$finance might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/finance_titles.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/finance_titles.php
+
+		-
+			message: '#^Function calculateForecastFlightPlan\(\) has parameter \$workdays with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Function calculateNewDailyTargetFlightPlan\(\) has parameter \$workdays with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Function resolveVendorFullMonthTargetFlightPlan\(\) has parameter \$months with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Function resolveVendorFullMonthTargetFlightPlan\(\) has parameter \$targetsMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Function resolveVendorTargetForPeriodFlightPlan\(\) has parameter \$months with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Function resolveVendorTargetForPeriodFlightPlan\(\) has parameter \$targetsMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''backlog'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized\: float, backlog\: float, orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''orders'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized\: float, backlog\: float, orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''realized'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized\: float, backlog\: float, orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized\: float, backlog\: float, orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized\: float, backlog\: float, orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Variable \$cache might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: api/flight_plan.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 10
+			path: api/flight_plan.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/flight_plan.php
+
+		-
+			message: '#^Offset ''forecast_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''nome'' on array\{codigo_omie\: string, nome\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''realized_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''target_amount'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 4
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''target_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, realized_period\: float, backlog_value\: float, target_period\: float, target_month\: float, forecast_period\: float, gap_to_target\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Variable \$cache might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: api/flight_plan_targets_editor.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/flight_plan_targets_list.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/flight_plan_targets_list.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: api/flight_plan_targets_read.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/flight_plan_targets_read.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/flight_plan_targets_read.php
+
+		-
+			message: '#^Variable \$cache might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/flight_plan_targets_upsert.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/flight_plan_targets_upsert.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: api/flight_plan_targets_upsert.php
+
+		-
+			message: '#^Function calculateForecastVendorDetail\(\) has parameter \$workdays with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Function calculateNewDailyTargetVendorDetail\(\) has parameter \$workdays with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Function resolveVendorFullMonthTargetVendorDetail\(\) has parameter \$months with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Function resolveVendorFullMonthTargetVendorDetail\(\) has parameter \$targetsMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Function resolveVendorTargetForPeriodVendorDetail\(\) has parameter \$months with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Function resolveVendorTargetForPeriodVendorDetail\(\) has parameter \$targetsMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Variable \$cache might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: api/flight_plan_vendor_detail.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/health.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/omie_method_policy.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/omie_method_policy.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: api/omie_webhook.php
+
+		-
+			message: '#^Offset ''status'' on array\{inbox_id\: int, status\: string, duplicate\: bool, dedupe_key\: string, correlation_id\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/omie_webhook.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 3
+			path: api/orders.php
+
+		-
+			message: '#^Function buildLegacyOrdersPayload\(\) has parameter \$snapshot with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/orders.php
+
+		-
+			message: '#^Offset ''forecast_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/orders.php
+
+		-
+			message: '#^Offset ''goal_progress'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/orders.php
+
+		-
+			message: '#^Offset ''target_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/orders.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/orders.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/orders.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 9
+			path: api/orders.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 8
+			path: api/orders.php
+
+		-
+			message: '#^Variable \$repo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: api/orders.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 3
+			path: api/overview.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''forecast_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''goal_progress'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''probable'' on array\{base\: float, probable\: float, commit\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''share_pct'' on array\{client_id\: string, client_name\: string, client_document\: string, notes_count\: int, invoice_total\: float, merchandise_total\: float, discount_total\: float, share_pct\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''target_amount'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''target_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, revenue\: float, gross_revenue\: float, merchandise_total\: float, discount_total\: float, orders\: int, ticket_avg\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/overview.php
+
+		-
+			message: '#^Offset ''year_month'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<array\{client_id\: string, client_name\: string, client_document\: string, notes_count\: int, invoice_total\: float, merchandise_total\: float, discount_total\: float, share_pct\: float\}\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/overview.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 9
+			path: api/overview.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 11
+			path: api/overview.php
+
+		-
+			message: '#^Function canonicalProductsPayloadHasSignal\(\) has parameter \$canonicalPendingSummary with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/products.php
+
+		-
+			message: '#^Function canonicalProductsPayloadHasSignal\(\) has parameter \$canonicalProducts with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/products.php
+
+		-
+			message: '#^Function canonicalProductsPayloadHasSignal\(\) has parameter \$canonicalSummary with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/products.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/products.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: api/products.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: api/products.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 8
+			path: api/realtime_sync_status.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/realtime_sync_status.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 3
+			path: api/reconciliation.php
+
+		-
+			message: '#^Function buildLegacyReconciliationPayload\(\) has parameter \$snapshot with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/reconciliation.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/reconciliation.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: api/reconciliation.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: api/reconciliation.php
+
+		-
+			message: '#^Function buildQueuePayload\(\) has parameter \$range with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/reconciliation_queue.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: api/reconciliation_queue.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: api/reconciliation_queue.php
+
+		-
+			message: '#^Variable \$cache might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/status.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 10
+			path: api/status.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/sync.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: api/sync.php
+
+		-
+			message: '#^Variable \$queue might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/sync.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 5
+			path: api/vendors.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Function collectVendorFlags\(\) has parameter \$config with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Function respondJson\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''authorized_orders'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''authorized_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''authorized_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''authorized_value'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''authorized_value'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''billed_orders'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''billed_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''billed_value'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''billed_value'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''cancel_rate'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''cancelled_orders'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''cancelled_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''cancelled_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''cancelled_value'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''cancelled_value'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''file'' on array\{type\: int, message\: string, file\: string, line\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''forecast_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''goal_progress'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''line'' on array\{type\: int, message\: string, file\: string, line\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''message'' on array\{type\: int, message\: string, file\: string, line\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''target_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 4
+			path: api/vendors.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/vendors.php
+
+		-
+			message: '#^Variable \$analytics might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/vendors.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 12
+			path: api/vendors.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 8
+			path: api/vendors.php
+
+		-
+			message: '#^Variable \$cache might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: api/weather.php
+
+		-
+			message: '#^Variable \$config might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: api/weather.php
+
+		-
+			message: '#^Variable \$logger might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: api/weather.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:attemptLogin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:createFirstAdmin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:createUser\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:currentUser\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:resetUserPassword\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:updateUser\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\Auth\:\:validateUserPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Offset ''domain'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Offset ''httponly'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Offset ''path'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Offset ''secure'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Property BIomie\\Auth\:\:\$currentUser type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Auth.php
+
+		-
+			message: '#^Method BIomie\\AuthRepository\:\:findActiveUserById\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/AuthRepository.php
+
+		-
+			message: '#^Method BIomie\\AuthRepository\:\:findUserForLogin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/AuthRepository.php
+
+		-
+			message: '#^Method BIomie\\AuthRepository\:\:listLogs\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/AuthRepository.php
+
+		-
+			message: '#^Method BIomie\\AuthRepository\:\:listUsers\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/AuthRepository.php
+
+		-
+			message: '#^Method BIomie\\AuthRepository\:\:recordLog\(\) has parameter \$details with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/AuthRepository.php
+
+		-
+			message: '#^Property BIomie\\AuthRepository\:\:\$logger is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/AuthRepository.php
+
+		-
+			message: '#^Constant BIomie\\BronzeRepository\:\:TABLE_RAW is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/BronzeRepository.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/BronzeRepository.php
+
+		-
+			message: '#^Method BIomie\\Cache\:\:get\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Cache.php
+
+		-
+			message: '#^Method BIomie\\Cache\:\:getMeta\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Cache.php
+
+		-
+			message: '#^Method BIomie\\Cache\:\:put\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Cache.php
+
+		-
+			message: '#^Method BIomie\\Cache\:\:read\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Cache.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Canonical/CanonicalDivergenceRepository.php
+
+		-
+			message: '#^Constant BIomie\\Canonical\\CanonicalSyncStateRepository\:\:TABLE_SYNC_STATE is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/Canonical/CanonicalSyncStateRepository.php
+
+		-
+			message: '#^Property BIomie\\Canonical\\CanonicalSyncStateRepository\:\:\$pdoResolver is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Canonical/CanonicalSyncStateRepository.php
+
+		-
+			message: '#^Constant BIomie\\CanonicalRepository\:\:TABLE_INVOICE_ITEMS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Constant BIomie\\CanonicalRepository\:\:TABLE_RECONCILIATION_DIFF_ROWS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Constant BIomie\\CanonicalRepository\:\:TABLE_RECONCILIATION_RUNS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Constant BIomie\\CanonicalRepository\:\:TABLE_RECONCILIATION_VENDOR_ROWS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Constant BIomie\\CanonicalRepository\:\:TABLE_SYNC_STATE is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:advanceOrdersCheckpoint\(\) has parameter \$orderStats with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:aggregateByVendor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:aggregateByVendorCommercial\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:appendCanonicalEvent\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:buildSyncStateRecord\(\) has parameter \$currentState with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:buildSyncStateRecord\(\) has parameter \$state with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:buildSyncStateRecord\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:buildSyncStateRecord\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:dailyByStatus\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:dailyByStatusCommercial\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:decodeJsonObject\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:fetchSyncStateByPeriod\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:fetchSyncStateByPeriod\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:getSyncState\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:hashCanonicalEvent\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:hashFinancialTitle\(\) has parameter \$title with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:hashInvoice\(\) has parameter \$invoice with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:hashOrder\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:hashXmlDocument\(\) has parameter \$document with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:listOrders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:listOrdersCommercial\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:listOrdersForDisplay\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:listOrdersForDisplayCommercial\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:markSyncCompleted\(\) has parameter \$orderStats with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:markSyncFailed\(\) has parameter \$orderStats with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:normalizeDivergenceOperationalStatus\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:normalizeDivergenceSeverity\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:normalizeNullableDate\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:normalizeNullableString\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:openDivergences\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:pickSyncStateValue\(\) has parameter \$currentState with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:pickSyncStateValue\(\) has parameter \$state with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:prepareSyncState\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:reconciliationReport\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:summarize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:summarizeCommercial\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:updateSyncState\(\) has parameter \$state with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:upsertFinancialTitle\(\) has parameter \$title with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:upsertInvoice\(\) has parameter \$invoice with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:upsertOrder\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CanonicalRepository\:\:upsertXmlDocument\(\) has parameter \$document with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Offset ''email'' on array\{codigo_omie\: string, nome\: string\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Offset ''invoice_total'' on array\{notes_count\: int, merchandise_total\: float, invoice_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Offset ''nome'' on array\{codigo_omie\: string, nome\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Offset ''notes_count'' on array\{notes_count\: int, merchandise_total\: float, invoice_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, email\: null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 3
+			path: app/CanonicalRepository.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:encodeJson\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:persistSnapshot\(\) has parameter \$flightPlan with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:persistSnapshot\(\) has parameter \$overview with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:persistSnapshot\(\) has parameter \$targets with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:persistSnapshot\(\) has parameter \$vendors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:upsertCatalog\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:withHistoricalMeta\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Method BIomie\\CommercialCompetenciaSnapshotService\:\:withHistoricalMeta\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''attainment_pct'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''authorized_orders'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''authorized_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''authorized_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''authorized_value'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''authorized_value'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''billed_orders'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''billed_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''billed_value'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''billed_value'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancel_rate'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_notes…'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_orders'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_orders'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_value'' on array\{date\: mixed, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_value'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''cancelled_value'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''forecast_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''goal_progress'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''share_pct'' on array\{client_id\: string, client_name\: string, client_document\: string, notes_count\: int, invoice_total\: float, merchandise_total\: float, discount_total\: float, share_pct\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''target_period'' on array\{target_period\: float, realized_period\: float, backlog_value\: float, forecast_period\: float, gap_to_target\: float, goal_progress\: float, missing_targets_count\: int, workdays\: array\<string, mixed\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, revenue\: float, gross_revenue\: float, merchandise_total\: float, discount_total\: float, orders\: int, ticket_avg\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 4
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, billed_value\: float, billed_orders\: int, authorized_value\: float, authorized_orders\: int, cancelled_value\: float, cancelled_orders\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<array\{client_id\: string, client_name\: string, client_document\: string, notes_count\: int, invoice_total\: float, merchandise_total\: float, discount_total\: float, share_pct\: float\}\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialCompetenciaSnapshotService.php
+
+		-
+			message: '#^Offset ''backlog_value'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''discount_total'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''merchandise_total'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''orders'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''realized_period'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float, target_period\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''realized_period'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''target_amount'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float, target_period\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, realized_period\: float, backlog_value\: float, orders\: int, merchandise_total\: float, discount_total\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Offset ''year_month'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/CommercialPlanning.php
+
+		-
+			message: '#^Method BIomie\\Config\:\:all\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Config.php
+
+		-
+			message: '#^Property BIomie\\Config\:\:\$config type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Config.php
+
+		-
+			message: '#^Method BIomie\\ConsistencyHomologationService\:\:resolveCommercialCompetencia\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/ConsistencyHomologationService.php
+
+		-
+			message: '#^Method BIomie\\ConsistencyHomologationService\:\:resolveCommercialDate\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/ConsistencyHomologationService.php
+
+		-
+			message: '#^Method BIomie\\ConsistencyHomologationService\:\:resolveFiscalCompetencia\(\) has parameter \$invoice with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/ConsistencyHomologationService.php
+
+		-
+			message: '#^Method BIomie\\ConsistencyHomologationService\:\:resolveFiscalDate\(\) has parameter \$invoice with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/ConsistencyHomologationService.php
+
+		-
+			message: '#^Offset ''autorizada'' on array\{autorizada\: int\<0, max\>, cancelada\: int\<0, max\>, denegada\: int\<0, max\>, devolvida\: int\<0, max\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/ConsistencyHomologationService.php
+
+		-
+			message: '#^Offset ''cancelada'' on array\{autorizada\: int\<0, max\>, cancelada\: int\<0, max\>, denegada\: int\<0, max\>, devolvida\: int\<0, max\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/ConsistencyHomologationService.php
+
+		-
+			message: '#^Property BIomie\\DatasetFreshnessService\:\:\$logger is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/DatasetFreshnessService.php
+
+		-
+			message: '#^Method BIomie\\DemoData\:\:orders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/DemoData.php
+
+		-
+			message: '#^Method BIomie\\DemoData\:\:vendors\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/DemoData.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:buildSnapshot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:buildVendorMap\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:formatReceivedRow\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:formatReceivedRow\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:formatTitleRow\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:formatTitleRow\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:getSnapshot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:inferDocumentType\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:inferPaymentMethod\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:normalizeAccounts\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:normalizeBudget\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:normalizeMovements\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:normalizeTitles\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:rememberSnapshotHistory\(\) has parameter \$snapshot with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:resolveAccountLabel\(\) has parameter \$accountMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:resolveDocumentLabel\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:resolveVendorName\(\) has parameter \$title with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:resolveVendorName\(\) has parameter \$vendorMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\FinanceAnalyticsService\:\:titlesFromMovements\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''amount'' on array\{amount\: float, titles\: int\<0, max\>, min_days\: 1\|31\|61\|91, max_days\: 30\|60\|90\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''cause_label'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: list\<non\-empty\-string\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''client_document'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: list\<non\-empty\-string\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''dominant_document…'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: list\<non\-empty\-string\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''dominant_payment…'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: list\<non\-empty\-string\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''dominant_status'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: list\<non\-empty\-string\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''min_days'' on array\{amount\: float, titles\: int\<0, max\>, min_days\: 1\|31\|61\|91, max_days\: 30\|60\|90\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''oldest_due_date'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: array\{\}, \.\.\.\}\|array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>, max_days_late\: int\<0, max\>, oldest_due_date\: string, documents\: list\<non\-empty\-string\>, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Offset ''titles'' on array\{amount\: float, titles\: int\<0, max\>, min_days\: 1\|31\|61\|91, max_days\: 30\|60\|90\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<non\-empty\-string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Property BIomie\\FinanceAnalyticsService\:\:\$queue is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between 30\|60\|90 and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/FinanceAnalyticsService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:captureBronzeRows\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:captureBronzeRows\(\) has parameter \$response with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractAccountNaturalKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractAccountProviderKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractBudgetNaturalKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractBudgetProviderKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractMovementNaturalKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractMovementProviderKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractTitleNaturalKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractTitleProviderKey\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:extractTotalPages\(\) has parameter \$response with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:fetchWithMonthlyCache\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:looksLikeRowCollection\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Method BIomie\\FinanceRepository\:\:postWithFallbackCalls\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Offset 0 on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/FinanceRepository.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Offset ''amount'' on array\{document_type\: non\-falsy\-string, titles\: int\<1, max\>, amount\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Offset ''overdue'' on array\{client_id\: string, client_name\: non\-falsy\-string, client_document\: string, overdue\: float, titles\: int\<1, max\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Offset ''received'' on array\{payment_method\: non\-falsy\-string, received\: float, titles\: int\<1, max\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Offset ''received'' on array\{vendor_id\: string, vendor_name\: non\-falsy\-string, received\: float, titles\: int\<1, max\>, avg_ticket\: 0\.0\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Offset ''received'' on array\{vendor_id\: string, vendor_name\: non\-falsy\-string, received\: float, titles\: int\<1, max\>, avg_ticket\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Offset ''titles'' on array\{vendor_id\: string, vendor_name\: non\-falsy\-string, received\: float, titles\: int\<1, max\>, avg_ticket\: 0\.0\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FinanceShadowCandidateBuilder.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:build\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:buildAlerts\(\) has parameter \$vendors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:calculateForecast\(\) has parameter \$workdays with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:calculateNewDailyTarget\(\) has parameter \$workdays with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:resolveVendorBacklog\(\) has parameter \$matrix with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:resolveVendorFullMonthTarget\(\) has parameter \$months with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:resolveVendorFullMonthTarget\(\) has parameter \$targetsMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:resolveVendorTargetForPeriod\(\) has parameter \$months with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanService\:\:resolveVendorTargetForPeriod\(\) has parameter \$targetsMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Property BIomie\\FlightPlanService\:\:\$cache is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/FlightPlanService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanTargetsService\:\:saveTargetsBatch\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''target_amount'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''target_amount'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float\|int\|string, changed_by\: string\|null, change_reason\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float\|int\|string, changed_by\: string\|null, change_reason\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float\|int\|string, changed_by\: string\|null, change_reason\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''year_month'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Offset ''year_month'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float\|int\|string, changed_by\: string\|null, change_reason\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanTargetsService.php
+
+		-
+			message: '#^Method BIomie\\FlightPlanV2Service\:\:buildAlerts\(\) has parameter \$team with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''base'' on array\{base\: float, probable\: float, commit\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''commit'' on array\{base\: float, probable\: float, commit\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''elapsed_weight'' on array\{rule\: string, total_weight\: float, elapsed_weight\: float, remaining_weight\: float, total_days\: int, elapsed_days\: int, remaining_days\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''missing_targets…'' on array\{realized_period\: float, invoice_total\: float, merchandise_total\: float, discount_total\: float, target_period\: float, target_month\: float, forecast_period\: float, gap_to_target\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''pipeline_value'' on array\{vendor_key\: string, vendor_ref\: string, vendor_id\: string, vendor_name\: string, target_period\: float, target_month\: float, meta_day_base\: float, realized_period\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''probable'' on array\{base\: float, probable\: float, commit\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''realized_period'' on array\{realized_period\: float, invoice_total\: float, merchandise_total\: float, discount_total\: float, target_period\: float, target_month\: float, forecast_period\: float, gap_to_target\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''realized_period'' on array\{vendor_key\: string, vendor_ref\: string, vendor_id\: string, vendor_name\: string, target_period\: float, target_month\: float, meta_day_base\: float, realized_period\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 5
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''remaining_weight'' on array\{rule\: string, total_weight\: float, elapsed_weight\: float, remaining_weight\: float, total_days\: int, elapsed_days\: int, remaining_days\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''target_period'' on array\{vendor_key\: string, vendor_ref\: string, vendor_id\: string, vendor_name\: string, target_period\: float, target_month\: float, meta_day_base\: float, realized_period\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''total_weight'' on array\{rule\: string, total_weight\: float, elapsed_weight\: float, remaining_weight\: float, total_days\: int, elapsed_days\: int, remaining_days\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: non\-empty\-string, vendor_name\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, email\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, vendor_key\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_id'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: non\-empty\-string, vendor_name\: string, realized_period\: 0\.0, target_period\: float, target_month\: float, meta_day_base\: 0\.0, ideal_for_period\: 0\.0, forecast_period\: 0\.0, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: non\-empty\-string, vendor_name\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, email\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, vendor_key\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_key\: string, vendor_ref\: string, vendor_id\: string, vendor_name\: string, target_period\: float, target_month\: float, meta_day_base\: float, realized_period\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Offset ''year_month'' on array\{vendor_id\: string, vendor_name\: string, year_month\: string, target_amount\: float, currency\: string, updated_at\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Parameter &\$vendorMap by\-ref type of method BIomie\\FlightPlanV2Service\:\:resolveVendorIdentityKey\(\) expects array\<string, array\{vendor_id\: string, vendor_name\: string, vendor_key\: string\}\>, non\-empty\-array\<string, array\{vendor_id\: non\-empty\-string\}\|array\{vendor_id\: string, vendor_name\: string, vendor_key\: string\}\> given\.$#'
+			identifier: parameterByRef.type
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Parameter &\$vendorMap by\-ref type of method BIomie\\FlightPlanV2Service\:\:resolveVendorIdentityKey\(\) expects array\<string, array\{vendor_id\: string, vendor_name\: string, vendor_key\: string\}\>, non\-empty\-array\<string, non\-empty\-array\{vendor_id\?\: string, vendor_name\?\: string, vendor_key\?\: string\}\> given\.$#'
+			identifier: parameterByRef.type
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/FlightPlanV2Service.php
+
+		-
+			message: '#^Method BIomie\\Http\:\:accepted\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http.php
+
+		-
+			message: '#^Method BIomie\\Http\:\:accepted\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http.php
+
+		-
+			message: '#^Method BIomie\\Http\:\:json\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http.php
+
+		-
+			message: '#^Method BIomie\\Http\:\:json\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/LegacyEndpointPayloadFactory.php
+
+		-
+			message: '#^Method BIomie\\Logger\:\:error\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Logger.php
+
+		-
+			message: '#^Method BIomie\\Logger\:\:info\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Logger.php
+
+		-
+			message: '#^Method BIomie\\Logger\:\:warning\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Logger.php
+
+		-
+			message: '#^Method BIomie\\Logger\:\:write\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Logger.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/OmieApiReconciliationService.php
+
+		-
+			message: '#^Offset ''authorized'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieApiReconciliationService.php
+
+		-
+			message: '#^Offset ''cancelled'' on array\{authorized\: bool, cancelled\: bool, invoiced\: bool, denied\: bool, devolved\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieApiReconciliationService.php
+
+		-
+			message: '#^Offset ''denied'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieApiReconciliationService.php
+
+		-
+			message: '#^Offset ''devolved'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieApiReconciliationService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/OmieApiReconciliationService.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:emptyPageResponse\(\) has parameter \$decoded with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:emptyPageResponse\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:emptyPageResponse\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:post\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:post\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:rememberCachedResponse\(\) has parameter \$response with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Method BIomie\\OmieClient\:\:responseCacheKey\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Offset 1 on array\{non\-falsy\-string, numeric\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieClient.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Method BIomie\\OmieConsolidatedCsvService\:\:compareWithSystem\(\) has parameter \$parsed with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Method BIomie\\OmieConsolidatedCsvService\:\:resolveColumn\(\) has parameter \$alternatives with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Method BIomie\\OmieConsolidatedCsvService\:\:resolveColumn\(\) has parameter \$indexes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Method BIomie\\OmieConsolidatedCsvService\:\:rowHasContent\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''discount_total''\|''invoice_total''\|''merchandise_total'' on array\{note_key\: non\-empty\-string, note_number\: string, series\: string, note_ref\: string, status\: string, issue_date\: string\|null, vendor_name\: non\-falsy\-string, customer_name\: string, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''has_difference'' on array\{vendor_key\: string, vendor_name\: non\-falsy\-string, omie_authorized_notes\: int\<0, max\>, omie_authorized_total\: float, omie_cancelled_notes\: int\<0, max\>, omie_cancelled_total\: float, system_authorized_notes\: int\<0, max\>, system_authorized_total\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''issue_date'' on array\{note_key\: string, note_number\: non\-empty\-string, series\: string, note_ref\: string, status\: string, issue_date\: string, vendor_name\: non\-empty\-string, customer_name\: string, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''note_ref'' on array\{note_key\: string, note_number\: non\-empty\-string, series\: string, note_ref\: string, status\: string, issue_date\: string, vendor_name\: non\-empty\-string, customer_name\: string, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''note_ref'' on array\{note_key\: string, type\: ''extra_in_system''\|''match''\|''mismatch''\|''missing_in_system'', note_ref\: string, csv_status\: mixed, system_status\: string\|null, csv_vendor_name\: mixed, system_vendor_name\: non\-falsy\-string\|null, csv_issue_date\: mixed, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''status'' on array\{note_key\: non\-empty\-string, note_number\: string, series\: string, note_ref\: string, status\: string, issue_date\: string\|null, vendor_name\: non\-falsy\-string, customer_name\: string, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{note_key\: non\-empty\-string, note_number\: string, series\: string, note_ref\: string, status\: string, issue_date\: string\|null, vendor_name\: non\-falsy\-string, customer_name\: string, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_key\: string, vendor_name\: non\-falsy\-string, omie_authorized_notes\: int\<0, max\>, omie_authorized_total\: float, omie_cancelled_notes\: int\<0, max\>, omie_cancelled_total\: float, system_authorized_notes\: int\<0, max\>, system_authorized_total\: float, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\{vendor_key\: string, vendor_name\: non\-falsy\-string, omie_authorized_notes\: int\<0, max\>, omie_authorized_total\: float, omie_cancelled_notes\: int\<0, max\>, omie_cancelled_total\: float, system_authorized_notes\: int\<0, max\>, system_authorized_total\: float, \.\.\.\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Parameter \#1 \$notes of method BIomie\\OmieConsolidatedCsvService\:\:buildSummary\(\) expects list\<array\<string, mixed\>\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-list\<string\|null\> and array\{\} will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/OmieConsolidatedCsvService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/OmieFinanceCanonicalSyncService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Comparison operation "\<\=" between int\<min, 19\> and 19 is always true\.$#'
+			identifier: smallerOrEqual.alwaysTrue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:extractClientCode\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:extractVendorId\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:resolveClientDocument\(\) has parameter \$clientData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:resolveClientDocument\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:resolveClientName\(\) has parameter \$clientData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:resolveClientName\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieFiscalSyncService\:\:resolveVendorName\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''authorized'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''cancelled'' on array\{authorized\: bool, cancelled\: bool, invoiced\: bool, denied\: bool, devolved\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''denied'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''devolved'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''inserted'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''skipped'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''unchanged'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Offset ''updated'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Property BIomie\\OmieFiscalSyncService\:\:\$config is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/OmieFiscalSyncService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieOrderEventSyncService\:\:normalizeOrderEvents\(\) has parameter \$rawEvent with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieOrderEventSyncService\:\:resolveEventDateTime\(\) has parameter \$rawEvent with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Offset ''inserted'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Offset ''skipped'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Offset ''unchanged'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Offset ''updated'' on array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/OmieOrderEventSyncService.php
+
+		-
+			message: '#^Offset ''divergences'' on array\{titles\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, titles_checked\: int, divergences\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''events'' on array\{events\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, events_checked\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''events_checked'' on array\{events\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, events_checked\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''invoices'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''pending_orders'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''titles'' on array\{titles\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, titles_checked\: int, divergences\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''titles_checked'' on array\{titles\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, titles_checked\: int, divergences\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Offset ''vendors_synced'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/OmieRealtimeSyncService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:baseInvoiceFilters\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:captureBronzeBatch\(\) has parameter \$requestParams with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:captureBronzeBatch\(\) has parameter \$response with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:consultClientByCode\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:consultClientByCode\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractClientNaturalKey\(\) has parameter \$client with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractClientProviderKey\(\) has parameter \$client with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractInvoiceNaturalKey\(\) has parameter \$invoice with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractInvoiceProviderKey\(\) has parameter \$invoice with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractOrderNaturalKey\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractOrderProviderKey\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractOrderStageNaturalKey\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractOrderStageProviderKey\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractVendorNaturalKey\(\) has parameter \$vendor with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:extractVendorProviderKey\(\) has parameter \$vendor with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listClientsSummaryByCodes\(\) has parameter \$clientCodes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listClientsSummaryByCodes\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listInvoices\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listInvoicesByIssueDate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listOrders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listOrdersPipeline\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listPendingOrders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:listVendors\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:orderKey\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:paginateInvoices\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:paginateInvoices\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:paginateOrders\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:paginateOrders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Method BIomie\\OmieRepository\:\:paginateVendors\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieRepository.php
+
+		-
+			message: '#^Comparison operation "\<\=" between int\<min, 19\> and 19 is always true\.$#'
+			identifier: smallerOrEqual.alwaysTrue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:buildClientMap\(\) has parameter \$orders with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:buildClientMap\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:detectDivergences\(\) has parameter \$canonical with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:extractClientCode\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:extractVendorId\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:normalizeToCanonical\(\) has parameter \$clientMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:normalizeToCanonical\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:normalizeToCanonical\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:resolveClientDocument\(\) has parameter \$clientData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:resolveClientDocument\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:resolveClientName\(\) has parameter \$clientData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:resolveClientName\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OmieSyncService\:\:resolveVendorName\(\) has parameter \$raw with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Property BIomie\\OmieSyncService\:\:\$config is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Property BIomie\\OmieSyncService\:\:\$vendorMap type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OmieSyncService.php
+
+		-
+			message: '#^Method BIomie\\OperationalPayloadFingerprint\:\:isList\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/OperationalPayloadFingerprint.php
+
+		-
+			message: '#^Method BIomie\\PageRenderer\:\:render\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/PageRenderer.php
+
+		-
+			message: '#^Method BIomie\\ProblemDetails\:\:create\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/ProblemDetails.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:claimNext\(\) has parameter \$services with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:claimNext\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:complete\(\) has parameter \$job with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:complete\(\) has parameter \$result with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:enqueue\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:enqueue\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:fail\(\) has parameter \$job with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:findBySnapshot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:readJson\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:summary\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Method BIomie\\RefreshQueue\:\:writeJson\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/RefreshQueue.php
+
+		-
+			message: '#^Comparison operation "\<\=" between int\<min, 19\> and 19 is always true\.$#'
+			identifier: smallerOrEqual.alwaysTrue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:aggregate\(\) has parameter \$orders with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:aggregate\(\) has parameter \$vendors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:aggregate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildClientMap\(\) has parameter \$orders with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildClientMap\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildOrderFlagsMap\(\) has parameter \$orders with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildSnapshot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildStatusBlocks\(\) has parameter \$orders with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildStatusBlocks\(\) has parameter \$vendorRanking with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:buildStatusBlocks\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:classifyOrderStatusGroup\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:extractClientCode\(\) has parameter \$order with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:getSnapshot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeInvoices\(\) has parameter \$invoices with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeInvoices\(\) has parameter \$orderFlags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeInvoices\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeOrders\(\) has parameter \$clientMap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeOrders\(\) has parameter \$orders with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeOrders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeVendors\(\) has parameter \$vendors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\SalesAnalyticsService\:\:normalizeVendors\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Offset ''authorized'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Offset ''cancelled'' on array\{authorized\: bool, cancelled\: bool, invoiced\: bool, denied\: bool, devolved\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Offset ''denied'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Offset ''devolved'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Offset ''vendor_name'' on array\{vendor_id\: string, vendor_name\: non\-empty\-string, revenue\: float, gross_revenue\: float, merchandise_total\: float, discount_total\: float, orders\: int\<1, max\>, items_qty\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Variable \$issueDate on left side of \?\? always exists and is always null\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/SalesAnalyticsService.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:eachDate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:findFirstByKey\(\) has parameter \$array with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:findFirstByKeys\(\) has parameter \$array with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:findFirstByKeys\(\) has parameter \$keys with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:get\(\) has parameter \$array with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:getByPaths\(\) has parameter \$array with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Method BIomie\\Support\:\:getByPaths\(\) has parameter \$paths with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support.php
+
+		-
+			message: '#^Constant BIomie\\SyncPipelineRepository\:\:TABLE_SYNC_CURSORS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Constant BIomie\\SyncPipelineRepository\:\:TABLE_SYNC_RUNS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Constant BIomie\\SyncPipelineRepository\:\:TABLE_WEBHOOK_INBOX is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:encodeJson\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:findRecentDuplicate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:isList\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:isList\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:normalizeValue\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:resolveCursorDate\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:resolveCursorSourceId\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:resolveJsonValue\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Method BIomie\\SyncPipelineRepository\:\:resolvePlainValue\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 2
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Property BIomie\\SyncPipelineRepository\:\:\$logger is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/SyncPipelineRepository.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: cron/materialize_competencia_snapshots.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type BIomie\\CronLock\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: cron/process_webhook_inbox.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: cron/reconcile_exact_queue.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type BIomie\\CronLock\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: cron/reconcile_exact_queue.php
+
+		-
+			message: '#^Variable \$end on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: cron/reconcile_omie.php
+
+		-
+			message: '#^Variable \$start on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: cron/reconcile_omie.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''divergences'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''duration_seconds'' on array\{events\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, events_checked\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''duration_seconds'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''events'' on array\{events\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, events_checked\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''events_checked'' on array\{events\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, events_checked\: int, duration_seconds\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''invoices'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''orders'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''pending_orders'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Offset ''vendors_synced'' on array\{vendors_synced\: int, invoices\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, invoices_checked\: int, pending_orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, orders\: array\{inserted\: int, updated\: int, unchanged\: int, skipped\: int\}, pending_orders_checked\: int, orders_checked\: int, divergences\: int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_canonical.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: cron/sync_realtime_pipeline.php
+
+		-
+			message: '#^Offset ''ok'' on array\{ok\: bool, mode\: string, processed\: int, errors\: int, results\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: cron/sync_realtime_pipeline.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type BIomie\\CronLock\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: cron/sync_realtime_pipeline.php
+
+		-
+			message: '#^Function golden_normalize\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/TestSupport.php
+
+		-
+			message: '#^Function golden_normalize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/TestSupport.php
+
+		-
+			message: '#^Function unset_path\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/TestSupport.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: tests/TestSupport.php

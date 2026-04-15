@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="assets/js/theme-init.js?v=20260413dark1"></script>
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f3f2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#12151b" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="Observabilidade operacional do BIomie" />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Observabilidade | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260415sk1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260415sk5" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260415sk1" />
+<script src="assets/js/shell.js?v=20260415sk5"></script>
+<script src="assets/js/app.js?v=20260415sk4" defer></script>
+  <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+  <script src="assets/js/observability.js?v=20260415sk1" defer></script>
+</head>
+<body class="mag-page" data-page="observability">
+<div class="overlay" id="overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="images/logo-mag-wide.png" alt="MAG Moveis Corporativos" onerror="this.style.display='none'" />
+      <span class="logo-pill">BIomie</span>
+    </div>
+    <div class="sidebar-profile">
+      <div class="profile-avatar">O</div>
+      <div class="profile-info"><span>Modo interno</span><strong>Observabilidade</strong></div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-menu">
+      <div class="nav-section-label">BIomie</div>
+      <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial</a>
+      <a href="vendedores.html" class="nav-item"><span class="material-symbols-rounded menu-icon">groups</span>Time Comercial</a>
+      <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo</a>
+      <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro</a>
+      <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie</a>
+      <a href="observabilidade.php" class="nav-item active"><span class="material-symbols-rounded menu-icon">monitoring</span>Observabilidade</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
+          <span class="material-symbols-rounded">menu</span>
+        </button>
+        <div class="topbar-badge">
+          <span class="material-symbols-rounded">monitoring</span>Operacao e rastreabilidade
+        </div>
+        <div class="topbar-meta">
+          <span>Janela: <strong id="obsWindowHours">24h</strong></span>
+          <span>Gerado: <strong id="obsGeneratedAt">-</strong></span>
+          <span>Trace: <strong id="obsTraceId">-</strong></span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-secondary" id="obsRefreshButton" type="button">
+          <span class="material-symbols-rounded">refresh</span>Atualizar
+        </button>
+      </div>
+    </header>
+    <main class="page">
+      <section class="hero module-hero anim">
+        <div>
+          <div class="hero-tag"><span class="material-symbols-rounded">query_stats</span>Dashboard operacional</div>
+          <h1>Por que o numero saiu assim.</h1>
+          <p>Uma leitura unica cruzando webhook, sync, freshness, shadow, divergencia e tempos de Omie.</p>
+        </div>
+        <div class="forecast-box">
+          <div class="forecast-label">Backlog</div>
+          <div class="forecast-value" id="obsPendingTotal">-</div>
+          <div class="forecast-target"><span>Shadow critico:</span><strong id="obsShadowCritical">-</strong></div>
+          <div class="progress-track"><div class="progress-fill" id="obsProgressFill" style="width:0%"></div></div>
+          <div class="progress-pct">Divergencias abertas: <strong id="obsDivergenceTotal">-</strong></div>
+        </div>
+      </section>
+
+      <div id="obsError" class="d-none"></div>
+      <div id="obsLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
+        <div class="module-loading-grid cols-4">
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+        </div>
+        <div class="module-loading-grid cols-2">
+          <div class="module-loading-card table">
+            <div class="module-loading-table">
+              <div class="module-loading-row"><span class="skeleton-line md" style="width:24%"></span><span class="skeleton-line md" style="width:16%"></span><span class="skeleton-line md" style="width:18%"></span></div>
+              <div class="module-loading-row"><span class="skeleton-line md" style="width:28%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:16%"></span></div>
+              <div class="module-loading-row"><span class="skeleton-line md" style="width:32%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+            </div>
+          </div>
+          <div class="module-loading-card table">
+            <div class="module-loading-table">
+              <div class="module-loading-row"><span class="skeleton-line md" style="width:30%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:14%"></span></div>
+              <div class="module-loading-row"><span class="skeleton-line md" style="width:26%"></span><span class="skeleton-line md" style="width:20%"></span><span class="skeleton-line md" style="width:16%"></span></div>
+              <div class="module-loading-row"><span class="skeleton-line md" style="width:34%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="integration-stats" id="obsCards">
+        <div class="integration-stat anim d2"><span class="label">Inbox pendente</span><div class="value" id="cardPending">-</div><div class="sub" id="cardPendingAge">-</div></div>
+        <div class="integration-stat anim d2"><span class="label">Falhas recentes</span><div class="value" id="cardFailedSpans">-</div><div class="sub">Spans e jobs com erro</div></div>
+        <div class="integration-stat anim d3"><span class="label">Shadow aberto</span><div class="value" id="cardShadow">-</div><div class="sub">Diffs high/critical</div></div>
+        <div class="integration-stat anim d3"><span class="label">Datasets stale</span><div class="value" id="cardStale">-</div><div class="sub">Leituras degradadas</div></div>
+      </section>
+
+      <div class="section-label anim d2">Datasets</div>
+      <section class="table-card anim d2">
+        <div class="chart-card-header"><div><h3>Freshness e completude</h3><small>Estado atual dos datasets criticos</small></div></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Dataset</th><th>Modo</th><th>Lag</th><th>Reconcile</th><th>Motivo</th><th>Divergencias</th></tr>
+            </thead>
+            <tbody id="obsDatasetsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="section-label anim d3">Jobs</div>
+      <section class="module-grid-2">
+        <div class="table-card anim d3">
+          <div class="chart-card-header"><div><h3>Jobs por dominio</h3><small>Ultimo estado e p95 estimado</small></div></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Dominio</th><th>Status</th><th>Runs</th><th>Media</th><th>P95</th><th>Fim</th></tr>
+              </thead>
+              <tbody id="obsJobsBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="table-card anim d4">
+          <div class="chart-card-header"><div><h3>Metodos Omie</h3><small>Tempo medio e p95 por call</small></div></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Metodo</th><th>Requests</th><th>Erros</th><th>Media</th><th>P95</th></tr>
+              </thead>
+              <tbody id="obsOmieBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-label anim d4">Conflitos</div>
+      <section class="module-grid-2">
+        <div class="table-card anim d4">
+          <div class="chart-card-header"><div><h3>Divergencias por regra</h3><small>Fila ativa priorizada</small></div></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Regra</th><th>Total</th><th>Severidade</th></tr>
+              </thead>
+              <tbody id="obsRulesBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="table-card anim d5">
+          <div class="chart-card-header"><div><h3>Shadow por endpoint</h3><small>Onde o legado e o candidato ainda divergem</small></div></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Endpoint</th><th>Total</th><th>High/Critical</th></tr>
+              </thead>
+              <tbody id="obsShadowBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-label anim d5">Falhas recentes</div>
+      <section class="table-card anim d5">
+        <div class="chart-card-header"><div><h3>Spans e eventos</h3><small>Ultimos sinais com erro ou warning</small></div></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Tipo</th><th>Nome</th><th>Status</th><th>Correlation</th><th>Quando</th></tr>
+            </thead>
+            <tbody id="obsFailuresBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</body>
+</html>

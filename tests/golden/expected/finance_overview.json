@@ -1,0 +1,147 @@
+{
+    "aging": [
+        {
+            "amount": 900,
+            "bucket": "0-30"
+        },
+        {
+            "amount": 350,
+            "bucket": "31-60"
+        }
+    ],
+    "budget": [
+        {
+            "budget_total": 20000,
+            "month": "2026-03",
+            "received_total": 18300
+        }
+    ],
+    "by_account": [
+        {
+            "account_label": "Banco A",
+            "received_total": 9400
+        }
+    ],
+    "by_client": [
+        {
+            "client_name": "Cliente A",
+            "received_total": 4800
+        }
+    ],
+    "by_vendor": [
+        {
+            "received_total": 9300,
+            "vendor_name": "Ana"
+        },
+        {
+            "received_total": 6100,
+            "vendor_name": "Bruno"
+        }
+    ],
+    "data_contract": {
+        "completeness_status": "complete",
+        "coverage_end": "2026-03-31",
+        "coverage_start": "2026-03-01",
+        "data_mode": "reconciled",
+        "dataset": "finance_overview",
+        "delay_present": false,
+        "freshness_at": "2026-04-01 08:00:00",
+        "has_retry_or_delay": false,
+        "open_divergences": 0,
+        "origin": "historical-snapshot",
+        "pending_backlog_total": 0,
+        "reconcile_status": "reconciled",
+        "reconciled_until": "2026-03-31 23:59:59",
+        "reconciliation_pct": 100,
+        "retry_present": false,
+        "source": "historical-snapshot",
+        "staleness_reason": null
+    },
+    "document_types": [
+        {
+            "amount": 9000,
+            "type": "boleto"
+        }
+    ],
+    "meta": {
+        "generated_at": "2026-04-01 08:00:00",
+        "last_sync": "2026-04-01 08:00:00",
+        "served_from": "historical-snapshot"
+    },
+    "mode": "live-finance",
+    "ok": true,
+    "open_titles": [
+        {
+            "amount": 1800,
+            "due_date": "2026-03-29",
+            "title_id": "ABR-01",
+            "vendor_name": "Ana"
+        }
+    ],
+    "overdue_titles": [
+        {
+            "amount": 1250,
+            "due_date": "2026-03-12",
+            "title_id": "VENC-01",
+            "vendor_name": "Bruno"
+        }
+    ],
+    "payment_methods": [
+        {
+            "amount": 6200,
+            "method": "pix"
+        }
+    ],
+    "period": {
+        "end": "2026-03-31",
+        "label": "01/03/2026 ate 31/03/2026",
+        "start": "2026-03-01"
+    },
+    "received_rows": [
+        {
+            "amount": 5200,
+            "paid_at": "2026-03-08",
+            "title_id": "RCB-01",
+            "vendor_name": "Ana"
+        },
+        {
+            "amount": 3100,
+            "paid_at": "2026-03-17",
+            "title_id": "RCB-02",
+            "vendor_name": "Bruno"
+        }
+    ],
+    "source": "historical-snapshot",
+    "status_breakdown": [
+        {
+            "amount": 18300,
+            "count": 18,
+            "status": "recebido"
+        },
+        {
+            "amount": 4200,
+            "count": 7,
+            "status": "aberto"
+        }
+    ],
+    "summary": {
+        "open_total": 4200,
+        "overdue_total": 1250,
+        "received_total": 18300,
+        "titles_total": 26
+    },
+    "trend": [
+        {
+            "month": "2026-01",
+            "received_total": 15100
+        },
+        {
+            "month": "2026-02",
+            "received_total": 16500
+        },
+        {
+            "month": "2026-03",
+            "received_total": 18300
+        }
+    ]
+}

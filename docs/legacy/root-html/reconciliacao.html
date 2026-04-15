@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Auditoria fiscal: conferencia entre Omie e BIomie" />
+  <meta name="theme-color" content="#96140a" />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Auditoria Fiscal | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260404w2" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260404w2" />
+  <script src="assets/js/shell.js?v=20260404w2"></script>
+  <script src="assets/js/reconciliacao.js?v=20260412a" defer></script>
+  <script src="assets/js/pwa.js?v=20260411pwa1" defer></script>
+</head>
+<body class="mag-page" data-page="audit">
+<div class="overlay" id="overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="images/logo-mag-wide.png" alt="MAG Moveis Corporativos" onerror="this.style.display='none'" />
+      <span class="logo-pill">BIomie</span>
+    </div>
+    <div class="sidebar-profile">
+      <div class="profile-avatar">M</div>
+      <div class="profile-info"><span>Bem-vindo,</span><strong>Comercial MAG</strong></div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-menu">
+      <div class="nav-section-label">BIomie</div>
+      <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial</a>
+      <a href="vendedores.html" class="nav-item"><span class="material-symbols-rounded menu-icon">groups</span>Time Comercial</a>
+      <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo</a>
+      <a href="mercadorias.html" class="nav-item"><span class="material-symbols-rounded menu-icon">inventory_2</span>Mix Faturado</a>
+      <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro</a>
+      <a href="plano_voo.html" class="nav-item"><span class="material-symbols-rounded menu-icon">flight</span>Rota Comercial</a>
+      <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao</a>
+      <a href="reconciliacao.html" class="nav-item active"><span class="material-symbols-rounded menu-icon">fact_check</span>Auditoria Fiscal</a>
+      <div class="nav-section-label">Atalhos</div>
+      <a href="#resumo" class="nav-item"><span class="material-symbols-rounded">insights</span>Leitura rapida</a>
+      <a href="#vendedores-section" class="nav-item"><span class="material-symbols-rounded">table_view</span>Por vendedor</a>
+      <a href="#divergencias" class="nav-item"><span class="material-symbols-rounded">warning</span>Divergencias</a>
+    </nav>
+    <div class="sidebar-footer hidden-small">
+      <a href="integracoes.html" title="Conexao"><span class="material-symbols-rounded">settings</span></a>
+      <a href="index.html" title="Painel"><span class="material-symbols-rounded">dashboard</span></a>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu"><span class="material-symbols-rounded">menu</span></button>
+        <div class="topbar-badge"><span class="material-symbols-rounded">fact_check</span>Auditoria Fiscal</div>
+        <div class="topbar-meta">
+          <span>Periodo: <strong data-bind="period-label">-</strong></span>
+          <span>Gerado: <strong data-bind="last-sync">-</strong></span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="live-dot" title="Status"></div>
+        <button class="btn-icon" title="Ajuda"><span class="material-symbols-rounded">help</span></button>
+      </div>
+    </header>
+    <main class="page">
+
+      <section class="hero module-hero anim">
+        <div>
+          <div class="hero-tag"><span class="material-symbols-rounded">fact_check</span>Conferencia Omie x BIomie</div>
+          <h1>Auditoria Fiscal — o que o Omie enviou x o que o BIomie tem salvo.</h1>
+          <p>Confira totais canonicos por vendedor, identifique divergencias entre pedidos e NFs, e resolva inconsistencias antes de fechar qualquer relatorio.</p>
+          <div class="hero-insights">
+            <div class="hero-chip" style="border-left:3px solid var(--state-billed)"><span class="hero-chip-label">Faturado (NF)</span><span class="hero-chip-value" id="heroFaturado">-</span><span class="hero-chip-sub">Base canonica</span></div>
+            <div class="hero-chip" style="border-left:3px solid var(--state-cancel)"><span class="hero-chip-label">Divergencias</span><span class="hero-chip-value" id="heroDivergencias">-</span><span class="hero-chip-sub">Abertas + reincidentes</span></div>
+            <div class="hero-chip" style="border-left:3px solid var(--state-cancel)"><span class="hero-chip-label">Criticas</span><span class="hero-chip-value" id="heroCriticas">-</span><span class="hero-chip-sub">Exigem atencao</span></div>
+          </div>
+        </div>
+        <div class="forecast-box">
+          <div class="forecast-label">Fluxo de uso</div>
+          <div class="forecast-target" style="margin-top:8px">
+            <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px;margin-right:6px;color:var(--accent)">sync</span>
+            <span>1. Sincronizar dados (Conexao)</span>
+          </div>
+          <div class="forecast-target">
+            <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px;margin-right:6px;color:var(--accent)">search</span>
+            <span>2. Executar varredura</span>
+          </div>
+          <div class="forecast-target">
+            <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px;margin-right:6px;color:var(--accent)">fact_check</span>
+            <span>3. Conferir e resolver</span>
+          </div>
+          <div class="forecast-target" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07)">
+            <span>Ultima varredura:</span><strong id="lastScanLabel">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <div class="filter-bar anim d1">
+        <div class="filter-group"><label class="filter-label">Data inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Data final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+        <div class="filter-actions">
+          <button class="btn-preset" data-range-preset="month">Mes atual</button>
+          <button class="btn-preset" data-range-preset="year">Ano atual</button>
+          <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
+          <button id="applyFilters" type="button" class="btn-primary"><span class="material-symbols-rounded">filter_alt</span> Aplicar</button>
+          <button id="scanNow" type="button" class="btn-secondary"><span class="material-symbols-rounded">search</span> Varredura</button>
+        </div>
+      </div>
+      <div id="syncFeedback"></div>
+      <div id="pageError" class="d-none"></div>
+      <div id="pageLoading">Carregando auditoria fiscal...</div>
+
+      <!-- Guia: 3 perguntas que qualquer pessoa precisa saber responder -->
+      <div class="section-label anim d2">O que e esta tela?</div>
+      <section class="charts-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:16px">
+        <div class="chart-card anim d2">
+          <div class="chart-card-header">
+            <div>
+              <h3><span class="material-symbols-rounded" style="vertical-align:-4px;font-size:18px;margin-right:6px;color:var(--accent)">help</span>Para que serve?</h3>
+              <small>Entenda o proposito antes de usar</small>
+            </div>
+          </div>
+          <div class="chart-body" style="font-size:13px;line-height:1.7;color:var(--text-primary)">
+            <p style="margin:0 0 10px">Compara o que o <strong>Omie enviou</strong> com o que o <strong>BIomie tem salvo</strong> na camada canonica (banco de dados local).</p>
+            <p style="margin:0 0 10px">Mostra totais por vendedor: NFs faturadas, pedidos em carteira e cancelados — separados e conferidos.</p>
+            <p style="margin:0">Identifica e registra automaticamente os pontos onde os dados nao batem.</p>
+          </div>
+        </div>
+        <div class="chart-card anim d2">
+          <div class="chart-card-header">
+            <div>
+              <h3><span class="material-symbols-rounded" style="vertical-align:-4px;font-size:18px;margin-right:6px;color:var(--accent)">schedule</span>Quando usar?</h3>
+              <small>Momentos certos para conferir</small>
+            </div>
+          </div>
+          <div class="chart-body" style="font-size:13px;line-height:1.7;color:var(--text-primary)">
+            <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px">
+              <li>Apos sincronizar a integracao com o Omie</li>
+              <li>Antes de fechar relatorios mensais ou semanais</li>
+              <li>Quando houver duvida sobre um valor ou vendedor</li>
+              <li>Para verificar se ha pedidos ou NFs ausentes</li>
+              <li>Quando um vendedor questionar o proprio numero</li>
+            </ul>
+          </div>
+        </div>
+        <div class="chart-card anim d2">
+          <div class="chart-card-header">
+            <div>
+              <h3><span class="material-symbols-rounded" style="vertical-align:-4px;font-size:18px;margin-right:6px;color:var(--state-cancel)">warning</span>O que e divergencia?</h3>
+              <small>O que significa quando aparece uma</small>
+            </div>
+          </div>
+          <div class="chart-body" style="font-size:13px;line-height:1.7;color:var(--text-primary)">
+            <p style="margin:0 0 10px">Um item que <strong>nao bate</strong> entre o Omie e o BIomie. Pode ser:</p>
+            <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
+              <li><strong>Critica:</strong> pedido faturado sem NF valida, cancelado com NF ativa</li>
+              <li><strong>Alta:</strong> NF sem vendedor, pedido sem codigo de vendedor</li>
+              <li><strong>Media:</strong> valor diferente entre pedido e NF, data divergente</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-label anim d3" id="resumo">Leitura rapida</div>
+      <section class="status-kpi-grid anim d3">
+        <div class="status-kpi billed">
+          <div class="sk-label">Faturado (NF)</div>
+          <div class="sk-value" id="kpiFaturado">-</div>
+          <div class="sk-sub" id="kpiFaturadoQtd">NFs consolidadas</div>
+        </div>
+        <div class="status-kpi authorized">
+          <div class="sk-label">Autorizado</div>
+          <div class="sk-value" id="kpiAutorizado">-</div>
+          <div class="sk-sub" id="kpiAutorizadoQtd">Pedidos em carteira</div>
+        </div>
+        <div class="status-kpi cancelled">
+          <div class="sk-label">Cancelado</div>
+          <div class="sk-value" id="kpiCancelado">-</div>
+          <div class="sk-sub" id="kpiCanceladoQtd">Pedidos cancelados</div>
+        </div>
+        <div class="status-kpi cancelled" id="kpiCriticasCard">
+          <div class="sk-label">Criticas</div>
+          <div class="sk-value" id="kpiCriticas">-</div>
+          <div class="sk-sub">Exigem atencao imediata</div>
+        </div>
+        <div class="status-kpi info">
+          <div class="sk-label">Altas</div>
+          <div class="sk-value" id="kpiAltas">-</div>
+          <div class="sk-sub">Divergencias de severidade alta</div>
+        </div>
+        <div class="status-kpi info">
+          <div class="sk-label">Em aberto</div>
+          <div class="sk-value" id="kpiAberto">-</div>
+          <div class="sk-sub">Abertas + reincidentes</div>
+        </div>
+      </section>
+
+      <div class="section-label anim d4" id="vendedores-section">Totais por vendedor</div>
+      <section class="table-card anim d4">
+        <div class="table-card-header">
+          <h3>Base canonica por vendedor</h3>
+          <small>O que o BIomie tem salvo para o periodo selecionado. Fonte: camada canonica. Ultima sync: <span id="lastSyncDate">-</span></small>
+        </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table class="mag-table">
+            <thead><tr>
+              <th>Vendedor</th>
+              <th>Faturado (R$)</th><th>NFs</th>
+              <th>Autorizado (R$)</th><th>Pedidos</th>
+              <th>Cancelado (R$)</th><th>Cancelados</th>
+              <th>Total pedidos</th>
+              <th>Ultima sync</th>
+            </tr></thead>
+            <tbody id="vendorTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="section-label anim d5" id="divergencias">Fila de divergencias</div>
+      <section class="table-card anim d5">
+        <div class="table-card-header">
+          <h3>Divergencias identificadas</h3>
+          <small>Items que nao batem entre Omie e BIomie. Use "Varredura" para atualizar a fila. Marque como resolvida ou ignorada apos tratar.</small>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 0 8px;align-items:center" id="queueFilters">
+          <span style="font-size:12px;font-weight:600;color:var(--text-secondary)">Status:</span>
+          <button class="btn-preset" data-queue-status="aberta,reincidente">Em aberto</button>
+          <button class="btn-preset" data-queue-status="resolvida">Resolvidas</button>
+          <button class="btn-preset" data-queue-status="ignorada_regra">Ignoradas</button>
+          <button class="btn-preset" data-queue-status="">Todas</button>
+          <span style="margin-left:8px;font-size:12px;font-weight:600;color:var(--text-secondary)">Severidade:</span>
+          <button class="btn-preset" data-queue-severity="">Todas</button>
+          <button class="btn-preset" data-queue-severity="critical">Criticas</button>
+          <button class="btn-preset" data-queue-severity="high">Altas</button>
+          <button class="btn-preset" data-queue-severity="medium">Medias</button>
+        </div>
+        <div id="queueMeta" style="font-size:12px;color:var(--text-secondary);padding-bottom:8px"></div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table class="mag-table">
+            <thead><tr>
+              <th>Sev.</th>
+              <th>Tipo</th>
+              <th>Referencia</th>
+              <th>Descricao</th>
+              <th>Acao sugerida</th>
+              <th>Status</th>
+              <th>Detectado</th>
+              <th>Tratar</th>
+            </tr></thead>
+            <tbody id="queueTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,280 @@
+/*
+ * BIomie theme tokens
+ *
+ * Neutral UI tokens live here. Brand reds stay separate from the neutral scale,
+ * so light/dark mode can swap surfaces, text and borders without distorting MAG.
+ */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --sidebar-w: 260px;
+  --topbar-h: 64px;
+
+  --bg-app: #f7f4f3;
+  --bg-base: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f5f6f9;
+  --bg-muted: #eef1f5;
+  --bg-2: #f5f5f5;
+  --surface-1: #ffffff;
+  --surface-2: #fafafa;
+  --surface-3: #f0f2f5;
+
+  --text-1: #111318;
+  --text-2: #4b5263;
+  --text-3: #9099ac;
+  --text-secondary: var(--text-2);
+  --placeholder: #6b7280;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --border-acc: rgba(150, 20, 10, 0.28);
+
+  --overlay: rgba(7, 9, 12, 0.35);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --row-hover: rgba(17, 19, 24, 0.06);
+  --focus-ring: rgba(150, 20, 10, 0.34);
+  --focus-ring-soft: rgba(150, 20, 10, 0.16);
+  --selection-bg: rgba(150, 20, 10, 0.16);
+  --selection-text: #111318;
+
+  --shadow-sm: 0 6px 14px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 18px 40px rgba(17, 19, 24, 0.05);
+  --shadow-xl: 0 28px 70px rgba(15, 23, 42, 0.2);
+  --shadow-sidebar: 2px 0 16px rgba(0, 0, 0, 0.05);
+  --shadow-topbar: 0 10px 30px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 18px 40px rgba(17, 19, 24, 0.04);
+
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --topbar-border: rgba(0, 0, 0, 0.06);
+  --browser-theme-color: #f6f3f2;
+  --scrollbar-thumb: #d1d5db;
+
+  --hero-spot-red: rgba(150, 20, 10, 0.18);
+  --hero-spot-blue: rgba(37, 99, 235, 0.08);
+  --hero-grad-start: #ffffff;
+  --hero-grad-mid: #faf6f5;
+  --hero-grad-end: #f3eceb;
+  --panel-grad-start: #ffffff;
+  --panel-grad-end: #fcfcfd;
+  --metric-track: rgba(0, 0, 0, 0.08);
+  --drawer-bg: #ffffff;
+  --drawer-card-bg: #fafafa;
+  --drawer-card-border: #eaeaea;
+
+  --chart-grid: rgba(0, 0, 0, 0.08);
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(0, 0, 0, 0.12);
+  --chart-tooltip-title: #111318;
+  --chart-tooltip-text: #4b5263;
+  --skeleton-base: #eceff4;
+  --skeleton-highlight: #ffffff;
+  --skeleton-edge: rgba(17, 19, 24, 0.05);
+  --skeleton-glow: rgba(255, 255, 255, 0.74);
+
+  --red: #96140a;
+  --red-light: #b91525;
+  --red-dim: rgba(150, 20, 10, 0.08);
+  --accent: var(--red);
+  --green: #16a34a;
+  --yellow: #d97706;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.12);
+  --success-strong: #15803d;
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.14);
+  --warning-strong: #92400e;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.12);
+  --danger-strong: #be123c;
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.1);
+  --info-strong: #1d4ed8;
+
+  --state-billed: #16a34a;
+  --state-billed-bg: rgba(22, 163, 74, 0.12);
+  --state-auth: #d97706;
+  --state-auth-bg: rgba(217, 119, 6, 0.14);
+  --state-cancel: #dc2626;
+  --state-cancel-bg: rgba(220, 38, 38, 0.12);
+  --state-info: #2563eb;
+  --state-info-bg: rgba(37, 99, 235, 0.1);
+
+  --page-accent: #96140a;
+  --page-accent-soft: rgba(150, 20, 10, 0.12);
+  --page-chart-1: #96140a;
+  --page-chart-2: #7c0600;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-app: #0f1116;
+  --bg-base: #12151b;
+  --bg-surface: #171b23;
+  --bg-card: #1a1f29;
+  --bg-hover: #202634;
+  --bg-muted: #1d2430;
+  --bg-2: #202634;
+  --surface-1: #171b23;
+  --surface-2: #1a1f29;
+  --surface-3: #202634;
+
+  --text-1: #edf2f7;
+  --text-2: #b7c0cd;
+  --text-3: #7e8a9c;
+  --text-secondary: var(--text-2);
+  --placeholder: #91a0b3;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-acc: rgba(150, 20, 10, 0.34);
+
+  --overlay: rgba(0, 0, 0, 0.56);
+  --glass-bg: rgba(22, 27, 35, 0.82);
+  --glass-bg-strong: rgba(20, 24, 31, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --row-hover: rgba(255, 255, 255, 0.08);
+  --focus-ring: rgba(255, 184, 177, 0.42);
+  --focus-ring-soft: rgba(150, 20, 10, 0.28);
+  --selection-bg: rgba(150, 20, 10, 0.32);
+  --selection-text: #f8fafc;
+
+  --shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 32px 90px rgba(0, 0, 0, 0.42);
+  --shadow-sidebar: 6px 0 30px rgba(0, 0, 0, 0.28);
+  --shadow-topbar: 0 14px 40px rgba(0, 0, 0, 0.28);
+  --shadow-card: 0 20px 52px rgba(0, 0, 0, 0.22);
+
+  --topbar-bg: rgba(15, 17, 22, 0.86);
+  --topbar-border: rgba(255, 255, 255, 0.08);
+  --browser-theme-color: #12151b;
+  --scrollbar-thumb: #3b4352;
+
+  --hero-spot-red: rgba(150, 20, 10, 0.18);
+  --hero-spot-blue: rgba(37, 99, 235, 0.14);
+  --hero-grad-start: #171b23;
+  --hero-grad-mid: #181d27;
+  --hero-grad-end: #11151d;
+  --panel-grad-start: #1a1f29;
+  --panel-grad-end: #151922;
+  --metric-track: rgba(255, 255, 255, 0.08);
+  --drawer-bg: #161a22;
+  --drawer-card-bg: #1d2430;
+  --drawer-card-border: rgba(255, 255, 255, 0.08);
+
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-tooltip-bg: #0f1218;
+  --chart-tooltip-border: rgba(255, 255, 255, 0.12);
+  --chart-tooltip-title: #edf2f7;
+  --chart-tooltip-text: #b7c0cd;
+  --skeleton-base: #1b2331;
+  --skeleton-highlight: #2a3446;
+  --skeleton-edge: rgba(255, 255, 255, 0.07);
+  --skeleton-glow: rgba(255, 255, 255, 0.06);
+
+  --red-dim: rgba(150, 20, 10, 0.16);
+  --success-soft: rgba(22, 163, 74, 0.18);
+  --success-strong: #58d68d;
+  --warning-soft: rgba(217, 119, 6, 0.18);
+  --warning-strong: #ffcf70;
+  --danger-soft: rgba(220, 38, 38, 0.18);
+  --danger-strong: #ff8b8b;
+  --info-soft: rgba(37, 99, 235, 0.18);
+  --info-strong: #86b7ff;
+
+  --state-billed-bg: rgba(22, 163, 74, 0.18);
+  --state-auth-bg: rgba(217, 119, 6, 0.18);
+  --state-cancel-bg: rgba(220, 38, 38, 0.18);
+  --state-info-bg: rgba(37, 99, 235, 0.18);
+
+  --page-accent-soft: rgba(150, 20, 10, 0.18);
+  --page-chart-2: #cfb1ad;
+}
+
+html {
+  background: var(--bg-base);
+  scrollbar-color: var(--scrollbar-thumb) var(--bg-base);
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-1);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
+:where(input, select, textarea, button) {
+  accent-color: var(--page-accent);
+}
+
+:where(button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--focus-ring);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+:where(button, input, select, textarea):disabled,
+:where(button, input, select, textarea)[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+/* Per-page accents */
+body[data-page="index"],
+body[data-page="integrations"],
+body[data-page="vendors"],
+body[data-page="orders"],
+body[data-page="products"],
+body[data-page="finance"],
+body[data-page="flight-plan"],
+body[data-page="flight-plan-targets"],
+body[data-page="observability"] {
+  --page-accent: #96140a;
+  --page-accent-soft: rgba(150, 20, 10, 0.12);
+  --page-chart-1: #96140a;
+  --page-chart-2: #7c0600;
+}
+
+[data-theme="dark"] body[data-page="index"],
+[data-theme="dark"] body[data-page="integrations"],
+[data-theme="dark"] body[data-page="vendors"],
+[data-theme="dark"] body[data-page="orders"],
+[data-theme="dark"] body[data-page="products"],
+[data-theme="dark"] body[data-page="finance"],
+[data-theme="dark"] body[data-page="flight-plan"],
+[data-theme="dark"] body[data-page="flight-plan-targets"],
+[data-theme="dark"] body[data-page="observability"] {
+  --page-accent-soft: rgba(150, 20, 10, 0.18);
+  --page-chart-2: #cfb1ad;
+}
