@@ -11,7 +11,7 @@ use BIomie\Http;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireAnyCapability(['fiscal.sync', 'jobs.run'], true);
 
 try {
     $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';

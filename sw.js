@@ -1,4 +1,4 @@
-const VERSION = '20260415-sk5';
+const VERSION = '20260501-charts1';
 const STATIC_CACHE = `biomie-static-${VERSION}`;
 const PAGE_CACHE = `biomie-pages-${VERSION}`;
 const DATA_CACHE = `biomie-data-${VERSION}`;
@@ -41,6 +41,7 @@ const PRECACHE_URLS = [
   appPath('/assets/css/module-pages.css'),
   appPath('/assets/css/finance-realizado.css'),
   appPath('/assets/js/shell.js'),
+  appPath('/assets/js/chart-helpers.js'),
   appPath('/assets/js/app.js'),
   appPath('/assets/js/finance.js'),
   appPath('/assets/js/flight-plan.js'),

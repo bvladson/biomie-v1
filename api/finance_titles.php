@@ -11,6 +11,7 @@ use BIomie\LegacyEndpointPayloadFactory;
 use BIomie\ShadowValidationService;
 
 require __DIR__ . '/bootstrap_finance.php';
+\BIomie\Auth::requireCapability('finance.view', true);
 
 try {
     if ($finance === null) {

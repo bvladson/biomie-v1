@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+
 $root = dirname(__DIR__, 2);
 $args = $argv;
 array_shift($args);
@@ -16,9 +19,13 @@ foreach ($args as $arg) {
 }
 
 $excludedPrefixes = [
+    '.git/',
     '.claude/',
     '.vscode/',
+    '.idea/',
+    'biomie-local/',
     'docs/',
+    'install/',
     'storage/',
     'tests/',
     'tools/',
@@ -26,7 +33,14 @@ $excludedPrefixes = [
 ];
 
 $excludedExact = [
+    '.env',
+    '.env.local',
+    '.gitattributes',
     '.gitignore',
+    'composer.json',
+    'config/.env.local.php',
+    'config/installed.lock',
+    'composer.lock',
     'phpstan-baseline.neon',
     'phpstan-bootstrap.php',
     'phpstan.core.neon',

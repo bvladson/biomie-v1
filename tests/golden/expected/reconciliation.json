@@ -8,6 +8,8 @@
         "delay_present": false,
         "freshness_at": "2026-04-01 08:00:00",
         "has_retry_or_delay": false,
+        "last_reconcile_at": null,
+        "last_success_at": null,
         "open_divergences": 0,
         "origin": "snapshot_fiscal",
         "pending_backlog_total": 0,
@@ -16,12 +18,19 @@
         "reconciliation_pct": 100,
         "retry_present": false,
         "source": "snapshot_fiscal",
+        "source_of_truth": "snapshot",
         "staleness_reason": null
     },
     "divergences": [],
     "divergences_count": 0,
+    "last_reconcile_at": null,
+    "last_success_at": null,
     "last_sync": "2026-04-01 08:00:00",
-    "meta": [],
+    "meta": {
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "source_of_truth": "snapshot"
+    },
     "ok": true,
     "period": {
         "end": "2026-03-31",
@@ -29,6 +38,7 @@
         "start": "2026-03-01"
     },
     "source": "snapshot_fiscal",
+    "source_of_truth": "snapshot",
     "totals": {
         "autorizado": 2200,
         "cancelado": 180,

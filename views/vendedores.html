@@ -4,17 +4,15 @@
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="assets/js/theme-init.js?v=20260413dark1"></script>
-  <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#f6f3f2" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#12151b" media="(prefers-color-scheme: dark)" />
-  <meta name="description" content="Radar do time comercial com NF, carteira e canceladas" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Desempenho da equipe com faturamento, carteira e cancelamentos em uma leitura comercial simples." />
   <meta name="application-name" content="BIomie" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="BIomie" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Time Comercial | BIomie MAG</title>
+  <title>Desempenho da Equipe | BIomie MAG</title>
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
   <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
@@ -22,15 +20,33 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260415sk1" />
-  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260415sk5" />
-  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260415sk1" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/mag-clean.css?v=20260429-clean1" />
+  <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
   <script src="assets/js/chart.umd.js"></script>
-<script src="assets/js/shell.js?v=20260415sk5"></script>
+  <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
+<script src="assets/js/shell.js?v=20260425-ui1"></script>
+<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/render-helpers.js"></script>
+<script src="assets/js/core/chart-factory.js"></script>
 <script src="assets/js/app.js?v=20260415sk4" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+  <script src="assets/js/modules/drilldown-router.js"></script>
+  <script src="assets/js/modules/vendor-detail/tabs.js"></script>
+  <script src="assets/js/modules/vendor-detail/composition.js"></script>
+  <script src="assets/js/modules/vendor-detail/charts.js"></script>
+  <script src="assets/js/modules/vendor-detail/index.js"></script>
+  <script src="assets/js/modules/order-detail/index.js"></script>
+  <script src="assets/js/modules/invoice-detail/index.js"></script>
+  <script src="assets/js/modules/customer-detail/index.js"></script>
+  <script src="assets/js/modules/vendors/page-drilldown.js"></script>
 </head>
-<body class="mag-page" data-page="vendors">
+<body class="mag-page mag-clean-page" data-page="vendors">
 <div class="overlay" id="overlay"></div>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
@@ -46,14 +62,17 @@
       <div class="nav-section-label">BIomie</div>
       <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial</a>
       <a href="vendedores.html" class="nav-item active"><span class="material-symbols-rounded menu-icon">groups</span>Time Comercial</a>
+      <a href="mapa_vendas.php" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">travel_explore</span>Geografia
+      </a>
       <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo</a>
       <a href="mercadorias.html" class="nav-item"><span class="material-symbols-rounded menu-icon">inventory_2</span>Mix Faturado</a>
       <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro</a>
       <a href="plano_voo.html" class="nav-item"><span class="material-symbols-rounded menu-icon">flight</span>Rota Comercial</a>
-      <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao</a>
+      <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie</a>
       <div class="nav-section-label">Atalhos</div>
-      <a href="#pipeline" class="nav-item"><span class="material-symbols-rounded">funnel_chart</span>KPIs</a>
-      <a href="#graficos" class="nav-item"><span class="material-symbols-rounded">monitoring</span>Graficos</a>
+      <a href="#pipeline" class="nav-item"><span class="material-symbols-rounded">funnel_chart</span>Indicadores</a>
+      <a href="#graficos" class="nav-item"><span class="material-symbols-rounded">monitoring</span>Analises</a>
       <a href="#tabelas" class="nav-item"><span class="material-symbols-rounded">table_view</span>Mesa</a>
     </nav>
     <div class="sidebar-footer hidden-small">
@@ -65,15 +84,15 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu"><span class="material-symbols-rounded">menu</span></button>
-        <div class="topbar-badge"><span class="material-symbols-rounded">groups</span>Time comercial</div>
-        <div class="topbar-meta">
+        <div class="topbar-badge"><span class="material-symbols-rounded">groups</span>Desempenho da Equipe</div>
+        <div class="topbar-meta mag-data-diagnostics mag-diagnostics-collapsed">
           <span>Periodo: <strong data-bind="period-label">-</strong></span>
-          <span>Modo: <strong data-bind="summary-mode">-</strong></span>
+          <span>Leitura: <strong data-bind="summary-mode">-</strong></span>
           <span>Atualizado: <strong data-bind="last-sync">-</strong></span>
-          <span><strong data-bind="summary-period-basis">Base fiscal: emissao</strong></span>
-          <span>Fonte: <strong data-bind="sync-source">-</strong></span>
+          <span><strong data-bind="summary-period-basis">Base analisada: emissao fiscal</strong></span>
+          <span>Origem: <strong data-bind="sync-source">-</strong></span>
           <span>Cobertura: <strong data-bind="sync-coverage">-</strong></span>
-          <span>Reconcil.: <strong data-bind="sync-reconciled-until">-</strong></span>
+          <span>Conferencia: <strong data-bind="sync-reconciled-until">-</strong></span>
           <span data-bind="sync-warning"><span class="mag-status-chip mag-status-demo">Carregando</span></span>
         </div>
       </div>
@@ -83,19 +102,19 @@
       </div>
     </header>
     <main class="page">
-      <section class="hero module-hero anim">
-        <div>
-          <div class="hero-tag"><span class="material-symbols-rounded">leaderboard</span>Radar do time</div>
-          <h1>NF, carteira e canceladas por vendedor.</h1>
-          <p>Conversao, backlog e cancelamento sem misturar realizado com carteira.</p>
+      <section class="hero module-hero mag-page-header mag-clean-header anim">
+        <div class="module-hero__content">
+          <div class="hero-tag"><span class="material-symbols-rounded">leaderboard</span>Desempenho da equipe</div>
+          <h1>Compare quem esta puxando o periodo.</h1>
+          <p>Acompanhe faturamento, carteira e cancelamentos por vendedor em uma leitura simples para decisao.</p>
           <div class="hero-insights">
             <div class="hero-chip" style="border-left:3px solid var(--state-billed)"><span class="hero-chip-label">NF</span><span class="hero-chip-value" data-bind="status-billed-value">-</span><span class="hero-chip-sub" data-bind="status-billed-orders">-</span></div>
             <div class="hero-chip" style="border-left:3px solid var(--state-auth)"><span class="hero-chip-label">Carteira</span><span class="hero-chip-value" data-bind="status-auth-value">-</span><span class="hero-chip-sub" data-bind="status-auth-orders">-</span></div>
             <div class="hero-chip" style="border-left:3px solid var(--state-cancel)"><span class="hero-chip-label">Canceladas</span><span class="hero-chip-value" data-bind="status-cancel-value">-</span><span class="hero-chip-sub" data-bind="status-cancel-orders">-</span></div>
           </div>
         </div>
-        <div class="forecast-box">
-          <div class="forecast-label">Leitura do pipeline</div>
+        <div class="forecast-box module-hero__meta">
+          <div class="forecast-label">Panorama do periodo</div>
           <div class="forecast-value" data-bind="status-conversion-rate">-</div>
           <div class="forecast-target"><span>Backlog:</span><strong data-bind="status-backlog-value">-</strong></div>
           <div class="forecast-target"><span>Cancelamento:</span><strong data-bind="status-cancel-rate">-</strong></div>
@@ -104,15 +123,15 @@
         </div>
       </section>
 
-      <div class="filter-bar anim d1">
-        <div class="filter-group"><label class="filter-label">Data inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
-        <div class="filter-group"><label class="filter-label">Data final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+      <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1">
+        <div class="filter-group"><label class="filter-label">Periodo inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Periodo final</label><input id="dateEnd" type="date" class="filter-input" /></div>
         <div class="filter-actions">
           <button class="btn-preset" data-range-preset="month">Mes atual</button>
           <button class="btn-preset" data-range-preset="year">Ano atual</button>
           <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
-          <button id="applyFilters" type="button" class="btn-primary"><span class="material-symbols-rounded">filter_alt</span> Aplicar</button>
-          <button id="syncNow" type="button" class="btn-secondary"><span class="material-symbols-rounded">sync</span> Atualizar</button>
+          <button id="applyFilters" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span> Aplicar</button>
+          <button id="syncNow" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">sync</span> Atualizar visao</button>
         </div>
       </div>
       <div id="syncFeedback"></div>
@@ -136,8 +155,8 @@
         </div>
       </div>
 
-      <div class="section-label anim d2" id="pipeline">KPIs</div>
-      <section class="status-kpi-grid anim d2">
+      <div class="section-label anim d2" id="pipeline">Indicadores</div>
+      <section class="status-kpi-grid mag-kpi-grid anim d2">
         <div class="status-kpi billed"><div class="sk-label">NF</div><div class="sk-value" data-bind="status-billed-value">-</div><div class="sk-sub" data-bind="status-billed-orders">-</div></div>
         <div class="status-kpi authorized"><div class="sk-label">Carteira</div><div class="sk-value" data-bind="status-auth-value">-</div><div class="sk-sub" data-bind="status-auth-orders">-</div></div>
         <div class="status-kpi cancelled"><div class="sk-label">Canceladas</div><div class="sk-value" data-bind="status-cancel-value">-</div><div class="sk-sub" data-bind="status-cancel-orders">-</div></div>
@@ -148,25 +167,28 @@
 
       <section class="alerts-op anim d3" id="alertsOperational"></section>
 
-      <div class="section-label anim d3" id="graficos">Graficos</div>
+      <div class="section-label anim d3" id="graficos">Analises</div>
       <section class="charts-grid">
         <div class="chart-card anim d4">
-          <div class="chart-card-header"><div><h3>Mapa por vendedor</h3><small>NF, carteira e canceladas</small></div></div>
-          <div class="chart-body"><div class="chart-container-fixed"><canvas id="vendorGroupedBar"></canvas></div></div>
+          <div class="chart-card-header"><div><h3>Ranking por vendedor</h3><small>Notas, carteira e cancelamentos</small></div></div>
+          <div class="chart-body"><div class="chart-container-fixed mag-chart-container mag-chart-md"><canvas id="vendorGroupedBar"></canvas></div></div>
         </div>
-        <div class="chart-card anim d5">
-          <div class="chart-card-header"><div><h3>Pulso diario</h3><small>Barras = NF + carteira | linha = canceladas</small></div></div>
-          <div class="chart-body"><div class="chart-container-fixed"><canvas id="dailyMixedChart"></canvas></div></div>
-        </div>
+        <details class="mag-secondary-charts anim d5">
+          <summary>Pulso diario complementar</summary>
+          <div class="chart-card">
+            <div class="chart-card-header"><div><h3>Pulso diario</h3><small>Ritmo de faturamento, carteira e cancelamentos</small></div></div>
+            <div class="chart-body"><div class="chart-container-fixed mag-chart-container mag-chart-md"><canvas id="dailyMixedChart"></canvas></div></div>
+          </div>
+        </details>
       </section>
 
-      <div class="section-label anim d4" id="tabelas">Mesa do time</div>
+      <div class="section-label anim d4" id="tabelas">Detalhamento da equipe</div>
       <section class="table-card anim d5">
-        <div class="table-card-header"><h3>Base por vendedor</h3><small>Merc. faturadas, meta, atingimento, risco, carteira e canceladas. Clique para detalhar.</small></div>
+        <div class="table-card-header"><h3>Base por vendedor</h3><small>Faturamento, meta, atingimento, risco, carteira e cancelamentos. Clique para detalhar.</small></div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table class="mag-table"><thead><tr>
+          <table class="mag-table mag-table-clean"><thead><tr>
             <th>Vendedor</th><th>Merc. Faturadas</th><th>Meta</th><th>Ating.</th><th>Risco</th><th>Carteira</th><th>Canceladas</th><th>Conversao</th><th>Ticket</th>
-          </tr></thead><tbody id="vendorsTable"></tbody></table>
+          </tr></thead><tbody id="vendorsTable" data-empty-title="Sem vendedores" data-empty-message="Nenhum vendedor com faturamento no periodo." data-empty-icon="groups"></tbody></table>
         </div>
       </section>
     </main>
@@ -195,7 +217,7 @@
     </div>
     <div class="detail-drawer-section">
       <h4>RITMO DO MES</h4>
-      <div class="detail-drawer-canvas"><canvas id="drawerDailyChart"></canvas></div>
+      <div class="detail-drawer-canvas mag-chart-container mag-chart-sm"><canvas id="drawerDailyChart"></canvas></div>
     </div>
     <div>
       <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">ITENS RECENTES</h4>

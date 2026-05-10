@@ -4,17 +4,15 @@
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="assets/js/theme-init.js?v=20260413dark1"></script>
-  <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#f6f3f2" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#12151b" media="(prefers-color-scheme: dark)" />
-  <meta name="description" content="Metas do time comercial" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Metas comerciais por vendedor para acompanhamento da rota comercial." />
   <meta name="application-name" content="BIomie" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="BIomie" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Metas | BIomie MAG</title>
+  <title>Metas Comerciais | BIomie MAG</title>
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
   <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
@@ -22,40 +20,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260415sk1" />
-  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260415sk5" />
-  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260415sk1" />
-  <link rel="stylesheet" href="assets/css/finance-realizado.css" />
-<script src="assets/js/shell.js?v=20260415sk5"></script>
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/finance-realizado.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-p17" />
+<script src="assets/js/shell.js?v=20260425-ui1"></script>
+<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
   <script src="assets/js/flight-plan-targets.js?v=20260404w6" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
 </head>
-<body class="mag-page" data-page="flight-plan-targets">
+<body class="mag-page" data-page="rota-comercial">
 <div class="overlay" id="overlay"></div>
 <div class="shell">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <img src="images/logo-mag-wide.png" alt="MAG Moveis Corporativos" onerror="this.style.display='none'" />
-      <span class="logo-pill">BIomie</span>
-    </div>
-    <div class="sidebar-profile">
-      <div class="profile-avatar">M</div>
-      <div class="profile-info">
-        <span>Bem-vindo,</span>
-        <strong>Comercial MAG</strong>
-      </div>
-    </div>
-    <nav class="sidebar-nav" id="sidebar-menu">
-      <div class="nav-section-label">BIomie</div>
-      <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial</a>
-      <a href="vendedores.html" class="nav-item"><span class="material-symbols-rounded menu-icon">groups</span>Time Comercial</a>
-      <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo</a>
-      <a href="mercadorias.html" class="nav-item"><span class="material-symbols-rounded menu-icon">inventory_2</span>Mix Faturado</a>
-      <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro</a>
-      <a href="plano_voo.php" class="nav-item active"><span class="material-symbols-rounded menu-icon">flight</span>Rota Comercial</a>
-      <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie</a>
-    </nav>
-  </aside>
   <div class="main">
     <header class="topbar">
       <div class="topbar-left">
@@ -63,7 +41,7 @@
           <span class="material-symbols-rounded">menu</span>
         </button>
         <div class="topbar-badge">
-          <span class="material-symbols-rounded">target</span>Metas
+          <span class="material-symbols-rounded">target</span>Metas Comerciais
         </div>
       </div>
       <div class="topbar-actions">
@@ -73,29 +51,29 @@
     </header>
     <main class="page">
       <div class="filter-bar anim d1">
-        <div class="filter-group"><label class="filter-label">Mes</label><input id="dateStart" type="month" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Mes de referencia</label><input id="dateStart" type="month" class="filter-input" /></div>
         <div class="filter-group" style="min-width:240px">
           <label class="filter-label">Buscar vendedor</label>
           <input id="targetSellerSearch" type="search" class="filter-input" placeholder="Nome ou codigo do vendedor" />
         </div>
         <div class="filter-actions">
-          <button id="syncNow" type="button" class="btn-secondary"><span class="material-symbols-rounded">sync</span>Carregar</button>
+          <button id="syncNow" type="button" class="btn-secondary"><span class="material-symbols-rounded">sync</span>Atualizar lista</button>
         </div>
       </div>
       <div class="control-meta-strip anim d2" style="margin-bottom:18px">
         <span class="control-chip"><span class="material-symbols-rounded">calendar_month</span><strong id="targetsMonthChip">-</strong> mes ativo</span>
         <span class="control-chip"><span class="material-symbols-rounded">lock</span><strong id="targetsModeChip">-</strong> modo</span>
-        <span class="control-chip"><span class="material-symbols-rounded">groups</span><strong id="targetsSellerCount">0</strong> vendedores</span>
-        <span class="control-chip"><span class="material-symbols-rounded">target</span><strong id="targetsConfiguredCount">0</strong> metas prontas</span>
+        <span class="control-chip"><span class="material-symbols-rounded">groups</span><strong id="targetsSellerCount">0</strong> vendedores no radar</span>
+        <span class="control-chip"><span class="material-symbols-rounded">target</span><strong id="targetsConfiguredCount">0</strong> metas definidas</span>
         <span class="control-chip"><span class="material-symbols-rounded">warning</span><strong id="targetsMissingCount">0</strong> pendentes</span>
-        <span class="control-chip"><span class="material-symbols-rounded">payments</span><strong id="targetsTeamTarget">R$ 0,00</strong> meta total</span>
+        <span class="control-chip"><span class="material-symbols-rounded">payments</span><strong id="targetsTeamTarget">R$ 0,00</strong> meta consolidada</span>
       </div>
-      <div class="section-label anim d2" id="metas">Metas</div>
+      <div class="section-label anim d2" id="metas">Metas da equipe</div>
       <section class="chart-card flight-table-card anim d3" id="targetsSection">
         <div class="chart-card-header">
           <div>
             <h3>Metas mensais por vendedor</h3>
-            <small>Preencha somente as metas do mes. A Rota Comercial usa esses valores para calcular cobertura, ritmo e projecoes.</small>
+            <small>Atualize apenas o mes em foco. A Rota Comercial usa esses valores para calcular cobertura, ritmo e projecoes.</small>
           </div>
           <div class="topbar-actions">
             <span id="targetsSaveStatus" class="module-alert" style="display:none"></span>
@@ -146,3 +124,4 @@
 </script>
 </body>
 </html>
+

@@ -34,7 +34,15 @@ $telemetry->startRequestSpan(null, [
 ]);
 
 Auth::boot($config, $logger);
-Auth::requireLogin(true);
+$financeBootstrapCapabilities = isset($financeBootstrapCapabilities) && is_array($financeBootstrapCapabilities)
+    ? array_values(array_filter($financeBootstrapCapabilities, 'is_string'))
+    : ['finance.view'];
+
+if (count($financeBootstrapCapabilities) === 1) {
+    Auth::requireCapability($financeBootstrapCapabilities[0], true);
+} else {
+    Auth::requireAnyCapability($financeBootstrapCapabilities, true);
+}
 if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }

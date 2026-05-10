@@ -1,13 +1,12 @@
 (function () {
-  var root = document.documentElement;
-  var themeStorageKey = window.BIOMIE_THEME_KEY || 'biomie:theme';
-  var themeMedia = null;
+  window.BIomieFeatureFlags = {
+    geo_index_enabled: true,
+    geo_map_enabled: true,
+    client_dossier_enabled: true,
+    geo_observability_enabled: true
+  };
 
-  try {
-    themeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  } catch (error) {
-    themeMedia = null;
-  }
+  var root = document.documentElement;
 
   const csrfMeta = document.querySelector('meta[name="biomie-csrf"]');
   const requestIdMeta = document.querySelector('meta[name="biomie-request-id"]');
@@ -66,32 +65,19 @@
     };
   }
 
-  function normalizeThemePreference(value) {
-    return value === 'light' || value === 'dark' || value === 'system' ? value : 'system';
-  }
-
-  function resolveTheme(preference) {
-    if (preference === 'system') {
-      return themeMedia && themeMedia.matches ? 'dark' : 'light';
-    }
-    return preference;
-  }
-
-  function getThemePreference() {
-    var current = root.dataset.themePreference || 'system';
-    try {
-      current = window.localStorage.getItem(themeStorageKey) || current;
-    } catch (error) {
-      current = root.dataset.themePreference || 'system';
-    }
-    return normalizeThemePreference(current);
-  }
-
   function syncThemeColorMeta() {
-    var browserThemeColor = cssToken('--browser-theme-color') || (root.dataset.theme === 'dark' ? '#12151b' : '#f6f3f2');
+    var browserThemeColor = cssToken('--browser-theme-color') || '#f6f3f2';
     document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
       meta.setAttribute('content', browserThemeColor);
     });
+  }
+
+  function enforceLightOnlyMode() {
+    delete root.dataset.theme;
+    delete root.dataset.themePreference;
+    root.style.colorScheme = 'light';
+
+    syncThemeColorMeta();
   }
 
   function syncChartDefaults() {
@@ -114,10 +100,33 @@
     Chart.defaults.plugins.tooltip.padding = 10;
     Chart.defaults.plugins.tooltip.titleColor = titleColor;
     Chart.defaults.plugins.tooltip.bodyColor = textColor;
+    Chart.defaults.plugins.tooltip.cornerRadius = 14;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+    Chart.defaults.plugins.tooltip.boxPadding = 4;
 
     Chart.defaults.plugins.legend = Chart.defaults.plugins.legend || {};
     Chart.defaults.plugins.legend.labels = Chart.defaults.plugins.legend.labels || {};
     Chart.defaults.plugins.legend.labels.color = textColor;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+    Chart.defaults.plugins.legend.labels.boxWidth = 8;
+    Chart.defaults.plugins.legend.labels.boxHeight = 8;
+    Chart.defaults.plugins.legend.labels.padding = 16;
+
+    Chart.defaults.elements = Chart.defaults.elements || {};
+    Chart.defaults.elements.line = Object.assign({}, Chart.defaults.elements.line, {
+      borderWidth: 2,
+      tension: 0.28
+    });
+    Chart.defaults.elements.point = Object.assign({}, Chart.defaults.elements.point, {
+      radius: 0,
+      hoverRadius: 4,
+      borderWidth: 0
+    });
+    Chart.defaults.elements.bar = Object.assign({}, Chart.defaults.elements.bar, {
+      borderRadius: 10,
+      borderSkipped: false
+    });
   }
 
   function refreshActiveCharts() {
@@ -175,85 +184,6 @@
 
       chart.update('none');
     });
-  }
-
-  function syncThemeSwitchUI() {
-    var currentPreference = getThemePreference();
-    document.querySelectorAll('.theme-option').forEach(function (button) {
-      var active = button.dataset.themeChoice === currentPreference;
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      button.classList.toggle('is-active', active);
-    });
-  }
-
-  function dispatchThemeChange(preference, resolvedTheme) {
-    window.dispatchEvent(new CustomEvent('biomie:theme-changed', {
-      detail: {
-        preference: preference,
-        resolvedTheme: resolvedTheme
-      }
-    }));
-  }
-
-  function applyThemePreference(preference, options) {
-    options = options || {};
-    var normalizedPreference = normalizeThemePreference(preference);
-    var resolvedTheme = resolveTheme(normalizedPreference);
-
-    root.dataset.themePreference = normalizedPreference;
-    root.dataset.theme = resolvedTheme;
-    root.style.colorScheme = resolvedTheme;
-
-    if (options.persist !== false) {
-      try {
-        window.localStorage.setItem(themeStorageKey, normalizedPreference);
-      } catch (error) {
-        // Ignore storage failures.
-      }
-    }
-
-    syncThemeColorMeta();
-    syncThemeSwitchUI();
-    syncChartDefaults();
-
-    if (!options.skipChartRefresh) {
-      window.requestAnimationFrame(refreshActiveCharts);
-    }
-
-    if (!options.silent) {
-      dispatchThemeChange(normalizedPreference, resolvedTheme);
-    }
-  }
-
-  function buildThemeSwitch() {
-    var wrapper = document.createElement('div');
-    wrapper.className = 'theme-switch';
-    wrapper.setAttribute('role', 'group');
-    wrapper.setAttribute('aria-label', 'Tema');
-
-    wrapper.innerHTML = ''
-      + '<span class="theme-switch-label">Tema</span>'
-      + '<div class="theme-switch-options">'
-      + '<button type="button" class="theme-option" data-theme-choice="light">Claro</button>'
-      + '<button type="button" class="theme-option" data-theme-choice="dark">Escuro</button>'
-      + '<button type="button" class="theme-option" data-theme-choice="system">Auto</button>'
-      + '</div>';
-
-    wrapper.querySelectorAll('.theme-option').forEach(function (button) {
-      button.addEventListener('click', function () {
-        applyThemePreference(button.dataset.themeChoice);
-      });
-    });
-
-    return wrapper;
-  }
-
-  function injectThemeSwitch() {
-    var actions = document.querySelector('header.topbar .topbar-actions');
-    if (!actions || actions.querySelector('.theme-switch')) return;
-
-    actions.insertBefore(buildThemeSwitch(), actions.firstChild);
-    syncThemeSwitchUI();
   }
 
   function buildFetchConfig(options) {
@@ -381,12 +311,22 @@
   }
 
   window.fetchApi = async function (url, options) {
-    const built = buildFetchConfig(options || {});
+    const rawOptions = options || {};
+    const built = buildFetchConfig(rawOptions);
+    const perf = window.BIOMIE_PERF;
+    const perfId = perf && typeof perf.startFetch === 'function' ? perf.startFetch(url, rawOptions) : null;
+    let response = null;
     try {
-      const response = await fetch(url, built.config);
+      response = await fetch(url, built.config);
       const payload = await parseApiResponse(response);
+      if (perfId && perf && typeof perf.endFetch === 'function') {
+        perf.endFetch(perfId, response.status, response.ok && !(payload && payload.ok === false));
+      }
       return { response: response, payload: payload };
     } catch (err) {
+      if (perfId && perf && typeof perf.endFetch === 'function') {
+        perf.endFetch(perfId, response ? response.status : (err?.code || 0), false);
+      }
       if (err?.name === 'AbortError') {
         const error = new Error('A requisicao demorou demais. Tente novamente com um periodo menor.');
         error.code = 408;
@@ -403,34 +343,17 @@
     return result.payload;
   };
 
-  window.BIOMIE_THEME = {
-    getPreference: getThemePreference,
-    applyTheme: applyThemePreference,
-    resolveTheme: resolveTheme,
+  window.BIOMIE_CHART_THEME = {
     cssToken: cssToken,
     alphaColor: alphaColor,
     getChartTheme: getChartTheme
   };
 
-  if (themeMedia) {
-    var syncSystemTheme = function () {
-      if (getThemePreference() === 'system') {
-        applyThemePreference('system', { persist: false });
-      }
-    };
-
-    if (typeof themeMedia.addEventListener === 'function') {
-      themeMedia.addEventListener('change', syncSystemTheme);
-    } else if (typeof themeMedia.addListener === 'function') {
-      themeMedia.addListener(syncSystemTheme);
-    }
-  }
-
-  applyThemePreference(getThemePreference(), { persist: false, silent: true, skipChartRefresh: true });
+  enforceLightOnlyMode();
   syncChartDefaults();
 
   document.addEventListener('DOMContentLoaded', function () {
-    injectThemeSwitch();
+    enforceLightOnlyMode();
     syncThemeColorMeta();
     syncChartDefaults();
     window.requestAnimationFrame(refreshActiveCharts);
@@ -439,7 +362,8 @@
     var overlay = document.getElementById('overlay');
     var toggle = document.getElementById('menu_toggle');
     var main = document.querySelector('.main');
-    var storageCollapsedKey = 'biomie:sidebar-collapsed';
+    var storageCollapsedKey = 'biomie.sidebar.compact';
+    var legacyStorageCollapsedKey = 'biomie:sidebar-collapsed';
 
     if (!sidebar || !toggle) return;
 
@@ -447,6 +371,12 @@
 
     var mq = window.matchMedia('(max-width: 1180px)');
     function isMobile() { return mq.matches; }
+    function storageGet(key) {
+      try { return window.localStorage.getItem(key); } catch (error) { return null; }
+    }
+    function storageSet(key, value) {
+      try { window.localStorage.setItem(key, value); } catch (error) {}
+    }
     function syncSidebarState() {
       var mobile = isMobile();
       var open = sidebar.classList.contains('open');
@@ -460,13 +390,19 @@
         sidebar.classList.remove('open');
         sidebar.dataset.sidebarMode = 'desktop';
         var collapsed = sidebar.classList.contains('collapsed');
-        sidebar.setAttribute('aria-hidden', collapsed ? 'true' : 'false');
+        root.classList.toggle('sidebar-compact', collapsed);
+        sidebar.setAttribute('aria-hidden', 'false');
         toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
       }
+      root.classList.add('sidebar-ready');
     }
     function applyStoredState() {
       if (!isMobile()) {
-        if (window.localStorage.getItem(storageCollapsedKey) === '1') {
+        var storedCompact = storageGet(storageCollapsedKey);
+        if (storedCompact === null) {
+          storedCompact = storageGet(legacyStorageCollapsedKey);
+        }
+        if (storedCompact === '1') {
           sidebar.classList.add('collapsed');
         } else {
           sidebar.classList.remove('collapsed');
@@ -480,6 +416,7 @@
     function closeSidebar() {
       sidebar.classList.remove('collapsed');
       sidebar.classList.remove('open');
+      root.classList.remove('sidebar-compact');
       if (overlay) overlay.classList.remove('show');
       sidebar.removeAttribute('aria-modal');
 
@@ -516,7 +453,8 @@
 
       if (!isMobile()) {
         sidebar.classList.toggle('collapsed');
-        window.localStorage.setItem(storageCollapsedKey, sidebar.classList.contains('collapsed') ? '1' : '0');
+        storageSet(storageCollapsedKey, sidebar.classList.contains('collapsed') ? '1' : '0');
+        storageSet(legacyStorageCollapsedKey, sidebar.classList.contains('collapsed') ? '1' : '0');
         syncSidebarState();
         return;
       }
@@ -568,7 +506,7 @@
       }
       if (isMobile()) {
         sidebar.classList.remove('collapsed');
-      } else if (window.localStorage.getItem(storageCollapsedKey) === '1') {
+      } else if (storageGet(storageCollapsedKey) === '1' || (storageGet(storageCollapsedKey) === null && storageGet(legacyStorageCollapsedKey) === '1')) {
         sidebar.classList.add('collapsed');
       } else {
         sidebar.classList.remove('collapsed');
@@ -597,5 +535,252 @@
 
     applyStoredState();
     syncSidebarState();
+
+    // ── NavContext: restore cross-page filter state ─────────────────────────
+    if (window.NavContext) {
+      window.NavContext.syncFromUrl();
+      window.NavContext.applyToInputs();
+
+      // Persist date range whenever inputs change
+      var _ds = document.getElementById('dateStart');
+      var _de = document.getElementById('dateEnd');
+      if (_ds) {
+        _ds.addEventListener('change', function () {
+          if (window.NavContext) {
+            window.NavContext.setDateRange(_ds.value || '', _de ? _de.value || '' : '');
+          }
+        });
+      }
+      if (_de) {
+        _de.addEventListener('change', function () {
+          if (window.NavContext) {
+            window.NavContext.setDateRange(_ds ? _ds.value || '' : '', _de.value || '');
+          }
+        });
+      }
+
+      // Render back-link breadcrumb when navigating in from another page
+      var _fromPage = window.NavContext.get('from');
+      if (_fromPage) {
+        var _fromLabels = {
+          'index.html': 'Painel Comercial',
+          'vendedores.html': 'Time Comercial',
+          'pedidos.html': 'NF do Período',
+          'financeiro.html': 'Financeiro',
+          'plano_voo.html': 'Rota Comercial',
+          'mercadorias.html': 'Mix Faturado',
+          'mapa_vendas.html': 'Mapa de Vendas'
+        };
+        var _fromLabel = _fromLabels[_fromPage] || _fromPage;
+        var _dr = window.NavContext.getDateRange();
+        var _backP = new URLSearchParams();
+        if (_dr.start) _backP.set('start', _dr.start);
+        if (_dr.end) _backP.set('end', _dr.end);
+        var _backUrl = _fromPage + (_backP.toString() ? '?' + _backP.toString() : '');
+        var _crumb = document.createElement('div');
+        _crumb.className = 'bmie-breadcrumb';
+        _crumb.innerHTML = '<a href="' + _backUrl + '">'
+          + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:3px">arrow_back</span>'
+          + _fromLabel + '</a>';
+        var _topbarLeft = document.querySelector('.topbar-left');
+        if (_topbarLeft) _topbarLeft.appendChild(_crumb);
+      }
+    }
+
+    // ── Compare toggle button wiring ────────────────────────────────────────
+    var _compareBtn = document.getElementById('compareToggle');
+    if (_compareBtn && window.CompareMode) {
+      _compareBtn.classList.toggle('is-active', window.CompareMode.isActive());
+      _compareBtn.addEventListener('click', function () {
+        window.CompareMode.toggle();
+        _compareBtn.classList.toggle('is-active', window.CompareMode.isActive());
+        window.dispatchEvent(new CustomEvent('biomie:compare-toggled', { detail: { active: window.CompareMode.isActive() } }));
+      });
+    }
   });
 })();
+
+// ── NavContext — estado compartilhado de navegação entre páginas ─────────────
+//
+// Persiste filtros (datas, vendedor, região) em sessionStorage e URL.
+// Disponível como window.NavContext em todos os scripts da página.
+window.NavContext = (function () {
+  var SK = 'biomie:nav';
+  var URL_KEYS = ['start', 'end', 'vendor_id', 'vendor_nome', 'client_id', 'uf', 'cidade', 'preset', 'from'];
+
+  function _load() {
+    try { return JSON.parse(sessionStorage.getItem(SK) || '{}'); } catch (e) { return {}; }
+  }
+  function _save(s) {
+    try { sessionStorage.setItem(SK, JSON.stringify(s)); } catch (e) {}
+  }
+
+  return {
+    get: function (k) { var v = _load()[k]; return v !== undefined ? v : null; },
+
+    set: function (k, v) {
+      var s = _load();
+      if (v == null) { delete s[k]; } else { s[k] = String(v); }
+      _save(s);
+    },
+
+    merge: function (obj) {
+      var s = _load();
+      Object.keys(obj || {}).forEach(function (k) {
+        if (obj[k] == null) { delete s[k]; } else { s[k] = String(obj[k]); }
+      });
+      _save(s);
+    },
+
+    getDateRange: function () {
+      var s = _load();
+      return { start: s.start || '', end: s.end || '', preset: s.preset || '' };
+    },
+
+    setDateRange: function (start, end, preset) {
+      var s = _load();
+      if (start) s.start = start;
+      if (end) s.end = end;
+      if (preset !== undefined) s.preset = preset || '';
+      _save(s);
+    },
+
+    // Write saved state into DOM date inputs. Returns true if applied.
+    applyToInputs: function () {
+      var dr = this.getDateRange();
+      if (!dr.start || !dr.end) return false;
+      var si = document.getElementById('dateStart');
+      var ei = document.getElementById('dateEnd');
+      if (si) si.value = dr.start;
+      if (ei) ei.value = dr.end;
+      return !!(si || ei);
+    },
+
+    // Read relevant URL params and merge into sessionStorage state.
+    syncFromUrl: function () {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var s = _load();
+        var changed = false;
+        URL_KEYS.forEach(function (k) {
+          var v = params.get(k);
+          if (v) { s[k] = v; changed = true; }
+        });
+        if (changed) _save(s);
+      } catch (e) {}
+    },
+
+    // Update URL (replaceState) to reflect current filter state.
+    pushState: function (extra) {
+      try {
+        var s = Object.assign({}, _load(), extra || {});
+        var params = new URLSearchParams();
+        if (s.start) params.set('start', s.start);
+        if (s.end) params.set('end', s.end);
+        if (s.vendor_id) params.set('vendor_id', s.vendor_id);
+        if (s.vendor_nome) params.set('vendor_nome', s.vendor_nome);
+        if (s.uf) params.set('uf', s.uf);
+        if (s.cidade) params.set('cidade', s.cidade);
+        var qs = params.toString();
+        var cur = window.location.search.replace(/^\?/, '');
+        if (qs !== cur) {
+          window.history.replaceState({}, '', qs ? ('?' + qs) : window.location.pathname);
+        }
+      } catch (e) {}
+    },
+
+    // Build a contextual URL for the given page, merging saved state with extras.
+    buildUrl: function (page, extra) {
+      var s = Object.assign({}, _load(), extra || {});
+      var params = new URLSearchParams();
+      if (s.start) params.set('start', s.start);
+      if (s.end) params.set('end', s.end);
+      if (s.vendor_id) params.set('vendor_id', s.vendor_id);
+      if (s.vendor_nome) params.set('vendor_nome', s.vendor_nome);
+      if (s.uf) params.set('uf', s.uf);
+      if (s.cidade) params.set('cidade', s.cidade);
+      if (s.from) params.set('from', s.from);
+      var qs = params.toString();
+      return page + (qs ? ('?' + qs) : '');
+    },
+
+    // Navigate to a page, carrying the current filter context.
+    navigateTo: function (page, extra) {
+      window.location.href = this.buildUrl(page, extra);
+    },
+
+    // Returns an <a> tag string linking to a page with context preserved.
+    link: function (page, extra, label) {
+      var href = this.buildUrl(page, extra || {});
+      var safe = String(label || page).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      return '<a href="' + href + '" class="bmie-ctx-link">' + safe + '</a>';
+    }
+  };
+})();
+
+// ── CompareMode — comparação rápida com período anterior ─────────────────────
+//
+// Ao ativar, as páginas devem buscar o período anterior e renderizar deltas.
+window.CompareMode = (function () {
+  var SK = 'biomie:compare';
+
+  function isActive() {
+    try { return sessionStorage.getItem(SK) === '1'; } catch (e) { return false; }
+  }
+
+  function toggle() {
+    try {
+      sessionStorage.setItem(SK, isActive() ? '0' : '1');
+    } catch (e) {}
+  }
+
+  // Returns { start, end } of the period immediately before the given range
+  // (same duration, ending one day before start).
+  function getPrevPeriod(start, end) {
+    if (!start || !end) return null;
+    try {
+      var s = new Date(start + 'T12:00:00');
+      var e = new Date(end + 'T12:00:00');
+      var durationMs = e.getTime() - s.getTime();
+      var pe = new Date(s.getTime() - 86400000);       // day before start
+      var ps = new Date(pe.getTime() - durationMs);
+      function fmt(d) {
+        return d.getFullYear()
+          + '-' + String(d.getMonth() + 1).padStart(2, '0')
+          + '-' + String(d.getDate()).padStart(2, '0');
+      }
+      return { start: fmt(ps), end: fmt(pe) };
+    } catch (e) { return null; }
+  }
+
+  // Renders a small delta badge (↑/↓/→) comparing current vs previous value.
+  // opts.invertColors = true for metrics where lower is better (e.g. overdue).
+  function renderDelta(current, prev, opts) {
+    opts = opts || {};
+    var curr = Number(current || 0);
+    var prv  = Number(prev   || 0);
+    if (prv === 0) return '';
+    var pct  = ((curr - prv) / Math.abs(prv)) * 100;
+    var abs  = Math.abs(pct);
+    var sign = pct >= 0.05 ? '+' : '';
+    var cls, icon;
+    if (abs < 1)      { cls = 'bmie-delta-flat'; icon = '→'; }
+    else if (pct > 0) { cls = opts.invertColors ? 'bmie-delta-down' : 'bmie-delta-up'; icon = '↑'; }
+    else              { cls = opts.invertColors ? 'bmie-delta-up'   : 'bmie-delta-down'; icon = '↓'; }
+    return '<span class="bmie-delta ' + cls + '" title="vs. período anterior">'
+      + icon + ' ' + sign + pct.toFixed(1) + '%</span>';
+  }
+
+  return { isActive: isActive, toggle: toggle, getPrevPeriod: getPrevPeriod, renderDelta: renderDelta };
+})();
+
+// ── Estado vazio — helper para renderizar placeholders informativos ───────────
+window.renderEmptyState = function (container, msg, icon) {
+  if (!container) return;
+  var safe = String(msg || 'Sem dados no período selecionado.')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  container.innerHTML = '<div class="bmie-empty">'
+    + '<span class="material-symbols-rounded bmie-empty-icon">' + (icon || 'search_off') + '</span>'
+    + '<span class="bmie-empty-msg">' + safe + '</span>'
+    + '</div>';
+};

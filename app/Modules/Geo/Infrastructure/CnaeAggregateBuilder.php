@@ -1,0 +1,191 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BIomie\Modules\Geo\Infrastructure;
+
+use BIomie\TableHealthService;
+use PDO;
+use Throwable;
+
+final class CnaeAggregateBuilder
+{
+    public function __construct(
+        private readonly PDO                $pdo,
+        private readonly TableHealthService $tableHealth,
+    ) {}
+
+    public function buildVendasPorCnae(): int
+    {
+        if (!$this->columnExists('biomie_clientes_dim', 'cnae_codigo')) {
+            return 0;
+        }
+
+        $nfCnaeCol   = $this->pickColumn('biomie_notas_fiscais_canonicas', ['cnae_codigo', 'cnae', 'cnae_principal']);
+        $pedCnaeCol  = $this->pickColumn('biomie_pedidos_canonicos',       ['cnae_codigo', 'cnae', 'cnae_principal']);
+        $hasNfTable  = $nfCnaeCol  !== null && $this->tableHealth->tableExists('biomie_notas_fiscais_canonicas');
+        $hasPedTable = $pedCnaeCol !== null && $this->tableHealth->tableExists('biomie_pedidos_canonicos');
+
+        $countWithCnaeInDim = 0;
+        $countNfCnae        = 0;
+        $countPedCnae       = 0;
+
+        try {
+            $countWithCnaeInDim = (int) $this->pdo->query(
+                "SELECT COUNT(*) FROM biomie_clientes_dim WHERE cnae_codigo IS NOT NULL AND cnae_codigo != ''"
+            )->fetchColumn();
+        } catch (Throwable) {}
+
+        if ($hasNfTable) {
+            try {
+                $countNfCnae = (int) $this->pdo->query(
+                    "SELECT COUNT(DISTINCT codigo_cliente_omie) FROM biomie_notas_fiscais_canonicas
+                     WHERE `{$nfCnaeCol}` IS NOT NULL AND `{$nfCnaeCol}` != ''"
+                )->fetchColumn();
+            } catch (Throwable) {}
+        }
+
+        if ($hasPedTable) {
+            try {
+                $countPedCnae = (int) $this->pdo->query(
+                    "SELECT COUNT(DISTINCT codigo_cliente_omie) FROM biomie_pedidos_canonicos
+                     WHERE `{$pedCnaeCol}` IS NOT NULL AND `{$pedCnaeCol}` != ''"
+                )->fetchColumn();
+            } catch (Throwable) {}
+        }
+
+        if ($countWithCnaeInDim === 0 && $countNfCnae === 0 && $countPedCnae === 0) {
+            return 0;
+        }
+
+        $this->pdo->exec('DELETE FROM mart_vendas_por_cnae_cnpj');
+
+        $hasNomeExibicao = $this->columnExists('biomie_clientes_dim', 'cliente_nome_exibicao');
+        $hasDocNorm      = $this->columnExists('biomie_clientes_dim', 'documento_normalizado');
+        $hasSourceCol    = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cnae_source');
+        $hasConfCol      = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cnae_confidence');
+        $hasUpdatedAt    = $this->columnExists('mart_vendas_por_cnae_cnpj', 'updated_at');
+
+        $nomeExpr = $hasNomeExibicao
+            ? 'COALESCE(cd.cliente_nome_exibicao, cd.nome_cliente, cp.nome_cliente)'
+            : 'COALESCE(cd.nome_cliente, cp.nome_cliente)';
+        $docExpr  = $hasDocNorm ? 'cd.documento_normalizado' : 'NULL';
+
+        $joinFragments  = [];
+        $coalesceFields = ['cd.cnae_codigo'];
+
+        if ($hasNfTable) {
+            $joinFragments['nf'] = "LEFT JOIN (
+                SELECT codigo_cliente_omie, MAX(`{$nfCnaeCol}`) AS nf_cnae
+                FROM biomie_notas_fiscais_canonicas
+                WHERE `{$nfCnaeCol}` IS NOT NULL AND `{$nfCnaeCol}` != ''
+                GROUP BY codigo_cliente_omie
+            ) cnae_nf ON cnae_nf.codigo_cliente_omie = cp.codigo_cliente_omie";
+            array_unshift($coalesceFields, 'cnae_nf.nf_cnae');
+        }
+
+        if ($hasPedTable) {
+            $joinFragments['ped'] = "LEFT JOIN (
+                SELECT codigo_cliente_omie, MAX(`{$pedCnaeCol}`) AS ped_cnae
+                FROM biomie_pedidos_canonicos
+                WHERE `{$pedCnaeCol}` IS NOT NULL AND `{$pedCnaeCol}` != ''
+                GROUP BY codigo_cliente_omie
+            ) cnae_ped ON cnae_ped.codigo_cliente_omie = cp.codigo_cliente_omie";
+            $dimIdx = array_search('cd.cnae_codigo', $coalesceFields, true);
+            array_splice($coalesceFields, (int) $dimIdx, 0, ['cnae_ped.ped_cnae']);
+        }
+
+        $cnaeCoalesce = count($coalesceFields) > 1
+            ? 'COALESCE(' . implode(', ', $coalesceFields) . ')'
+            : $coalesceFields[0];
+        $joinSql = !empty($joinFragments) ? implode("\n             ", $joinFragments) : '';
+
+        $insertOptionalCols = '';
+        $selectOptionalCols = '';
+
+        if ($hasSourceCol) {
+            $whenParts = [];
+            if (isset($joinFragments['nf']))  { $whenParts[] = "WHEN cnae_nf.nf_cnae IS NOT NULL THEN 'nf_canonical'"; }
+            if (isset($joinFragments['ped'])) { $whenParts[] = "WHEN cnae_ped.ped_cnae IS NOT NULL THEN 'pedido_canonical'"; }
+            $whenParts[]         = "WHEN cd.cnae_codigo IS NOT NULL AND cd.cnae_codigo != '' THEN 'clientes_dim'";
+            $insertOptionalCols .= ', cnae_source';
+            $selectOptionalCols .= ', CASE ' . implode(' ', $whenParts) . " ELSE 'unknown' END";
+        }
+
+        if ($hasConfCol) {
+            $whenParts = [];
+            if (isset($joinFragments['nf']))  { $whenParts[] = 'WHEN cnae_nf.nf_cnae IS NOT NULL THEN 90'; }
+            if (isset($joinFragments['ped'])) { $whenParts[] = 'WHEN cnae_ped.ped_cnae IS NOT NULL THEN 85'; }
+            $whenParts[]         = "WHEN cd.cnae_codigo IS NOT NULL AND cd.cnae_codigo != '' THEN 80";
+            $insertOptionalCols .= ', cnae_confidence';
+            $selectOptionalCols .= ', CASE ' . implode(' ', $whenParts) . ' ELSE 0 END';
+        }
+
+        if ($hasUpdatedAt) {
+            $insertOptionalCols .= ', updated_at';
+            $selectOptionalCols .= ', NOW()';
+        }
+
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO mart_vendas_por_cnae_cnpj
+                 (competencia, documento_normalizado, codigo_cliente_omie, cliente_nome,
+                  cnae_codigo, cnae_descricao, segmento_macro,
+                  uf, cidade_norm, bairro_norm,
+                  qtd_notas, faturamento, ticket_medio,
+                  primeira_compra, ultima_compra, refreshed_at{$insertOptionalCols})
+             SELECT
+                 cp.competencia,
+                 {$docExpr},
+                 cp.codigo_cliente_omie,
+                 {$nomeExpr}                                                          AS cliente_nome,
+                 {$cnaeCoalesce}                                                      AS cnae_codigo,
+                 cd.cnae_descricao,
+                 COALESCE(cd.segmento_macro, 'PJ_SEM_CNAE')                          AS segmento_macro,
+                 COALESCE(g.uf, '')                                                   AS uf,
+                 COALESCE(g.cidade_norm, '')                                          AS cidade_norm,
+                 COALESCE(NULLIF(g.bairro_oficial_nome_fortaleza, ''),
+                           NULLIF(g.bairro_norm, ''), '')                             AS bairro_norm,
+                 cp.nfes_emitidas                                                     AS qtd_notas,
+                 cp.valor_nfe                                                         AS faturamento,
+                 IF(cp.nfes_emitidas > 0, cp.valor_nfe / cp.nfes_emitidas, 0)       AS ticket_medio,
+                 NULL                                                                 AS primeira_compra,
+                 NULL                                                                 AS ultima_compra,
+                 NOW()                                                                AS refreshed_at
+                 {$selectOptionalCols}
+             FROM mart_cliente_periodo AS cp
+             LEFT JOIN biomie_clientes_dim AS cd ON cd.codigo_cliente_omie = cp.codigo_cliente_omie
+             LEFT JOIN biomie_clientes_geo_dim AS g  ON g.codigo_cliente_omie = cp.codigo_cliente_omie
+             {$joinSql}
+             WHERE (cp.nfes_emitidas > 0 OR cp.valor_nfe > 0)
+               AND {$cnaeCoalesce} IS NOT NULL
+               AND {$cnaeCoalesce} != ''"
+        );
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
+
+    /** @param list<string> $candidates */
+    private function pickColumn(string $table, array $candidates): ?string
+    {
+        foreach ($candidates as $col) {
+            if ($this->columnExists($table, $col)) {
+                return $col;
+            }
+        }
+        return null;
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+            );
+            $stmt->execute([$table, $column]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+}

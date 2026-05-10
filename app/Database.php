@@ -29,6 +29,7 @@ final class Database
         $charset = (string) $config->get($connection . '.charset', 'utf8mb4');
         $user = (string) $config->get($connection . '.user');
         $pass = (string) $config->get($connection . '.pass', '');
+        $timeout = max(1, (int) $config->get($connection . '.timeout', 5));
 
         $dsn = sprintf('%s:host=%s;port=%d;dbname=%s;charset=%s', $driver, $host, $port, $name, $charset);
 
@@ -36,6 +37,21 @@ final class Database
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_TIMEOUT => $timeout,
         ]);
+    }
+
+    /**
+     * @return array{0: \PDO, 1: string}
+     */
+    public static function getGeoConnection(Config $config): array
+    {
+        try {
+            if (self::isConfigured($config, 'flight_plan_db')) {
+                return [self::connect($config, 'flight_plan_db'), 'flight_plan_db'];
+            }
+        } catch (\Throwable $e) {}
+
+        return [self::connect($config, 'db'), 'db'];
     }
 }

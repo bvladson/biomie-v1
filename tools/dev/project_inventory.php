@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+
 $root = dirname(__DIR__, 2);
 $json = in_array('--json', $argv, true);
 $full = in_array('--full', $argv, true);

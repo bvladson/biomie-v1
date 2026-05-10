@@ -119,6 +119,20 @@ SQL);
         return is_array($row) ? $row : null;
     }
 
+    public function findUserById(int $userId): ?array
+    {
+        $stmt = $this->pdo->prepare(<<<'SQL'
+SELECT id, username, full_name, email, role, is_active, last_login_at, password_changed_at, created_at, updated_at
+FROM biomie_users
+WHERE id = :id
+LIMIT 1
+SQL);
+        $stmt->execute([':id' => $userId]);
+        $row = $stmt->fetch();
+
+        return is_array($row) ? $row : null;
+    }
+
     public function createFirstAdmin(string $username, string $fullName, ?string $email, string $password): int
     {
         return $this->createUser($username, $fullName, $email, $password, 'admin', true, null);

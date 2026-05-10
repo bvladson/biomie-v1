@@ -4,17 +4,15 @@
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="assets/js/theme-init.js?v=20260413dark1"></script>
-  <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#f6f3f2" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#12151b" media="(prefers-color-scheme: dark)" />
-  <meta name="description" content="Observabilidade operacional do BIomie" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Confianca dos dados do BIomie com consistencia, atualizacao e pontos de atencao." />
   <meta name="application-name" content="BIomie" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="BIomie" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Observabilidade | BIomie MAG</title>
+  <title>Confianca dos Dados | BIomie MAG</title>
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
   <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
@@ -22,15 +20,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260415sk1" />
-  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260415sk5" />
-  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260415sk1" />
-<script src="assets/js/shell.js?v=20260415sk5"></script>
-<script src="assets/js/app.js?v=20260415sk4" defer></script>
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
-  <script src="assets/js/observability.js?v=20260415sk1" defer></script>
 </head>
-<body class="mag-page" data-page="observability">
+<body class="nav-md mag-page" data-page="observability">
 <div class="overlay" id="overlay"></div>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
@@ -40,16 +36,19 @@
     </div>
     <div class="sidebar-profile">
       <div class="profile-avatar">O</div>
-      <div class="profile-info"><span>Modo interno</span><strong>Observabilidade</strong></div>
+      <div class="profile-info"><span>Modo interno</span><strong>Confianca dos Dados</strong></div>
     </div>
     <nav class="sidebar-nav" id="sidebar-menu">
       <div class="nav-section-label">BIomie</div>
       <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial</a>
       <a href="vendedores.html" class="nav-item"><span class="material-symbols-rounded menu-icon">groups</span>Time Comercial</a>
+      <a href="mapa_vendas.php" class="nav-item">
+        <span class="material-symbols-rounded menu-icon">travel_explore</span>Geografia
+      </a>
       <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo</a>
       <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro</a>
       <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie</a>
-      <a href="observabilidade.php" class="nav-item active"><span class="material-symbols-rounded menu-icon">monitoring</span>Observabilidade</a>
+      <a href="observabilidade.php" class="nav-item active"><span class="material-symbols-rounded menu-icon">monitoring</span>Confianca dos Dados</a>
     </nav>
   </aside>
   <div class="main">
@@ -59,12 +58,12 @@
           <span class="material-symbols-rounded">menu</span>
         </button>
         <div class="topbar-badge">
-          <span class="material-symbols-rounded">monitoring</span>Operacao e rastreabilidade
+          <span class="material-symbols-rounded">monitoring</span>Confianca dos Dados
         </div>
         <div class="topbar-meta">
           <span>Janela: <strong id="obsWindowHours">24h</strong></span>
           <span>Gerado: <strong id="obsGeneratedAt">-</strong></span>
-          <span>Trace: <strong id="obsTraceId">-</strong></span>
+          <span>Referencia: <strong id="obsTraceId">-</strong></span>
         </div>
       </div>
       <div class="topbar-actions">
@@ -75,19 +74,22 @@
     </header>
     <main class="page">
       <section class="hero module-hero anim">
-        <div>
-          <div class="hero-tag"><span class="material-symbols-rounded">query_stats</span>Dashboard operacional</div>
-          <h1>Por que o numero saiu assim.</h1>
-          <p>Uma leitura unica cruzando webhook, sync, freshness, shadow, divergencia e tempos de Omie.</p>
+        <div class="module-hero__content">
+          <div class="hero-tag"><span class="material-symbols-rounded">query_stats</span>Qualidade e consistencia</div>
+          <h1>Entenda a confianca por tras dos numeros.</h1>
+          <p>Acompanhe consistencia, atualizacao e pontos de atencao antes de tomar qualquer decisao.</p>
         </div>
-        <div class="forecast-box">
-          <div class="forecast-label">Backlog</div>
+        <div class="forecast-box module-hero__meta">
+          <div class="forecast-label">Pontos ativos</div>
           <div class="forecast-value" id="obsPendingTotal">-</div>
           <div class="forecast-target"><span>Shadow critico:</span><strong id="obsShadowCritical">-</strong></div>
           <div class="progress-track"><div class="progress-fill" id="obsProgressFill" style="width:0%"></div></div>
           <div class="progress-pct">Divergencias abertas: <strong id="obsDivergenceTotal">-</strong></div>
         </div>
       </section>
+
+      <!-- Alertas automáticos — injetado pelo JS quando há alertas ativos -->
+      <div id="obsAlertsSection" class="d-none" style="margin-top:12px;"></div>
 
       <div id="obsError" class="d-none"></div>
       <div id="obsLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
@@ -116,52 +118,75 @@
       </div>
 
       <section class="integration-stats" id="obsCards">
-        <div class="integration-stat anim d2"><span class="label">Inbox pendente</span><div class="value" id="cardPending">-</div><div class="sub" id="cardPendingAge">-</div></div>
-        <div class="integration-stat anim d2"><span class="label">Falhas recentes</span><div class="value" id="cardFailedSpans">-</div><div class="sub">Spans e jobs com erro</div></div>
-        <div class="integration-stat anim d3"><span class="label">Shadow aberto</span><div class="value" id="cardShadow">-</div><div class="sub">Diffs high/critical</div></div>
-        <div class="integration-stat anim d3"><span class="label">Datasets stale</span><div class="value" id="cardStale">-</div><div class="sub">Leituras degradadas</div></div>
+        <div class="integration-stat anim d2"><span class="label">Itens pendentes</span><div class="value" id="cardPending">-</div><div class="sub" id="cardPendingAge">-</div></div>
+        <div class="integration-stat anim d2"><span class="label">Ocorrencias recentes</span><div class="value" id="cardFailedSpans">-</div><div class="sub">Alertas e processamentos com erro</div></div>
+        <div class="integration-stat anim d3"><span class="label">Comparacoes em aberto</span><div class="value" id="cardShadow">-</div><div class="sub">Diferenas relevantes entre leituras</div></div>
+        <div class="integration-stat anim d3"><span class="label">Bases com atraso</span><div class="value" id="cardStale">-</div><div class="sub">Leituras degradadas no momento</div></div>
       </section>
 
-      <div class="section-label anim d2">Datasets</div>
+      <div class="section-label anim d2" style="margin-top:20px;">Cobertura das bases</div>
+      <section class="integration-stats" id="obsCoverageCards">
+        <div class="integration-stat anim d2"><span class="label">Total de clientes</span><div class="value" id="cardTotalClients">-</div><div class="sub">Em biomie_clientes_dim</div></div>
+        <div class="integration-stat anim d2"><span class="label">Cobertura geo</span><div class="value" id="cardGeoCoveragePct">-</div><div class="sub" id="cardGeoCoverageSub">Clientes com endereço geocodificado</div></div>
+        <div class="integration-stat anim d3"><span class="label">Cobertura CNAE</span><div class="value" id="cardCnaeCoveragePct">-</div><div class="sub" id="cardCnaeCoverageSub">Clientes com segmento classificado</div></div>
+        <div class="integration-stat anim d3"><span class="label">Clientes enriquecidos</span><div class="value" id="cardEnrichedPct">-</div><div class="sub" id="cardEnrichedSub">Com tipo_pessoa preenchido</div></div>
+      </section>
+
+      <div class="section-label anim d2">Bases acompanhadas</div>
       <section class="table-card anim d2">
-        <div class="chart-card-header"><div><h3>Freshness e completude</h3><small>Estado atual dos datasets criticos</small></div></div>
+          <div class="chart-card-header"><div><h3>Atualizacao e completude</h3><small>Estado atual das bases criticas</small></div></div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Dataset</th><th>Modo</th><th>Lag</th><th>Reconcile</th><th>Motivo</th><th>Divergencias</th></tr>
+              <tr><th>Base</th><th>Modo</th><th>Atraso</th><th>Conferencia</th><th>Motivo</th><th>Divergencias</th></tr>
             </thead>
-            <tbody id="obsDatasetsBody"></tbody>
+            <tbody id="obsDatasetsBody" data-empty-title="Sem bases" data-empty-message="Nenhuma base detectada." data-empty-icon="storage"></tbody>
           </table>
         </div>
       </section>
 
-      <div class="section-label anim d3">Jobs</div>
+      <div class="section-label anim d3">Processamentos</div>
       <section class="module-grid-2">
         <div class="table-card anim d3">
-          <div class="chart-card-header"><div><h3>Jobs por dominio</h3><small>Ultimo estado e p95 estimado</small></div></div>
+          <div class="chart-card-header"><div><h3>Fluxos por dominio</h3><small>Ultimo estado e tempo medio por processamento</small></div></div>
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr><th>Dominio</th><th>Status</th><th>Runs</th><th>Media</th><th>P95</th><th>Fim</th></tr>
               </thead>
-              <tbody id="obsJobsBody"></tbody>
+              <tbody id="obsJobsBody" data-empty-title="Sem processamentos" data-empty-message="Nenhum processamento registrado." data-empty-icon="settings"></tbody>
             </table>
           </div>
         </div>
         <div class="table-card anim d4">
-          <div class="chart-card-header"><div><h3>Metodos Omie</h3><small>Tempo medio e p95 por call</small></div></div>
+          <div class="chart-card-header"><div><h3>Chamadas ao Omie</h3><small>Tempo medio e volume por consulta</small></div></div>
           <div class="table-wrap">
             <table class="data-table">
               <thead>
-                <tr><th>Metodo</th><th>Requests</th><th>Erros</th><th>Media</th><th>P95</th></tr>
+                <tr><th>Metodo</th><th>Leituras</th><th>Erros</th><th>Media</th><th>P95</th></tr>
               </thead>
-              <tbody id="obsOmieBody"></tbody>
+              <tbody id="obsOmieBody" data-empty-title="Sem chamadas" data-empty-message="Nenhuma chamada ao Omie registrada." data-empty-icon="cloud_off"></tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <div class="section-label anim d4">Conflitos</div>
+      <div class="section-label anim d4">Atualizacao das visoes</div>
+      <section class="table-card anim d4">
+        <div class="chart-card-header">
+          <div><h3>Saude das atualizacoes</h3><small>Ultimo estado, duracao e taxa de erro nos ultimos 7 dias</small></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Processo</th><th>Status</th><th>Ultima atualizacao</th><th>Idade</th><th>Tempo</th><th>Execucoes 7d</th><th>Falhas 7d</th></tr>
+            </thead>
+            <tbody id="obsPipelineHealthBody" data-empty-title="Sem processos" data-empty-message="Nenhum processo de atualizacao registrado." data-empty-icon="update"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="section-label anim d4">Pontos de atencao</div>
       <section class="module-grid-2">
         <div class="table-card anim d4">
           <div class="chart-card-header"><div><h3>Divergencias por regra</h3><small>Fila ativa priorizada</small></div></div>
@@ -170,37 +195,60 @@
               <thead>
                 <tr><th>Regra</th><th>Total</th><th>Severidade</th></tr>
               </thead>
-              <tbody id="obsRulesBody"></tbody>
+              <tbody id="obsRulesBody" data-empty-title="Sem divergencias" data-empty-message="Nenhuma divergencia ativa." data-empty-icon="check_circle"></tbody>
             </table>
           </div>
         </div>
         <div class="table-card anim d5">
-          <div class="chart-card-header"><div><h3>Shadow por endpoint</h3><small>Onde o legado e o candidato ainda divergem</small></div></div>
+          <div class="chart-card-header"><div><h3>Comparativo por origem</h3><small>Onde as leituras ainda apresentam diferencas</small></div></div>
           <div class="table-wrap">
             <table class="data-table">
               <thead>
-                <tr><th>Endpoint</th><th>Total</th><th>High/Critical</th></tr>
+                <tr><th>Origem</th><th>Total</th><th>Criticos</th></tr>
               </thead>
-              <tbody id="obsShadowBody"></tbody>
+              <tbody id="obsShadowBody" data-empty-title="Sem comparativos" data-empty-message="Nenhuma diferenca entre leituras." data-empty-icon="compare"></tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <div class="section-label anim d5">Falhas recentes</div>
+      <div class="section-label anim d5">Tempo de resposta</div>
       <section class="table-card anim d5">
-        <div class="chart-card-header"><div><h3>Spans e eventos</h3><small>Ultimos sinais com erro ou warning</small></div></div>
+        <div class="chart-card-header">
+          <div><h3>Fontes monitoradas</h3><small id="obsLatencyWindowLabel">p50 / p95 na janela selecionada a partir do monitoramento da aplicacao</small></div>
+        </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Tipo</th><th>Nome</th><th>Status</th><th>Correlation</th><th>Quando</th></tr>
+              <tr><th>Origem</th><th>Metodo</th><th>Leituras</th><th>Erros</th><th>Erro%</th><th>Media</th><th>P50</th><th>P95</th><th>Max</th></tr>
             </thead>
-            <tbody id="obsFailuresBody"></tbody>
+            <tbody id="obsLatencyBody" data-empty-title="Sem dados" data-empty-message="Nenhuma medicao de latencia disponivel." data-empty-icon="speed"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="section-label anim d5">Sinais recentes</div>
+      <section class="table-card anim d5">
+        <div class="chart-card-header"><div><h3>Ocorrencias registradas</h3><small>Ultimos sinais com erro ou alerta</small></div></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Tipo</th><th>Nome</th><th>Status</th><th>Referencia</th><th>Quando</th></tr>
+            </thead>
+            <tbody id="obsFailuresBody" data-empty-title="Sem ocorrencias" data-empty-message="Nenhum sinal recente de erro ou alerta." data-empty-icon="check_circle"></tbody>
           </table>
         </div>
       </section>
     </main>
   </div>
 </div>
+<script src="assets/js/shell.js?v=20260425-ui1"></script>
+<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/render-helpers.js"></script>
+<script src="assets/js/core/chart-factory.js"></script>
+<script src="assets/js/app.js?v=20260415sk4" defer></script>
+<script src="assets/js/observability.js?v=20260415sk1" defer></script>
 </body>
 </html>

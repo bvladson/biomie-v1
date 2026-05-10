@@ -34,8 +34,6 @@
         "test": "@php tests/run_phase2_coverage.php",
         "inventory:project": "@php tools/dev/project_inventory.php",
         "runtime:check": "@php tools/dev/runtime_readiness.php",
-        "qa:dark-mode": "@php tools/dev/dark_mode_qa_audit.php",
-        "qa:dark-mode:report": "@php tools/dev/dark_mode_qa_report.php",
         "release:manifest": "@php tools/ops/build_release.php --dry-run",
         "release:build": "@php tools/ops/build_release.php",
         "migrate:status": "@php bin/schema_migrate.php status",

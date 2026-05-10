@@ -8,6 +8,7 @@ use BIomie\Cache;
 use BIomie\Config;
 use BIomie\Http;
 use BIomie\Logger;
+use BIomie\Queue\FileJobQueue;
 use BIomie\RefreshQueue;
 use BIomie\RequestContext;
 use BIomie\SalesAnalyticsService;
@@ -19,12 +20,28 @@ $config = new Config();
 $logger = new Logger(dirname(__DIR__) . '/storage/logs/biomie.log');
 $cache = new Cache(dirname(__DIR__) . '/storage/cache');
 $queue = new RefreshQueue(dirname(__DIR__) . '/storage/cache', $logger);
+$jobQueue = new FileJobQueue(dirname(__DIR__) . '/storage/cache', $logger);
 
 Auth::boot($config, $logger);
 Auth::requireLogin(true);
 
 try {
+    $jobId = trim((string) Http::query('job_id', ''));
+    if ($jobId !== '') {
+        Auth::requireAnyCapability(['jobs.view', 'sales.view', 'finance.view', 'omie.view'], true);
+        $job = $jobQueue->find($jobId);
+        Http::json([
+            'ok' => true,
+            'job' => $job,
+            'state' => is_array($job) ? (string) ($job['status'] ?? 'unknown') : 'missing',
+            'queue' => $jobQueue->summary(),
+            'legacy_queue' => $queue->summary(),
+            'request_id' => RequestContext::id(),
+        ]);
+    }
+
     $service = strtolower((string) Http::query('service', 'sales'));
+    Auth::requireAnyCapability($service === 'finance' ? ['finance.view', 'jobs.view'] : ['sales.view', 'jobs.view'], true);
     if (!in_array($service, ['sales', 'finance'], true)) {
         Http::json(['ok' => false, 'message' => 'Serviço inválido.'], 400);
     }
@@ -34,7 +51,9 @@ try {
     $key = $service === 'finance'
         ? sprintf('finance_snapshot_%s_%s', $range['start'], $range['end'])
         : SalesAnalyticsService::cacheKey($range['start'], $range['end']);
-    $job = $queue->findBySnapshot($service, $key);
+    $type = $service === 'finance' ? 'finance.snapshot.refresh' : 'sales.snapshot.refresh';
+    $newJob = $jobQueue->findByIdempotencyKey($type . '|' . $key);
+    $job = $newJob ?? $queue->findBySnapshot($service, $key);
     $cacheMeta = $cache->getMeta($key);
 
     $state = 'idle';
@@ -50,7 +69,9 @@ try {
         'state' => $state,
         'job' => $job,
         'cache' => $cacheMeta,
-        'queue' => $queue->summary(),
+        'queue' => $jobQueue->summary(),
+        'legacy_queue' => $queue->summary(),
+        'request_id' => RequestContext::id(),
     ]);
 } catch (\InvalidArgumentException $exception) {
     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);

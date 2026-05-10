@@ -14,6 +14,7 @@ use BIomie\Support;
 use BIomie\TargetsRepository;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireAnyCapability(['sales.sync', 'settings.manage'], true);
 
 set_time_limit(180);
 

@@ -7,6 +7,7 @@ use BIomie\Http;
 use BIomie\TargetsRepository;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
 $yearMonth = date('Y-m');
 

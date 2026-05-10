@@ -1,6 +1,7 @@
 DirectoryIndex index.php index.html
 AddType application/json .json
 AddType application/manifest+json .webmanifest
+Options -Indexes
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -21,8 +22,16 @@ AddType application/manifest+json .webmanifest
 </IfModule>
 
 <IfModule mod_rewrite.c>
-  RewriteRule ^config/ - [F,L]
-  RewriteRule ^storage/ - [F,L]
-  RewriteRule ^app/ - [F,L]
-  RewriteRule ^\.env - [F,L]
+  RewriteRule ^\.well-known/ - [L]
+
+  # BIomie public surface hardening: deny internal project files by default.
+  RewriteRule (^|/)\. - [F,L]
+  RewriteRule ^(app|bin|biomie-local|config|cron|cronjobs|database|docs|install|storage|tests|tools|vendor)(/|$) - [F,L,NC]
+  RewriteRule (^|/)(composer\.(json|lock)|phpstan.*\.neon|.*\.(env|ini|log|jsonl|lock|sql|bak|backup|old|orig|swp|dist|example|md|map))$ - [F,L,NC]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "(^\.|composer\.(json|lock)$|phpstan.*\.neon$|.*\.(env|ini|log|jsonl|lock|sql|bak|backup|old|orig|swp|dist|example|md|map)$)">
+    Require all denied
+  </FilesMatch>
 </IfModule>

@@ -8,11 +8,15 @@ use BIomie\Database;
 use BIomie\Logger;
 use BIomie\Migrations\MigrationRunner;
 
+require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+
 require_once dirname(__DIR__, 2) . '/app/Bootstrap.php';
 Bootstrap::init();
 
+$root = dirname(__DIR__, 2);
 $config = new Config();
-$logger = new Logger(dirname(__DIR__, 2) . '/storage/logs/biomie.log');
+$logger = new Logger($root . '/storage/logs/biomie.log');
 
 $checks = [];
 
@@ -42,7 +46,7 @@ $directories = [
     'storage/releases',
 ];
 foreach ($directories as $directory) {
-    $absolute = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $directory);
+    $absolute = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $directory);
     $checks[] = [
         'name' => 'dir:' . $directory,
         'ok' => is_dir($absolute) && is_writable($absolute),
@@ -50,15 +54,28 @@ foreach ($directories as $directory) {
     ];
 }
 
+$composer = resolveComposerExecutable($root);
 $checks[] = [
     'name' => 'composer_available',
-    'ok' => resolveCommand('composer') !== null,
-    'details' => resolveCommand('composer') ?? 'composer nao encontrado no PATH',
+    'ok' => $composer !== null,
+    'details' => $composer ?? 'composer nao encontrado no PATH e composer.phar ausente na raiz',
+];
+
+$checks[] = [
+    'name' => 'composer_lock',
+    'ok' => is_file($root . '/composer.lock'),
+    'details' => is_file($root . '/composer.lock') ? 'composer.lock presente' : 'composer.lock ausente',
+];
+
+$checks[] = [
+    'name' => 'vendor_autoload',
+    'ok' => is_file($root . '/vendor/autoload.php'),
+    'details' => is_file($root . '/vendor/autoload.php') ? 'vendor/autoload.php presente' : 'vendor/autoload.php ausente',
 ];
 
 $checks[] = [
     'name' => 'phpstan_available',
-    'ok' => is_file(dirname(__DIR__, 2) . '/vendor/bin/phpstan') || is_file(dirname(__DIR__, 2) . '/vendor/bin/phpstan.bat'),
+    'ok' => is_file($root . '/vendor/bin/phpstan') || is_file($root . '/vendor/bin/phpstan.bat'),
     'details' => 'vendor/bin/phpstan(.bat)',
 ];
 
@@ -73,7 +90,7 @@ foreach (['db', 'flight_plan_db'] as $connection) {
             $message = 'conexao ok';
         } catch (Throwable $exception) {
             $ok = false;
-            $message = $exception->getMessage();
+            $message = classifyDatabaseError($exception);
         }
     }
 
@@ -88,18 +105,21 @@ try {
     $runner = new MigrationRunner(
         $config,
         $logger,
-        dirname(__DIR__, 2) . '/' . trim((string) $config->get('migrations.path', 'database/migrations'), '/'),
+        $root . '/' . trim((string) $config->get('migrations.path', 'database/migrations'), '/'),
         (string) $config->get('migrations.table', 'biomie_schema_migrations'),
         (string) $config->get('app.version', (string) $config->get('migrations.app_version', 'dev'))
     );
-    $status = $runner->status();
+    $status = $runner->statusWithDiagnostics();
     $summary = is_array($status['summary'] ?? null) ? $status['summary'] : [];
     $connectionErrors = (int) ($summary['connection_error'] ?? 0);
     $pending = (int) ($summary['pending'] ?? 0);
     $checks[] = [
         'name' => 'migrations_status',
         'ok' => $connectionErrors === 0,
-        'details' => $summary,
+        'details' => [
+            'summary' => $summary,
+            'diagnostics' => $status['diagnostics'] ?? [],
+        ],
     ];
     $checks[] = [
         'name' => 'migrations_pending',
@@ -110,7 +130,7 @@ try {
     $checks[] = [
         'name' => 'migrations_status',
         'ok' => false,
-        'details' => $exception->getMessage(),
+        'details' => classifyDatabaseError($exception),
     ];
 }
 
@@ -153,4 +173,81 @@ function resolveCommand(string $command): ?string
     }
 
     return null;
+}
+
+function resolveComposerExecutable(string $root): ?string
+{
+    $composer = resolveCommand('composer');
+    if ($composer !== null) {
+        return $composer;
+    }
+
+    $composerPhar = $root . DIRECTORY_SEPARATOR . 'composer.phar';
+    if (is_file($composerPhar)) {
+        return PHP_BINARY . ' ' . $composerPhar;
+    }
+
+    return null;
+}
+
+/**
+ * @return array{code:string,message:string,hint:string}
+ */
+function classifyDatabaseError(Throwable $exception): array
+{
+    $message = $exception->getMessage();
+
+    if (stripos($message, 'auth_gssapi_client') !== false) {
+        return [
+            'code' => 'auth_plugin_gssapi_client',
+            'message' => $message,
+            'hint' => 'O usuario do banco parece exigir plugin GSSAPI/Kerberos. Use um usuario MariaDB/MySQL com senha compativel com PDO MySQL.',
+        ];
+    }
+
+    if (stripos($message, 'could not find driver') !== false || stripos($message, 'pdo_mysql') !== false) {
+        return [
+            'code' => 'missing_pdo_mysql',
+            'message' => $message,
+            'hint' => 'A extensao pdo_mysql precisa estar habilitada no PHP usado pelo BIomie.',
+        ];
+    }
+
+    if (stripos($message, 'Access denied') !== false) {
+        return [
+            'code' => 'access_denied',
+            'message' => $message,
+            'hint' => 'Verifique DB_USER, DB_PASS e permissoes do usuario no banco.',
+        ];
+    }
+
+    if (stripos($message, 'Unknown database') !== false) {
+        return [
+            'code' => 'unknown_database',
+            'message' => $message,
+            'hint' => 'Verifique DB_NAME ou crie o banco antes de rodar migrations.',
+        ];
+    }
+
+    if (stripos($message, 'Connection refused') !== false) {
+        return [
+            'code' => 'connection_refused',
+            'message' => $message,
+            'hint' => 'Verifique se MariaDB/MySQL esta ativo, host, porta e firewall.',
+        ];
+    }
+
+    if (stripos($message, 'No such file or directory') !== false || stripos($message, 'php_network_getaddresses') !== false) {
+        return [
+            'code' => 'host_unreachable',
+            'message' => $message,
+            'hint' => 'Verifique DB_HOST, socket local, DNS e se a porta configurada esta correta.',
+        ];
+    }
+
+    return [
+        'code' => 'database_error',
+        'message' => $message,
+        'hint' => 'Erro de banco nao classificado. Verifique a mensagem original e as variaveis DB_*.',
+    ];
 }

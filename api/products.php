@@ -11,6 +11,21 @@ use BIomie\RequestContext;
 use BIomie\Support;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
+
+function productBreakdownMeta(bool $available, ?string $source, int $limit, ?string $code = null, ?string $reason = null, ?string $detail = null, ?string $resolution = null): array
+{
+    return [
+        'status' => $available ? 'available' : 'unavailable',
+        'available' => $available,
+        'code' => $available ? 'available' : (string) ($code ?: 'unknown'),
+        'reason' => $reason,
+        'detail' => $detail,
+        'resolution' => $resolution,
+        'source' => $available ? $source : null,
+        'limit' => $limit,
+    ];
+}
 
 try {
     $range = Http::resolveDateRangeOrCompetencia();
@@ -21,6 +36,7 @@ try {
     $end = $range['end'];
     $force = Http::boolQuery('force', false);
     $productCode = trim((string) Http::query('product_code', ''));
+    $productLabel = trim((string) Http::query('product_label', ''));
     $breakdownLimit = max(1, min(500, (int) Http::query('limit', '200')));
 
     $snapshot = null;
@@ -46,7 +62,7 @@ try {
     $canonicalCoverage = null;
     $canonicalFallbackReason = null;
 
-    if ($config->isCanonicalEnabled('orders') && (bool) $config->get('features.canonical_fiscal_ready', false)) {
+    if ($canonicalReadsEnabled && $canonicalFiscalReady) {
         $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
         if (Database::isConfigured($config, $connection)) {
             try {
@@ -92,6 +108,15 @@ try {
     $mode = (string) ($snapshot['mode'] ?? 'legacy');
     $source = 'legacy';
     $breakdown = [];
+    $breakdownAvailable = false;
+    $breakdownReasonCode = !$canonicalReadsEnabled || !$canonicalFiscalReady ? 'canonical_disabled' : 'legacy_snapshot_mode';
+    $breakdownReason = !$canonicalReadsEnabled || !$canonicalFiscalReady
+        ? 'Detalhamento por documento ainda nao foi habilitado para esta leitura.'
+        : 'Detalhamento indisponivel enquanto o painel estiver em leitura legado/snapshot.';
+    $breakdownDetail = null;
+    $breakdownResolution = !$canonicalReadsEnabled || !$canonicalFiscalReady
+        ? 'Ative a leitura fiscal canonical apos a sincronizacao inicial do modulo.'
+        : 'Quando a leitura canonical estiver disponivel para o periodo, o detalhamento sera liberado automaticamente.';
 
     if ($canonicalSummary !== null && (CanonicalCoverage::canServe($canonicalCoverage ?? []) || $snapshot === null)) {
         $grossRevenue = Support::money(Support::toFloat($canonicalSummary['billed_value'] ?? 0));
@@ -135,17 +160,33 @@ try {
         $breakdown = $canonicalBreakdown;
         $mode = 'canonical';
         $source = 'canonical-db';
+        $breakdownAvailable = true;
+        $breakdownReasonCode = 'available';
+        $breakdownReason = null;
+        $breakdownDetail = null;
+        $breakdownResolution = null;
 
         if ($canonicalProducts === []) {
             $meta['note'] = 'Nao ha itens fiscais materializados para o ranking por produto no periodo.';
         }
     } elseif ($canonicalSummary !== null) {
         $canonicalFallbackReason = 'Camada canonical disponivel, mas ainda sem sincronizacao/cobertura suficiente para o periodo.';
+        $breakdownReasonCode = 'coverage_pending';
+        $breakdownReason = 'A camada canonical ainda nao tem cobertura suficiente para detalhar este periodo.';
+        $breakdownDetail = $canonicalFallbackReason;
+        $breakdownResolution = 'Conclua a sincronizacao ou consulte um periodo ja materializado na camada fiscal canonical.';
         $logger->warning('Products: canonical sem cobertura suficiente no periodo; mantendo snapshot legado.', [
             'period' => ['start' => $start, 'end' => $end],
             'coverage' => $canonicalCoverage,
             'request_id' => RequestContext::id(),
         ]);
+    }
+
+    if (!$breakdownAvailable && $canonicalFallbackReason !== null && $canonicalFallbackReason !== '' && $breakdownReasonCode === 'legacy_snapshot_mode') {
+        $breakdownReasonCode = 'canonical_unavailable';
+        $breakdownReason = 'Detalhamento indisponivel porque a leitura canonical falhou neste periodo.';
+        $breakdownDetail = $canonicalFallbackReason;
+        $breakdownResolution = 'Verifique a sincronizacao fiscal/canonical e tente novamente apos a recuperacao da leitura.';
     }
 
     $meta = array_merge($meta, [
@@ -156,6 +197,16 @@ try {
         'request_id' => RequestContext::id(),
         'period_basis' => $canonicalSummary !== null ? 'issue_date' : ($meta['period_basis'] ?? null),
         'selected_product_code' => $productCode !== '' ? $productCode : null,
+        'selected_product_label' => $productLabel !== '' ? $productLabel : null,
+        'product_breakdown' => productBreakdownMeta(
+            $breakdownAvailable,
+            $source,
+            $breakdownLimit,
+            $breakdownReasonCode,
+            $breakdownReason,
+            $breakdownDetail,
+            $breakdownResolution
+        ),
     ]);
 
     $payload = [

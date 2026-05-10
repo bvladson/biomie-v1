@@ -19,31 +19,36 @@ if (is_file($localEnvFile)) {
     $secrets = (array) (include $localEnvFile);
 }
 
-function env(string $key, string $fallback, array $secrets): string
-{
-    // 1. Variável de ambiente do sistema
-    $val = getenv($key);
-    if ($val !== false && $val !== '') return $val;
-    // 2. $_ENV / $_SERVER
-    if (!empty($_ENV[$key])) return (string) $_ENV[$key];
-    if (!empty($_SERVER[$key])) return (string) $_SERVER[$key];
-    // 3. Arquivo local (.env.local.php)
-    if (isset($secrets[$key]) && $secrets[$key] !== '') return (string) $secrets[$key];
-    // 4. Fallback seguro (apenas valores não sensíveis)
-    return $fallback;
+if (!function_exists('env')) {
+    function env(string $key, string $fallback, array $secrets): string
+    {
+        // 1. Variável de ambiente do sistema
+        $val = getenv($key);
+        if ($val !== false && $val !== '') return $val;
+        // 2. $_ENV / $_SERVER
+        if (!empty($_ENV[$key])) return (string) $_ENV[$key];
+        if (!empty($_SERVER[$key])) return (string) $_SERVER[$key];
+        // 3. Arquivo local (.env.local.php)
+        if (isset($secrets[$key]) && $secrets[$key] !== '') return (string) $secrets[$key];
+        // 4. Fallback seguro (apenas valores não sensíveis)
+        return $fallback;
+    }
 }
 
 return [
     'app' => [
         'name'      => 'BIomie Comercial MAG',
         'version'   => env('APP_VERSION', 'dev', $secrets),
+        'env'       => env('APP_ENV', 'production', $secrets),
         'timezone'  => env('APP_TIMEZONE', 'America/Fortaleza', $secrets),
         'debug'     => (bool) env('APP_DEBUG', '0', $secrets),
+        'allow_sync_web' => (bool) env('BIOMIE_ALLOW_SYNC_WEB', '0', $secrets),
     ],
     'omie' => [
         'app_key'          => env('OMIE_APP_KEY', '', $secrets),
         'app_secret'       => env('OMIE_APP_SECRET', '', $secrets),
         'webhook_token'    => env('OMIE_WEBHOOK_TOKEN', '', $secrets),
+        'webhook_allow_insecure_local' => (bool) env('BIOMIE_ALLOW_INSECURE_WEBHOOK_LOCAL', '0', $secrets),
         'default_page_size' => 100,
         'request_timeout'  => 20,
         'method_policy'    => [
@@ -86,6 +91,7 @@ return [
         'user'    => env('DB_USER', '', $secrets),
         'pass'    => env('DB_PASS', '', $secrets),
         'charset' => 'utf8mb4',
+        'timeout' => (int) env('DB_TIMEOUT', '5', $secrets),
     ],
     'flight_plan_db' => [
         'driver'  => 'mysql',
@@ -95,6 +101,7 @@ return [
         'user'    => env('DB_USER', '', $secrets),
         'pass'    => env('DB_PASS', '', $secrets),
         'charset' => 'utf8mb4',
+        'timeout' => (int) env('DB_TIMEOUT', '5', $secrets),
     ],
     'features' => [
         'flight_plan_v2' => true,

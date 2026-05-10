@@ -223,10 +223,13 @@
     for (let v of target) { sumT += v; accTarget.push(sumT); }
 
     if(lineChart) lineChart.destroy();
-    lineChart=new Chart(cv.getContext('2d'),{type:'line',data:{labels,datasets:[
+    const lineConfig={type:'line',data:{labels,datasets:[
       {label:'Realizado Acumulado',data:accRealized,borderColor:accent,backgroundColor:soft,fill:true,tension:0.35},
       {label:'Meta Acumulada',data:accTarget,borderColor:sec,backgroundColor:'transparent',borderDash:[4,4],fill:false,tension:0.3}
-    ]},options:{responsive:true,resizeDelay:100,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback(v){return fmt(v);}}}}}});
+    ]},options:{responsive:true,resizeDelay:100,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback(v){return fmt(v);}}}}}};
+    lineChart=window.BIOMIE_CHARTS&&typeof window.BIOMIE_CHARTS.renderChartSafe==='function'
+      ? window.BIOMIE_CHARTS.renderChartSafe('flightPlanChart',lineConfig,{message:'Periodo sem historico diario.',allowZeroData:false})
+      : new Chart(cv.getContext('2d'),lineConfig);
   }
 
   window.applyFilters = applyFilters;
@@ -278,7 +281,10 @@
         const ds = data.daily_sales || [];
         const lbls = ds.map(d=>(d.date||'').slice(8,10)+'/'+(d.date||'').slice(5,7));
         const vals = ds.map(d=>Number(d.gross_revenue||0));
-        drawerChart = new Chart(cv.getContext('2d'), {type:'bar', data:{labels:lbls, datasets:[{label:'Faturamento', data:vals, backgroundColor:'var(--page-accent-soft, rgba(150,20,10,0.5))', borderRadius:2, barPercentage: 0.7}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}, ticks:{font:{size:9}}}, y:{beginAtZero:true, ticks:{callback(v){let m=v/1000;return m>=1?m+'k':v;}}}}}});
+        const drawerConfig = {type:'bar', data:{labels:lbls, datasets:[{label:'Faturamento', data:vals, backgroundColor:'var(--page-accent-soft, rgba(150,20,10,0.5))', borderRadius:2, barPercentage: 0.7}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}, ticks:{font:{size:9}}}, y:{beginAtZero:true, ticks:{callback(v){let m=v/1000;return m>=1?m+'k':v;}}}}}};
+        drawerChart = window.BIOMIE_CHARTS&&typeof window.BIOMIE_CHARTS.renderChartSafe==='function'
+          ? window.BIOMIE_CHARTS.renderChartSafe('drawerDailyChart',drawerConfig,{message:'Sem vendas diarias para este vendedor.',allowZeroData:false})
+          : new Chart(cv.getContext('2d'), drawerConfig);
       }
 
       const ow = document.getElementById('drawerOrdersList');

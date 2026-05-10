@@ -7,9 +7,18 @@ use BIomie\Database;
 use BIomie\Http;
 use BIomie\Support;
 
+$financeBootstrapCapabilities = ['jobs.view', 'sales.view', 'finance.view'];
 require __DIR__ . '/bootstrap_finance.php';
+\BIomie\Auth::requireAnyCapability(['jobs.view', 'sales.view', 'finance.view'], true);
 
 set_time_limit(90);
+
+if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
+    Http::json([
+        'ok' => false,
+        'message' => 'Este endpoint e somente de leitura. Use api/omie_materialize_commercial.php para atualizar a visao comercial.',
+    ], 405);
+}
 
 try {
     $range = Http::resolveDateRangeOrCompetencia();

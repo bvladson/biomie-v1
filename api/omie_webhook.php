@@ -7,6 +7,7 @@ use BIomie\BronzeRepository;
 use BIomie\Config;
 use BIomie\Http;
 use BIomie\Logger;
+use BIomie\Queue\FileJobQueue;
 use BIomie\RequestContext;
 use BIomie\SyncPipelineRepository;
 use BIomie\Telemetry;
@@ -31,7 +32,7 @@ try {
         ], 405);
     }
 
-    enforceWebhookToken($config);
+    enforceWebhookToken($config, $logger);
 
     $rawBody = file_get_contents('php://input');
     if (!is_string($rawBody) || trim($rawBody) === '') {
@@ -56,7 +57,7 @@ try {
         'event_at' => resolveWebhookValue('event_at', $payload, ['event_at', 'event_at_omie', 'timestamp', 'data_hora']),
         'remote_addr' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
         'user_agent' => (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
-        'request_uri' => (string) ($_SERVER['REQUEST_URI'] ?? ''),
+        'request_uri' => sanitizeWebhookRequestUri((string) ($_SERVER['REQUEST_URI'] ?? '')),
     ];
 
     $pipeline = SyncPipelineRepository::boot($config, $logger);
@@ -72,7 +73,7 @@ try {
     $bronze?->captureRecord(
         'webhooks',
         'omie_incoming',
-        (string) ($_SERVER['REQUEST_URI'] ?? '/api/omie_webhook.php'),
+        sanitizeWebhookRequestUri((string) ($_SERVER['REQUEST_URI'] ?? '/api/omie_webhook.php')),
         $endpointGroup,
         $_GET,
         $payload,
@@ -92,6 +93,14 @@ try {
         'webhook',
         (int) $config->get('sync_pipeline.webhook_dedupe_window_seconds', 300)
     );
+    $jobQueue = new FileJobQueue(dirname(__DIR__) . '/storage/cache', $logger);
+    $queueResult = $jobQueue->enqueue('high', 'webhook.inbox.process', [
+        'limit' => 20,
+        'domains' => [$domain],
+    ], [
+        'idempotency_key' => sprintf('webhook.inbox.process|%s|%s', $domain, date('Y-m-d-H-i')),
+        'max_attempts' => 5,
+    ]);
     $telemetry->recordEvent('INFO', 'webhook.accepted', 'Webhook Omie recebido e persistido.', [
         'domain' => $domain,
         'endpoint_group' => $endpointGroup,
@@ -113,6 +122,9 @@ try {
         'domain' => $domain,
         'endpoint_group' => $endpointGroup,
         'inbox' => $result,
+        'job_id' => $queueResult['job_id'],
+        'status_url' => sprintf('refresh_status.php?job_id=%s', rawurlencode((string) $queueResult['job_id'])),
+        'queue' => $queueResult,
         'request_id' => RequestContext::id(),
     ], [
         'X-Webhook-Status' => (string) ($result['status'] ?? 'persistido'),
@@ -135,25 +147,79 @@ try {
     ], 500);
 }
 
-function enforceWebhookToken(Config $config): void
+function enforceWebhookToken(Config $config, Logger $logger): void
 {
     $expected = trim((string) $config->get('omie.webhook_token', ''));
     if ($expected === '') {
+        $appEnv = strtolower(trim((string) $config->get('app.env', getenv('APP_ENV') ?: 'production')));
+        $isProduction = in_array($appEnv, ['production', 'prod'], true);
+        $allowInsecureLocal = (bool) $config->get('omie.webhook_allow_insecure_local', false);
+
+        if ($isProduction) {
+            $logger->error('Webhook Omie recusado: OMIE_WEBHOOK_TOKEN vazio em producao.', [
+                'request_id' => RequestContext::id(),
+                'remote_addr' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            ]);
+
+            Http::json([
+                'ok' => false,
+                'message' => 'Webhook indisponivel por erro de configuracao.',
+                'request_id' => RequestContext::id(),
+            ], 500);
+        }
+
+        if (!$allowInsecureLocal) {
+            $logger->warning('Webhook Omie recusado: token vazio e bypass local desativado.', [
+                'app_env' => $appEnv,
+                'request_id' => RequestContext::id(),
+                'remote_addr' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            ]);
+
+            Http::json([
+                'ok' => false,
+                'message' => 'Token do webhook nao configurado.',
+                'request_id' => RequestContext::id(),
+            ], 403);
+        }
+
+        $logger->warning('Webhook Omie aceito sem token por bypass local explicito.', [
+            'app_env' => $appEnv,
+            'request_id' => RequestContext::id(),
+            'remote_addr' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+        ]);
+
         return;
     }
 
     $provided = Http::headerValue('X-Webhook-Token');
     if ($provided === null || $provided === '') {
+        $provided = Http::headerValue('X-Omie-Webhook-Token');
+    }
+    if ($provided === null || $provided === '') {
         $provided = Http::query('token');
     }
 
     if ($provided === null || $provided === '' || !hash_equals($expected, $provided)) {
+        $logger->warning('Webhook Omie recusado: token ausente ou invalido.', [
+            'request_id' => RequestContext::id(),
+            'remote_addr' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+        ]);
+
         Http::json([
             'ok' => false,
             'message' => 'Token do webhook invalido.',
             'request_id' => RequestContext::id(),
         ], 401);
     }
+}
+
+function sanitizeWebhookRequestUri(string $uri): string
+{
+    if ($uri === '') {
+        return '';
+    }
+
+    return preg_replace('/([?&]token=)[^&]*/i', '$1[redacted]', $uri) ?? $uri;
 }
 
 /**

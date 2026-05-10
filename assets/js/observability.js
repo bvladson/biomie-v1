@@ -29,6 +29,18 @@
     rulesBody: document.getElementById('obsRulesBody'),
     shadowBody: document.getElementById('obsShadowBody'),
     failuresBody: document.getElementById('obsFailuresBody'),
+    // Fase 11
+    alertsSection: document.getElementById('obsAlertsSection'),
+    cardTotalClients: document.getElementById('cardTotalClients'),
+    cardGeoCoveragePct: document.getElementById('cardGeoCoveragePct'),
+    cardGeoCoverageSub: document.getElementById('cardGeoCoverageSub'),
+    cardCnaeCoveragePct: document.getElementById('cardCnaeCoveragePct'),
+    cardCnaeCoverageSub: document.getElementById('cardCnaeCoverageSub'),
+    cardEnrichedPct: document.getElementById('cardEnrichedPct'),
+    cardEnrichedSub: document.getElementById('cardEnrichedSub'),
+    pipelineHealthBody: document.getElementById('obsPipelineHealthBody'),
+    latencyBody: document.getElementById('obsLatencyBody'),
+    latencyWindowLabel: document.getElementById('obsLatencyWindowLabel'),
   };
 
   function fmtDate(value) {
@@ -53,9 +65,42 @@
     return `${Number(value).toFixed(0)} ms`;
   }
 
-  function setRows(target, rows) {
+  function fmtPct(value) {
+    if (value == null || value === '') return '-';
+    return `${Number(value).toFixed(1)}%`;
+  }
+
+  function fmtHours(value) {
+    if (value == null) return '-';
+    const h = Number(value);
+    if (h < 1) return `${Math.round(h * 60)} min`;
+    return `${h.toFixed(1)} h`;
+  }
+
+  function jobStatusBadge(status) {
+    const map = {
+      pronto:      'badge-status billed',
+      rodando:     'badge-status authorized',
+      atrasado:    'badge-status cancelled',
+      incompleto:  'badge-status cancelled',
+      pendente:    'badge-status',
+      desconhecido:'badge-status',
+    };
+    return `<span class="${map[status] || 'badge-status'}">${status || '-'}</span>`;
+  }
+
+  function severityBadge(severity) {
+    const map = {
+      critical: 'badge-status cancelled',
+      warning:  'badge-status authorized',
+      info:     'badge-status',
+    };
+    return `<span class="${map[severity] || 'badge-status'}">${severity || '-'}</span>`;
+  }
+
+  function setRows(target, rows, emptyColspan = 6) {
     if (!target) return;
-    target.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6">Sem dados recentes.</td></tr>';
+    target.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="${emptyColspan}" style="color:var(--text-3);text-align:center;">Sem dados recentes.</td></tr>`;
   }
 
   function waitFor(ms) {
@@ -157,14 +202,14 @@
     const errorEventsRows = dashboard.recent_failures?.error_events || [];
     const combined = []
       .concat(failedSpansRows.map((row) => ({
-        type: 'span',
+        type: 'Processamento',
         name: row.span_name,
         status: row.status_name,
         correlation: row.correlation_id,
         when: row.started_at,
       })))
       .concat(errorEventsRows.map((row) => ({
-        type: 'event',
+        type: 'Evento',
         name: row.event_name,
         status: row.level_name,
         correlation: row.correlation_id,
@@ -181,6 +226,92 @@
         <td>${fmtDate(row.when)}</td>
       </tr>
     `));
+
+    // ── Fase 11: alertas automáticos ────────────────────────────────────────
+    const activeAlerts = Array.isArray(dashboard.active_alerts) ? dashboard.active_alerts : [];
+    if (els.alertsSection) {
+      if (activeAlerts.length === 0) {
+        els.alertsSection.classList.add('d-none');
+      } else {
+        els.alertsSection.classList.remove('d-none');
+        const alertItems = activeAlerts.map((a) => {
+          const colorMap = { critical: '#dc2626', warning: '#d97706', info: 'var(--page-accent)' };
+          const color = colorMap[a.severity] || 'var(--text-2)';
+          const iconMap = { critical: 'error', warning: 'warning', info: 'info' };
+          const icon = iconMap[a.severity] || 'notifications';
+          return `
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-left:3px solid ${color};background:rgba(0,0,0,.03);border-radius:6px;margin-bottom:8px;">
+              <span class="material-symbols-rounded" style="color:${color};font-size:20px;flex-shrink:0;margin-top:1px;">${icon}</span>
+              <div>
+                <strong style="color:${color};font-size:0.85rem;">${a.title || a.rule_code}</strong>
+                <div style="font-size:0.8rem;color:var(--text-2);margin-top:2px;">${a.message || ''}</div>
+                <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px;">Detectado: ${fmtDate(a.triggered_at)}</div>
+              </div>
+            </div>`;
+        }).join('');
+
+        els.alertsSection.innerHTML = `
+          <div class="table-card" style="padding:16px;">
+            <div class="chart-card-header" style="margin-bottom:12px;">
+              <div>
+                <h3 style="display:flex;align-items:center;gap:8px;">
+                  <span class="material-symbols-rounded" style="color:#dc2626;">notifications_active</span>
+                  Alertas automaticos ativos (${activeAlerts.length})
+                </h3>
+                <small>Gerados automaticamente e resolvidos quando a situacao normalizar.</small>
+              </div>
+            </div>
+            ${alertItems}
+          </div>`;
+      }
+    }
+
+    // ── Fase 11: cobertura de dados ─────────────────────────────────────────
+    const coverage = dashboard.coverage || null;
+    if (coverage) {
+      if (els.cardTotalClients) els.cardTotalClients.textContent = String(coverage.total_clients ?? '-');
+      if (els.cardGeoCoveragePct) els.cardGeoCoveragePct.textContent = fmtPct(coverage.geo_coverage_pct);
+      if (els.cardGeoCoverageSub) els.cardGeoCoverageSub.textContent = `${coverage.geo_covered ?? '-'} de ${coverage.total_clients ?? '-'} clientes`;
+      if (els.cardCnaeCoveragePct) els.cardCnaeCoveragePct.textContent = fmtPct(coverage.cnae_coverage_pct);
+      if (els.cardCnaeCoverageSub) els.cardCnaeCoverageSub.textContent = `${coverage.cnae_covered ?? '-'} classificados`;
+      if (els.cardEnrichedPct) els.cardEnrichedPct.textContent = fmtPct(coverage.enriched_pct);
+      if (els.cardEnrichedSub) els.cardEnrichedSub.textContent = `${coverage.enriched_covered ?? '-'} com tipo_pessoa • ${coverage.active_3m_clients ?? '-'} ativos 3m`;
+    }
+
+    // ── Fase 11: saúde dos jobs de pipeline ─────────────────────────────────
+    const pipelineHealth = Array.isArray(dashboard.pipeline_health) ? dashboard.pipeline_health : [];
+    setRows(els.pipelineHealthBody, pipelineHealth.map((row) => `
+      <tr>
+        <td><strong>${row.job_name || '-'}</strong></td>
+        <td>${jobStatusBadge(row.status)}</td>
+        <td>${fmtDate(row.last_run_at)}</td>
+        <td>${fmtHours(row.age_hours)}</td>
+        <td>${fmtMs(row.duration_ms)}</td>
+        <td>${row.runs_7d ?? 0}</td>
+        <td>${row.failed_7d ?? 0} (${fmtPct(row.error_rate_7d)})</td>
+      </tr>
+    `), 7);
+
+    // ── Fase 11: latência de endpoints ──────────────────────────────────────
+    const latency = Array.isArray(dashboard.endpoint_latency) ? dashboard.endpoint_latency : [];
+    if (els.latencyWindowLabel && dashboard.window_hours) {
+      els.latencyWindowLabel.textContent = `p50 / p95 nas ultimas ${dashboard.window_hours}h a partir do monitoramento da aplicacao`;
+    }
+    setRows(els.latencyBody, latency.map((row) => {
+      const errorStyle = (row.error_rate || 0) > 5 ? 'color:#dc2626;font-weight:700;' : '';
+      return `
+        <tr>
+          <td>${row.endpoint || '-'}</td>
+          <td>${row.method || '-'}</td>
+          <td>${row.total ?? 0}</td>
+          <td>${row.errors ?? 0}</td>
+          <td style="${errorStyle}">${fmtPct(row.error_rate)}</td>
+          <td>${fmtMs(row.avg_ms)}</td>
+          <td>${fmtMs(row.p50_ms)}</td>
+          <td>${fmtMs(row.p95_ms)}</td>
+          <td>${fmtMs(row.max_ms)}</td>
+        </tr>`;
+    }), 9);
   }
 
   async function load() {
@@ -200,7 +331,7 @@
 
       const payload = await response.json();
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.message || 'Falha ao carregar observabilidade.');
+        throw new Error(payload.message || 'Falha ao carregar a confianca dos dados.');
       }
 
       const elapsed = performance.now() - loadingStartedAt;
@@ -218,7 +349,7 @@
       }
       if (els.error) {
         els.error.classList.remove('d-none');
-        els.error.textContent = error?.message || 'Falha ao carregar observabilidade.';
+        els.error.textContent = error?.message || 'Falha ao carregar a confianca dos dados.';
       }
     }
   }

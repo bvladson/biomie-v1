@@ -6,8 +6,9 @@ use BIomie\Auth;
 use BIomie\PageRenderer;
 
 require __DIR__ . '/app/page_bootstrap.php';
-Auth::requireLogin(false);
+Auth::requireCapability('sales.view', false);
 echo PageRenderer::render('vendedores.html', [
+    'page_key' => 'time-comercial',
     'user' => Auth::currentUser(),
     'is_admin' => Auth::isAdmin(),
 ]);

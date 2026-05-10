@@ -12,10 +12,14 @@ use BIomie\FinanceAnalyticsService;
 use BIomie\FinanceRepository;
 use BIomie\Logger;
 use BIomie\OmieClient;
+use BIomie\Omie\OmieExecutionContext;
 use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieRepository;
 use BIomie\RefreshQueue;
 use BIomie\SalesAnalyticsService;
+
+require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
 
 require dirname(__DIR__) . '/app/Bootstrap.php';
 Bootstrap::init();
@@ -36,6 +40,7 @@ if ($config->hasOmieCredentials()) {
         $logger,
         new OmieMethodPolicyRegistry($config),
         $cache,
+        OmieExecutionContext::JOB,
     );
     $repository = new OmieRepository($client, $config, $bronze, 'refresh-queue');
     $financeRepository = new FinanceRepository($client, $config, $logger, $cache, $bronze, 'refresh-queue');

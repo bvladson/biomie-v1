@@ -13,14 +13,13 @@ use BIomie\TargetsRepository;
 use BIomie\WorkingDays;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
 try {
     $range = Http::resolveDateRangeOrCompetencia();
     $vendorRef = rawurldecode(trim((string) Http::query('vendor_id')));
-    if ($vendorRef === '') {
-        throw new InvalidArgumentException('vendor_id e obrigatorio.');
-    }
-
+    // Se vier vazio e tivermos start/end, tudo bem, vamos resolver como __SEM_VENDEDOR__ no resolver
+    
     Http::validateDateRange($range['start'], $range['end']);
     $start = $range['start'];
     $end = $range['end'];
@@ -47,56 +46,146 @@ try {
         }
     }
 
-    if ($canonical !== null && (bool) $config->get('features.canonical_fiscal_ready', false)) {
-        $serviceV2 = new FlightPlanV2Service($canonical, $targetsRepository, $saturdayWeight);
-        $plan = $serviceV2->build($start, $end, null);
-        $vendor = null;
+    if ($canonical !== null) {
+        $vendorMap = $canonical->getVendorMap();
+        require_once __DIR__ . '/../app/Modules/Sales/Application/Vendors/VendorIdentityResolver.php';
+        $resolver = new \BIomie\Modules\Sales\Application\Vendors\VendorIdentityResolver($vendorMap);
+        
+        $identity = $resolver->resolve($vendorRef);
+        $resolvedVendorId = $identity['vendor_id'];
+        $resolvedVendorName = $identity['vendor_name'];
+        $isGeneric = $identity['is_generic'];
 
-        foreach ($plan['vendors'] ?? [] as $row) {
-            if (vendorDetailMatchesReference($row, $vendorRef)) {
-                $vendor = $row;
-                break;
+        // Se o bucket não for o genérico, pegamos os dados de meta do Plano de Voo original.
+        $vendorTargetInfo = [
+            'target_period' => 0.0,
+            'realized_period' => 0.0,
+            'realizado_vendedor' => 0.0,
+            'mercadoria_faturada_vendedor' => 0.0,
+            'forecast_period' => 0.0,
+            'gap_to_target' => 0.0,
+            'attainment_pct' => 0.0,
+            'risk_status' => 'SEM_META'
+        ];
+        
+        require_once __DIR__ . '/../app/Modules/Sales/Application/Vendors/VendorRealizedService.php';
+        $realizedService = new \BIomie\Modules\Sales\Application\Vendors\VendorRealizedService($canonical, $resolver);
+        $realizedComposition = $realizedService->explainVendor($start, $end, $identity);
+        
+        if (!$isGeneric) {
+            $serviceV2 = new FlightPlanV2Service($canonical, $targetsRepository, $saturdayWeight);
+            $plan = $serviceV2->build($start, $end, null);
+            foreach ($plan['vendors'] ?? [] as $row) {
+                if (trim((string)($row['vendor_id'] ?? '')) === $resolvedVendorId) {
+                    $vendorTargetInfo = $row;
+                    break;
+                }
             }
         }
 
-        if ($vendor === null) {
-            throw new InvalidArgumentException('Vendedor nao encontrado no plano de voo atual.');
+        $allInvoices = array_values(array_filter(
+            $canonical->listInvoicedOrdersForDisplayCommercial($start, $end, null),
+            static fn(array $row): bool => ($isGeneric 
+                ? (trim((string)($row['vendor_id'] ?? $row['codigo_vendedor_omie'] ?? '')) === '' || stripos((string)($row['vendor_name'] ?? $row['nome_vendedor'] ?? ''), 'sem vendedor') !== false)
+                : (trim((string)($row['vendor_id'] ?? $row['codigo_vendedor_omie'] ?? '')) === $resolvedVendorId))
+        ));
+
+        $allPipeline = array_values(array_filter(
+            $canonical->listPipelineOrdersForDisplayCommercial($start, $end, null),
+            static fn(array $row): bool => ($isGeneric 
+                ? (trim((string)($row['vendor_id'] ?? $row['codigo_vendedor_omie'] ?? '')) === '' || stripos((string)($row['vendor_name'] ?? $row['nome_vendedor'] ?? ''), 'sem vendedor') !== false)
+                : (trim((string)($row['vendor_id'] ?? $row['codigo_vendedor_omie'] ?? '')) === $resolvedVendorId))
+        ));
+
+        $allCancelled = array_values(array_filter(
+            $canonical->listCancelledInvoicesForDisplayCommercial($start, $end),
+            static fn(array $row): bool => ($isGeneric 
+                ? (trim((string)($row['vendor_id'] ?? $row['codigo_vendedor_omie'] ?? '')) === '' || stripos((string)($row['vendor_name'] ?? $row['nome_vendedor'] ?? ''), 'sem vendedor') !== false)
+                : (trim((string)($row['vendor_id'] ?? $row['codigo_vendedor_omie'] ?? '')) === $resolvedVendorId))
+        ));
+
+        $dailySales = buildVendorDetailDailySales($start, $end, $allInvoices);
+        
+        $grossTotal = 0.0;
+        $customerSet = [];
+        foreach ($allInvoices as $row) {
+            $grossTotal += Support::toFloat($row['merchandise_total'] ?? $row['total'] ?? 0);
+            $cid = (string)($row['customer_id'] ?? $row['codigo_cliente_omie'] ?? $row['cliente'] ?? '');
+            if ($cid !== '') $customerSet[$cid] = true;
         }
 
-        $resolvedVendorId = trim((string) ($vendor['vendor_id'] ?? ''));
-        $resolvedVendorName = trim((string) ($vendor['vendor_name'] ?? ''));
-        $resolvedVendorKey = trim((string) ($vendor['vendor_key'] ?? $vendor['vendor_ref'] ?? $resolvedVendorId));
+        $openTotal = 0.0;
+        foreach ($allPipeline as $row) {
+            $openTotal += Support::toFloat($row['merchandise_total'] ?? $row['total'] ?? 0);
+            $cid = (string)($row['customer_id'] ?? $row['codigo_cliente_omie'] ?? $row['cliente'] ?? '');
+            if ($cid !== '') $customerSet[$cid] = true;
+        }
 
-        $invoices = array_slice(array_values(array_filter(
-            $canonical->listInvoicedOrdersForDisplayCommercial($start, $end, null),
-            static fn (array $row): bool => vendorDetailMatchesCommercialRow($row, $resolvedVendorId, $resolvedVendorKey, $resolvedVendorName)
-        )), 0, 20);
-        $pipelineOrders = array_slice(array_values(array_filter(
-            $canonical->listPipelineOrdersForDisplayCommercial($start, $end, null),
-            static fn (array $row): bool => vendorDetailMatchesCommercialRow($row, $resolvedVendorId, $resolvedVendorKey, $resolvedVendorName)
-        )), 0, 20);
-        $cancelledInvoices = array_slice(array_values(array_filter(
-            $canonical->listCancelledInvoicesForDisplayCommercial($start, $end),
-            static fn (array $row): bool => vendorDetailMatchesCommercialRow($row, $resolvedVendorId, $resolvedVendorKey, $resolvedVendorName)
-        )), 0, 20);
+        $cancelledTotal = 0.0;
+        foreach ($allCancelled as $row) {
+            $cancelledTotal += Support::toFloat($row['merchandise_total'] ?? $row['total'] ?? 0);
+        }
 
-        $dailySales = buildVendorDetailDailySales($start, $end, $invoices);
+        $invoicesCount = count($allInvoices);
+        
+        $topCustomers = [];
+        // TODO: Map top customers from $allInvoices
+        $mapC = [];
+        foreach ($allInvoices as $row) {
+            $k = (string)($row['customer_id'] ?? $row['codigo_cliente_omie'] ?? $row['cliente'] ?? '');
+            if ($k === '') continue;
+            $mapC[$k] = $mapC[$k] ?? ['id'=>$k, 'label'=>$row['cliente']??$k, 'value'=>0, 'orders'=>0];
+            $mapC[$k]['value'] += Support::toFloat($row['merchandise_total'] ?? $row['total'] ?? 0);
+            $mapC[$k]['orders']++;
+        }
+        uasort($mapC, static fn($a,$b)=>$b['value']<=>$a['value']);
+        $topCustomers = array_values(array_slice($mapC, 0, 8));
+        foreach($topCustomers as &$tc) $tc['value'] = Support::money($tc['value']);
 
         Http::json([
             'ok' => true,
             'source' => 'canonical',
-            'vendor' => $vendor,
+            'vendor' => [
+                'id' => $resolvedVendorId,
+                'name' => $resolvedVendorName,
+                'aliases' => $identity['aliases'],
+                'is_generic' => $isGeneric,
+                'target_period' => $vendorTargetInfo['target_period'] ?? 0,
+                'realized_period' => $vendorTargetInfo['realizado_vendedor'] ?? $vendorTargetInfo['realized_period'] ?? Support::money($grossTotal),
+                'realizado_vendedor' => $vendorTargetInfo['realizado_vendedor'] ?? Support::money($realizedComposition['total_realized'] ?? 0),
+                'mercadoria_faturada_vendedor' => $vendorTargetInfo['mercadoria_faturada_vendedor'] ?? Support::money($realizedComposition['total_merchandise'] ?? 0),
+                'gap_to_target' => $vendorTargetInfo['gap_to_target'] ?? 0,
+                'attainment_pct' => $vendorTargetInfo['attainment_pct'] ?? 0,
+                'forecast_period' => $vendorTargetInfo['forecast_period'] ?? 0,
+                'risk_status' => $vendorTargetInfo['risk_status'] ?? 'SEM_META'
+            ],
+            'period' => ['start' => $start, 'end' => $end],
+            'summary' => [
+                'orders_count' => count($allPipeline),
+                'invoices_count' => count($allInvoices),
+                'customers_count' => count($customerSet),
+                'products_count' => 0,
+                'gross_total' => Support::money($grossTotal),
+                'cancelled_total' => Support::money($cancelledTotal),
+                'open_total' => Support::money($openTotal),
+                'ticket_avg' => $invoicesCount > 0 ? Support::money($grossTotal / $invoicesCount) : 0,
+            ],
+            'series' => $dailySales,
             'daily_sales' => $dailySales,
-            'invoices' => $invoices,
-            'pipeline_orders' => $pipelineOrders,
-            'cancelled_invoices' => $cancelledInvoices,
-            'orders' => $invoices,
+            'wallet_orders' => array_slice($allPipeline, 0, 20),
+            'pipeline_orders' => array_slice($allPipeline, 0, 20),
+            'invoices' => array_slice($allInvoices, 0, 20),
+            'orders' => array_slice($allInvoices, 0, 20),
+            'cancelled_invoices' => array_slice($allCancelled, 0, 20),
+            'customers' => $topCustomers,
+            'realized_composition' => $realizedComposition['invoices'] ?? [],
+            'products' => [],
+            'timeline' => [],
+            'data_quality' => 'operational',
             'meta' => [
-                'generated_at' => $plan['meta']['generated_at'] ?? null,
-                'last_sync' => $plan['meta']['last_sync'] ?? null,
-                'period_basis' => 'issue_date',
-                'value_basis' => 'merchandise_total',
+                'generated_at' => $canonical->lastSyncAt($start, $end),
                 'request_id' => RequestContext::id(),
+                'identity_resolution' => $identity
             ],
         ]);
     }

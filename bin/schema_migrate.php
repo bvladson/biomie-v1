@@ -7,6 +7,9 @@ use BIomie\Config;
 use BIomie\Logger;
 use BIomie\Migrations\MigrationRunner;
 
+require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+
 require_once dirname(__DIR__) . '/app/Bootstrap.php';
 Bootstrap::init();
 
@@ -29,7 +32,7 @@ try {
         'status' => [
             'ok' => true,
             'command' => 'status',
-            'result' => $runner->status(),
+            'result' => $runner->statusWithDiagnostics(),
         ],
         'migrate', 'up' => [
             'ok' => true,

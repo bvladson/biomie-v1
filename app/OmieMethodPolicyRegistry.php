@@ -396,7 +396,7 @@ final class OmieMethodPolicyRegistry
             $override = [];
         }
 
-        $policy = $this->mergeRecursive($base, $override);
+        $policy = $this->mergeRecursive($this->withRuntimeDefaults($base), $override);
         $policy['call'] = $call;
 
         return $policy;
@@ -425,7 +425,9 @@ final class OmieMethodPolicyRegistry
                 'max_attempts' => 3,
                 'base_delay_ms' => 400,
                 'max_delay_ms' => 5000,
+                'hint_cap_ms' => 60000,
             ],
+            'runtime' => $this->defaultRuntimePolicy(),
             'fallback' => [
                 'criteria' => 'Sem fallback especifico; registrar falha e escalar para reconcile.',
                 'calls' => [],
@@ -433,6 +435,41 @@ final class OmieMethodPolicyRegistry
             'redundant_cache_ttl_seconds' => 0,
             'redundant_id_keys' => [],
             'notes' => 'Politica generica aplicada ao metodo ' . $call . '.',
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $policy
+     * @return array<string,mixed>
+     */
+    private function withRuntimeDefaults(array $policy): array
+    {
+        $retryDefaults = [
+            'hint_cap_ms' => 60000,
+        ];
+        $policy['retry'] = $this->mergeRecursive($retryDefaults, is_array($policy['retry'] ?? null) ? $policy['retry'] : []);
+        $policy['runtime'] = $this->mergeRecursive(
+            $this->defaultRuntimePolicy(),
+            is_array($policy['runtime'] ?? null) ? $policy['runtime'] : []
+        );
+
+        return $policy;
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function defaultRuntimePolicy(): array
+    {
+        return [
+            'web_max_attempts' => 1,
+            'web_timeout_seconds' => 8,
+            'web_connect_timeout_seconds' => 3,
+            'web_max_sleep_ms' => 0,
+            'job_max_attempts' => 4,
+            'job_timeout_seconds' => 30,
+            'job_connect_timeout_seconds' => 10,
+            'job_max_sleep_ms' => 60000,
         ];
     }
 

@@ -9,16 +9,28 @@ use BIomie\BronzeRepository;
 use BIomie\Bootstrap;
 use BIomie\Cache;
 use BIomie\Config;
+use BIomie\Http\ErrorBoundary;
 use BIomie\Logger;
 use BIomie\OmieClient;
 use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieRepository;
 use BIomie\RefreshQueue;
 use BIomie\SalesAnalyticsService;
+use BIomie\Support\PerformanceTimer;
 use BIomie\Telemetry;
 
 require_once dirname(__DIR__) . '/app/Bootstrap.php';
 Bootstrap::init();
+
+ErrorBoundary::registerApiHandlers([
+    'route' => 'api/' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'api')),
+    'handler' => 'api/bootstrap.php',
+]);
+
+// Fase 11: registra coleta de latência por endpoint antes de qualquer saída
+\BIomie\Observability\EndpointMetricsCollector::registerShutdownHook(
+    dirname(__DIR__) . '/storage/logs/endpoint_requests.jsonl'
+);
 
 $config = new Config();
 $logger = new Logger(dirname(__DIR__) . '/storage/logs/biomie.log');
@@ -29,6 +41,9 @@ $telemetry->startRequestSpan(null, [
     'source_name' => 'api',
     'script' => basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'bootstrap.php')),
 ]);
+$GLOBALS['biomie_performance_timer'] = PerformanceTimer::start(
+    'api.' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'api'))
+);
 
 Auth::boot($config, $logger);
 Auth::requireLogin(true);

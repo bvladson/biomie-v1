@@ -1,17 +1,61 @@
+# Dependencies
 /vendor/
-/storage/cache/*.json
-/storage/cache/jobs/*.json
-/storage/logs/*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!/env.example
+/config/.env.local.php
+/config/*.local.php
+/config/installed.lock
+
+# Runtime storage
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/cache/jobs/*
+!/storage/cache/jobs/.gitkeep
+/storage/cache/*.lock
+/storage/cache/**/*.lock
 /storage/cache/phpstan/
+
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/logs/*.log
+/storage/logs/*.jsonl
+
 /storage/releases/*
 !/storage/releases/.gitkeep
-/config/.env.local.php
-.env
-*.map
+
+# Backups, dumps and exports
+/backups/
+/backup/
+/dumps/
+/dump/
+/exports/
+/tmp/
+/temp/
+*.sql
+!/database/migrations/sql/*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+*.old
+*.orig
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Local tools and OS files
+/.vscode/
+/.idea/
+/.claude/
 .DS_Store
 Thumbs.db
 
-# Bloquear arquivos de teste e debug em versionamento
+# Build and debug artifacts
+*.map
 test*.php
 debug*.php
 tmp*.php

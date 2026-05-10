@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Omie\OmieExecutionContext;
 use RuntimeException;
 
 final class OmieClient
 {
+    private readonly string $executionContext;
+
     public function __construct(
         private readonly string $appKey,
         private readonly string $appSecret,
@@ -15,7 +18,9 @@ final class OmieClient
         private readonly Logger $logger,
         private readonly ?OmieMethodPolicyRegistry $policyRegistry = null,
         private readonly ?Cache $cache = null,
+        ?string $executionContext = null,
     ) {
+        $this->executionContext = OmieExecutionContext::normalize($executionContext);
     }
 
     public function post(string $endpoint, string $call, array $params = []): array
@@ -27,7 +32,7 @@ final class OmieClient
             'source_name' => 'omie_client',
         ], 'omie', 'omie_client');
         $startedAt = microtime(true);
-        $policy = $this->policyRegistry?->forCall($call) ?? [];
+        $policy = $this->applyExecutionContextPolicy($this->policyRegistry?->forCall($call) ?? []);
         $cacheKey = $this->responseCacheKey($endpoint, $call, $params, $policy);
         $cacheTtl = (int) ($policy['redundant_cache_ttl_seconds'] ?? 0);
         if ($cacheKey !== null && $this->cache !== null && $cacheTtl > 0) {
@@ -71,6 +76,8 @@ final class OmieClient
 
         $attempt = 0;
         $maxAttempts = max(1, (int) ($policy['retry']['max_attempts'] ?? 3));
+        $timeoutSeconds = $this->timeoutSecondsForPolicy($policy);
+        $connectTimeoutSeconds = $this->connectTimeoutSecondsForPolicy($policy);
         $lastException = null;
 
         while ($attempt < $maxAttempts) {
@@ -88,8 +95,8 @@ final class OmieClient
                     'Accept: application/json',
                 ],
                 CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                CURLOPT_TIMEOUT => $this->timeoutSeconds,
-                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => $timeoutSeconds,
+                CURLOPT_CONNECTTIMEOUT => $connectTimeoutSeconds,
             ]);
 
             $response = curl_exec($ch);
@@ -159,24 +166,47 @@ final class OmieClient
                 return $decoded;
             } catch (RuntimeException $exception) {
                 $lastException = $exception;
-                $shouldRetry = $attempt < $maxAttempts && $this->shouldRetry($exception->getMessage(), $statusCode);
+                $retryable = $this->shouldRetry($exception->getMessage(), $statusCode);
+                $shouldRetry = $attempt < $maxAttempts && $retryable;
 
                 $context = [
                     'endpoint' => $endpoint,
                     'call' => $call,
                     'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts,
                     'status' => $statusCode,
                     'message' => $exception->getMessage(),
                     'retry' => $shouldRetry,
+                    'retryable' => $retryable,
+                    'runtime_context' => (string) ($policy['runtime']['context'] ?? $this->executionContext),
+                    'duration_ms' => max(0, (int) round((microtime(true) - $startedAt) * 1000)),
                 ];
+
+                $this->recordOperationalSignal($exception->getMessage(), $statusCode, $context);
 
                 if ($shouldRetry) {
                     $sleepMs = $this->retryDelayMs($exception->getMessage(), $statusCode, $attempt, $policy);
+                    $maxSleepMs = max(0, (int) ($policy['runtime']['max_sleep_ms'] ?? 0));
+                    if ($sleepMs > 0 && $maxSleepMs <= 0) {
+                        $context['sleep_ms'] = $sleepMs;
+                        $context['retry_suppressed'] = true;
+                        $this->logger->warning('Retry Omie suprimido no contexto web; operacao deve ser enfileirada.', $context);
+                        $telemetry?->recordEvent('WARNING', 'omie.retry_suppressed_web', 'Retry Omie suprimido no contexto web.', $context, 'omie', 'omie_client');
+                        throw $exception;
+                    }
+
+                    $sleepMs = min($sleepMs, $maxSleepMs);
                     $context['sleep_ms'] = $sleepMs;
                     $this->logger->warning('Falha transitoria na API Omie; aplicando retry.', $context);
                     $telemetry?->recordEvent('WARNING', 'omie.retry', 'Falha transitoria na API Omie; aplicando retry.', $context, 'omie', 'omie_client');
                     usleep($sleepMs * 1000);
                     continue;
+                }
+
+                if ($retryable && OmieExecutionContext::isWeb((string) ($policy['runtime']['context'] ?? $this->executionContext))) {
+                    $context['retry_suppressed'] = true;
+                    $this->logger->warning('Retry Omie suprimido no contexto web; operacao deve ser enfileirada.', $context);
+                    $telemetry?->recordEvent('WARNING', 'omie.retry_suppressed_web', 'Retry Omie suprimido no contexto web.', $context, 'omie', 'omie_client');
                 }
 
                 $this->logger->error('Falha definitiva na API Omie.', $context);
@@ -250,13 +280,71 @@ final class OmieClient
 
     /**
      * @param array<string,mixed> $policy
+     * @return array<string,mixed>
+     */
+    private function applyExecutionContextPolicy(array $policy): array
+    {
+        $runtime = is_array($policy['runtime'] ?? null) ? $policy['runtime'] : [];
+        $retry = is_array($policy['retry'] ?? null) ? $policy['retry'] : [];
+        $context = $this->executionContext;
+
+        if (OmieExecutionContext::isWeb($context)) {
+            $retry['max_attempts'] = min(max(1, (int) ($retry['max_attempts'] ?? 1)), 1);
+            $retry['base_delay_ms'] = 0;
+            $retry['max_delay_ms'] = 0;
+            $retry['hint_cap_ms'] = 0;
+            $runtime['max_sleep_ms'] = 0;
+            $runtime['timeout_seconds'] = min(
+                (int) ($runtime['web_timeout_seconds'] ?? 8),
+                max(1, $this->timeoutSeconds)
+            );
+            $runtime['connect_timeout_seconds'] = min((int) ($runtime['web_connect_timeout_seconds'] ?? 3), 5);
+        } else {
+            $retry['max_attempts'] = max(1, (int) ($retry['max_attempts'] ?? ($runtime['job_max_attempts'] ?? 4)));
+            $retry['hint_cap_ms'] = max(1000, (int) ($retry['hint_cap_ms'] ?? 60000));
+            $runtime['max_sleep_ms'] = max(0, (int) ($runtime['job_max_sleep_ms'] ?? ($runtime['max_sleep_ms'] ?? 60000)));
+            $runtime['timeout_seconds'] = max(1, (int) ($runtime['job_timeout_seconds'] ?? $this->timeoutSeconds));
+            $runtime['connect_timeout_seconds'] = max(1, (int) ($runtime['job_connect_timeout_seconds'] ?? 10));
+        }
+
+        $runtime['context'] = $context;
+        $policy['retry'] = $retry;
+        $policy['runtime'] = $runtime;
+
+        return $policy;
+    }
+
+    /**
+     * @param array<string,mixed> $policy
+     */
+    private function timeoutSecondsForPolicy(array $policy): int
+    {
+        $runtime = is_array($policy['runtime'] ?? null) ? $policy['runtime'] : [];
+        return max(1, (int) ($runtime['timeout_seconds'] ?? $this->timeoutSeconds));
+    }
+
+    /**
+     * @param array<string,mixed> $policy
+     */
+    private function connectTimeoutSecondsForPolicy(array $policy): int
+    {
+        $runtime = is_array($policy['runtime'] ?? null) ? $policy['runtime'] : [];
+        return max(1, (int) ($runtime['connect_timeout_seconds'] ?? 10));
+    }
+
+    /**
+     * @param array<string,mixed> $policy
      */
     private function retryDelayMs(string $message, int $statusCode, int $attempt, array $policy = []): int
     {
         $hintSeconds = $this->retryAfterSecondsFromMessage($message);
         if ($hintSeconds !== null) {
             $jitter = random_int(150, 750);
-            $hintCap = max(1000, (int) ($policy['retry']['hint_cap_ms'] ?? 300000));
+            $hintCap = (int) ($policy['retry']['hint_cap_ms'] ?? 300000);
+            if ($hintCap <= 0) {
+                return 0;
+            }
+            $hintCap = max(1000, $hintCap);
             return min(($hintSeconds * 1000) + $jitter, $hintCap);
         }
 
@@ -301,6 +389,25 @@ final class OmieClient
         }
 
         return mb_strtolower($normalized);
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     */
+    private function recordOperationalSignal(string $message, int $statusCode, array $context): void
+    {
+        $telemetry = Telemetry::global();
+        $normalized = $this->normalizeMessage($message);
+
+        if ($statusCode === 429 || str_contains($normalized, 'too many') || str_contains($normalized, 'rate limit')) {
+            $this->logger->warning('Omie sinalizou rate limit.', $context);
+            $telemetry?->recordEvent('WARNING', 'omie.rate_limited', 'Omie sinalizou rate limit.', $context, 'omie', 'omie_client');
+        }
+
+        if (str_contains($normalized, 'redundant') || str_contains($normalized, 'consumo indevido')) {
+            $this->logger->warning('Omie sinalizou requisicao redundante.', $context);
+            $telemetry?->recordEvent('WARNING', 'omie.redundant_request', 'Omie sinalizou requisicao redundante.', $context, 'omie', 'omie_client');
+        }
     }
 
     private function emptyPageResponse(string $call, array $decoded, array $params): ?array

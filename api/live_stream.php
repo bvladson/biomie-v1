@@ -3,14 +3,16 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireAnyCapability(['jobs.view', 'sales.view'], true);
 
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
 
 $cacheKey = 'biomie_live_stream_last_event_time';
+$deadline = time() + 30;
 
-while (true) {
+while (time() < $deadline) {
     if (connection_aborted() !== 0) {
         break;
     }
@@ -33,3 +35,8 @@ while (true) {
 
     sleep(3);
 }
+
+echo "event: close\n";
+echo "data: {\"reason\": \"timeout\"}\n\n";
+ob_flush();
+flush();

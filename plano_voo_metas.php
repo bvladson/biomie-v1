@@ -6,8 +6,9 @@ use BIomie\Auth;
 use BIomie\PageRenderer;
 
 require __DIR__ . '/app/page_bootstrap.php';
-Auth::requireAdmin(false);
+Auth::requireAnyCapability(['sales.sync', 'settings.manage'], false);
 echo PageRenderer::render('plano_voo_metas.html', [
+    'page_key' => 'rota-comercial',
     'user' => Auth::currentUser(),
     'is_admin' => Auth::isAdmin(),
 ]);

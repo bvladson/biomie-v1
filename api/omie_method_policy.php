@@ -8,7 +8,7 @@ use BIomie\OmieMethodPolicyRegistry;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireCapability('settings.manage', true);
 
 try {
     $registry = new OmieMethodPolicyRegistry($config);

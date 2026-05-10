@@ -6,6 +6,7 @@ namespace BIomie;
 
 use BIomie\Competencia\CompetenciaPayloadBuilder;
 use BIomie\Competencia\CompetenciaSupport;
+use BIomie\GoldMartRepository;
 use DateTimeImmutable;
 use PDO;
 use Throwable;
@@ -24,6 +25,7 @@ final class CommercialCompetenciaSnapshotService
         private readonly CanonicalRepository $canonical,
         private readonly ?TargetsRepository $targetsRepository,
         private readonly float $saturdayWeight = 0.33,
+        private readonly ?GoldMartRepository $goldMart = null,
     ) {
     }
 
@@ -422,7 +424,8 @@ final class CommercialCompetenciaSnapshotService
             $this->canonical,
             $this->targetsRepository,
             $this->saturdayWeight,
-            $this->competenciaSupport()
+            $this->competenciaSupport(),
+            $this->goldMart,
         );
     }
 }

@@ -68,18 +68,42 @@ final class OperationalObservabilityService
         $spanRows = $telemetry?->recentSpans($hours, 500) ?? [];
         $eventRows = $telemetry?->recentEvents($hours, 100) ?? [];
 
+        // ── Fase 11 additions ────────────────────────────────────────────────
+        $pdo             = $this->getPdo();
+        $coverage        = null;
+        $activeAlerts    = [];
+        $pipelineHealth  = [];
+
+        if ($pdo !== null) {
+            $coverageAgg  = new \BIomie\Observability\CoverageAggregator($pdo);
+            $alertEngine  = new \BIomie\Observability\AlertEngine($pdo);
+            $coverage     = $coverageAgg->summarize();
+            $activeAlerts = $alertEngine->getActiveAlerts();
+            $pipelineHealth = $this->summarizePipelineJobsHealth($pdo);
+        }
+
+        $metricsLog       = dirname(__DIR__) . '/storage/logs/endpoint_requests.jsonl';
+        $metricsCollector = new \BIomie\Observability\EndpointMetricsCollector($metricsLog);
+        $endpointLatency  = $metricsCollector->summarize($hours);
+        // ────────────────────────────────────────────────────────────────────
+
         return [
-            'generated_at' => date(DATE_ATOM),
-            'trace' => RequestContext::traceContext(),
-            'window_hours' => $hours,
-            'jobs' => $this->summarizeJobs($pipelineSummary, $spanRows),
-            'datasets' => $this->summarizeDatasets($freshness),
-            'shadow' => $telemetry?->summarizeShadowDiffs($hours) ?? ['critical_open_total' => 0, 'by_endpoint' => []],
-            'divergences' => $this->summarizeDivergences(),
-            'omie_methods' => $this->summarizeOmieMethodTimings($telemetry, $hours),
-            'freshness_hits' => $this->summarizeFreshnessHits($telemetry, $hours),
+            'generated_at'    => date(DATE_ATOM),
+            'trace'           => RequestContext::traceContext(),
+            'window_hours'    => $hours,
+            'jobs'            => $this->summarizeJobs($pipelineSummary, $spanRows),
+            'datasets'        => $this->summarizeDatasets($freshness),
+            'shadow'          => $telemetry?->summarizeShadowDiffs($hours) ?? ['critical_open_total' => 0, 'by_endpoint' => []],
+            'divergences'     => $this->summarizeDivergences(),
+            'omie_methods'    => $this->summarizeOmieMethodTimings($telemetry, $hours),
+            'freshness_hits'  => $this->summarizeFreshnessHits($telemetry, $hours),
             'recent_failures' => $this->recentFailures($spanRows, $eventRows),
-            'recent_events' => array_slice($eventRows, 0, 25),
+            'recent_events'   => array_slice($eventRows, 0, 25),
+            // Fase 11
+            'coverage'         => $coverage,
+            'active_alerts'    => $activeAlerts,
+            'pipeline_health'  => $pipelineHealth,
+            'endpoint_latency' => $endpointLatency,
         ];
     }
 
@@ -360,5 +384,108 @@ final class OperationalObservabilityService
 
         $decoded = json_decode($payload, true);
         return is_array($decoded) ? $decoded : [];
+    }
+
+    // ── Fase 11: helpers ─────────────────────────────────────────────────────
+
+    private function getPdo(): ?\PDO
+    {
+        $connection = Database::isConfigured($this->config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+        if (!Database::isConfigured($this->config, $connection)) {
+            return null;
+        }
+
+        try {
+            return Database::connect($this->config, $connection);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Sumariza o estado de saúde dos jobs da camada gold (biomie_pipeline_jobs).
+     * Retorna um registro por job_name com: último status, idade, taxa de erro 7d.
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function summarizePipelineJobsHealth(\PDO $pdo): array
+    {
+        $knownJobs = [
+            'gold_mart_refresh',
+            'compute_opportunities',
+            'compute_forecasts',
+            'enrich_clients_governance',
+        ];
+
+        $result = [];
+
+        foreach ($knownJobs as $jobName) {
+            try {
+                // Última execução (qualquer status)
+                $stmt = $pdo->prepare(
+                    'SELECT job_name, status, started_at, completed_at, duration_ms, rows_processed, error_message
+                     FROM biomie_pipeline_jobs
+                     WHERE job_name = :name
+                     ORDER BY id DESC LIMIT 1'
+                );
+                $stmt->execute(['name' => $jobName]);
+                $last = $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+                // Estatísticas dos últimos 7 dias
+                $stmt7d = $pdo->prepare(
+                    "SELECT COUNT(*) AS total,
+                            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+                            AVG(CASE WHEN status = 'completed' THEN duration_ms END) AS avg_ms,
+                            MAX(CASE WHEN status = 'completed' THEN duration_ms END) AS max_ms
+                     FROM biomie_pipeline_jobs
+                     WHERE job_name = :name AND started_at >= NOW() - INTERVAL 7 DAY"
+                );
+                $stmt7d->execute(['name' => $jobName]);
+                $stats = $stmt7d->fetch(\PDO::FETCH_ASSOC) ?: [];
+
+                $completedAt = $last['completed_at'] ?? null;
+                $ageSeconds  = $completedAt ? time() - (int) strtotime((string) $completedAt) : null;
+                $total7d     = (int) ($stats['total'] ?? 0);
+                $failed7d    = (int) ($stats['failed'] ?? 0);
+
+                $derivedStatus = 'pendente';
+                if ($last !== null) {
+                    $derivedStatus = match ($last['status'] ?? '') {
+                        'completed' => ($ageSeconds !== null && $ageSeconds < 90_000) ? 'pronto' : 'atrasado',
+                        'running'   => 'rodando',
+                        default     => 'incompleto',
+                    };
+                }
+
+                $result[] = [
+                    'job_name'        => $jobName,
+                    'status'          => $derivedStatus,
+                    'raw_status'      => $last['status'] ?? null,
+                    'last_run_at'     => $completedAt,
+                    'age_hours'       => $ageSeconds !== null ? round($ageSeconds / 3600, 1) : null,
+                    'duration_ms'     => $last !== null ? (int) ($last['duration_ms'] ?? 0) : null,
+                    'rows_processed'  => $last !== null ? (int) ($last['rows_processed'] ?? 0) : null,
+                    'error_message'   => $last['error_message'] ?? null,
+                    'runs_7d'         => $total7d,
+                    'failed_7d'       => $failed7d,
+                    'error_rate_7d'   => $total7d > 0 ? round($failed7d / $total7d * 100, 1) : 0.0,
+                    'avg_duration_ms' => $stats['avg_ms'] !== null ? (int) round((float) $stats['avg_ms']) : null,
+                    'max_duration_ms' => $stats['max_ms'] !== null ? (int) $stats['max_ms'] : null,
+                ];
+            } catch (\Throwable) {
+                $result[] = [
+                    'job_name'   => $jobName,
+                    'status'     => 'desconhecido',
+                    'raw_status' => null,
+                    'last_run_at'=> null,
+                    'age_hours'  => null,
+                    'runs_7d'    => 0,
+                    'failed_7d'  => 0,
+                    'error_rate_7d' => 0.0,
+                ];
+            }
+        }
+
+        return $result;
     }
 }

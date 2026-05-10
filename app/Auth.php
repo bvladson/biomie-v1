@@ -16,6 +16,34 @@ final class Auth
     private static ?string $basePath = null;
     private static bool $schemaEnsured = false;
 
+    private const CAPABILITY_ALIASES = [
+        'dashboard.view' => 'sales.view',
+        'commercial.view' => 'sales.view',
+        'financial.view' => 'finance.view',
+        'nf.view' => 'fiscal.view',
+        'reconciliation.view' => 'fiscal.view',
+        'observability.view' => 'logs.view',
+        'admin.logs' => 'logs.view',
+        'admin.users' => 'admin.manage',
+        'users.manage' => 'admin.manage',
+        'admin.migrations' => 'settings.manage',
+        'admin.console' => 'settings.manage',
+    ];
+
+    private const CAPABILITY_EQUIVALENTS = [
+        'sales.view' => ['dashboard.view', 'commercial.view'],
+        'finance.view' => ['financial.view'],
+        'fiscal.view' => ['nf.view', 'reconciliation.view'],
+        'logs.view' => ['admin.logs', 'observability.view'],
+        'admin.view' => ['admin.users', 'admin.logs', 'admin.migrations', 'admin.console'],
+        'admin.manage' => ['admin.users', 'users.manage'],
+        'settings.manage' => ['admin.console', 'admin.migrations'],
+        'jobs.run' => ['admin.console', 'admin.migrations'],
+        'sales.export' => ['export'],
+        'finance.export' => ['export'],
+        'fiscal.export' => ['export'],
+    ];
+
     /**
      * Detecta o subdiretório onde o BIomie está instalado.
      * Ex.: se o script roda em /biomie/index.php, retorna "/biomie".
@@ -140,8 +168,217 @@ final class Auth
 
     public static function isAdmin(): bool
     {
-        return strtolower((string) (self::currentUser()['role'] ?? '')) === 'admin';
+        return \BIomie\Acl\Roles::resolve((string) (self::currentUser()['role'] ?? '')) === 'admin';
     }
+
+    // ── Fase 12: capability checks ───────────────────────────────────────────
+
+    /**
+     * Retorna true se o usuário autenticado possui a capacidade solicitada.
+     * Considera o role base e o override de módulos por usuário (modules_json).
+     */
+    public static function hasCapability(string $capability): bool
+    {
+        $capability = self::normalizeCapability($capability);
+        $capabilityCandidates = self::capabilityCandidates($capability);
+        $user = self::currentUser();
+        if ($user === null) {
+            return false;
+        }
+
+        $role    = (string) ($user['role'] ?? 'viewer');
+        $modules = null;
+
+        try {
+            if (self::$config !== null) {
+                $rbac = new \BIomie\Admin\RbacService(Database::connect(self::$config, 'db'));
+                if ($rbac->tablesReady()) {
+                    return $rbac->userHasAnyPermission((int) $user['id'], $capabilityCandidates, $role);
+                }
+            }
+        } catch (\Throwable $exception) {
+            self::logger()?->warning('Falha ao consultar RBAC; usando matriz legada.', [
+                'capability' => $capability,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+
+        // Suporte ao override de módulos por usuário (campo modules_json da Fase 12)
+        $modulesRaw = $user['modules_json'] ?? null;
+        if (is_string($modulesRaw) && $modulesRaw !== '') {
+            $decoded = json_decode($modulesRaw, true);
+            $modules = is_array($decoded) ? $decoded : null;
+        }
+
+        $roleCapabilities = \BIomie\Acl\Roles::capabilities($role, $modules);
+        foreach ($capabilityCandidates as $candidate) {
+            if (in_array($candidate, $roleCapabilities, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<string> $capabilities
+     */
+    public static function hasAnyCapability(array $capabilities): bool
+    {
+        foreach ($capabilities as $capability) {
+            if (self::hasCapability($capability)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function canAccessAdminArea(): bool
+    {
+        return self::hasAnyCapability(['admin.view', 'admin.manage', 'logs.view', 'settings.manage']);
+    }
+
+    private static function capabilityToRbacPermission(string $capability): string
+    {
+        return self::normalizeCapability($capability);
+    }
+
+    private static function normalizeCapability(string $capability): string
+    {
+        $capability = strtolower(trim($capability));
+        return self::CAPABILITY_ALIASES[$capability] ?? $capability;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function capabilityCandidates(string $capability): array
+    {
+        $normalized = self::normalizeCapability($capability);
+        $candidates = [$normalized, strtolower(trim($capability))];
+        foreach (self::CAPABILITY_EQUIVALENTS[$normalized] ?? [] as $alias) {
+            $candidates[] = $alias;
+        }
+
+        return array_values(array_unique(array_filter($candidates, static fn (string $value): bool => $value !== '')));
+    }
+
+    /** Pode visualizar o dossiê completo de um cliente. */
+    public static function canViewDossier(): bool
+    {
+        return self::hasCapability('dossier.view');
+    }
+
+    /** Pode ver CPF/CNPJ sem mascaramento. */
+    public static function canViewFullDocuments(): bool
+    {
+        return self::hasCapability('documents.full');
+    }
+
+    /** Pode exportar dados para CSV/JSON. */
+    public static function canExport(): bool
+    {
+        return self::hasAnyCapability(['sales.export', 'finance.export', 'fiscal.export', 'export']);
+    }
+
+    /** Pode acessar o módulo especificado (ex.: 'financial', 'geo', 'observability'). */
+    public static function canAccessModule(string $module): bool
+    {
+        return self::hasCapability($module . '.view');
+    }
+
+    /**
+     * Interrompe a execução se o usuário não tiver acesso ao módulo.
+     * Registra o acesso negado no log.
+     */
+    public static function requireModule(string $module, bool $api = false): void
+    {
+        self::requireCapability($module . '.view', $api, 'Seu perfil nao tem acesso a este modulo.');
+
+        self::requireLogin($api);
+
+        if (self::canAccessModule($module)) {
+            return;
+        }
+
+        self::logger()?->warning('Acesso negado ao módulo.', [
+            'module'   => $module,
+            'user'     => self::currentUser()['username'] ?? null,
+            'role'     => self::currentUser()['role'] ?? null,
+            'route'    => trim((string) ($_SERVER['REQUEST_URI'] ?? '/')),
+        ]);
+
+        if ($api) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok'         => false,
+                'message'    => 'Seu perfil não tem acesso a este módulo.',
+                'module'     => $module,
+                'request_id' => \BIomie\RequestContext::id(),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        http_response_code(403);
+        echo 'Acesso não autorizado a este módulo.';
+        exit;
+    }
+
+    public static function requireCapability(string $capability, bool $api = false, ?string $message = null): void
+    {
+        self::requireLogin($api);
+
+        $capability = self::normalizeCapability($capability);
+        if (self::hasCapability($capability)) {
+            return;
+        }
+
+        self::logger()?->warning('Acesso negado por capacidade.', [
+            'capability' => $capability,
+            'user' => self::currentUser()['username'] ?? null,
+            'role' => self::currentUser()['role'] ?? null,
+            'route' => trim((string) ($_SERVER['REQUEST_URI'] ?? '/')),
+            'method' => (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'),
+        ]);
+
+        self::forbidden($api, $message, $capability, null);
+    }
+
+    /**
+     * @param list<string> $capabilities
+     */
+    public static function requireAnyCapability(array $capabilities, bool $api = false, ?string $message = null): void
+    {
+        self::requireLogin($api);
+
+        $normalized = array_values(array_unique(array_map(
+            static fn (string $capability): string => self::normalizeCapability($capability),
+            array_values($capabilities)
+        )));
+
+        if (self::hasAnyCapability($normalized)) {
+            return;
+        }
+
+        self::logger()?->warning('Acesso negado por capacidades.', [
+            'capabilities' => $normalized,
+            'user' => self::currentUser()['username'] ?? null,
+            'role' => self::currentUser()['role'] ?? null,
+            'route' => trim((string) ($_SERVER['REQUEST_URI'] ?? '/')),
+            'method' => (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'),
+        ]);
+
+        self::forbidden($api, $message, null, $normalized);
+    }
+
+    private static function logger(): ?Logger
+    {
+        return self::$logger;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
 
     public static function requireLogin(bool $api = false): void
     {
@@ -150,6 +387,7 @@ final class Auth
         }
 
         if ($api) {
+            self::unauthenticated();
             http_response_code(401);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
@@ -172,6 +410,7 @@ final class Auth
         }
 
         if ($api) {
+            self::forbidden(true, 'Acesso permitido apenas para administradores.', 'admin', null);
             http_response_code(403);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
@@ -444,8 +683,9 @@ final class Auth
         if ($email !== null && $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             return ['ok' => false, 'message' => 'E-mail inválido.'];
         }
-        if (!in_array($role, ['admin', 'user'], true)) {
-            return ['ok' => false, 'message' => 'Perfil inválido.'];
+        // Aceita roles da Fase 12 + alias legado 'user'
+        if (!in_array($role, ['viewer', 'analyst', 'manager', 'admin', 'user'], true)) {
+            return ['ok' => false, 'message' => 'Perfil inválido. Use: viewer, analyst, manager ou admin.'];
         }
         if ($requirePassword && !self::isStrongPassword((string) $password)) {
             return ['ok' => false, 'message' => 'A senha deve ter no mínimo 8 caracteres, incluindo letras e números.'];
@@ -496,5 +736,53 @@ final class Auth
         }
 
         return $fallback;
+    }
+
+    private static function unauthenticated(): never
+    {
+        \BIomie\Http::json([
+            'ok' => false,
+            'error' => 'unauthenticated',
+            'message' => 'Sessao invalida ou expirada. Faca login novamente.',
+            'request_id' => \BIomie\RequestContext::id(),
+        ], 401);
+    }
+
+    /**
+     * @param list<string>|null $requiredAny
+     */
+    private static function forbidden(bool $api, ?string $message, ?string $required, ?array $requiredAny): never
+    {
+        $message ??= 'Seu perfil nao tem permissao para acessar este recurso.';
+
+        if ($api) {
+            $payload = [
+                'ok' => false,
+                'error' => 'forbidden',
+                'message' => $message,
+                'request_id' => \BIomie\RequestContext::id(),
+            ];
+            if ($required !== null) {
+                $payload['required_permission'] = $required;
+            }
+            if ($requiredAny !== null) {
+                $payload['required_any_permission'] = $requiredAny;
+            }
+
+            \BIomie\Http::json($payload, 403);
+        }
+
+        try {
+            \BIomie\Http\ErrorBoundary::renderForbiddenPage($message, [
+                'required_permission' => $required,
+                'required_any_permission' => $requiredAny,
+                'route' => self::currentPath(),
+            ]);
+        } catch (\Throwable) {
+            http_response_code(403);
+            header('Content-Type: text/html; charset=utf-8');
+            echo 'Acesso nao autorizado. Request ID: ' . htmlspecialchars(\BIomie\RequestContext::id(), ENT_QUOTES, 'UTF-8');
+            exit;
+        }
     }
 }

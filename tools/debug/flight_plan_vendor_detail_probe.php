@@ -1,4 +1,7 @@
 <?php
+require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+
 session_start();
 $_SESSION['user_id'] = 1; // Adjust based on biomie's actual session key; usually it's 'user_id' or 'auth_user'.
 $_SERVER['REQUEST_URI'] = '/api/flight_plan_vendor_detail.php';

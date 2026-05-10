@@ -1,53 +1,31 @@
 body.finance-page {
-  --fin-bg: var(--bg-base);
-  --fin-panel: var(--bg-card);
-  --fin-border: rgba(15, 111, 77, 0.10);
-  --fin-text: #16382b;
-  --fin-muted: #628171;
-  --fin-strong: #0f6f4d;
-  --fin-strong-2: #149a65;
-  --fin-accent: #35b98b;
-  --fin-accent-soft: #dff7ed;
+  --fin-bg: var(--surface-page);
+  --fin-panel: var(--surface-card);
+  --fin-border: var(--border-soft);
+  --fin-text: var(--text-primary);
+  --fin-muted: var(--text-secondary);
+  --fin-strong: var(--brand-primary);
+  --fin-strong-2: color-mix(in srgb, var(--brand-primary) 74%, white);
+  --fin-accent: #c66f2c;
+  --fin-accent-soft: rgba(198, 111, 44, 0.12);
   --fin-gold: #c99a2e;
   --fin-gold-soft: #f8f0d9;
   --fin-red: #d04d4d;
   --fin-red-soft: #f7e2e2;
-  --fin-shadow: 0 22px 50px rgba(15, 111, 77, 0.08);
-  --fin-shell-top: #f5fbf8;
-  --fin-shell-bottom: #eef7f2;
-  --fin-surface-soft: rgba(255,255,255,0.82);
-  --fin-input-bg: rgba(244, 251, 247, 0.95);
-  --fin-track: #edf4f0;
-  --fin-soft-panel: #eef7f1;
-  --fin-card-grad-start: #f8fcfa;
-  --fin-card-grad-end: #eff7f2;
-  --fin-flat: #ffffff;
+  --fin-shadow: var(--shadow-soft);
+  --fin-shell-top: var(--surface-page);
+  --fin-shell-bottom: color-mix(in srgb, var(--surface-page) 92%, var(--surface-muted));
+  --fin-surface-soft: rgba(255,255,255,0.84);
+  --fin-input-bg: var(--surface-muted);
+  --fin-track: color-mix(in srgb, var(--border-soft) 55%, var(--surface-muted));
+  --fin-soft-panel: var(--surface-muted);
+  --fin-card-grad-start: var(--surface-card);
+  --fin-card-grad-end: color-mix(in srgb, var(--surface-card) 90%, var(--surface-muted));
+  --fin-flat: var(--surface-card);
   --fin-on-accent: #ffffff;
   background: linear-gradient(180deg, var(--fin-shell-top) 0%, var(--fin-shell-bottom) 100%);
   color: var(--fin-text);
   font-family: var(--font-body);
-}
-
-html[data-theme="dark"] body.finance-page {
-  --fin-border: rgba(101, 210, 165, 0.16);
-  --fin-text: #d9f3e7;
-  --fin-muted: #92b6a5;
-  --fin-strong: #4dc997;
-  --fin-strong-2: #6ddfb1;
-  --fin-accent: #5bd4a5;
-  --fin-accent-soft: rgba(77, 201, 151, 0.14);
-  --fin-gold-soft: rgba(201, 154, 46, 0.16);
-  --fin-red-soft: rgba(208, 77, 77, 0.16);
-  --fin-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-  --fin-shell-top: #0f1513;
-  --fin-shell-bottom: #121c19;
-  --fin-surface-soft: rgba(23, 31, 28, 0.92);
-  --fin-input-bg: rgba(18, 27, 24, 0.98);
-  --fin-track: #21352d;
-  --fin-soft-panel: #182320;
-  --fin-card-grad-start: #182320;
-  --fin-card-grad-end: #131d1a;
-  --fin-flat: #17211e;
 }
 
 .finance-main {
@@ -265,8 +243,45 @@ html[data-theme="dark"] body.finance-page {
 .fin-panel {
   border: 1px solid var(--fin-border);
   background: var(--fin-panel);
-  border-radius: 22px;
-  box-shadow: 0 18px 40px rgba(15, 111, 77, 0.06);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.fin-kpi-head {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 11px;
+}
+
+.fin-kpi-helper,
+.fin-panel-head p,
+.fin-table-meta,
+.fin-panel .small {
+  color: var(--fin-muted);
+}
+
+.fin-panel-head h2 {
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+
+.fin-panel-head p {
+  margin-top: 4px;
+}
+
+.fin-table thead th {
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.fin-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-muted) 36%, transparent);
+}
+
+.fin-table tbody tr:hover {
+  background: color-mix(in srgb, var(--brand-primary-soft) 42%, white);
 }
 
 .fin-kpi-card {
@@ -1058,26 +1073,4 @@ html[data-theme="dark"] body.finance-page {
   .fin-table-wrap {
     max-height: 300px;
   }
-}
-
-html[data-theme="dark"] body.finance-page .fin-panel,
-html[data-theme="dark"] body.finance-page .fin-kpi-card,
-html[data-theme="dark"] body.finance-page .fin-col-picker,
-html[data-theme="dark"] body.finance-page .fin-ring-center,
-html[data-theme="dark"] body.finance-page .fin-group-child td,
-html[data-theme="dark"] body.finance-page .fin-table thead th {
-  background: var(--fin-flat);
-}
-
-html[data-theme="dark"] body.finance-page .fin-filter-bar,
-html[data-theme="dark"] body.finance-page .fin-empty,
-html[data-theme="dark"] body.finance-page .fin-group-row td,
-html[data-theme="dark"] body.finance-page .fin-table-wrap {
-  background: var(--fin-surface-soft);
-}
-
-html[data-theme="dark"] body.finance-page .fin-kpi-progress,
-html[data-theme="dark"] body.finance-page .fin-bar-track,
-html[data-theme="dark"] body.finance-page .fin-progress-track {
-  background: var(--fin-track);
 }

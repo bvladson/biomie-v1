@@ -31,6 +31,9 @@ use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieRepository;
 use BIomie\Telemetry;
 
+require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+
 require dirname(__DIR__) . '/app/Bootstrap.php';
 Bootstrap::init();
 

@@ -1,0 +1,519 @@
+:root {
+    --mag-bg: #f6f7f9;
+    --mag-surface: #ffffff;
+    --mag-border: #e3e7ee;
+    --mag-text: #17202a;
+    --mag-muted: #667085;
+    --mag-accent: #b42318;
+    --mag-accent-soft: #fff1f0;
+    --mag-ok: #16803c;
+    --mag-ok-soft: #eaf7ee;
+    --mag-warn: #a15c00;
+    --mag-warn-soft: #fff7e6;
+    --mag-error: #b42318;
+    --mag-error-soft: #fff1f0;
+    --mag-radius: 16px;
+    --mag-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    color-scheme: light;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.install-page {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--mag-bg);
+    color: var(--mag-text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+a {
+    color: inherit;
+}
+
+code {
+    border: 1px solid #edf0f4;
+    border-radius: 6px;
+    background: #f7f8fa;
+    padding: 0.1rem 0.35rem;
+    color: #344054;
+    font-size: 0.92em;
+}
+
+.install-shell {
+    width: min(1120px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 32px 0 56px;
+}
+
+.install-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    color: var(--mag-muted);
+    font-weight: 700;
+}
+
+.install-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 112px;
+    height: 38px;
+    border-radius: 12px;
+    background: var(--mag-accent);
+    color: #ffffff;
+    text-decoration: none;
+    letter-spacing: 0;
+}
+
+.install-progress {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.install-progress a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    border: 1px solid var(--mag-border);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 8px 10px;
+    color: var(--mag-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.install-progress a span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #eef1f5;
+    color: #475467;
+    font-size: 0.8rem;
+}
+
+.install-progress a.done {
+    border-color: #bbecd0;
+    color: var(--mag-ok);
+}
+
+.install-progress a.done span {
+    background: var(--mag-ok-soft);
+    color: var(--mag-ok);
+}
+
+.install-progress a.current {
+    border-color: var(--mag-accent);
+    color: var(--mag-accent);
+    box-shadow: 0 0 0 3px var(--mag-accent-soft);
+}
+
+.install-progress a.current span {
+    background: var(--mag-accent-soft);
+    color: var(--mag-accent);
+}
+
+.install-card {
+    border: 1px solid var(--mag-border);
+    border-radius: var(--mag-radius);
+    background: var(--mag-surface);
+    box-shadow: var(--mag-shadow);
+    padding: 28px;
+}
+
+.install-hero {
+    max-width: 780px;
+    margin-bottom: 24px;
+}
+
+.install-kicker {
+    color: var(--mag-accent);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.install-hero h1,
+.install-section-head h1 {
+    margin: 6px 0 8px;
+    color: var(--mag-text);
+    font-size: clamp(1.6rem, 2vw, 2.2rem);
+    line-height: 1.15;
+    letter-spacing: 0;
+}
+
+.install-hero p,
+.install-section-head p,
+.install-panel p,
+.install-help {
+    margin: 0;
+    color: var(--mag-muted);
+}
+
+.install-section-head {
+    margin-bottom: 20px;
+}
+
+.install-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.install-grid.two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.install-grid.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.install-panel {
+    border: 1px solid var(--mag-border);
+    border-radius: var(--mag-radius);
+    background: #ffffff;
+    padding: 18px;
+}
+
+.install-panel.muted {
+    background: #f9fafb;
+}
+
+.install-panel.success {
+    border-color: #bbecd0;
+    background: var(--mag-ok-soft);
+}
+
+.install-panel.danger-soft {
+    border-color: #ffd3cd;
+    background: var(--mag-error-soft);
+}
+
+.install-panel h2,
+.install-details summary {
+    margin: 0 0 10px;
+    color: var(--mag-text);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.install-checklist {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.install-checklist li {
+    position: relative;
+    padding-left: 22px;
+    color: #344054;
+}
+
+.install-checklist li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mag-accent);
+}
+
+.install-checklist.boxed {
+    border: 1px solid var(--mag-border);
+    border-radius: var(--mag-radius);
+    background: #ffffff;
+    padding: 16px;
+}
+
+.install-checklist li.is-ok::before {
+    background: var(--mag-ok);
+}
+
+.install-checklist li.is-warn::before {
+    background: var(--mag-warn);
+}
+
+.install-alert {
+    margin: 0 0 16px;
+    border: 1px solid var(--mag-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-weight: 700;
+}
+
+.install-alert.ok {
+    border-color: #bbecd0;
+    background: var(--mag-ok-soft);
+    color: var(--mag-ok);
+}
+
+.install-alert.warn {
+    border-color: #ffe0a3;
+    background: var(--mag-warn-soft);
+    color: var(--mag-warn);
+}
+
+.install-alert.error {
+    border-color: #ffd3cd;
+    background: var(--mag-error-soft);
+    color: var(--mag-error);
+}
+
+.install-form {
+    display: grid;
+    gap: 18px;
+}
+
+.install-fieldset {
+    border: 1px solid var(--mag-border);
+    border-radius: var(--mag-radius);
+    padding: 14px;
+}
+
+.install-fieldset legend {
+    padding: 0 6px;
+    color: var(--mag-muted);
+    font-weight: 800;
+}
+
+.install-field,
+.install-radio,
+.install-checkbox {
+    display: grid;
+    gap: 7px;
+    color: #344054;
+    font-weight: 700;
+}
+
+.install-radio,
+.install-checkbox {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    margin: 8px 0;
+    font-weight: 600;
+}
+
+.install-field span {
+    color: #344054;
+    font-size: 0.9rem;
+}
+
+.install-field input {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid var(--mag-border);
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 9px 11px;
+    color: var(--mag-text);
+    font: inherit;
+}
+
+.install-field input:focus {
+    outline: 0;
+    border-color: var(--mag-accent);
+    box-shadow: 0 0 0 3px var(--mag-accent-soft);
+}
+
+.install-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 18px;
+}
+
+.install-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 9px 16px;
+    text-decoration: none;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.install-button.primary {
+    background: var(--mag-accent);
+    color: #ffffff;
+}
+
+.install-button.secondary {
+    border-color: var(--mag-border);
+    background: #ffffff;
+    color: #344054;
+}
+
+.install-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    margin: 14px 0 18px;
+    border: 1px solid var(--mag-border);
+    border-radius: 14px;
+}
+
+.install-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    font-size: 0.92rem;
+}
+
+.install-table th,
+.install-table td {
+    border-bottom: 1px solid #edf0f4;
+    padding: 11px 12px;
+    text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.install-table th {
+    background: #f8fafc;
+    color: #475467;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.install-table tbody tr:hover {
+    background: #fbfcfd;
+}
+
+.install-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.install-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.install-badge.ok {
+    background: var(--mag-ok-soft);
+    color: var(--mag-ok);
+}
+
+.install-badge.warn {
+    background: var(--mag-warn-soft);
+    color: var(--mag-warn);
+}
+
+.install-badge.error {
+    background: var(--mag-error-soft);
+    color: var(--mag-error);
+}
+
+.install-badge.muted {
+    background: #f2f4f7;
+    color: #475467;
+}
+
+.install-details {
+    border: 1px solid var(--mag-border);
+    border-radius: var(--mag-radius);
+    background: #ffffff;
+    padding: 14px;
+    margin: 12px 0;
+}
+
+.install-details summary {
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+.install-details[open] summary {
+    margin-bottom: 12px;
+}
+
+.install-metric {
+    border: 1px solid var(--mag-border);
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 14px;
+}
+
+.install-metric span {
+    display: block;
+    color: var(--mag-muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.install-metric strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--mag-text);
+    font-size: 1.45rem;
+    letter-spacing: 0;
+}
+
+.install-definition {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 8px 16px;
+}
+
+.install-definition dt {
+    color: var(--mag-muted);
+    font-weight: 800;
+}
+
+.install-definition dd {
+    margin: 0;
+}
+
+.install-log {
+    display: grid;
+    gap: 8px;
+    max-height: 360px;
+    overflow: auto;
+    margin: 0;
+    padding-left: 18px;
+}
+
+.install-log code {
+    white-space: pre-wrap;
+}
+
+@media (max-width: 860px) {
+    .install-progress {
+        grid-template-columns: 1fr;
+    }
+
+    .install-grid.two,
+    .install-grid.three {
+        grid-template-columns: 1fr;
+    }
+
+    .install-card {
+        padding: 20px;
+    }
+}

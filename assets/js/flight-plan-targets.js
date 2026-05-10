@@ -39,7 +39,8 @@
 
   function currentYearMonth() {
     const field = document.getElementById('dateStart');
-    if (field && field.value) return field.value;
+    let val = field && field.value ? String(field.value) : '';
+    if (val.length >= 7) return val.slice(0, 7);
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }

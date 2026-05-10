@@ -11,7 +11,7 @@ use BIomie\Telemetry;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireCapability('logs.view', true);
 
 try {
     $telemetry = Telemetry::boot($config, $logger);

@@ -9,6 +9,8 @@
         "delay_present": false,
         "freshness_at": "2026-04-01 08:00:00",
         "has_retry_or_delay": false,
+        "last_reconcile_at": null,
+        "last_success_at": null,
         "open_divergences": 0,
         "origin": "historical-snapshot",
         "pending_backlog_total": 0,
@@ -17,12 +19,18 @@
         "reconciliation_pct": 100,
         "retry_present": false,
         "source": "legacy",
+        "source_of_truth": "legacy",
         "staleness_reason": null
     },
+    "last_reconcile_at": null,
+    "last_success_at": null,
     "meta": {
         "generated_at": "2026-04-01 08:00:00",
+        "last_reconcile_at": null,
+        "last_success_at": null,
         "last_sync": "2026-04-01 08:00:00",
-        "served_from": "historical-snapshot"
+        "served_from": "historical-snapshot",
+        "source_of_truth": "legacy"
     },
     "mode": "live",
     "ok": true,
@@ -44,6 +52,7 @@
         "start": "2026-03-01"
     },
     "source": "legacy",
+    "source_of_truth": "legacy",
     "summary": {
         "active_vendors": 1,
         "avg_ticket": 3200,

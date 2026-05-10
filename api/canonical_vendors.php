@@ -18,6 +18,7 @@ use BIomie\Http;
 use BIomie\Support;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
 try {
     $range = Http::resolveDateRange();

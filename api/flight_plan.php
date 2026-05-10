@@ -14,6 +14,7 @@ use BIomie\TargetsRepository;
 use BIomie\WorkingDays;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
 try {
     $range = Http::resolveDateRangeOrCompetencia();
@@ -58,11 +59,13 @@ try {
         if ($snapshotYm !== null && ($vendorId === null || $vendorId === '')) {
             try {
                 $payload = $historical->loadPayload('flight_plan', $snapshotYm);
-                if ($payload === null || $force) {
-                    $built = $historical->materializeCompetencia($snapshotYm, $force);
-                    $payload = $built['flight_plan'];
-                }
-                if (canonicalFlightPlanPayloadHasSignal($payload)) {
+                if ($force || !is_array($payload)) {
+                    $logger->warning('Plano de Voo: snapshot historico nao materializado durante request; seguindo com leitura canonical.', [
+                        'competencia' => $snapshotYm,
+                        'force' => $force,
+                        'request_id' => RequestContext::id(),
+                    ]);
+                } elseif (canonicalFlightPlanPayloadHasSignal($payload)) {
                     if (!isset($payload['meta']) || !is_array($payload['meta'])) {
                         $payload['meta'] = [];
                     }
@@ -70,6 +73,7 @@ try {
                         $payload['meta']['targets'] = [];
                     }
                     $payload['meta']['targets']['connection'] = $targetsConnection;
+                    $payload['data_quality'] = $payload['data_quality'] ?? 'operational';
                     Http::json($payload);
                 }
 
@@ -97,6 +101,7 @@ try {
         }
 
         $payload['meta']['targets']['connection'] = $targetsConnection;
+        $payload['data_quality'] = $payload['data_quality'] ?? (canonicalFlightPlanPayloadHasSignal($payload) ? 'operational' : 'meta_only');
         if (($vendorId !== null && $vendorId !== '') || canonicalFlightPlanPayloadHasSignal($payload)) {
             Http::json($payload);
         }
@@ -119,6 +124,7 @@ try {
 
     $payload['meta']['targets']['connection'] = $targetsConnection;
     $payload['source'] = $payload['source'] ?? 'legacy';
+    $payload['data_quality'] = $payload['data_quality'] ?? 'fallback';
 
     Http::json($payload);
 } catch (InvalidArgumentException $exception) {

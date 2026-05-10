@@ -2,11 +2,10 @@
  * BIomie theme tokens
  *
  * Neutral UI tokens live here. Brand reds stay separate from the neutral scale,
- * so light/dark mode can swap surfaces, text and borders without distorting MAG.
+ * keeping the interface light, readable and stable across modules.
  */
 
-:root,
-[data-theme="light"] {
+:root {
   color-scheme: light;
 
   --font-body: "Plus Jakarta Sans", sans-serif;
@@ -17,6 +16,23 @@
   --radius-lg: 20px;
   --sidebar-w: 260px;
   --topbar-h: 64px;
+
+  --mag-bg: #f6f7fb;
+  --mag-surface: #ffffff;
+  --mag-surface-2: #f8fafc;
+  --mag-border: #e5e7eb;
+  --mag-border-strong: #d0d5dd;
+  --mag-text: #1f2937;
+  --mag-muted: #667085;
+  --mag-muted-2: #98a2b3;
+  --mag-radius: 16px;
+  --mag-radius-sm: 10px;
+  --mag-radius-lg: 22px;
+  --mag-shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --mag-shadow-card: 0 16px 38px rgba(15, 23, 42, 0.08);
+  --mag-sidebar-width: 260px;
+  --mag-sidebar-width-compact: 84px;
+  --mag-topbar-height: 64px;
 
   --bg-app: #f7f4f3;
   --bg-base: #f0f2f5;
@@ -117,96 +133,28 @@
 
   --page-accent: #96140a;
   --page-accent-soft: rgba(150, 20, 10, 0.12);
+  --page-accent-border: rgba(150, 20, 10, 0.22);
+  --page-accent-text: #7c0600;
   --page-chart-1: #96140a;
   --page-chart-2: #7c0600;
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  --bg-app: #0f1116;
-  --bg-base: #12151b;
-  --bg-surface: #171b23;
-  --bg-card: #1a1f29;
-  --bg-hover: #202634;
-  --bg-muted: #1d2430;
-  --bg-2: #202634;
-  --surface-1: #171b23;
-  --surface-2: #1a1f29;
-  --surface-3: #202634;
-
-  --text-1: #edf2f7;
-  --text-2: #b7c0cd;
-  --text-3: #7e8a9c;
-  --text-secondary: var(--text-2);
-  --placeholder: #91a0b3;
-
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --border-acc: rgba(150, 20, 10, 0.34);
-
-  --overlay: rgba(0, 0, 0, 0.56);
-  --glass-bg: rgba(22, 27, 35, 0.82);
-  --glass-bg-strong: rgba(20, 24, 31, 0.92);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --row-hover: rgba(255, 255, 255, 0.08);
-  --focus-ring: rgba(255, 184, 177, 0.42);
-  --focus-ring-soft: rgba(150, 20, 10, 0.28);
-  --selection-bg: rgba(150, 20, 10, 0.32);
-  --selection-text: #f8fafc;
-
-  --shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.24);
-  --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.32);
-  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 32px 90px rgba(0, 0, 0, 0.42);
-  --shadow-sidebar: 6px 0 30px rgba(0, 0, 0, 0.28);
-  --shadow-topbar: 0 14px 40px rgba(0, 0, 0, 0.28);
-  --shadow-card: 0 20px 52px rgba(0, 0, 0, 0.22);
-
-  --topbar-bg: rgba(15, 17, 22, 0.86);
-  --topbar-border: rgba(255, 255, 255, 0.08);
-  --browser-theme-color: #12151b;
-  --scrollbar-thumb: #3b4352;
-
-  --hero-spot-red: rgba(150, 20, 10, 0.18);
-  --hero-spot-blue: rgba(37, 99, 235, 0.14);
-  --hero-grad-start: #171b23;
-  --hero-grad-mid: #181d27;
-  --hero-grad-end: #11151d;
-  --panel-grad-start: #1a1f29;
-  --panel-grad-end: #151922;
-  --metric-track: rgba(255, 255, 255, 0.08);
-  --drawer-bg: #161a22;
-  --drawer-card-bg: #1d2430;
-  --drawer-card-border: rgba(255, 255, 255, 0.08);
-
-  --chart-grid: rgba(255, 255, 255, 0.08);
-  --chart-tooltip-bg: #0f1218;
-  --chart-tooltip-border: rgba(255, 255, 255, 0.12);
-  --chart-tooltip-title: #edf2f7;
-  --chart-tooltip-text: #b7c0cd;
-  --skeleton-base: #1b2331;
-  --skeleton-highlight: #2a3446;
-  --skeleton-edge: rgba(255, 255, 255, 0.07);
-  --skeleton-glow: rgba(255, 255, 255, 0.06);
-
-  --red-dim: rgba(150, 20, 10, 0.16);
-  --success-soft: rgba(22, 163, 74, 0.18);
-  --success-strong: #58d68d;
-  --warning-soft: rgba(217, 119, 6, 0.18);
-  --warning-strong: #ffcf70;
-  --danger-soft: rgba(220, 38, 38, 0.18);
-  --danger-strong: #ff8b8b;
-  --info-soft: rgba(37, 99, 235, 0.18);
-  --info-strong: #86b7ff;
-
-  --state-billed-bg: rgba(22, 163, 74, 0.18);
-  --state-auth-bg: rgba(217, 119, 6, 0.18);
-  --state-cancel-bg: rgba(220, 38, 38, 0.18);
-  --state-info-bg: rgba(37, 99, 235, 0.18);
-
-  --page-accent-soft: rgba(150, 20, 10, 0.18);
-  --page-chart-2: #cfb1ad;
+  --surface-page: #f6f7fb;
+  --surface-card: #ffffff;
+  --surface-card-raised: #fbfcfe;
+  --surface-muted: #f3f5f8;
+  --text-primary: #141822;
+  --text-secondary: #5d6678;
+  --border-soft: rgba(15, 23, 42, 0.08);
+  --shadow-soft: var(--mag-shadow-soft);
+  --radius-card: var(--mag-radius);
+  --brand-primary: #96140a;
+  --brand-primary-soft: rgba(150, 20, 10, 0.1);
+  --brand: #96140a;
+  --brand-dark: #7c0600;
+  --page-surface: var(--surface-card);
+  --page-surface-raised: var(--surface-card-raised);
+  --page-border: var(--border-soft);
+  --text-main: var(--text-primary);
+  --text-dim: var(--text-secondary);
 }
 
 html {
@@ -251,30 +199,143 @@ a:focus-visible {
 }
 
 /* Per-page accents */
-body[data-page="index"],
-body[data-page="integrations"],
-body[data-page="vendors"],
-body[data-page="orders"],
-body[data-page="products"],
-body[data-page="finance"],
-body[data-page="flight-plan"],
-body[data-page="flight-plan-targets"],
-body[data-page="observability"] {
-  --page-accent: #96140a;
-  --page-accent-soft: rgba(150, 20, 10, 0.12);
-  --page-chart-1: #96140a;
-  --page-chart-2: #7c0600;
+body[data-page="dashboard"],
+body[data-page="index"] {
+  --page-accent: #2563eb;
+  --page-accent-soft: rgba(37, 99, 235, 0.12);
+  --page-accent-border: rgba(37, 99, 235, 0.22);
+  --page-accent-text: #1d4ed8;
 }
 
-[data-theme="dark"] body[data-page="index"],
-[data-theme="dark"] body[data-page="integrations"],
-[data-theme="dark"] body[data-page="vendors"],
-[data-theme="dark"] body[data-page="orders"],
-[data-theme="dark"] body[data-page="products"],
-[data-theme="dark"] body[data-page="finance"],
-[data-theme="dark"] body[data-page="flight-plan"],
-[data-theme="dark"] body[data-page="flight-plan-targets"],
-[data-theme="dark"] body[data-page="observability"] {
-  --page-accent-soft: rgba(150, 20, 10, 0.18);
-  --page-chart-2: #cfb1ad;
+body[data-page="time-comercial"],
+body[data-page="vendors"] {
+  --page-accent: #0f766e;
+  --page-accent-soft: rgba(15, 118, 110, 0.14);
+  --page-accent-border: rgba(15, 118, 110, 0.24);
+  --page-accent-text: #0f766e;
 }
+
+body[data-page="geografia"],
+body[data-page="mapa_vendas"] {
+  --page-accent: #0891b2;
+  --page-accent-soft: rgba(8, 145, 178, 0.14);
+  --page-accent-border: rgba(8, 145, 178, 0.24);
+  --page-accent-text: #0e7490;
+}
+
+body[data-page="nf-periodo"],
+body[data-page="orders"] {
+  --page-accent: #ea580c;
+  --page-accent-soft: rgba(234, 88, 12, 0.14);
+  --page-accent-border: rgba(234, 88, 12, 0.24);
+  --page-accent-text: #c2410c;
+}
+
+body[data-page="mix-faturado"],
+body[data-page="products"] {
+  --page-accent: #7c3aed;
+  --page-accent-soft: rgba(124, 58, 237, 0.14);
+  --page-accent-border: rgba(124, 58, 237, 0.24);
+  --page-accent-text: #6d28d9;
+}
+
+body[data-page="financeiro"],
+body[data-page="finance"] {
+  --page-accent: #15803d;
+  --page-accent-soft: rgba(21, 128, 61, 0.14);
+  --page-accent-border: rgba(21, 128, 61, 0.24);
+  --page-accent-text: #166534;
+}
+
+body[data-page="admin"] {
+  --page-accent: #334155;
+  --page-accent-soft: rgba(51, 65, 85, 0.14);
+  --page-accent-border: rgba(51, 65, 85, 0.24);
+  --page-accent-text: #1f2937;
+}
+
+body[data-page="conciliacao"],
+body[data-page="reconciliation"] {
+  --page-accent: #b45309;
+  --page-accent-soft: rgba(180, 83, 9, 0.14);
+  --page-accent-border: rgba(180, 83, 9, 0.24);
+  --page-accent-text: #92400e;
+}
+
+body[data-page="rota-comercial"],
+body[data-page="flight-plan"] {
+  --page-accent: #4f46e5;
+  --page-accent-soft: rgba(79, 70, 229, 0.14);
+  --page-accent-border: rgba(79, 70, 229, 0.24);
+  --page-accent-text: #4338ca;
+}
+
+body[data-page="flight-plan-targets"] {
+  --page-accent: #6d28d9;
+  --page-accent-soft: rgba(109, 40, 217, 0.14);
+}
+
+body[data-page="observabilidade"],
+body[data-page="observability"] {
+  --page-accent: #db2777;
+  --page-accent-soft: rgba(219, 39, 119, 0.14);
+  --page-accent-border: rgba(219, 39, 119, 0.24);
+  --page-accent-text: #be185d;
+}
+
+body[data-page="omie"],
+body[data-page="integrations"] {
+  --page-accent: #0e7490;
+  --page-accent-soft: rgba(14, 116, 144, 0.14);
+  --page-accent-border: rgba(14, 116, 144, 0.24);
+  --page-accent-text: #155e75;
+}
+
+body[data-page="indicadores"] {
+  --page-accent: #2563eb;
+  --page-accent-soft: rgba(37, 99, 235, 0.12);
+  --page-accent-border: rgba(37, 99, 235, 0.22);
+  --page-accent-text: #1d4ed8;
+}
+
+body[data-page="analises"] {
+  --page-accent: #7c3aed;
+  --page-accent-soft: rgba(124, 58, 237, 0.14);
+  --page-accent-border: rgba(124, 58, 237, 0.24);
+  --page-accent-text: #6d28d9;
+}
+
+body[data-page="mesa"] {
+  --page-accent: #b45309;
+  --page-accent-soft: rgba(180, 83, 9, 0.14);
+  --page-accent-border: rgba(180, 83, 9, 0.24);
+  --page-accent-text: #92400e;
+}
+
+/* ── Chart height scale (shared across all pages) ──────────────────────────── */
+:root {
+  --biomie-chart-h-sm:     240px;
+  --biomie-chart-h-md:     320px;
+  --biomie-chart-h-lg:     380px;
+  --biomie-chart-h-xl:     420px;
+  --biomie-chart-h-drawer: 160px;
+  --biomie-card-radius:    16px;
+  --biomie-panel-gap:      16px;
+  --biomie-grid-min-card:  220px;
+  --biomie-grid-min-chart: 360px;
+}
+
+/* ── Dashboard BI cockpit tokens (Phase 10G) ───────────────────────────────── */
+:root {
+  --biomie-dashboard-gap:     16px;
+  --biomie-dashboard-card-h:  88px;
+  --biomie-chart-h-main:      320px;
+  --biomie-chart-h-panel-md:  260px;
+  --biomie-chart-h-panel-sm:  220px;
+  --biomie-index-map-h:       260px;
+  --biomie-panel-radius:      18px;
+  --biomie-panel-border:      rgba(15, 23, 42, 0.08);
+  --biomie-drawer-width:      min(82vw, 1200px);
+  --biomie-drawer-width-mobile: 100vw;
+}
+

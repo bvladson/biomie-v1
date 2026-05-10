@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <title>Mapa Comercial | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
+  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260501-f6" />
+  <script src="assets/js/chart.umd.js"></script>
+  <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
+  <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+</head>
+
+<body class="mag-page mag-clean-page" data-page="geografia">
+<div class="overlay" id="overlay"></div>
+
+<div class="shell">
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
+          <span class="material-symbols-rounded">menu</span>
+        </button>
+        <div class="topbar-badge">
+          <span class="material-symbols-rounded">travel_explore</span>Geografia
+        </div>
+      </div>
+    </header>
+
+    <main class="page dashboard-shell">
+      <section class="mag-page-header mag-page-header-shell mag-page-title anim">
+        <div class="mag-page-title__copy">
+          <div class="mag-kicker"><span class="material-symbols-rounded">map</span>Mapa comercial</div>
+          <h1>Vendas por bairro em Fortaleza</h1>
+          <p>Leitura geografica dos bairros, com faturamento, clientes, notas, ticket medio, compradores e CNAEs.</p>
+        </div>
+      </section>
+
+      <section class="dashboard-controls">
+        <div class="filter-bar biomie-map-toolbar anim d1">
+          <div class="filter-group">
+            <label class="filter-label" for="dateStart">Periodo inicial</label>
+            <input id="dateStart" type="date" class="filter-input" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="dateEnd">Periodo final</label>
+            <input id="dateEnd" type="date" class="filter-input" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="cityFilter">Cidade</label>
+            <input id="cityFilter" type="text" class="filter-input" value="Fortaleza" autocomplete="off" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="neighborhoodFilter">Bairro</label>
+            <input id="neighborhoodFilter" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="cnaeFilter">CNAE</label>
+            <input id="cnaeFilter" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
+          </div>
+          <div class="filter-actions">
+            <button id="applyFilters" type="button" class="btn-primary">
+              <span class="material-symbols-rounded">filter_alt</span>Aplicar filtros
+            </button>
+            <button id="clearFilters" type="button" class="btn-secondary">
+              <span class="material-symbols-rounded">restart_alt</span>Limpar
+            </button>
+          </div>
+        </div>
+        <div id="geoFeedback" class="module-alert module-alert--info d-none"></div>
+      </section>
+
+      <section class="mag-page-kpis anim d2">
+        <article class="mag-kpi-card">
+          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Total vendido</span><span class="material-symbols-rounded mag-kpi-card__icon">payments</span></div>
+          <strong id="geoKpiRevenue" class="mag-kpi-card__value">-</strong>
+          <span class="mag-kpi-card__subtitle">Faturamento materializado no filtro.</span>
+        </article>
+        <article class="mag-kpi-card">
+          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Bairros com venda</span><span class="material-symbols-rounded mag-kpi-card__icon">pin_drop</span></div>
+          <strong id="geoKpiAreas" class="mag-kpi-card__value">-</strong>
+          <span class="mag-kpi-card__subtitle">Bairros com movimentacao no periodo.</span>
+        </article>
+        <article class="mag-kpi-card">
+          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Melhor bairro</span><span class="material-symbols-rounded mag-kpi-card__icon">workspace_premium</span></div>
+          <strong id="geoKpiTopArea" class="mag-kpi-card__value">-</strong>
+          <span class="mag-kpi-card__subtitle">Maior faturamento do recorte.</span>
+        </article>
+        <article class="mag-kpi-card">
+          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Clientes</span><span class="material-symbols-rounded mag-kpi-card__icon">groups</span></div>
+          <strong id="geoKpiClients" class="mag-kpi-card__value">-</strong>
+          <span class="mag-kpi-card__subtitle">Compradores vinculados a bairro.</span>
+        </article>
+        <article class="mag-kpi-card">
+          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Notas</span><span class="material-symbols-rounded mag-kpi-card__icon">receipt_long</span></div>
+          <strong id="geoKpiNotes" class="mag-kpi-card__value">-</strong>
+          <span class="mag-kpi-card__subtitle">Notas analisadas no mart.</span>
+        </article>
+        <article class="mag-kpi-card">
+          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Sem bairro</span><span class="material-symbols-rounded mag-kpi-card__icon">location_off</span></div>
+          <strong id="geoKpiNoArea" class="mag-kpi-card__value">-</strong>
+          <span class="mag-kpi-card__subtitle">Registros a enriquecer.</span>
+        </article>
+      </section>
+
+      <section id="geoEnrichCard" class="module-alert d-none" aria-live="polite">
+        <div>
+          <strong><span class="material-symbols-rounded" style="vertical-align:middle;font-size:18px;margin-right:4px;">location_off</span>Registros sem bairro para enriquecer</strong>
+          <p id="geoEnrichMessage">Existem vendas com bairro ausente. Enriqueca os dados de endereco dos clientes para aumentar a cobertura geografica.</p>
+        </div>
+      </section>
+
+      <section id="geoMapState" class="biomie-map-state" aria-live="polite"></section>
+
+      <section class="biomie-map-layout anim d3">
+        <article class="wallboard-card biomie-map-card">
+          <div class="biomie-map-card__head">
+            <div>
+              <h2>Fortaleza por bairros</h2>
+              <p>Cor por faturamento, tooltip no hover e clique para detalhar o bairro.</p>
+            </div>
+            <button id="clearSelection" type="button" class="btn-secondary">
+              <span class="material-symbols-rounded">close</span>Limpar selecao
+            </button>
+          </div>
+          <div class="biomie-map-canvas-wrap">
+            <div id="map-container" aria-label="Mapa comercial de Fortaleza por bairros"></div>
+            <div id="mapLegend" class="biomie-map-legend" aria-label="Legenda do mapa"></div>
+          </div>
+        </article>
+
+        <section class="biomie-side-panel" aria-label="Painel do bairro selecionado">
+          <article class="wallboard-card">
+            <div class="biomie-panel-head">
+              <div>
+                <h2 id="panelTitle">Selecione um bairro</h2>
+                <p id="panelSubtitle">Clique em um bairro no mapa para ver a leitura comercial.</p>
+              </div>
+              <span id="selectedFeatureBadge" class="topbar-badge">Nenhuma selecao</span>
+            </div>
+            <div class="biomie-panel-kpis">
+              <div class="biomie-panel-kpi"><span>Faturamento</span><strong id="kpiFeatureRevenue">-</strong></div>
+              <div class="biomie-panel-kpi"><span>Clientes</span><strong id="kpiFeatureClients">-</strong></div>
+              <div class="biomie-panel-kpi"><span>Notas</span><strong id="kpiFeatureNotes">-</strong></div>
+              <div class="biomie-panel-kpi"><span>Ticket medio</span><strong id="kpiFeatureTicket">-</strong></div>
+            </div>
+          </article>
+
+          <article class="wallboard-card">
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Principais compradores</h2>
+                <p>Clientes com maior faturamento no bairro.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Cliente</th><th style="text-align:right">Notas</th><th style="text-align:right">Faturamento</th></tr></thead>
+                <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um bairro para ver os compradores." data-empty-icon="group_off"></tbody>
+              </table>
+              <div id="buyerChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
+                <canvas id="buyerChartCanvas"></canvas>
+              </div>
+            </div>
+          </article>
+
+          <article class="wallboard-card">
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Principais CNAEs</h2>
+                <p>Segmentos com maior faturamento no bairro.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>CNAE</th><th style="text-align:right">Clientes</th><th style="text-align:right">Faturamento</th></tr></thead>
+                <tbody id="cnaeRevenueTable" data-empty-title="Sem CNAEs" data-empty-message="Nenhum CNAE encontrado para este recorte." data-empty-icon="category"></tbody>
+              </table>
+              <div id="cnaeChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
+                <canvas id="cnaeChartCanvas"></canvas>
+              </div>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section id="geoCoverageBar" class="module-alert module-alert--info d-none" aria-live="polite" style="margin:0 0 8px;padding:10px 16px;font-size:13px;"></section>
+
+      <section class="wallboard-grid anim d4" style="flex-wrap:wrap;">
+        <div class="wallboard-column" style="flex:1 1 340px;min-width:280px;">
+          <article class="wallboard-card">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Ranking de bairros</h3>
+                <small>Clique em uma linha para selecionar o bairro no mapa.</small>
+              </div>
+            </div>
+            <div class="wallboard-card-body compact">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th style="width:28px;padding-right:4px;">#</th><th>Bairro</th><th style="text-align:right">Faturamento</th></tr></thead>
+                <tbody id="scopeRankingTable" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+        <div class="wallboard-column" style="flex:1 1 340px;min-width:280px;">
+          <article class="wallboard-card">
+            <div class="wallboard-card-header">
+              <div>
+                <h3>Detalhamento comercial por bairro</h3>
+                <small>Clique em uma linha para filtrar o mapa pelo bairro.</small>
+              </div>
+            </div>
+            <div class="wallboard-card-body compact" style="overflow-x:auto;">
+              <table class="mag-table mag-table-clean">
+                <thead>
+                  <tr>
+                    <th>Bairro</th>
+                    <th style="text-align:right">Clientes</th>
+                    <th style="text-align:right">Notas</th>
+                    <th style="text-align:right">Faturamento</th>
+                    <th style="text-align:right">Ticket</th>
+                    <th style="min-width:80px;">Share</th>
+                  </tr>
+                </thead>
+                <tbody id="drillDownTable" data-empty-title="Sem detalhamento" data-empty-message="Nenhum dado agregado para o filtro atual." data-empty-icon="table_view"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <details class="mag-technical-diagnostics biomie-map-diagnostics">
+        <summary aria-expanded="false" aria-controls="geoDiagnosticsContent"><span class="material-symbols-rounded">tune</span>Diagnostico tecnico</summary>
+        <div class="mag-technical-diagnostics__body" id="geoDiagnosticsContent">
+          <div class="biomie-map-diagnostics-grid">
+            <strong>GeoJSON URL</strong><span id="diagGeoUrl">-</span>
+            <strong>Bairros no GeoJSON</strong><span id="diagGeoCount">-</span>
+            <strong>Propriedade de bairro</strong><span id="diagGeoProperty">-</span>
+            <strong>Features sem nome</strong><span id="diagGeoNoName">-</span>
+            <strong>Endpoint</strong><span id="diagEndpoint">-</span>
+            <strong>Status HTTP</strong><span id="diagStatus">-</span>
+            <strong>Tempo de resposta</strong><span id="diagTime">-</span>
+            <strong>Filtros ativos</strong><span id="diagFilters">-</span>
+            <strong>Tabela gold</strong><span id="diagGoldTable">-</span>
+            <strong>Notas no mart (periodo)</strong><span id="diagGoldRows">-</span>
+            <strong>Bairros com vendas</strong><span id="diagSalesCount">-</span>
+            <strong>Match bairros</strong><span id="diagMatchRate">-</span>
+            <strong>Registros sem bairro</strong><span id="diagNoNeighborhood">-</span>
+            <strong>Ultima materializacao</strong><span id="diagMaterialized">-</span>
+            <strong>Motivo zero</strong><span id="diagMotivoZero">-</span>
+            <strong>Linhas antes filtro cidade</strong><span id="diagRowsBeforeCity">-</span>
+            <strong>Linhas apos filtro cidade</strong><span id="diagRowsAfterCity">-</span>
+            <strong>NFs canonical no periodo</strong><span id="diagCanonicalNfs">-</span>
+            <strong>Notas geo mart no periodo</strong><span id="diagGeoMartNotas">-</span>
+            <strong>Erro sanitizado</strong><span id="diagError">-</span>
+          </div>
+        </div>
+      </details>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="assets/js/shell.js?v=20260425-ui1"></script>
+<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
+<script src="assets/js/biomie-chart-helpers.js?v=20260501-f6"></script>
+<script src="assets/js/modules/drilldown-router.js"></script>
+<script src="assets/js/modules/vendor-detail/index.js"></script>
+<script src="assets/js/modules/order-detail/index.js"></script>
+<script src="assets/js/modules/invoice-detail/index.js"></script>
+<script src="assets/js/modules/customer-detail/index.js"></script>
+<script src="assets/js/biomie-map-panel.js?v=20260501-f6"></script>
+<script src="assets/js/biomie-map.js?v=20260501-f6"></script>
+</body>
+</html>

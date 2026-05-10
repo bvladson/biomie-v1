@@ -20,13 +20,47 @@ use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieOrderEventSyncService;
 use BIomie\OmieFiscalSyncService;
 use BIomie\OmieRepository;
+use BIomie\Queue\FileJobQueue;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireCapability('omie.sync', true);
 $cache = new Cache(dirname(__DIR__) . '/storage/cache');
 
 try {
+    $range = Http::resolveDateRange();
+    Http::validateDateRange($range['start'], $range['end']);
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        Http::enforceCsrf($logger);
+
+        if (!$config->hasOmieCredentials()) {
+            Http::json(['ok' => false, 'message' => 'Credenciais Omie nao configuradas.'], 500);
+        }
+
+        $jobQueue = new FileJobQueue(dirname(__DIR__) . '/storage/cache', $logger);
+        $queueResult = $jobQueue->enqueue('default', 'canonical.sync', [
+            'start' => $range['start'],
+            'end' => $range['end'],
+        ], [
+            'idempotency_key' => sprintf('canonical.sync|%s|%s', $range['start'], $range['end']),
+            'max_attempts' => 3,
+            'created_by' => Auth::currentUser()['id'] ?? null,
+        ]);
+        $statusUrl = sprintf('refresh_status.php?job_id=%s', rawurlencode((string) $queueResult['job_id']));
+
+        Http::accepted([
+            'ok' => true,
+            'message' => $queueResult['queued']
+                ? 'Sync canonico agendado para execucao em background.'
+                : 'Sync canonico ja esta em andamento para esse periodo.',
+            'mode' => 'queued',
+            'job_id' => $queueResult['job_id'],
+            'status_url' => $statusUrl,
+            'queue' => $queueResult,
+        ], ['Location' => $statusUrl]);
+    }
+
     $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
     if (!Database::isConfigured($config, $connection)) {
         Http::json(['ok' => false, 'message' => 'Banco nao configurado.'], 500);
@@ -47,9 +81,6 @@ try {
         ], 500);
     }
 
-    $range = Http::resolveDateRange();
-    Http::validateDateRange($range['start'], $range['end']);
-
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $summary = $canonical->summarize($range['start'], $range['end']);
         $lastSync = $canonical->lastSyncAt($range['start'], $range['end']);
@@ -69,6 +100,7 @@ try {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         Http::json(['ok' => false, 'message' => 'Use GET para consultar ou POST para sincronizar.'], 405);
     }
+    Http::enforceCsrf($logger);
 
     if (!$config->hasOmieCredentials()) {
         Http::json(['ok' => false, 'message' => 'Credenciais Omie nao configuradas.'], 500);
@@ -97,6 +129,11 @@ try {
         'username' => $currentUser['username'] ?? null,
         'result' => $result,
         'event_result' => $eventResult,
+    ]);
+    $adminLog->log('omie_sync_executed', null, [
+        'start' => $range['start'],
+        'end' => $range['end'],
+        'vendors_synced' => (int) ($result['vendors_synced'] ?? 0),
     ]);
 
     $message = sprintf(

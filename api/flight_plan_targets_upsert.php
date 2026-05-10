@@ -10,7 +10,7 @@ use BIomie\TargetsRepository;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireCapability('sales.sync', true);
 
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {

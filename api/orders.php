@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use BIomie\Acl\DataMasker;
+use BIomie\Auth;
 use BIomie\CanonicalCoverage;
 use BIomie\CanonicalRepository;
 use BIomie\CommercialPlanning;
@@ -14,6 +16,7 @@ use BIomie\Support;
 use BIomie\TargetsRepository;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
 try {
     $range = Http::resolveDateRange();
@@ -111,28 +114,20 @@ try {
         $canonicalPayload = $freshness->attach('orders', $canonicalPayload, ['observe_request' => true]);
         $canonicalPayload = enrichOrdersMeta($canonicalPayload, $canonicalCoverage ?? [], null);
 
-        if (CanonicalCoverage::canServe($canonicalCoverage ?? [])) {
-            $shadow->defer(
-                'orders',
-                static function () use ($analytics, $freshness, $start, $end, $forceRefresh, $statusFilter): ?array {
-                    return buildLegacyOrdersPayload($analytics->getSnapshot($start, $end, $forceRefresh), $freshness, $statusFilter);
-                },
-                static fn (): ?array => $canonicalPayload,
-                [
-                    'start' => $start,
-                    'end' => $end,
-                    'status' => $statusFilter,
-                    'official_mode' => 'canonical',
-                ]
-            );
-            Http::json($canonicalPayload);
-        }
-
-        $canonicalFallbackReason = 'Camada canonical disponivel, mas ainda sem sincronizacao/cobertura suficiente para o periodo.';
-        $logger->warning('Orders: canonical sem cobertura suficiente no periodo; mantendo snapshot legado.', [
-            'period' => ['start' => $start, 'end' => $end],
-            'coverage' => $canonicalCoverage,
-        ]);
+        $shadow->defer(
+            'orders',
+            static function () use ($analytics, $freshness, $start, $end, $forceRefresh, $statusFilter): ?array {
+                return buildLegacyOrdersPayload($analytics->getSnapshot($start, $end, $forceRefresh), $freshness, $statusFilter);
+            },
+            static fn (): ?array => $canonicalPayload,
+            [
+                'start' => $start,
+                'end' => $end,
+                'status' => $statusFilter,
+                'official_mode' => 'canonical',
+            ]
+        );
+        Http::json(DataMasker::applyToPayload($canonicalPayload, Auth::canViewFullDocuments()));
     }
 
     // ── Fallback legado ──────────────────────────────────────────────────────
@@ -163,7 +158,7 @@ try {
         ]
     );
 
-    Http::json($legacyPayload);
+    Http::json(DataMasker::applyToPayload($legacyPayload, Auth::canViewFullDocuments()));
 } catch (\InvalidArgumentException $exception) {
     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
 } catch (Throwable $exception) {

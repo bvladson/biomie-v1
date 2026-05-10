@@ -106,6 +106,14 @@ final class OmieOrderEventSyncService
                             'day' => $day,
                             'attempt' => $attempts + 1,
                         ]);
+                        if (PHP_SAPI !== 'cli') {
+                            $this->logger->warning('Backoff de eventos Omie suprimido fora de CLI; use fila/worker.', [
+                                'day' => $day,
+                                'attempt' => $attempts + 1,
+                            ]);
+                            throw $exception;
+                        }
+
                         sleep(10);
                         $attempts++;
                         continue;

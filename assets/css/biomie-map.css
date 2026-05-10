@@ -1,0 +1,272 @@
+.biomie-map-toolbar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr)) auto auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+}
+
+.biomie-map-toolbar .filter-group {
+  min-width: 0;
+}
+
+.biomie-map-toolbar .filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.biomie-map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(340px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.biomie-map-card {
+  min-width: 0;
+}
+
+.biomie-map-card__head,
+.biomie-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--mag-border);
+}
+
+.biomie-map-card__head h2,
+.biomie-panel-head h2 {
+  margin: 0;
+  color: var(--mag-text);
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.biomie-map-card__head p,
+.biomie-panel-head p {
+  margin: 4px 0 0;
+  color: var(--mag-muted);
+  font-size: 13px;
+}
+
+.biomie-map-canvas-wrap {
+  position: relative;
+  padding: 10px;
+}
+
+#map-container {
+  width: 100%;
+  min-height: 620px;
+  border: 1px solid var(--mag-border);
+  border-radius: 14px;
+  background: #eef3f7;
+  overflow: hidden;
+  z-index: 1;
+}
+
+#map-container.is-loading::after {
+  content: "Carregando dados comerciais do mapa...";
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--mag-text);
+  font-weight: 800;
+  backdrop-filter: blur(2px);
+}
+
+.leaflet-container {
+  font-family: "Plus Jakarta Sans", Arial, sans-serif;
+}
+
+.biomie-map-tooltip {
+  min-width: 170px;
+  color: #1f2937;
+}
+
+.biomie-map-tooltip strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.biomie-map-tooltip span {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 12px;
+}
+
+.biomie-map-state {
+  display: none;
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--mag-border);
+  border-radius: 14px;
+  background: var(--mag-surface);
+  color: var(--mag-muted);
+}
+
+.biomie-map-state.is-visible {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.biomie-map-state strong {
+  display: block;
+  color: var(--mag-text);
+  font-size: 14px;
+}
+
+.biomie-map-state p {
+  margin: 3px 0 0;
+  font-size: 13px;
+}
+
+.biomie-map-state--danger {
+  border-color: rgba(150, 20, 10, 0.18);
+  background: rgba(150, 20, 10, 0.06);
+}
+
+.biomie-map-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px 2px 0;
+  color: var(--mag-muted);
+  font-size: 12px;
+}
+
+.biomie-map-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.biomie-map-legend__swatch {
+  width: 18px;
+  height: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 4px;
+}
+
+.biomie-side-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.biomie-panel-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.biomie-panel-kpi {
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid var(--mag-border);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.biomie-panel-kpi span {
+  display: block;
+  color: var(--mag-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.biomie-panel-kpi strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--mag-text);
+  font-size: 18px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.biomie-panel-section {
+  padding: 0 14px 14px;
+}
+
+.biomie-panel-section h3 {
+  margin: 0 0 8px;
+  color: var(--mag-text);
+  font-size: 14px;
+}
+
+.biomie-chart-box {
+  height: 210px;
+  margin-top: 10px;
+}
+
+.biomie-chart-box.is-hidden {
+  display: none;
+}
+
+.biomie-map-diagnostics {
+  margin-top: 18px;
+}
+
+.biomie-map-diagnostics-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, max-content) minmax(0, 1fr);
+  gap: 8px 14px;
+  color: var(--mag-muted);
+  font-size: 13px;
+}
+
+.biomie-map-diagnostics-grid strong {
+  color: var(--mag-text);
+}
+
+.biomie-map-selected {
+  outline: 3px solid rgba(150, 20, 10, 0.24);
+}
+
+@media (max-width: 1180px) {
+  .biomie-map-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .biomie-map-toolbar .filter-actions {
+    grid-column: 1 / -1;
+  }
+
+  .biomie-map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #map-container {
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 680px) {
+  .biomie-map-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .biomie-map-toolbar .filter-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  #map-container {
+    min-height: 440px;
+  }
+
+  .biomie-panel-kpis {
+    grid-template-columns: 1fr;
+  }
+}

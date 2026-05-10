@@ -1,0 +1,38 @@
+{
+  "geo_metadata": { "version": "1.0", "source": "MAG-Mock", "generated_at": "2026-04-16T00:00:00Z" },
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"uf_sigla": "CE", "uf_nome": "Ceará", "uf_ibge": "23"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-37.8, -4.8], [-37.8, -5.5], [-38.5, -5.5], [-38.5, -4.8], [-37.8, -4.8]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"uf_sigla": "SP", "uf_nome": "São Paulo", "uf_ibge": "35"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-45.5, -23.0], [-45.5, -24.0], [-46.5, -24.0], [-46.5, -23.0], [-45.5, -23.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"uf_sigla": "RJ", "uf_nome": "Rio de Janeiro", "uf_ibge": "33"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-42.5, -22.0], [-42.5, -23.0], [-43.5, -23.0], [-43.5, -22.0], [-42.5, -22.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"uf_sigla": "MG", "uf_nome": "Minas Gerais", "uf_ibge": "31"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-44.5, -19.0], [-44.5, -20.0], [-45.5, -20.0], [-45.5, -19.0], [-44.5, -19.0]]]
+      }
+    }
+  ]
+}

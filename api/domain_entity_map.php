@@ -9,7 +9,7 @@ use BIomie\Http;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireAnyCapability(['settings.manage', 'admin.view'], true);
 
 try {
     $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';

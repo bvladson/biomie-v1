@@ -57,6 +57,7 @@ final class MigrationRunner
                 'logical_connection' => $logicalConnection,
                 'actual_connection' => $actualConnection,
                 'file' => $migration['path'],
+                'file_basename' => basename((string) $migration['path']),
                 'checksum' => $migration['checksum'],
                 'status' => 'pending',
                 'checksum_match' => true,
@@ -64,6 +65,7 @@ final class MigrationRunner
                 'rolled_back_at' => null,
                 'execution_ms' => null,
                 'app_version' => null,
+                'domain_group' => self::classifyDomainGroup((string) $migration['version'], (string) $migration['description'], basename((string) $migration['path'])),
             ];
 
             if (!$this->isActualConnectionConfigured($actualConnection)) {
@@ -116,6 +118,73 @@ final class MigrationRunner
             'summary' => $summary,
             'migrations' => $rows,
         ];
+    }
+
+    /**
+     * Status enriquecido com diagnósticos de conexão, ambiente e arquivos soltos.
+     * Usado tanto pelo CLI quanto pelo admin para exibição completa.
+     *
+     * @return array{summary:array<string,int>,migrations:list<array<string,mixed>>,diagnostics:array<string,mixed>}
+     */
+    public function statusWithDiagnostics(): array
+    {
+        $status = $this->status();
+
+        $path = $this->migrationsPath !== '' ? $this->migrationsPath : Bootstrap::rootPath(
+            (string) $this->config->get('migrations.path', 'database/migrations')
+        );
+
+        // Info de conexão (sem senha)
+        $connectionInfo = [];
+        foreach (['db', 'flight_plan_db'] as $connName) {
+            if (Database::isConfigured($this->config, $connName)) {
+                $connectionInfo[$connName] = [
+                    'configured' => true,
+                    'host' => (string) $this->config->get($connName . '.host', ''),
+                    'port' => (int) $this->config->get($connName . '.port', 3306),
+                    'database' => (string) $this->config->get($connName . '.name', ''),
+                    'user' => (string) $this->config->get($connName . '.user', ''),
+                    'charset' => (string) $this->config->get($connName . '.charset', 'utf8mb4'),
+                    'driver' => (string) $this->config->get($connName . '.driver', 'mysql'),
+                ];
+            } else {
+                $connectionInfo[$connName] = ['configured' => false];
+            }
+        }
+
+        // Detecção de arquivos SQL soltos
+        $looseSqlFiles = [];
+        $sqlFiles = glob(rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '*.sql');
+        foreach (($sqlFiles ?: []) as $sqlFile) {
+            $looseSqlFiles[] = basename($sqlFile);
+        }
+
+        // Versão do servidor MySQL/MariaDB
+        $dbVersion = null;
+        $dbName = null;
+        try {
+            $actualConn = $this->resolveActualConnection('canonical');
+            if ($this->isActualConnectionConfigured($actualConn)) {
+                $pdo = $this->connection($actualConn);
+                $dbVersion = (string) ($pdo->query('SELECT VERSION()')->fetchColumn() ?: '');
+                $dbName = (string) ($pdo->query('SELECT DATABASE()')->fetchColumn() ?: '');
+            }
+        } catch (Throwable) {}
+
+        $status['diagnostics'] = [
+            'migrations_path' => $path,
+            'migrations_table' => $this->tableName,
+            'environment' => (string) $this->config->get('app.env', getenv('APP_ENV') ?: 'production'),
+            'app_version' => $this->appVersion,
+            'php_version' => PHP_VERSION,
+            'db_version' => $dbVersion,
+            'db_name' => $dbName,
+            'connections' => $connectionInfo,
+            'loose_sql_files' => $looseSqlFiles,
+            'generated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        return $status;
     }
 
     /**
@@ -187,18 +256,24 @@ final class MigrationRunner
                     'execution_ms' => $executionMs,
                 ];
             } catch (Throwable $exception) {
+                $executionMs = (int) round((microtime(true) - $startedAt) * 1000);
                 $this->logger->error('Falha ao aplicar migration.', [
                     'version' => $version,
                     'description' => $migration['description'],
                     'connection' => $actualConnection,
                     'message' => $exception->getMessage(),
                 ]);
+                $this->logMigrationFailure($migration, $exception, $executionMs);
 
-                throw new RuntimeException(sprintf(
-                    'Falha ao aplicar migration %s: %s',
+                throw new MigrationFailedException(
+                    sprintf('Falha ao aplicar migration %s: %s', $version, $exception->getMessage()),
                     $version,
-                    $exception->getMessage()
-                ), 0, $exception);
+                    (string) $migration['description'],
+                    basename((string) $migration['path']),
+                    $actualConnection,
+                    $executionMs,
+                    $exception
+                );
             }
         }
 
@@ -531,6 +606,168 @@ final class MigrationRunner
     private function migrationTable(): string
     {
         return '`' . str_replace('`', '``', $this->tableName) . '`';
+    }
+
+    /**
+     * Executa exatamente uma migration específica sem rodar as anteriores pendentes.
+     *
+     * @return array{applied:list<array<string,mixed>>,skipped:list<array<string,mixed>>}
+     */
+    public function migrateOne(string $targetVersion): array
+    {
+        $migration = $this->findMigrationByVersion($targetVersion);
+        if ($migration === null) {
+            throw new RuntimeException('Migration ' . $targetVersion . ' nao encontrada.');
+        }
+
+        $actualConnection = $this->resolveActualConnection((string) $migration['logical_connection']);
+        if (!$this->isActualConnectionConfigured($actualConnection)) {
+            throw new RuntimeException(sprintf(
+                'Conexao "%s" nao configurada para migration %s.',
+                $actualConnection,
+                $targetVersion
+            ));
+        }
+
+        $record = $this->fetchAppliedRecord($actualConnection, $targetVersion);
+        if ($record !== null && (string) ($record['status'] ?? 'applied') === 'applied') {
+            return [
+                'applied' => [],
+                'skipped' => [[
+                    'version' => $targetVersion,
+                    'description' => $migration['description'],
+                    'connection' => $actualConnection,
+                    'reason' => 'already_applied',
+                ]],
+            ];
+        }
+
+        $pdo = $this->connection($actualConnection);
+        $startedAt = microtime(true);
+
+        try {
+            /** @var MigrationInterface $instance */
+            $instance = $migration['instance'];
+            $instance->up($pdo);
+            $executionMs = (int) round((microtime(true) - $startedAt) * 1000);
+
+            $this->storeAppliedRecord($actualConnection, $migration, $executionMs);
+            $this->logger->info('Migration individual aplicada.', [
+                'version' => $targetVersion,
+                'description' => $migration['description'],
+                'connection' => $actualConnection,
+                'execution_ms' => $executionMs,
+            ]);
+
+            return [
+                'applied' => [[
+                    'version' => $targetVersion,
+                    'description' => $migration['description'],
+                    'connection' => $actualConnection,
+                    'type' => $migration['type'],
+                    'execution_ms' => $executionMs,
+                ]],
+                'skipped' => [],
+            ];
+        } catch (Throwable $exception) {
+            $executionMs = (int) round((microtime(true) - $startedAt) * 1000);
+            $this->logger->error('Falha ao aplicar migration individual.', [
+                'version' => $targetVersion,
+                'description' => $migration['description'],
+                'connection' => $actualConnection,
+                'message' => $exception->getMessage(),
+            ]);
+            $this->logMigrationFailure($migration, $exception, $executionMs);
+
+            throw new MigrationFailedException(
+                sprintf('Falha ao aplicar migration %s: %s', $targetVersion, $exception->getMessage()),
+                $targetVersion,
+                (string) $migration['description'],
+                basename((string) $migration['path']),
+                $actualConnection,
+                $executionMs,
+                $exception
+            );
+        }
+    }
+
+    /**
+     * Registra falha de migration em biomie_operational_events (best-effort; ignora se tabela ausente).
+     *
+     * @param array<string,mixed> $migration
+     */
+    private function logMigrationFailure(array $migration, Throwable $exception, int $executionMs): void
+    {
+        try {
+            $conn = $this->resolveActualConnection('canonical');
+            if (!$this->isActualConnectionConfigured($conn)) {
+                return;
+            }
+            $pdo = $this->connections[$conn] ?? Database::connect($this->config, $conn);
+            $stmt = $pdo->prepare(
+                "INSERT INTO biomie_operational_events
+                 (level_name, event_name, domain_name, source_name, summary, context_json, occurred_at)
+                 VALUES ('ERROR', 'migration.failed', 'migrations', 'migration_runner', :summary, :context, NOW())"
+            );
+            $stmt->execute([
+                'summary' => sprintf(
+                    'Migration %s falhou: %s',
+                    $migration['version'],
+                    mb_substr($exception->getMessage(), 0, 200)
+                ),
+                'context' => json_encode([
+                    'schema_version' => $migration['version'],
+                    'description'    => $migration['description'],
+                    'file'           => basename((string) $migration['path']),
+                    'connection'     => $this->resolveActualConnection((string) $migration['logical_connection']),
+                    'error_message'  => $exception->getMessage(),
+                    'execution_ms'   => $executionMs,
+                ], JSON_UNESCAPED_UNICODE),
+            ]);
+        } catch (Throwable) {
+            // biomie_operational_events pode nao existir ainda — ignorar silenciosamente
+        }
+    }
+
+    /**
+     * Classifica uma migration em grupo/domínio por heurística.
+     */
+    private static function classifyDomainGroup(string $version, string $description, string $filename): string
+    {
+        $lower = strtolower($description . ' ' . $filename);
+
+        if (str_contains($lower, 'rbac') || str_contains($lower, 'admin') || str_contains($lower, 'access_control') || str_contains($lower, 'accesscontrol')) {
+            return 'RBAC/Admin';
+        }
+        if (str_contains($lower, 'geo') || str_contains($lower, 'geographic') || str_contains($lower, 'compradores') || str_contains($lower, 'regiao')) {
+            return 'Geografia';
+        }
+        if (str_contains($lower, 'cnae') || str_contains($lower, 'cnpj')) {
+            return 'CNAE/Compradores';
+        }
+        if (str_contains($lower, 'gold') || str_contains($lower, 'mart') || str_contains($lower, 'opportunity') || str_contains($lower, 'forecast')) {
+            return 'Gold/Analytics';
+        }
+        if (str_contains($lower, 'index') || str_contains($lower, 'performance')) {
+            return 'Performance';
+        }
+        if (str_contains($lower, 'observ') || str_contains($lower, 'pipeline') || str_contains($lower, 'status_check') || str_contains($lower, 'omie')) {
+            return 'Observabilidade';
+        }
+        if (str_contains($lower, 'governance') || str_contains($lower, 'enrichment')) {
+            return 'Governanca';
+        }
+        if (str_contains($lower, 'canonical') || str_contains($lower, 'baseline') || str_contains($lower, 'bronze')) {
+            return 'Core/Canonical';
+        }
+        if (str_contains($lower, 'reconcil') || str_contains($lower, 'competencia') || str_contains($lower, 'snapshot')) {
+            return 'Reconciliacao';
+        }
+        if (str_contains($lower, 'auth') || str_contains($lower, 'flight_plan') || str_contains($lower, 'flightplan')) {
+            return 'Core';
+        }
+
+        return 'Geral';
     }
 
     /**

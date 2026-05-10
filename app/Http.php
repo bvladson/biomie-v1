@@ -4,13 +4,25 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Support\PerformanceTimer;
 use DateTimeImmutable;
 use InvalidArgumentException;
+use PDO;
 
 final class Http
 {
     public static function json(array $payload, int $status = 200, array $headers = [], bool $cacheable = false): never
     {
+        $performance = self::finishPerformanceTimer();
+        if ($performance !== null) {
+            $headers['X-BIomie-Response-Time-Ms'] = (string) $performance['total_ms'];
+            if (self::canExposeDiagnostics()) {
+                $diagnostics = is_array($payload['diagnostics'] ?? null) ? $payload['diagnostics'] : [];
+                $diagnostics['performance'] = $performance;
+                $payload['diagnostics'] = $diagnostics;
+            }
+        }
+
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         header('X-Request-Id: ' . RequestContext::id());
@@ -34,9 +46,143 @@ final class Http
         exit;
     }
 
+    /**
+     * @return array{name:string,total_ms:float,measures:array<string,float>,warnings:list<string>}|null
+     */
+    private static function finishPerformanceTimer(): ?array
+    {
+        $timer = $GLOBALS['biomie_performance_timer'] ?? null;
+        if (!$timer instanceof PerformanceTimer) {
+            return null;
+        }
+
+        unset($GLOBALS['biomie_performance_timer']);
+        return $timer->finish();
+    }
+
+    private static function canExposeDiagnostics(): bool
+    {
+        try {
+            if (Auth::canAccessAdminArea()) {
+                return true;
+            }
+
+            $environment = strtolower((string) (getenv('APP_ENV') ?: 'production'));
+            return $environment !== 'production' && self::boolQuery('debug', false);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Responds with JSON and ETag-based conditional caching.
+     *
+     * On cache hit (If-None-Match matches), sends 304 Not Modified with no body.
+     * Otherwise sends the payload with ETag + Cache-Control headers.
+     *
+     * @param int $maxAge Cache-Control max-age in seconds (default 60)
+     */
+    public static function jsonWithEtag(array $payload, int $maxAge = 60, array $headers = []): never
+    {
+        $json = json_encode(
+            $payload,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+
+        if ($json === false) {
+            $json = '{"ok":false,"message":"Falha ao serializar a resposta JSON."}';
+        }
+
+        $etag = '"' . md5($json) . '"';
+        $clientEtag = trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''));
+
+        if ($clientEtag !== '' && $clientEtag === $etag) {
+            http_response_code(304);
+            header('ETag: ' . $etag);
+            header('Cache-Control: private, max-age=' . $maxAge);
+            exit;
+        }
+
+        http_response_code(200);
+        header('Content-Type: application/json; charset=utf-8');
+        header('X-Request-Id: ' . RequestContext::id());
+        header('X-Correlation-Id: ' . RequestContext::correlationId());
+        header('X-Trace-Id: ' . RequestContext::traceId());
+        header('Vary: Accept');
+        header('ETag: ' . $etag);
+        header('Cache-Control: private, max-age=' . $maxAge);
+        foreach ($headers as $name => $value) {
+            header($name . ': ' . $value);
+        }
+
+        echo $json;
+        exit;
+    }
+
     public static function accepted(array $payload, array $headers = []): never
     {
         self::json($payload, 202, $headers);
+    }
+
+    /**
+     * @param list<string> $allowedMethods
+     */
+    public static function methodNotAllowed(array $allowedMethods, ?string $message = null): never
+    {
+        $allowedMethods = array_values(array_unique(array_map(
+            static fn (string $method): string => strtoupper(trim($method)),
+            $allowedMethods
+        )));
+
+        self::json([
+            'ok' => false,
+            'error' => 'method_not_allowed',
+            'message' => $message ?: 'Metodo nao permitido.',
+            'allowed_methods' => $allowedMethods,
+            'request_id' => RequestContext::id(),
+        ], 405, ['Allow' => implode(', ', $allowedMethods)]);
+    }
+
+    public static function validationError(string $message = 'Parametros invalidos.', array $details = []): never
+    {
+        self::json([
+            'ok' => false,
+            'error' => 'validation_error',
+            'message' => $message,
+            'details' => $details,
+            'request_id' => RequestContext::id(),
+        ], 422);
+    }
+
+    public static function internalError(string $message = 'Erro interno. Tente novamente em alguns segundos.'): never
+    {
+        self::json([
+            'ok' => false,
+            'error' => 'internal_error',
+            'message' => $message,
+            'request_id' => RequestContext::id(),
+        ], 500);
+    }
+
+    public static function tableExists(PDO $pdo, string $tableName): bool
+    {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table'
+        );
+        $stmt->execute(['table' => $tableName]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public static function jsonConflictMissingTable(string $tableName, ?string $friendlyMessage = null): never
+    {
+        self::json([
+            'ok' => false,
+            'error' => 'missing_analytic_table',
+            'message' => $friendlyMessage
+                ?? 'Os dados analíticos ainda não foram preparados. Execute as migrations e a materialização dos marts.',
+            'table' => $tableName,
+            'recommended_action' => 'Rodar php bin/schema_migrate.php migrate e depois materialize_marts.php',
+        ], 409);
     }
 
     public static function query(string $key, ?string $default = null): ?string

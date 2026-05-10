@@ -12,6 +12,9 @@ use BIomie\Canonical\CanonicalSyncStateRepository;
 use BIomie\Canonical\CanonicalWriteRepository;
 use BIomie\Canonical\Support\CanonicalHashing;
 use BIomie\Canonical\Support\CanonicalJsonCodec;
+use BIomie\DataPlatform\Silver\Schema\CanonicalSchemaManager;
+use BIomie\Modules\Geo\Infrastructure\ClientDimensionWriter;
+use BIomie\Modules\Geo\Infrastructure\GeoFactReconstructor;
 use Closure;
 use PDO;
 
@@ -44,108 +47,29 @@ final class CanonicalRepository
     ) {
     }
 
-    // ── Verificação de schema ────────────────────────────────────────────────
+    // ── Schema — delegado para CanonicalSchemaManager (Fase 5) ─────────────
+
+    private function schemaManager(): CanonicalSchemaManager
+    {
+        return new CanonicalSchemaManager($this->pdo);
+    }
 
     public function isAvailable(): bool
     {
-        try {
-            return $this->hasTable(self::TABLE_VENDORS)
-                && $this->hasTable(self::TABLE_ORDERS)
-                && $this->hasTable(self::TABLE_INVOICES)
-                && $this->hasTable(self::TABLE_DIVERGENCES);
-        } catch (\Throwable) {
-            return false;
-        }
+        return $this->schemaManager()->isAvailable();
     }
 
     public function ensureFiscalSchema(): void
     {
-        $this->ensureBaseTablesExist();
-        $this->ensureInvoiceTablesExist();
-        $this->ensureSeparatedDomainTablesExist();
-        $this->ensureEventStoreTableExists();
-        $this->ensureStateTableExists();
-        $this->ensureReconciliationTablesExist();
+        $this->schemaManager()->ensureFiscalSchema();
     }
 
-    private function hasTable(string $table): bool
+    /**
+     * @return list<string>
+     */
+    public function missingGeoAnalyticsTables(): array
     {
-        $sql = <<<'SQL'
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = DATABASE()
-              AND table_name = :table
-            LIMIT 1
-        SQL;
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['table' => $table]);
-
-        return (bool) $stmt->fetchColumn();
-    }
-
-    private function hasColumn(string $table, string $column): bool
-    {
-        $stmt = $this->pdo->prepare(<<<'SQL'
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-              AND table_name = :table
-              AND column_name = :column
-            LIMIT 1
-        SQL);
-        $stmt->execute([
-            'table' => $table,
-            'column' => $column,
-        ]);
-
-        return (bool) $stmt->fetchColumn();
-    }
-
-    private function hasIndex(string $table, string $index): bool
-    {
-        $stmt = $this->pdo->prepare(<<<'SQL'
-            SELECT 1
-            FROM information_schema.statistics
-            WHERE table_schema = DATABASE()
-              AND table_name = :table
-              AND index_name = :index_name
-            LIMIT 1
-        SQL);
-        $stmt->execute([
-            'table' => $table,
-            'index_name' => $index,
-        ]);
-
-        return (bool) $stmt->fetchColumn();
-    }
-
-    private function addColumnIfMissing(string $table, string $column, string $definition): void
-    {
-        if ($this->hasColumn($table, $column)) {
-            return;
-        }
-
-        $this->pdo->exec(sprintf(
-            'ALTER TABLE `%s` ADD COLUMN `%s` %s',
-            $table,
-            $column,
-            $definition
-        ));
-    }
-
-    private function addIndexIfMissing(string $table, string $index, string $definition): void
-    {
-        if ($this->hasIndex($table, $index)) {
-            return;
-        }
-
-        $this->pdo->exec(sprintf(
-            'ALTER TABLE `%s` ADD INDEX `%s` %s',
-            $table,
-            $index,
-            $definition
-        ));
+        return $this->schemaManager()->missingGeoAnalyticsTables();
     }
 
     /**
@@ -233,7 +157,7 @@ final class CanonicalRepository
         return new CanonicalDivergenceRepository(
             fn (): PDO => $this->pdo,
             function (): void {
-                $this->ensureBaseTablesExist();
+                $this->schemaManager()->ensureBaseTablesExist();
             },
             $this->jsonCodec(),
         );
@@ -244,7 +168,7 @@ final class CanonicalRepository
         return new CanonicalReconciliationRepository(
             fn (): PDO => $this->pdo,
             function (): void {
-                $this->ensureReconciliationTablesExist();
+                $this->schemaManager()->ensureReconciliationTablesExist();
             },
             function (): void {
                 $this->beginTransactionSafely();
@@ -595,125 +519,6 @@ final class CanonicalRepository
         $this->syncStateRepository()->updateSyncState($state);
     }
 
-    private function ensureStateTableExists(): void
-    {
-        $sql = <<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_sync_state (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                sync_name VARCHAR(64) NOT NULL DEFAULT 'canonical_orders',
-                period_start DATE NOT NULL,
-                period_end DATE NOT NULL,
-                phase ENUM('idle','vendors_synced','orders_running','completed','failed','chunked') NOT NULL DEFAULT 'idle',
-                source VARCHAR(32) NOT NULL DEFAULT 'cron',
-                checkpoint_date DATE DEFAULT NULL,
-                checkpoint_page INT UNSIGNED DEFAULT NULL,
-                checkpoint_batch INT UNSIGNED DEFAULT NULL,
-                vendors_synced INT UNSIGNED NOT NULL DEFAULT 0,
-                orders_inserted INT UNSIGNED NOT NULL DEFAULT 0,
-                orders_updated INT UNSIGNED NOT NULL DEFAULT 0,
-                orders_unchanged INT UNSIGNED NOT NULL DEFAULT 0,
-                orders_skipped INT UNSIGNED NOT NULL DEFAULT 0,
-                last_error TEXT DEFAULT NULL,
-                started_at DATETIME DEFAULT NULL,
-                completed_at DATETIME DEFAULT NULL,
-                next_allowed_at DATETIME DEFAULT NULL,
-                last_sync DATETIME DEFAULT NULL,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_biomie_sync_state_period (sync_name, period_start, period_end),
-                KEY idx_biomie_sync_state_phase (phase),
-                KEY idx_biomie_sync_state_checkpoint (checkpoint_date, checkpoint_page, checkpoint_batch),
-                KEY idx_biomie_sync_state_last_sync (last_sync)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        SQL;
-        $this->withReconnect(static function (PDO $pdo) use ($sql): void {
-            $pdo->exec($sql);
-        });
-    }
-
-    private function fetchSyncStateByPeriod(string $syncName, string $start, string $end): ?array
-    {
-        $sql = <<<'SQL'
-            SELECT
-                id,
-                sync_name,
-                phase,
-                source,
-                period_start,
-                period_end,
-                checkpoint_date,
-                checkpoint_page,
-                checkpoint_batch,
-                vendors_synced,
-                orders_inserted,
-                orders_updated,
-                orders_unchanged,
-                orders_skipped,
-                last_error,
-                started_at,
-                completed_at,
-                next_allowed_at,
-                last_sync,
-                updated_at
-            FROM biomie_sync_state
-            WHERE sync_name = :name
-              AND period_start = :start
-              AND period_end = :end
-            LIMIT 1
-        SQL;
-
-        return $this->withReconnect(function (PDO $pdo) use ($sql, $syncName, $start, $end): ?array {
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                'name' => $syncName,
-                'start' => $start,
-                'end' => $end,
-            ]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            return $row ?: null;
-        });
-    }
-
-    private function buildSyncStateRecord(array $state, ?array $currentState): array
-    {
-        $now = date('Y-m-d H:i:s');
-
-        return [
-            'sync_name' => (string) $state['sync_name'],
-            'phase' => (string) $state['phase'],
-            'source' => $this->pickSyncStateValue($state, $currentState, 'source'),
-            'period_start' => $this->pickSyncStateValue($state, $currentState, 'period_start'),
-            'period_end' => $this->pickSyncStateValue($state, $currentState, 'period_end'),
-            'checkpoint_date' => $this->pickSyncStateValue($state, $currentState, 'checkpoint_date'),
-            'checkpoint_page' => (int) $this->pickSyncStateValue($state, $currentState, 'checkpoint_page', 1),
-            'checkpoint_batch' => (int) $this->pickSyncStateValue($state, $currentState, 'checkpoint_batch', 0),
-            'vendors_synced' => (int) $this->pickSyncStateValue($state, $currentState, 'vendors_synced', 0),
-            'orders_inserted' => (int) $this->pickSyncStateValue($state, $currentState, 'orders_inserted', 0),
-            'orders_updated' => (int) $this->pickSyncStateValue($state, $currentState, 'orders_updated', 0),
-            'orders_unchanged' => (int) $this->pickSyncStateValue($state, $currentState, 'orders_unchanged', 0),
-            'orders_skipped' => (int) $this->pickSyncStateValue($state, $currentState, 'orders_skipped', 0),
-            'last_error' => $this->pickSyncStateValue($state, $currentState, 'last_error'),
-            'started_at' => $this->pickSyncStateValue($state, $currentState, 'started_at', $now),
-            'completed_at' => $this->pickSyncStateValue($state, $currentState, 'completed_at'),
-            'next_allowed_at' => $this->pickSyncStateValue($state, $currentState, 'next_allowed_at'),
-            'last_sync' => $this->pickSyncStateValue($state, $currentState, 'last_sync'),
-        ];
-    }
-
-    private function pickSyncStateValue(array $state, ?array $currentState, string $key, mixed $default = null): mixed
-    {
-        if (array_key_exists($key, $state)) {
-            return $state[$key];
-        }
-
-        if ($currentState !== null && array_key_exists($key, $currentState)) {
-            return $currentState[$key];
-        }
-
-        return $default;
-    }
-
     // ── Consultas canônicas ──────────────────────────────────────────────────
 
     /**
@@ -1017,126 +822,6 @@ final class CanonicalRepository
     public function saveReconciliationSnapshot(array $report, ?array $actor = null): int
     {
         return $this->reconciliationRepository()->saveSnapshot($report, $actor);
-
-        $this->ensureReconciliationTablesExist();
-
-        $source = is_array($report['source'] ?? null) ? $report['source'] : [];
-        $period = is_array($source['period'] ?? null) ? $source['period'] : [];
-        $periodStart = (string) ($period['start'] ?? '');
-        $periodEnd = (string) ($period['end'] ?? '');
-        if ($periodStart === '' || $periodEnd === '') {
-            throw new \InvalidArgumentException('Período da conciliação não informado.');
-        }
-
-        $metrics = is_array($report['metrics'] ?? null) ? $report['metrics'] : [];
-        $vendorRows = is_array($report['vendor_comparison'] ?? null) ? $report['vendor_comparison'] : [];
-        $differences = is_array($report['differences'] ?? null) ? $report['differences'] : [];
-        $sourceType = trim((string) ($source['source_type'] ?? 'omie_csv')) ?: 'omie_csv';
-        $sourceFile = trim((string) ($source['source_file'] ?? 'consolidado.csv'));
-        $createdUserId = isset($actor['id']) ? (int) $actor['id'] : null;
-        $createdUserName = trim((string) ($actor['username'] ?? $actor['full_name'] ?? ''));
-
-        $runId = 0;
-        try {
-            $this->beginTransactionSafely();
-
-            $stmt = $this->pdo->prepare(
-                'UPDATE ' . self::TABLE_RECONCILIATION_RUNS . '
-                 SET latest_for_period = 0
-                 WHERE source_type = :source_type
-                   AND period_start = :period_start
-                   AND period_end = :period_end'
-            );
-            $stmt->execute([
-                'source_type' => $sourceType,
-                'period_start' => $periodStart,
-                'period_end' => $periodEnd,
-            ]);
-
-            $stmt = $this->pdo->prepare(
-                'INSERT INTO ' . self::TABLE_RECONCILIATION_RUNS . ' (
-                    source_type, source_file, period_start, period_end,
-                    notes_csv, notes_system, differences_count, matches_count,
-                    created_user_id, created_user_name, latest_for_period, report_json, created_at
-                 ) VALUES (
-                    :source_type, :source_file, :period_start, :period_end,
-                    :notes_csv, :notes_system, :differences_count, :matches_count,
-                    :created_user_id, :created_user_name, 1, :report_json, NOW()
-                 )'
-            );
-            $stmt->execute([
-                'source_type' => $sourceType,
-                'source_file' => $sourceFile,
-                'period_start' => $periodStart,
-                'period_end' => $periodEnd,
-                'notes_csv' => (int) ($metrics['notes_csv'] ?? 0),
-                'notes_system' => (int) ($metrics['notes_system'] ?? 0),
-                'differences_count' => (int) ($metrics['differences'] ?? 0),
-                'matches_count' => (int) ($metrics['matches'] ?? 0),
-                'created_user_id' => $createdUserId,
-                'created_user_name' => $createdUserName !== '' ? $createdUserName : null,
-                'report_json' => $this->encodeJson($report),
-            ]);
-
-            $runId = (int) $this->pdo->lastInsertId();
-
-            if ($vendorRows !== []) {
-                $stmtVendor = $this->pdo->prepare(
-                    'INSERT INTO ' . self::TABLE_RECONCILIATION_VENDOR_ROWS . ' (
-                        run_id, vendor_key, vendor_name, has_difference, payload_json
-                     ) VALUES (
-                        :run_id, :vendor_key, :vendor_name, :has_difference, :payload_json
-                     )'
-                );
-
-                foreach ($vendorRows as $row) {
-                    if (!is_array($row)) {
-                        continue;
-                    }
-
-                    $stmtVendor->execute([
-                        'run_id' => $runId,
-                        'vendor_key' => (string) ($row['vendor_key'] ?? ''),
-                        'vendor_name' => (string) ($row['vendor_name'] ?? 'Sem vendedor'),
-                        'has_difference' => !empty($row['has_difference']) ? 1 : 0,
-                        'payload_json' => $this->encodeJson($row),
-                    ]);
-                }
-            }
-
-            if ($differences !== []) {
-                $stmtDiff = $this->pdo->prepare(
-                    'INSERT INTO ' . self::TABLE_RECONCILIATION_DIFF_ROWS . ' (
-                        run_id, note_key, note_ref, difference_type, payload_json
-                     ) VALUES (
-                        :run_id, :note_key, :note_ref, :difference_type, :payload_json
-                     )'
-                );
-
-                foreach ($differences as $row) {
-                    if (!is_array($row)) {
-                        continue;
-                    }
-
-                    $stmtDiff->execute([
-                        'run_id' => $runId,
-                        'note_key' => (string) ($row['note_key'] ?? ''),
-                        'note_ref' => (string) ($row['note_ref'] ?? ''),
-                        'difference_type' => (string) ($row['type'] ?? 'mismatch'),
-                        'payload_json' => $this->encodeJson($row),
-                    ]);
-                }
-            }
-
-            $this->pdo->commit();
-        } catch (\Throwable $exception) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
-            throw $exception;
-        }
-
-        return $runId;
     }
 
     /**
@@ -1145,39 +830,6 @@ final class CanonicalRepository
     public function loadReconciliationSnapshot(?int $runId = null): ?array
     {
         return $this->reconciliationRepository()->loadSnapshot($runId);
-
-        $this->ensureReconciliationTablesExist();
-
-        if ($runId !== null && $runId > 0) {
-            $stmt = $this->pdo->prepare('SELECT * FROM ' . self::TABLE_RECONCILIATION_RUNS . ' WHERE id = :id LIMIT 1');
-            $stmt->execute(['id' => $runId]);
-        } else {
-            $stmt = $this->pdo->query(
-                'SELECT * FROM ' . self::TABLE_RECONCILIATION_RUNS . '
-                 WHERE latest_for_period = 1
-                 ORDER BY created_at DESC, id DESC
-                 LIMIT 1'
-            );
-        }
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!is_array($row)) {
-            return null;
-        }
-
-        $report = $this->decodeJsonObject((string) ($row['report_json'] ?? ''));
-        if ($report === null) {
-            return null;
-        }
-
-        $report['saved'] = [
-            'run_id' => (int) ($row['id'] ?? 0),
-            'created_at' => (string) ($row['created_at'] ?? ''),
-            'created_user_name' => (string) ($row['created_user_name'] ?? ''),
-            'source_file' => (string) ($row['source_file'] ?? ''),
-        ];
-
-        return $report;
     }
 
     /**
@@ -1186,422 +838,54 @@ final class CanonicalRepository
     public function listRecentReconciliationSnapshots(int $limit = 12): array
     {
         return $this->reconciliationRepository()->listRecentSnapshots($limit);
-
-        $this->ensureReconciliationTablesExist();
-
-        $stmt = $this->pdo->prepare(
-            'SELECT id, source_type, source_file, period_start, period_end, notes_csv, notes_system,
-                    differences_count, matches_count, created_user_name, latest_for_period, created_at
-             FROM ' . self::TABLE_RECONCILIATION_RUNS . '
-             ORDER BY created_at DESC, id DESC
-             LIMIT :lim'
-        );
-        $stmt->bindValue('lim', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── PDO accessor ─────────────────────────────────────────────────────────
 
-    private function ensureBaseTablesExist(): void
+    public function getPdo(): PDO
     {
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_vendedores_omie (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                codigo_omie VARCHAR(32) NOT NULL,
-                nome VARCHAR(120) NOT NULL,
-                email VARCHAR(200) NULL,
-                comissao DECIMAL(5,2) NOT NULL DEFAULT 0,
-                ativo TINYINT(1) NOT NULL DEFAULT 1,
-                sincronizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_codigo_omie (codigo_omie)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_pedidos_canonicos (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                pedido_id_omie BIGINT NOT NULL,
-                codigo_pedido VARCHAR(32) NOT NULL,
-                codigo_integracao VARCHAR(64) NULL,
-                codigo_vendedor_omie VARCHAR(32) NOT NULL DEFAULT '',
-                nome_vendedor VARCHAR(120) NOT NULL DEFAULT 'Sem vendedor',
-                codigo_cliente_omie BIGINT NULL,
-                nome_cliente VARCHAR(200) NOT NULL DEFAULT 'Cliente nao informado',
-                documento_cliente VARCHAR(20) NULL,
-                status_comercial ENUM('faturado','autorizado','cancelado','outro') NOT NULL DEFAULT 'outro',
-                etapa_omie VARCHAR(32) NULL,
-                status_pedido_omie VARCHAR(64) NULL,
-                data_emissao DATE NULL,
-                data_faturamento DATE NULL,
-                data_cancelamento DATE NULL,
-                valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_mercadorias DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_descontos DECIMAL(15,2) NOT NULL DEFAULT 0,
-                quantidade_itens INT UNSIGNED NOT NULL DEFAULT 0,
-                hash_payload VARCHAR(64) NULL,
-                sincronizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                fonte_sync ENUM('cron','manual','webhook') NOT NULL DEFAULT 'cron',
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_pedido_omie (pedido_id_omie),
-                KEY idx_vendedor_status (codigo_vendedor_omie, status_comercial),
-                KEY idx_status_faturamento (status_comercial, data_faturamento),
-                KEY idx_data_emissao (data_emissao),
-                KEY idx_data_faturamento (data_faturamento),
-                KEY idx_sincronizado (sincronizado_em)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_divergencias (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                tipo VARCHAR(64) NOT NULL,
-                rule_code VARCHAR(80) NOT NULL DEFAULT '',
-                severity ENUM('low','medium','high','critical') NOT NULL DEFAULT 'medium',
-                entity_type VARCHAR(32) NOT NULL DEFAULT 'generic',
-                source_domain VARCHAR(32) NOT NULL DEFAULT 'reconciliation',
-                source_origin VARCHAR(64) NULL,
-                referencia VARCHAR(128) NULL,
-                descricao TEXT NULL,
-                contexto_json TEXT NULL,
-                suggested_action VARCHAR(255) NULL,
-                operational_status ENUM('aberta','reincidente','resolvida','ignorada_regra') NOT NULL DEFAULT 'aberta',
-                first_detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                last_detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                last_seen_period_start DATE NULL,
-                last_seen_period_end DATE NULL,
-                occurrence_count INT UNSIGNED NOT NULL DEFAULT 1,
-                detectado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                resolvido_em TIMESTAMP NULL,
-                resolvido_por VARCHAR(64) NULL,
-                resolution_note TEXT NULL,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_divergencia_regra_ref (rule_code, referencia),
-                KEY idx_divergencia_status (operational_status, severity, last_detected_at),
-                KEY idx_divergencia_rule (rule_code),
-                KEY idx_divergencia_entity (entity_type, referencia),
-                KEY idx_tipo (tipo),
-                KEY idx_detectado (detectado_em),
-                KEY idx_aberto (resolvido_em)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->ensureDivergenceTableShape();
+        return $this->pdo;
     }
 
-    private function ensureDivergenceTableShape(): void
+    // ── Geo — delegado para GeoFactReconstructor e ClientDimensionWriter ─────
+
+    private function geoReconstructor(): GeoFactReconstructor
     {
-        if (!$this->hasTable(self::TABLE_DIVERGENCES)) {
-            return;
-        }
-
-        $this->addColumnIfMissing(self::TABLE_DIVERGENCES, 'rule_code', "VARCHAR(80) NOT NULL DEFAULT '' AFTER `tipo`");
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'severity',
-            "ENUM('low','medium','high','critical') NOT NULL DEFAULT 'medium' AFTER `rule_code`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'entity_type',
-            "VARCHAR(32) NOT NULL DEFAULT 'generic' AFTER `severity`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'source_domain',
-            "VARCHAR(32) NOT NULL DEFAULT 'reconciliation' AFTER `entity_type`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'source_origin',
-            "VARCHAR(64) NULL AFTER `source_domain`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'suggested_action',
-            "VARCHAR(255) NULL AFTER `contexto_json`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'operational_status',
-            "ENUM('aberta','reincidente','resolvida','ignorada_regra') NOT NULL DEFAULT 'aberta' AFTER `suggested_action`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'first_detected_at',
-            "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `operational_status`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'last_detected_at',
-            "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `first_detected_at`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'last_seen_period_start',
-            "DATE NULL AFTER `last_detected_at`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'last_seen_period_end',
-            "DATE NULL AFTER `last_seen_period_start`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'occurrence_count',
-            "INT UNSIGNED NOT NULL DEFAULT 1 AFTER `last_seen_period_end`"
-        );
-        $this->addColumnIfMissing(
-            self::TABLE_DIVERGENCES,
-            'resolution_note',
-            "TEXT NULL AFTER `resolvido_por`"
-        );
-
-        $this->pdo->exec(<<<'SQL'
-            UPDATE biomie_divergencias
-            SET rule_code = CASE
-                    WHEN rule_code IS NULL OR rule_code = '' THEN COALESCE(NULLIF(tipo, ''), 'divergencia')
-                    ELSE rule_code
-                END,
-                first_detected_at = COALESCE(detectado_em, first_detected_at, NOW()),
-                last_detected_at = COALESCE(detectado_em, last_detected_at, NOW()),
-                occurrence_count = CASE
-                    WHEN occurrence_count IS NULL OR occurrence_count < 1 THEN 1
-                    ELSE occurrence_count
-                END,
-                operational_status = CASE
-                    WHEN resolvido_em IS NOT NULL AND operational_status IN ('aberta', 'reincidente') THEN 'resolvida'
-                    ELSE operational_status
-                END
-        SQL);
-
-        $this->addIndexIfMissing(
-            self::TABLE_DIVERGENCES,
-            'idx_divergencia_status',
-            "(`operational_status`, `severity`, `last_detected_at`)"
-        );
-        $this->addIndexIfMissing(self::TABLE_DIVERGENCES, 'idx_divergencia_rule', "(`rule_code`)");
-        $this->addIndexIfMissing(self::TABLE_DIVERGENCES, 'idx_divergencia_entity', "(`entity_type`, `referencia`)");
+        return new GeoFactReconstructor($this->pdo);
     }
 
-    private function ensureInvoiceTablesExist(): void
+    private function clientDimensionWriter(): ClientDimensionWriter
     {
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_notas_fiscais_canonicas (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                nota_key VARCHAR(80) NOT NULL,
-                nota_id_omie BIGINT NULL,
-                chave_nfe VARCHAR(64) NULL,
-                numero_nf VARCHAR(32) NOT NULL DEFAULT '',
-                serie_nf VARCHAR(16) NULL,
-                pedido_id_omie BIGINT NULL,
-                codigo_pedido_origem VARCHAR(32) NULL,
-                codigo_vendedor_omie VARCHAR(32) NOT NULL DEFAULT '',
-                nome_vendedor VARCHAR(120) NOT NULL DEFAULT 'Sem vendedor',
-                codigo_cliente_omie BIGINT NULL,
-                nome_cliente VARCHAR(200) NOT NULL DEFAULT 'Cliente nao informado',
-                documento_cliente VARCHAR(20) NULL,
-                status_fiscal ENUM('autorizada','cancelada') NOT NULL DEFAULT 'autorizada',
-                data_emissao DATE NULL,
-                data_cancelamento DATE NULL,
-                data_competencia DATE NULL,
-                valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_mercadorias DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_descontos DECIMAL(15,2) NOT NULL DEFAULT 0,
-                quantidade_itens INT UNSIGNED NOT NULL DEFAULT 0,
-                hash_payload VARCHAR(64) NULL,
-                sincronizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                fonte_sync ENUM('cron','manual','webhook') NOT NULL DEFAULT 'cron',
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_nota_key (nota_key),
-                KEY idx_invoice_status_competencia (status_fiscal, data_competencia),
-                KEY idx_invoice_vendor_status (codigo_vendedor_omie, status_fiscal, data_competencia),
-                KEY idx_invoice_emissao (data_emissao),
-                KEY idx_invoice_cancelamento (data_cancelamento),
-                KEY idx_invoice_chave (chave_nfe)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_notas_fiscais_itens_canonicos (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                nota_key VARCHAR(80) NOT NULL,
-                sequencia_item INT UNSIGNED NOT NULL,
-                codigo_produto VARCHAR(60) NULL,
-                descricao_produto VARCHAR(255) NOT NULL DEFAULT 'Produto sem descricao',
-                quantidade DECIMAL(15,4) NOT NULL DEFAULT 0,
-                valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_desconto DECIMAL(15,2) NOT NULL DEFAULT 0,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_invoice_item (nota_key, sequencia_item),
-                KEY idx_invoice_item_product (codigo_produto, descricao_produto),
-                KEY idx_invoice_item_note (nota_key)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
+        return new ClientDimensionWriter($this->pdo);
     }
 
-    private function ensureSeparatedDomainTablesExist(): void
+    public function reconstructGeoFactTables(string $start, string $end): void
     {
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_documentos_xml_canonicos (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                xml_key VARCHAR(96) NOT NULL,
-                nota_key VARCHAR(80) NULL,
-                nota_id_omie BIGINT NULL,
-                chave_nfe VARCHAR(64) NULL,
-                numero_nf VARCHAR(32) NOT NULL DEFAULT '',
-                serie_nf VARCHAR(16) NULL,
-                pedido_id_omie BIGINT NULL,
-                codigo_pedido_origem VARCHAR(32) NULL,
-                documento_tipo VARCHAR(32) NOT NULL DEFAULT 'nfe_xml',
-                status_documento ENUM('pendente','disponivel','indisponivel','cancelado') NOT NULL DEFAULT 'pendente',
-                data_emissao DATE NULL,
-                data_cancelamento DATE NULL,
-                xml_payload LONGTEXT NULL,
-                metadata_json LONGTEXT NULL,
-                hash_payload VARCHAR(64) NULL,
-                sincronizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                fonte_sync ENUM('cron','manual','webhook') NOT NULL DEFAULT 'cron',
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_xml_key (xml_key),
-                KEY idx_xml_chave (chave_nfe),
-                KEY idx_xml_nota (nota_key),
-                KEY idx_xml_status_emissao (status_documento, data_emissao)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_titulos_financeiros_canonicos (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                titulo_key VARCHAR(96) NOT NULL,
-                titulo_id_omie BIGINT NULL,
-                codigo_integracao VARCHAR(80) NULL,
-                numero_documento VARCHAR(64) NOT NULL DEFAULT '',
-                status_titulo VARCHAR(32) NOT NULL DEFAULT 'outro',
-                especie_documento VARCHAR(64) NULL,
-                forma_pagamento VARCHAR(64) NULL,
-                documento_origem_tipo VARCHAR(32) NULL,
-                documento_origem_ref VARCHAR(120) NULL,
-                nota_key VARCHAR(80) NULL,
-                chave_nfe VARCHAR(64) NULL,
-                pedido_id_omie BIGINT NULL,
-                codigo_pedido_origem VARCHAR(32) NULL,
-                codigo_cliente_omie BIGINT NULL,
-                nome_cliente VARCHAR(200) NOT NULL DEFAULT 'Cliente nao informado',
-                documento_cliente VARCHAR(20) NULL,
-                codigo_vendedor_omie VARCHAR(32) NOT NULL DEFAULT '',
-                nome_vendedor VARCHAR(120) NOT NULL DEFAULT 'Sem vendedor',
-                codigo_conta_corrente_omie VARCHAR(32) NULL,
-                data_emissao DATE NULL,
-                data_vencimento DATE NULL,
-                data_liquidacao DATE NULL,
-                data_competencia DATE NULL,
-                valor_pago DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_liquido DECIMAL(15,2) NOT NULL DEFAULT 0,
-                valor_aberto DECIMAL(15,2) NOT NULL DEFAULT 0,
-                hash_payload VARCHAR(64) NULL,
-                sincronizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                fonte_sync ENUM('cron','manual','webhook') NOT NULL DEFAULT 'cron',
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_titulo_key (titulo_key),
-                KEY idx_titulo_competencia (data_competencia, status_titulo),
-                KEY idx_titulo_cliente (codigo_cliente_omie, data_competencia),
-                KEY idx_titulo_vendedor (codigo_vendedor_omie, data_competencia),
-                KEY idx_titulo_origem_nota (nota_key),
-                KEY idx_titulo_origem_pedido (pedido_id_omie),
-                KEY idx_titulo_chave_nfe (chave_nfe)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
+        $this->geoReconstructor()->reconstructGeoFactTables($start, $end);
     }
 
-    private function ensureEventStoreTableExists(): void
+    /**
+     * @return list<int>
+     */
+    public function getPendingEnrichmentClients(int $limit): array
     {
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_eventos_canonicos (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                entity_name VARCHAR(32) NOT NULL,
-                omie_entity_id BIGINT NULL,
-                entity_code VARCHAR(60) NULL,
-                integration_code VARCHAR(80) NULL,
-                event_type VARCHAR(64) NOT NULL,
-                event_at_omie DATETIME NULL,
-                event_order INT UNSIGNED NOT NULL DEFAULT 0,
-                stage_code VARCHAR(16) NULL,
-                event_user VARCHAR(32) NULL,
-                document_key VARCHAR(64) NULL,
-                document_number VARCHAR(32) NULL,
-                document_series VARCHAR(16) NULL,
-                source_payload_hash CHAR(64) NOT NULL,
-                idempotency_hash CHAR(64) NOT NULL,
-                source_payload_json LONGTEXT NOT NULL,
-                source VARCHAR(32) NOT NULL DEFAULT 'cron',
-                ingested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_canonical_event_idempotency (idempotency_hash),
-                KEY idx_event_entity_time (entity_name, omie_entity_id, event_at_omie),
-                KEY idx_event_type_time (event_type, event_at_omie),
-                KEY idx_event_code_time (entity_code, event_at_omie)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
+        return $this->clientDimensionWriter()->getPendingEnrichmentClients($limit);
     }
 
-    private function ensureReconciliationTablesExist(): void
+    /**
+     * @param list<int> $codes
+     */
+    public function markEnrichmentStatus(array $codes, string $status, string $reason = ''): void
     {
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_reconciliacoes_runs (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                source_type VARCHAR(32) NOT NULL DEFAULT 'omie_csv',
-                source_file VARCHAR(255) NOT NULL DEFAULT '',
-                period_start DATE NOT NULL,
-                period_end DATE NOT NULL,
-                notes_csv INT UNSIGNED NOT NULL DEFAULT 0,
-                notes_system INT UNSIGNED NOT NULL DEFAULT 0,
-                differences_count INT UNSIGNED NOT NULL DEFAULT 0,
-                matches_count INT UNSIGNED NOT NULL DEFAULT 0,
-                created_user_id BIGINT NULL,
-                created_user_name VARCHAR(120) NULL,
-                latest_for_period TINYINT(1) NOT NULL DEFAULT 1,
-                report_json LONGTEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                KEY idx_reconciliation_period (period_start, period_end, latest_for_period),
-                KEY idx_reconciliation_created (created_at),
-                KEY idx_reconciliation_source (source_type, created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_reconciliacoes_vendedores (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                run_id BIGINT UNSIGNED NOT NULL,
-                vendor_key VARCHAR(180) NOT NULL DEFAULT '',
-                vendor_name VARCHAR(160) NOT NULL DEFAULT 'Sem vendedor',
-                has_difference TINYINT(1) NOT NULL DEFAULT 0,
-                payload_json LONGTEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                KEY idx_reconciliation_vendor_run (run_id),
-                KEY idx_reconciliation_vendor_name (vendor_name)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
-
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS biomie_reconciliacoes_diferencas (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                run_id BIGINT UNSIGNED NOT NULL,
-                note_key VARCHAR(120) NOT NULL DEFAULT '',
-                note_ref VARCHAR(80) NOT NULL DEFAULT '',
-                difference_type VARCHAR(40) NOT NULL DEFAULT 'mismatch',
-                payload_json LONGTEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                KEY idx_reconciliation_diff_run (run_id),
-                KEY idx_reconciliation_diff_note (note_ref),
-                KEY idx_reconciliation_diff_type (difference_type)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        SQL);
+        $this->clientDimensionWriter()->markEnrichmentStatus($codes, $status, $reason);
     }
 
+    /**
+     * @param array<string,mixed> $dim
+     * @param array<string,mixed> $geo
+     */
+    public function upsertClientDimensions(array $dim, array $geo): void
+    {
+        $this->clientDimensionWriter()->upsertClientDimensions($dim, $geo);
+    }
 }
-

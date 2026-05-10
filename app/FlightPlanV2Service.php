@@ -58,6 +58,18 @@ final class FlightPlanV2Service
             }
         }
 
+        require_once __DIR__ . '/Modules/Sales/Application/Vendors/VendorIdentityResolver.php';
+        require_once __DIR__ . '/Modules/Sales/Application/Vendors/VendorRealizedService.php';
+        $vendorMapCanonical = $this->canonical->getVendorMap();
+        $resolver = new \BIomie\Modules\Sales\Application\Vendors\VendorIdentityResolver($vendorMapCanonical);
+        $realizedService = new \BIomie\Modules\Sales\Application\Vendors\VendorRealizedService($this->canonical, $resolver);
+        $officialRealizedPayload = $realizedService->summarizeByVendor($start, $end);
+        
+        $officialMap = [];
+        foreach ($officialRealizedPayload as $or) {
+            $officialMap[$or['vendor_id']] = $or;
+        }
+
         $invoicedByVendor = [];
         foreach ($invoicedRows as $row) {
             $vendorKey = $this->resolveVendorIdentityKey($row, $vendorMap, $vendorNameIndex);
@@ -164,10 +176,23 @@ final class FlightPlanV2Service
             $pipeline = $pipelineByVendor[$vendorKey] ?? [];
             $cancelled = $cancelledByVendor[$vendorKey] ?? [];
 
-            $realized = Support::money((float) ($invoiced['merchandise_total'] ?? 0));
-            $invoiceTotal = Support::money((float) ($invoiced['invoice_total'] ?? 0));
-            $discountTotal = Support::money((float) ($invoiced['discount_total'] ?? 0));
-            $notesCount = (int) ($invoiced['notes_count'] ?? 0);
+            // Get the Official Realized using the new Identity Resolver
+            $identity = $resolver->resolve($vendorId !== '' ? $vendorId : $vendorName);
+            $official = $officialMap[$identity['vendor_id']] ?? null;
+
+            if ($official !== null) {
+                $realized = Support::money((float) ($official['realized'] ?? 0));
+                $invoiceTotal = Support::money((float) ($invoiced['invoice_total'] ?? 0));
+                $merchandiseTotal = Support::money((float) ($official['merchandise_total'] ?? 0));
+                $discountTotal = Support::money((float) ($invoiced['discount_total'] ?? 0));
+                $notesCount = (int) ($official['invoices_count'] ?? 0);
+            } else {
+                $realized = Support::money((float) ($invoiced['merchandise_total'] ?? 0)); // fallback
+                $invoiceTotal = Support::money((float) ($invoiced['invoice_total'] ?? 0));
+                $merchandiseTotal = Support::money((float) ($invoiced['merchandise_total'] ?? 0));
+                $discountTotal = Support::money((float) ($invoiced['discount_total'] ?? 0));
+                $notesCount = (int) ($invoiced['notes_count'] ?? 0);
+            }
 
             $pipelineOrders = (int) ($pipeline['orders_count'] ?? 0);
             $pipelineValue = Support::money((float) ($pipeline['merchandise_total'] ?? 0));
@@ -199,8 +224,10 @@ final class FlightPlanV2Service
                 'target_month' => $targetMonth,
                 'meta_day_base' => $metaDayBase,
                 'realized_period' => $realized,
+                'realizado_vendedor' => $realized,
+                'mercadoria_faturada_vendedor' => $merchandiseTotal,
                 'invoice_total' => $invoiceTotal,
-                'merchandise_total' => $realized,
+                'merchandise_total' => $merchandiseTotal,
                 'discount_total' => $discountTotal,
                 'notes_count' => $notesCount,
                 'orders' => $notesCount,

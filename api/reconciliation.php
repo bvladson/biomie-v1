@@ -22,7 +22,7 @@ use BIomie\Support;
 
 require __DIR__ . '/bootstrap.php';
 
-Auth::requireAdmin(true);
+Auth::requireCapability('fiscal.view', true);
 
 try {
     $range = Http::resolveDateRange();

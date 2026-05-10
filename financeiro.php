@@ -6,8 +6,9 @@ use BIomie\Auth;
 use BIomie\PageRenderer;
 
 require __DIR__ . '/app/page_bootstrap.php';
-Auth::requireLogin(false);
+Auth::requireCapability('finance.view', false);
 echo PageRenderer::render('financeiro.html', [
+    'page_key' => 'financeiro',
     'user' => Auth::currentUser(),
     'is_admin' => Auth::isAdmin(),
 ]);

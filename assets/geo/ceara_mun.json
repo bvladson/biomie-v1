@@ -1,0 +1,31 @@
+{
+  "geo_metadata": { "version": "1.0", "source": "MAG-Mock CE", "generated_at": "2026-04-16T00:00:00Z" },
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"municipio_nome": "Fortaleza", "municipio_ibge": "2304400", "uf_sigla": "CE"},
+      "geometry": {"type": "Polygon", "coordinates": [[[-38.5, -3.7], [-38.4, -3.7], [-38.4, -3.8], [-38.5, -3.8], [-38.5, -3.7]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"municipio_nome": "Caucaia", "municipio_ibge": "2303709", "uf_sigla": "CE"},
+      "geometry": {"type": "Polygon", "coordinates": [[[-38.6, -3.7], [-38.5, -3.7], [-38.5, -3.8], [-38.6, -3.8], [-38.6, -3.7]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"municipio_nome": "Maracanaú", "municipio_ibge": "2307650", "uf_sigla": "CE"},
+      "geometry": {"type": "Polygon", "coordinates": [[[-38.6, -3.8], [-38.5, -3.8], [-38.5, -3.9], [-38.6, -3.9], [-38.6, -3.8]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"municipio_nome": "Sobral", "municipio_ibge": "2312908", "uf_sigla": "CE"},
+      "geometry": {"type": "Polygon", "coordinates": [[[-40.3, -3.6], [-40.2, -3.6], [-40.2, -3.7], [-40.3, -3.7], [-40.3, -3.6]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"municipio_nome": "Juazeiro do Norte", "municipio_ibge": "2307304", "uf_sigla": "CE"},
+      "geometry": {"type": "Polygon", "coordinates": [[[-39.3, -7.2], [-39.2, -7.2], [-39.2, -7.3], [-39.3, -7.3], [-39.3, -7.2]]]}
+    }
+  ]
+}

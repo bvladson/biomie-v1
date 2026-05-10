@@ -7,6 +7,7 @@ namespace BIomie\Competencia;
 use BIomie\CanonicalRepository;
 use BIomie\CommercialPlanning;
 use BIomie\FlightPlanV2Service;
+use BIomie\GoldMartRepository;
 use BIomie\Support;
 use BIomie\TargetsRepository;
 
@@ -17,6 +18,7 @@ final class CompetenciaPayloadBuilder
         private readonly ?TargetsRepository $targetsRepository,
         private readonly float $saturdayWeight,
         private readonly CompetenciaSupport $support,
+        private readonly ?GoldMartRepository $goldMart = null,
     ) {
     }
 
@@ -45,10 +47,11 @@ final class CompetenciaPayloadBuilder
      */
     public function buildVendorsPayload(string $start, string $end): array
     {
-        $summary = $this->canonical->summarizeCommercial($start, $end);
-        $invoiceSummary = $this->canonical->summarizeInvoicesCommercial($start, $end);
-        $vendorRows = $this->canonical->aggregateByVendorCommercial($start, $end);
-        $dailyRows = $this->canonical->dailyByStatusCommercial($start, $end);
+        $useGold      = $this->goldMart !== null && $this->goldMart->isAvailableForPeriod($start, $end);
+        $summary      = $useGold ? $this->goldMart->summarizeCommercial($start, $end)        : $this->canonical->summarizeCommercial($start, $end);
+        $invoiceSummary = $useGold ? $this->goldMart->summarizeInvoicesCommercial($start, $end) : $this->canonical->summarizeInvoicesCommercial($start, $end);
+        $vendorRows   = $useGold ? $this->goldMart->aggregateByVendorCommercial($start, $end) : $this->canonical->aggregateByVendorCommercial($start, $end);
+        $dailyRows    = $useGold ? $this->goldMart->dailyByStatusCommercial($start, $end)     : $this->canonical->dailyByStatusCommercial($start, $end);
         $targetsMap = ($this->targetsRepository !== null && $this->targetsRepository->isAvailable())
             ? $this->targetsRepository->getTargetsForMonths(CommercialPlanning::monthsInRange($start, $end))
             : [];
@@ -267,7 +270,7 @@ final class CompetenciaPayloadBuilder
             'alerts_operational' => $alertsOperational,
             'meta' => [
                 'generated_at' => date(DATE_ATOM),
-                'served_from' => 'historical-read-model',
+                'served_from' => $useGold ? 'gold-mart' : 'historical-read-model',
                 'last_sync' => $this->canonical->lastSyncAt($start, $end) ?: null,
                 'period_basis' => 'issue_date',
                 'targets_source' => ($this->targetsRepository !== null && $this->targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',
@@ -280,14 +283,28 @@ final class CompetenciaPayloadBuilder
      */
     public function buildOverviewPayload(string $start, string $end): array
     {
-        $summaryRow = $this->canonical->summarizeInvoicesCommercial($start, $end);
-        $invoiceVendorRows = $this->canonical->aggregateInvoicesByVendorCommercial($start, $end);
-        $planningRows = $this->canonical->aggregateByVendorCommercial($start, $end);
-        $dailyRows = $this->canonical->dailyByStatusCommercial($start, $end);
+        $useGold    = $this->goldMart !== null && $this->goldMart->isAvailableForPeriod($start, $end);
+        $summaryRow = $useGold
+            ? $this->goldMart->summarizeInvoicesCommercial($start, $end)
+            : $this->canonical->summarizeInvoicesCommercial($start, $end);
+
+        if ($useGold) {
+            $allVendorRows     = $this->goldMart->aggregateByVendorCommercial($start, $end);
+            $invoiceVendorRows = array_values(array_filter(
+                $allVendorRows,
+                static fn (array $row): bool => ($row['status_comercial'] ?? '') === 'faturado',
+            ));
+            $planningRows = $allVendorRows;
+        } else {
+            $invoiceVendorRows = $this->canonical->aggregateInvoicesByVendorCommercial($start, $end);
+            $planningRows      = $this->canonical->aggregateByVendorCommercial($start, $end);
+        }
+
+        $dailyRows        = $useGold ? $this->goldMart->dailyByStatusCommercial($start, $end)    : $this->canonical->dailyByStatusCommercial($start, $end);
+        $canonicalProducts = $useGold ? $this->goldMart->topProductsCommercial($start, $end, 12) : $this->canonical->topProductsCommercial($start, $end, 12);
+        $canonicalClients  = $useGold ? $this->goldMart->topClientsCommercial($start, $end, 8)   : $this->canonical->topClientsCommercial($start, $end, 8);
         $pendingSummary = $this->canonical->summarizePendingCommercial($start, $end);
-        $divergences = $this->canonical->openDivergences(10);
-        $canonicalProducts = $this->canonical->topProductsCommercial($start, $end, 12);
-        $canonicalClients = $this->canonical->topClientsCommercial($start, $end, 8);
+        $divergences    = $this->canonical->openDivergences(10);
         $targetsMap = ($this->targetsRepository !== null && $this->targetsRepository->isAvailable())
             ? $this->targetsRepository->getTargetsForMonths(CommercialPlanning::monthsInRange($start, $end))
             : [];
@@ -500,7 +517,7 @@ final class CompetenciaPayloadBuilder
             'alerts' => array_slice($alerts, 0, 8),
             'meta' => [
                 'generated_at' => date(DATE_ATOM),
-                'served_from' => 'historical-read-model',
+                'served_from' => $useGold ? 'gold-mart' : 'historical-read-model',
                 'last_sync' => $this->canonical->lastSyncAt($start, $end) ?: null,
                 'period_basis' => 'issue_date',
                 'targets_source' => ($this->targetsRepository !== null && $this->targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',

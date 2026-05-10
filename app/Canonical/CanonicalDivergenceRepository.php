@@ -81,11 +81,12 @@ final class CanonicalDivergenceRepository
                     last_seen_period_start = :last_seen_period_start,
                     last_seen_period_end = :last_seen_period_end,
                     occurrence_count = :occurrence_count,
-                    resolvido_em = CASE WHEN :clear_resolution = 1 THEN NULL ELSE resolvido_em END,
-                    resolvido_por = CASE WHEN :clear_resolution = 1 THEN NULL ELSE resolvido_por END,
-                    resolution_note = CASE WHEN :clear_resolution = 1 THEN NULL ELSE resolution_note END
+                    resolvido_em = CASE WHEN :clear_resolution_1 = 1 THEN NULL ELSE resolvido_em END,
+                    resolvido_por = CASE WHEN :clear_resolution_2 = 1 THEN NULL ELSE resolvido_por END,
+                    resolution_note = CASE WHEN :clear_resolution_3 = 1 THEN NULL ELSE resolution_note END
                 WHERE id = :id
             SQL);
+            $clearResolution = in_array($previousStatus, ['resolvida', 'ignorada_regra'], true) ? 1 : 0;
             $stmt->execute([
                 'id' => (int) ($existing['id'] ?? 0),
                 'tipo' => $tipo,
@@ -100,7 +101,9 @@ final class CanonicalDivergenceRepository
                 'last_seen_period_start' => $periodStart,
                 'last_seen_period_end' => $periodEnd,
                 'occurrence_count' => $occurrenceCount,
-                'clear_resolution' => in_array($previousStatus, ['resolvida', 'ignorada_regra'], true) ? 1 : 0,
+                'clear_resolution_1' => $clearResolution,
+                'clear_resolution_2' => $clearResolution,
+                'clear_resolution_3' => $clearResolution,
             ]);
 
             return;

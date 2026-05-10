@@ -9,6 +9,7 @@ use BIomie\SalesAnalyticsService;
 use BIomie\SyncPipelineRepository;
 
 require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireAnyCapability(['jobs.view', 'sales.view', 'finance.view', 'fiscal.view'], true);
 
 $range    = Http::resolveDateRange();
 $cacheKey = SalesAnalyticsService::cacheKey($range['start'], $range['end']);

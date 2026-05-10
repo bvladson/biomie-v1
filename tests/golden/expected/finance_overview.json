@@ -47,6 +47,8 @@
         "delay_present": false,
         "freshness_at": "2026-04-01 08:00:00",
         "has_retry_or_delay": false,
+        "last_reconcile_at": null,
+        "last_success_at": null,
         "open_divergences": 0,
         "origin": "historical-snapshot",
         "pending_backlog_total": 0,
@@ -55,6 +57,7 @@
         "reconciliation_pct": 100,
         "retry_present": false,
         "source": "historical-snapshot",
+        "source_of_truth": "snapshot",
         "staleness_reason": null
     },
     "document_types": [
@@ -63,10 +66,15 @@
             "type": "boleto"
         }
     ],
+    "last_reconcile_at": null,
+    "last_success_at": null,
     "meta": {
         "generated_at": "2026-04-01 08:00:00",
+        "last_reconcile_at": null,
+        "last_success_at": null,
         "last_sync": "2026-04-01 08:00:00",
-        "served_from": "historical-snapshot"
+        "served_from": "historical-snapshot",
+        "source_of_truth": "snapshot"
     },
     "mode": "live-finance",
     "ok": true,
@@ -112,6 +120,7 @@
         }
     ],
     "source": "historical-snapshot",
+    "source_of_truth": "snapshot",
     "status_breakdown": [
         {
             "amount": 18300,
