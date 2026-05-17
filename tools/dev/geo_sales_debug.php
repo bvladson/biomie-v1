@@ -25,6 +25,7 @@ use BIomie\Bootstrap;
 use BIomie\Config;
 use BIomie\Database;
 use BIomie\Logger;
+use BIomie\Support\Geo\GeoKeyNormalizer;
 
 require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
 \BIomie\Support\CliGuard::requireCli();
@@ -38,31 +39,92 @@ $logger = new Logger($root . '/storage/logs/biomie.log');
 
 // ── Parse args ────────────────────────────────────────────────────────────────
 
-$opts = getopt('', ['start:', 'end:', 'city:', 'json', 'help']);
+$opts = getopt('', ['start:', 'end:', 'city:', 'city-key:', 'bairro:', 'bairro-key:', 'normalize-only', 'check-keys', 'json', 'explain', 'help']);
 
 if (isset($opts['help'])) {
-    echo "Usage: php tools/dev/geo_sales_debug.php --start=YYYY-MM-DD --end=YYYY-MM-DD [--city=Fortaleza] [--json]\n";
+    echo "Usage: php tools/dev/geo_sales_debug.php [options]\n";
+    echo "  --start=YYYY-MM-DD     Start date (default: 2026-05-01)\n";
+    echo "  --end=YYYY-MM-DD       End date (default: 2026-05-31)\n";
+    echo "  --city=Fortaleza       City display name\n";
+    echo "  --city-key=fortaleza   City key (auto from --city if absent)\n";
+    echo "  --bairro=Cocó          Neighborhood display name\n";
+    echo "  --bairro-key=coco      Normalized key (auto from --bairro if absent)\n";
+    echo "  --normalize-only       Only show normalization result, no DB queries\n";
+    echo "  --check-keys           Show bairro_key/bairro_norm inconsistencies in mart\n";
+    echo "  --json                 Output raw JSON\n";
+    echo "  --explain              Show SQL EXPLAINs\n";
     exit(0);
 }
 
-$startDate = $opts['start'] ?? '2026-05-01';
-$endDate   = $opts['end']   ?? '2026-05-31';
-$city      = strtolower(trim((string) ($opts['city'] ?? 'Fortaleza')));
-$jsonMode  = isset($opts['json']);
+$startDate    = $opts['start'] ?? '2026-05-01';
+$endDate      = $opts['end']   ?? '2026-05-31';
+$cityRaw      = trim((string) ($opts['city'] ?? 'Fortaleza'));
+$bairroRaw    = trim((string) ($opts['bairro'] ?? ''));
+$bairroKey    = trim((string) ($opts['bairro-key'] ?? ''));
+$cityKey      = trim((string) ($opts['city-key'] ?? ''));
+$jsonMode     = isset($opts['json']);
+$explainMode  = isset($opts['explain']);
+$normalizeOnly = isset($opts['normalize-only']);
+$checkKeys    = isset($opts['check-keys']);
+
+// Use GeoKeyNormalizer for consistent key computation.
+$cityKeyResolved  = $cityKey !== '' ? $cityKey : GeoKeyNormalizer::makeCityKey($cityRaw);
+$cityNorm         = GeoKeyNormalizer::normalizeCity($cityRaw);
+
+if ($bairroKey !== '') {
+    // Already supplied — re-normalize to guarantee underscore format.
+    $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroKey);
+} elseif ($bairroRaw !== '') {
+    $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroRaw);
+}
+$bairroNorm = $bairroKey !== '' ? GeoKeyNormalizer::keyToNorm($bairroKey) : '';
+$city = $cityNorm;
 
 // Competência = year-month from start date
 $startComp = substr($startDate, 0, 7);
 $endComp   = substr($endDate, 0, 7);
 
+// ── Normalize-only mode ───────────────────────────────────────────────────────
+
+if ($normalizeOnly) {
+    $explain = GeoKeyNormalizer::explain($bairroRaw ?: $bairroKey);
+    $out = [
+        'input'      => ['city' => $cityRaw, 'bairro' => $bairroRaw ?: $bairroKey],
+        'normalized' => [
+            'city_key'   => $cityKeyResolved,
+            'bairro_key' => $bairroKey ?: $explain['bairro_key'],
+            'bairro_norm' => $bairroNorm,
+            'bairro_nome' => $explain['display_name'],
+        ],
+        'engine'       => $explain['engine'],
+        'alias_applied' => $explain['alias_applied'],
+    ];
+    if ($jsonMode) {
+        echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    } else {
+        echo "Input      : city={$cityRaw}, bairro=" . ($bairroRaw ?: $bairroKey) . "\n";
+        echo "city_key   : {$cityKeyResolved}\n";
+        echo "bairro_key : " . ($bairroKey ?: $explain['bairro_key']) . "\n";
+        echo "bairro_norm: {$bairroNorm}\n";
+        echo "bairro_nome: {$explain['display_name']}\n";
+        echo "engine     : {$explain['engine']}\n";
+    }
+    exit(0);
+}
+
 // ── Connect ───────────────────────────────────────────────────────────────────
 
 $report = [
     'params' => [
-        'start'      => $startDate,
-        'end'        => $endDate,
-        'start_comp' => $startComp,
-        'end_comp'   => $endComp,
-        'city'       => $city,
+        'start'       => $startDate,
+        'end'         => $endDate,
+        'start_comp'  => $startComp,
+        'end_comp'    => $endComp,
+        'city'        => $city,
+        'city_key'    => $cityKeyResolved,
+        'bairro_raw'  => $bairroRaw ?: null,
+        'bairro_key'  => $bairroKey ?: null,
+        'bairro_norm' => $bairroNorm ?: null,
         'generated_at' => date('c'),
     ],
     'expected_from_omie_extract' => [
@@ -76,7 +138,14 @@ $report = [
     ],
     'layers' => [],
     'pipeline_diagnosis' => [],
+    'diagnostics' => [],
     'warnings' => [],
+];
+
+$report['normalized'] = [
+    'city_key'   => $cityKeyResolved,
+    'bairro_key' => $bairroKey ?: null,
+    'bairro_norm' => $bairroNorm ?: null,
 ];
 
 $pdo = null;
@@ -121,6 +190,153 @@ function tableExists(PDO $pdo, string $table): bool
     } catch (\Throwable) {
         return false;
     }
+}
+
+function colExists(PDO $pdo, string $table, string $col): bool
+{
+    try {
+        return (int) $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$table}' AND COLUMN_NAME = '{$col}'"
+        )->fetchColumn() > 0;
+    } catch (\Throwable) {
+        return false;
+    }
+}
+
+// ── Check-keys mode ───────────────────────────────────────────────────────────
+
+if ($checkKeys) {
+    $ck = [
+        'bairro_key_col_exists'      => false,
+        'cidade_key_col_exists'      => false,
+        'rows_without_bairro_key'    => 0,
+        'bairro_norm_uppercase_count' => 0,
+        'bairro_norm_accent_count'   => 0,
+        'multi_name_conflicts'       => [],
+        'sample_bairro_keys'         => [],
+        'issues'                     => [],
+    ];
+
+    if (!tableExists($pdo, 'mart_compradores_por_geo')) {
+        $ck['issues'][] = ['severity' => 'critical', 'issue' => 'Tabela mart_compradores_por_geo nao existe.', 'action' => 'Execute geo:materialize primeiro.'];
+    } else {
+        $ck['bairro_key_col_exists'] = colExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
+        $ck['cidade_key_col_exists'] = colExists($pdo, 'mart_compradores_por_geo', 'cidade_key');
+
+        if (!$ck['bairro_key_col_exists']) {
+            $ck['issues'][] = ['severity' => 'critical', 'issue' => 'Coluna bairro_key nao existe em mart_compradores_por_geo.', 'action' => 'Execute: php bin/migrate.php (migration Version20260517000002)'];
+        } else {
+            $nullKeys = safeQuery($pdo,
+                "SELECT COUNT(*) AS cnt FROM mart_compradores_por_geo
+                 WHERE (bairro_key IS NULL OR bairro_key = '') AND COALESCE(faturamento, 0) > 0"
+            );
+            $ck['rows_without_bairro_key'] = (int) ($nullKeys['cnt'] ?? 0);
+            if ($ck['rows_without_bairro_key'] > 0) {
+                $ck['issues'][] = ['severity' => 'critical', 'issue' => $ck['rows_without_bairro_key'] . ' linhas com faturamento sem bairro_key.', 'action' => 'Execute: php tools/dev/geo_keys_backfill.php --apply --table=mart_compradores_por_geo'];
+            }
+
+            $multiNames = safeQueryAll($pdo,
+                "SELECT bairro_key, COUNT(DISTINCT COALESCE(bairro_nome, bairro_norm, '')) AS name_variants
+                 FROM mart_compradores_por_geo
+                 WHERE bairro_key IS NOT NULL AND bairro_key != ''
+                 GROUP BY bairro_key HAVING name_variants > 1
+                 LIMIT 10"
+            );
+            $ck['multi_name_conflicts'] = $multiNames ?: [];
+
+            $sample = safeQueryAll($pdo,
+                "SELECT bairro_key, bairro_norm, cidade_key, cidade_norm,
+                        COUNT(*) AS rows, ROUND(SUM(faturamento), 2) AS rev
+                 FROM mart_compradores_por_geo
+                 WHERE bairro_key IS NOT NULL AND bairro_key != ''
+                 GROUP BY bairro_key, bairro_norm, cidade_key, cidade_norm
+                 ORDER BY rev DESC LIMIT 20"
+            );
+            $ck['sample_bairro_keys'] = $sample ?: [];
+        }
+
+        $caseMis = safeQuery($pdo,
+            "SELECT COUNT(DISTINCT bairro_norm) AS cnt FROM mart_compradores_por_geo
+             WHERE bairro_norm IS NOT NULL AND bairro_norm != ''
+               AND bairro_norm COLLATE utf8mb4_bin != LOWER(bairro_norm)"
+        );
+        $ck['bairro_norm_uppercase_count'] = (int) ($caseMis['cnt'] ?? 0);
+        if ($ck['bairro_norm_uppercase_count'] > 0) {
+            $ck['issues'][] = ['severity' => 'warning', 'issue' => $ck['bairro_norm_uppercase_count'] . ' bairro_norm com maiusculas.', 'action' => 'Rematerialize: os builders normalizam para lowercase.'];
+        }
+
+        try {
+            $accentMis = safeQuery($pdo,
+                "SELECT COUNT(DISTINCT bairro_norm) AS cnt FROM mart_compradores_por_geo
+                 WHERE bairro_norm IS NOT NULL AND bairro_norm != ''
+                   AND LOWER(bairro_norm) REGEXP '[^a-z0-9 _-]'"
+            );
+            $ck['bairro_norm_accent_count'] = (int) ($accentMis['cnt'] ?? 0);
+            if ($ck['bairro_norm_accent_count'] > 0) {
+                $ck['issues'][] = ['severity' => 'warning', 'issue' => $ck['bairro_norm_accent_count'] . ' bairro_norm com acentos/caracteres especiais.', 'action' => 'Rematerialize: backfill recalcula bairro_key via PHP (NFD strip).'];
+            }
+        } catch (\Throwable) {
+            $ck['bairro_norm_accent_count'] = -1;
+        }
+
+        if ($ck['bairro_norm_uppercase_count'] > 0 || $ck['bairro_norm_accent_count'] > 0) {
+            $bad = safeQueryAll($pdo,
+                "SELECT DISTINCT bairro_norm FROM mart_compradores_por_geo
+                 WHERE bairro_norm IS NOT NULL AND bairro_norm != ''
+                   AND (bairro_norm COLLATE utf8mb4_bin != LOWER(bairro_norm)
+                        OR LOWER(bairro_norm) REGEXP '[^a-z0-9 _-]')
+                 LIMIT 20"
+            );
+            $ck['bad_bairro_norm_samples'] = array_column($bad ?: [], 'bairro_norm');
+        }
+    }
+
+    $ckOut = ['check_keys' => $ck];
+    if ($jsonMode) {
+        echo json_encode($ckOut, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    } else {
+        echo "\n=== CHECK-KEYS: mart_compradores_por_geo ===\n";
+        echo "bairro_key col : " . ($ck['bairro_key_col_exists'] ? 'SIM' : 'NAO') . "\n";
+        echo "cidade_key col : " . ($ck['cidade_key_col_exists'] ? 'SIM' : 'NAO') . "\n";
+        if ($ck['rows_without_bairro_key'] !== 0) {
+            echo "rows sem bairro_key (com faturamento): " . $ck['rows_without_bairro_key'] . "\n";
+        }
+        echo "bairro_norm uppercase : " . ($ck['bairro_norm_uppercase_count'] ?? 'N/A') . "\n";
+        echo "bairro_norm acentos   : " . ($ck['bairro_norm_accent_count'] ?? 'N/A') . "\n";
+        if (!empty($ck['issues'])) {
+            echo "\nISSUES:\n";
+            foreach ($ck['issues'] as $issue) {
+                echo "  [{$issue['severity']}] {$issue['issue']}\n";
+                if (!empty($issue['action'])) echo "      → {$issue['action']}\n";
+            }
+        }
+        if (!empty($ck['bad_bairro_norm_samples'])) {
+            echo "\nAmostras de bairro_norm com problema:\n";
+            foreach ($ck['bad_bairro_norm_samples'] as $s) {
+                echo '  ' . json_encode($s, JSON_UNESCAPED_UNICODE) . "\n";
+            }
+        }
+        if (!empty($ck['multi_name_conflicts'])) {
+            echo "\nConflitos de nome por bairro_key:\n";
+            foreach ($ck['multi_name_conflicts'] as $row) {
+                echo "  " . ($row['bairro_key'] ?? '?') . " — " . ($row['name_variants'] ?? 0) . " nomes distintos\n";
+            }
+        }
+        if (!empty($ck['sample_bairro_keys'])) {
+            echo "\nTop bairro_keys (por faturamento):\n";
+            printf("  %-32s  %-32s  %s\n", 'bairro_key', 'bairro_norm', 'faturamento');
+            echo "  " . str_repeat('-', 78) . "\n";
+            foreach ($ck['sample_bairro_keys'] as $row) {
+                printf("  %-32s  %-32s  R$ %s\n",
+                    substr($row['bairro_key'] ?? '?', 0, 32),
+                    substr($row['bairro_norm'] ?? '?', 0, 32),
+                    number_format((float) ($row['rev'] ?? 0), 2, ',', '.')
+                );
+            }
+        }
+    }
+    exit(0);
 }
 
 // ── Layer 1: biomie_notas_fiscais_canonicas ───────────────────────────────────
@@ -514,6 +730,35 @@ if (count($diag) === 0) {
 
 $report['pipeline_diagnosis'] = $diag;
 
+// ── Key consistency diagnostics ───────────────────────────────────────────────
+
+$hasBkColDiag      = tableExists($pdo, 'mart_compradores_por_geo') && colExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
+$caseMismatchDiag  = false;
+$accentMismatchDiag = false;
+
+if (tableExists($pdo, 'mart_compradores_por_geo')) {
+    $cm = safeQuery($pdo,
+        "SELECT COUNT(*) AS cnt FROM mart_compradores_por_geo
+         WHERE bairro_norm IS NOT NULL AND bairro_norm != ''
+           AND bairro_norm COLLATE utf8mb4_bin != LOWER(bairro_norm)"
+    );
+    $caseMismatchDiag = ((int) ($cm['cnt'] ?? 0)) > 0;
+    try {
+        $am = safeQuery($pdo,
+            "SELECT COUNT(*) AS cnt FROM mart_compradores_por_geo
+             WHERE bairro_norm IS NOT NULL AND bairro_norm != ''
+               AND LOWER(bairro_norm) REGEXP '[^a-z0-9 _-]'"
+        );
+        $accentMismatchDiag = ((int) ($am['cnt'] ?? 0)) > 0;
+    } catch (\Throwable) {}
+}
+
+$report['diagnostics'] = [
+    'bairro_key_missing' => !$hasBkColDiag,
+    'case_mismatch'      => $caseMismatchDiag,
+    'accent_mismatch'    => $accentMismatchDiag,
+];
+
 // ── Excel vs DB comparison ────────────────────────────────────────────────────
 
 $dbInvoices = (int) ($l1['nfs_autorizadas'] ?? 0);
@@ -531,6 +776,110 @@ $report['excel_vs_db'] = [
     'geo_mart_faturamento'   => ['excel' => $expected['total_merchandise'], 'db_l4' => $dbGeoRev, 'delta' => round($dbGeoRev - $expected['total_merchandise'], 2)],
     'normalized_neighborhoods' => ['excel' => $expected['normalized_neighborhoods'], 'db_l4' => $dbGeoBairros, 'delta' => $dbGeoBairros - $expected['normalized_neighborhoods']],
 ];
+
+// ── Bairro-specific audit (when --bairro or --bairro-key is given) ────────────
+
+if ($bairroKey !== '' && $pdo !== null) {
+    $bairroAudit = ['bairro_key' => $bairroKey, 'bairro_raw' => $bairroRaw ?: $bairroKey];
+
+    $hasBkCol = tableExists($pdo, 'mart_compradores_por_geo')
+        && colExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
+    $bairroAudit['using_bairro_key_col'] = $hasBkCol;
+
+    // Build filter: prefer bairro_key col; fall back to COLLATE on bairro_norm
+    if ($hasBkCol) {
+        $bkWhere  = "(bairro_key = :bk OR (bairro_key IS NULL AND bairro_norm COLLATE utf8mb4_general_ci = :bk_fb))";
+        $bkBase   = ['bk' => $bairroKey, 'bk_fb' => $bairroKey];
+    } else {
+        $bkWhere  = "bairro_norm COLLATE utf8mb4_general_ci = :bk";
+        $bkBase   = ['bk' => $bairroKey];
+    }
+    $bkPeriod = array_merge($bkBase, ['start_comp' => $startComp, 'end_comp' => $endComp]);
+
+    // 1. Mart compradores por geo
+    $martRows = safeQuery($pdo,
+        "SELECT COUNT(*) AS row_count,
+                SUM(faturamento) AS total_rev,
+                SUM(qtd_notas) AS total_invoices,
+                COUNT(DISTINCT COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)) AS total_clientes,
+                MIN(competencia) AS min_comp,
+                MAX(competencia) AS max_comp
+         FROM mart_compradores_por_geo
+         WHERE {$bkWhere}
+           AND competencia BETWEEN :start_comp AND :end_comp",
+        $bkPeriod
+    );
+    $bairroAudit['mart_compradores_por_geo'] = $martRows !== false ? [
+        'row_count'         => (int) ($martRows['row_count'] ?? 0),
+        'total_revenue'     => (float) ($martRows['total_rev'] ?? 0),
+        'total_invoices'    => (int) ($martRows['total_invoices'] ?? 0),
+        'total_clientes'    => (int) ($martRows['total_clientes'] ?? 0),
+        'competencia_range' => ($martRows['min_comp'] ?? 'N/A') . ' – ' . ($martRows['max_comp'] ?? 'N/A'),
+    ] : ['error' => 'query_failed'];
+
+    // 2. Top buyers from mart
+    $topBuyers = safeQueryAll($pdo,
+        "SELECT MAX(bairro_norm) AS bairro_norm_stored,
+                MAX(cliente_nome) AS cliente_nome,
+                SUM(faturamento) AS revenue,
+                SUM(qtd_notas) AS invoices
+         FROM mart_compradores_por_geo
+         WHERE {$bkWhere}
+           AND competencia BETWEEN :start_comp AND :end_comp
+         GROUP BY COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)
+         ORDER BY revenue DESC
+         LIMIT 5",
+        $bkPeriod
+    );
+    $bairroAudit['top_buyers_mart'] = $topBuyers ?: [];
+
+    // 3. Distinct bairro_norm/bairro_key variants stored (shows case/accent drift)
+    $bkExtra = $hasBkCol ? ', bairro_key' : '';
+    $normVariants = safeQueryAll($pdo,
+        "SELECT DISTINCT bairro_norm{$bkExtra}, COUNT(*) AS rows
+         FROM mart_compradores_por_geo
+         WHERE {$bkWhere}
+         GROUP BY bairro_norm{$bkExtra}",
+        $bkBase
+    );
+    $bairroAudit['bairro_norm_variants_in_mart'] = $normVariants ?: [];
+
+    // 4. Geo dim coverage for this bairro
+    if (tableExists($pdo, 'biomie_clientes_geo_dim')) {
+        $hasBkGeo = colExists($pdo, 'biomie_clientes_geo_dim', 'bairro_key');
+        if ($hasBkGeo) {
+            $geoWhere = "(bairro_key = :bk OR (bairro_key IS NULL AND bairro_norm COLLATE utf8mb4_general_ci = :bk_fb))";
+            $geoBase  = ['bk' => $bairroKey, 'bk_fb' => $bairroKey];
+        } else {
+            $geoWhere = "bairro_norm COLLATE utf8mb4_general_ci = :bk";
+            $geoBase  = ['bk' => $bairroKey];
+        }
+        $geoDim = safeQuery($pdo,
+            "SELECT COUNT(*) AS clientes_com_geo,
+                    COUNT(DISTINCT bairro_norm) AS bairro_norm_variants
+             FROM biomie_clientes_geo_dim
+             WHERE {$geoWhere}",
+            $geoBase
+        );
+        $bairroAudit['clientes_geo_dim'] = $geoDim !== false ? [
+            'clientes_com_geo'     => (int) ($geoDim['clientes_com_geo'] ?? 0),
+            'bairro_norm_variants' => (int) ($geoDim['bairro_norm_variants'] ?? 0),
+        ] : ['error' => 'query_failed'];
+    }
+
+    // 5. EXPLAIN the mart query (if --explain)
+    if ($explainMode && tableExists($pdo, 'mart_compradores_por_geo')) {
+        $explainRows = safeQueryAll($pdo,
+            "EXPLAIN SELECT COUNT(*) FROM mart_compradores_por_geo
+             WHERE {$bkWhere}
+               AND competencia BETWEEN :start_comp AND :end_comp",
+            $bkPeriod
+        );
+        $bairroAudit['explain_mart_query'] = $explainRows ?: [];
+    }
+
+    $report['bairro_audit'] = $bairroAudit;
+}
 
 // ── Output ────────────────────────────────────────────────────────────────────
 
@@ -550,6 +899,14 @@ function outputAndExit(array $report, bool $jsonMode): never
     if (!($report['connection']['ok'] ?? false)) {
         echo "ERRO DE CONEXAO: " . ($report['connection']['error'] ?? 'desconhecido') . "\n";
         exit(1);
+    }
+
+    if (isset($report['normalized'])) {
+        $norm = $report['normalized'];
+        echo "city_key   : " . ($norm['city_key'] ?? '-') . "\n";
+        echo "bairro_key : " . ($norm['bairro_key'] ?? '-') . "\n";
+        echo "bairro_norm: " . ($norm['bairro_norm'] ?? '-') . "\n";
+        echo "\n";
     }
 
     foreach ($report['layers'] as $layerKey => $layer) {
@@ -583,6 +940,43 @@ function outputAndExit(array $report, bool $jsonMode): never
     foreach ($report['pipeline_diagnosis'] as $d) {
         echo "  [{$d['layer']}] {$d['issue']}\n";
         if ($d['action']) echo "        → {$d['action']}\n";
+    }
+
+    if (isset($report['bairro_audit'])) {
+        $ba = $report['bairro_audit'];
+        echo "\n── AUDITORIA DO BAIRRO: {$ba['bairro_key']} ──\n";
+        $mart = $ba['mart_compradores_por_geo'] ?? [];
+        echo "  Mart compradores por geo:\n";
+        echo "    row_count:     " . ($mart['row_count'] ?? 'N/A') . "\n";
+        echo "    total_revenue: " . number_format((float)($mart['total_revenue'] ?? 0), 2, ',', '.') . "\n";
+        echo "    total_invoices: " . ($mart['total_invoices'] ?? 0) . "\n";
+        echo "    total_clientes: " . ($mart['total_clientes'] ?? 0) . "\n";
+        echo "    competencia_range: " . ($mart['competencia_range'] ?? 'N/A') . "\n";
+        if (!empty($ba['bairro_norm_variants_in_mart'])) {
+            echo "  bairro_norm variants stored: ";
+            foreach ($ba['bairro_norm_variants_in_mart'] as $v) {
+                echo "[" . ($v['bairro_norm'] ?? '?') . " ×" . ($v['rows'] ?? 0) . "] ";
+            }
+            echo "\n";
+        }
+        if (!empty($ba['top_buyers_mart'])) {
+            echo "  Top compradores (mart):\n";
+            foreach ($ba['top_buyers_mart'] as $buyer) {
+                echo "    " . ($buyer['cliente_nome'] ?? '?') . " — R$ " . number_format((float)($buyer['revenue'] ?? 0), 2, ',', '.') . "\n";
+            }
+        }
+        if (isset($ba['clientes_geo_dim'])) {
+            echo "  biomie_clientes_geo_dim: " . ($ba['clientes_geo_dim']['clientes_com_geo'] ?? 0) . " clientes, " . ($ba['clientes_geo_dim']['bairro_norm_variants'] ?? 0) . " variante(s) de bairro_norm\n";
+        }
+        echo "\n";
+    }
+
+    if (isset($report['diagnostics'])) {
+        $d = $report['diagnostics'];
+        echo "\n── DIAGNOSTICS ──\n";
+        echo "  bairro_key_missing : " . ($d['bairro_key_missing'] ? 'SIM — execute php bin/migrate.php' : 'nao') . "\n";
+        echo "  case_mismatch      : " . ($d['case_mismatch'] ? 'SIM — bairro_norm tem maiusculas (rematerialize)' : 'nao') . "\n";
+        echo "  accent_mismatch    : " . ($d['accent_mismatch'] ? 'SIM — bairro_norm tem acentos (backfill + rematerialize)' : 'nao') . "\n";
     }
 
     echo "\nPara saída JSON completa: php tools/dev/geo_sales_debug.php --start={$params['start']} --end={$params['end']} --json\n\n";

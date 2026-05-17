@@ -7,6 +7,7 @@ use BIomie\Database;
 use BIomie\Http;
 use BIomie\RequestContext;
 use BIomie\Support\DocumentMask;
+use BIomie\Support\Geo\GeoKeyNormalizer;
 use BIomie\Support\GeoMapSupport;
 use BIomie\Support\MapFilterSupport;
 
@@ -31,6 +32,23 @@ try {
         Http::jsonConflictMissingTable('mart_compradores_por_geo');
     }
 
+    // Accept bairro_key (underscore, no accent) or bairro_norm (space-based) from JS.
+    // Priority: bairro_key param > bairro_norm param > neighborNorm from filter.
+    $rawBairroKey  = trim((string) ($_GET['bairro_key'] ?? ''));
+    $rawBairroNorm = trim((string) ($_GET['bairro_norm'] ?? ''));
+    // Normalize whatever we received to a stable underscore key.
+    $resolvedKey = $rawBairroKey !== ''
+        ? GeoKeyNormalizer::makeNeighborhoodKey($rawBairroKey)
+        : ($rawBairroNorm !== ''
+            ? GeoKeyNormalizer::makeNeighborhoodKey($rawBairroNorm)
+            : ($neighborNorm !== null ? GeoKeyNormalizer::normToKey($neighborNorm) : null));
+
+    // City key for bairro_key column filter.
+    $resolvedCityKey = $cityNorm !== null ? GeoKeyNormalizer::normToKey($cityNorm) : null;
+
+    $hasBairroKeyCol = geoColExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
+    $hasCidadeKeyCol = geoColExists($pdo, 'mart_compradores_por_geo', 'cidade_key');
+
     $where = ['competencia BETWEEN :start_comp AND :end_comp'];
     $params = [
         'start_comp' => $filters['start_comp'],
@@ -38,13 +56,27 @@ try {
     ];
 
     if ($cityNorm !== null) {
-        $where[] = "(LOWER(cidade_norm) = :city OR cidade_norm IS NULL OR TRIM(cidade_norm) = '')";
-        $params['city'] = $cityNorm;
+        if ($hasCidadeKeyCol && $resolvedCityKey !== null) {
+            $where[] = "(cidade_key = :city_key OR (cidade_key IS NULL AND LOWER(cidade_norm) = :city_norm) OR cidade_norm IS NULL OR TRIM(cidade_norm) = '')";
+            $params['city_key']  = $resolvedCityKey;
+            $params['city_norm'] = $cityNorm;
+        } else {
+            $where[] = "(LOWER(cidade_norm) = :city OR cidade_norm IS NULL OR TRIM(cidade_norm) = '')";
+            $params['city'] = $cityNorm;
+        }
     }
 
-    if ($neighborNorm !== null) {
-        $where[] = 'LOWER(bairro_norm) = :neighborhood';
-        $params['neighborhood'] = $neighborNorm;
+    if ($resolvedKey !== null && $resolvedKey !== '') {
+        if ($hasBairroKeyCol) {
+            // Use bairro_key column when available; COLLATE fallback for unbackfilled rows.
+            $where[] = '(bairro_key = :bairro_key OR (bairro_key IS NULL AND bairro_norm COLLATE utf8mb4_general_ci = :bairro_key_fb))';
+            $params['bairro_key']    = $resolvedKey;
+            $params['bairro_key_fb'] = $resolvedKey;
+        } else {
+            // Legacy: accent+case-insensitive COLLATE comparison on bairro_norm.
+            $where[] = 'bairro_norm COLLATE utf8mb4_general_ci = :bairro_key';
+            $params['bairro_key'] = $resolvedKey;
+        }
     }
 
     if ($cnae !== null) {
@@ -84,8 +116,10 @@ try {
     $stmt->execute();
 
     $data = [];
+    $sourceMode = 'gold_mart';
     $canViewFullDocuments = Auth::canViewFullDocuments();
     $canProbeInvoices = Http::tableExists($pdo, 'biomie_notas_fiscais_canonicas');
+    $canProbeGeo = Http::tableExists($pdo, 'biomie_clientes_geo_dim');
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $documentRaw = is_string($row['document_raw'] ?? null) ? $row['document_raw'] : '';
         $documentNorm = topBuyersDocumentDigits($documentRaw);
@@ -131,6 +165,54 @@ try {
         ];
     }
 
+    // Canonical fallback: when mart is empty for a specific bairro, query NFs directly.
+    if ($data === [] && $resolvedKey !== null && $resolvedKey !== '' && $canProbeInvoices && $canProbeGeo) {
+        $canonicalRaws = topBuyersFromCanonical($pdo, $resolvedKey, $filters['date_from'], $filters['date_to'], $limit);
+        if ($canonicalRaws !== []) {
+            $sourceMode = 'canonical_fallback';
+            foreach ($canonicalRaws as $row) {
+                $documentRaw   = is_string($row['document_raw'] ?? null) ? $row['document_raw'] : '';
+                $documentNorm  = topBuyersDocumentDigits($documentRaw);
+                $documentMasked = DocumentMask::maskDocument(
+                    $documentRaw !== '' ? $documentRaw : null,
+                    'Nao informado'
+                ) ?? 'Nao informado';
+                $revenue       = (float) ($row['revenue'] ?? 0);
+                $invoices      = (int) ($row['invoices'] ?? 0);
+                $averageTicket = (float) ($row['average_ticket'] ?? 0);
+                $customerName  = (string) ($row['customer_name'] ?? 'Sem nome');
+                $codigoCliente = (string) ($row['codigo_cliente_omie'] ?? '');
+                $data[] = [
+                    'customer_name'       => $customerName,
+                    'document_masked'     => $documentMasked,
+                    'codigo_cliente_omie' => $codigoCliente,
+                    'cliente_nome'        => $customerName,
+                    'cliente_documento'   => $canViewFullDocuments ? $documentRaw : $documentMasked,
+                    'documento_norm'      => $canViewFullDocuments ? $documentNorm : '',
+                    'bairro_norm'         => (string) ($row['bairro_norm'] ?? ''),
+                    'cidade_norm'         => (string) ($row['cidade_norm'] ?? ''),
+                    'revenue'             => $revenue,
+                    'invoices'            => $invoices,
+                    'average_ticket'      => $averageTicket,
+                    'last_purchase'       => $row['last_purchase'] ?? null,
+                    'ultima_compra'       => $row['last_purchase'] ?? null,
+                    'vendedor_principal'  => '',
+                    'top_nf'              => '',
+                    'cnae'                => null,
+                    'segment'             => null,
+                    'cliente'             => $customerName,
+                    'documento_mascarado' => $documentMasked,
+                    'faturamento'         => $revenue,
+                    'notas'               => $invoices,
+                    'qtd_notas'           => $invoices,
+                    'ticket_medio'        => $averageTicket,
+                    'cnae_codigo'         => null,
+                    'segmento_macro'      => null,
+                ];
+            }
+        }
+    }
+
     $payload = [
         'ok'      => true,
         'filters' => [
@@ -138,6 +220,7 @@ try {
             'date_to'      => $filters['date_to'],
             'city'         => $cityNorm,
             'neighborhood' => $neighborNorm,
+            'bairro_key'   => $resolvedKey,
             'cnae'         => $cnae,
             'seller_id'    => $filters['seller_id'],
         ],
@@ -145,8 +228,8 @@ try {
         'meta' => [
             'request_id'   => RequestContext::id(),
             'generated_at' => date(DATE_ATOM),
-            'source_table' => 'mart_compradores_por_geo',
-            'source_mode'  => 'gold_mart',
+            'source_table' => $sourceMode === 'canonical_fallback' ? 'biomie_notas_fiscais_canonicas' : 'mart_compradores_por_geo',
+            'source_mode'  => $sourceMode,
             'count'        => count($data),
         ],
     ];
@@ -168,10 +251,62 @@ try {
     ], 500);
 }
 
+function geoColExists(PDO $pdo, string $table, string $col): bool
+{
+    try {
+        return (int) $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$table}' AND COLUMN_NAME = '{$col}'"
+        )->fetchColumn() > 0;
+    } catch (\Throwable) {
+        return false;
+    }
+}
+
 function topBuyersDocumentDigits(string $document): string
 {
     $digits = preg_replace('/\D+/', '', $document) ?? '';
     return in_array(strlen($digits), [11, 14], true) ? $digits : '';
+}
+
+/**
+ * Fallback: query buyers directly from NFs + geo_dim when mart is empty.
+ *
+ * @return list<array<string,mixed>>
+ */
+function topBuyersFromCanonical(PDO $pdo, string $bairroKey, string $dateFrom, string $dateTo, int $limit): array
+{
+    try {
+        $sql = '
+            SELECT
+                MAX(nf.codigo_cliente_omie) AS codigo_cliente_omie,
+                MAX(nf.nome_cliente)        AS customer_name,
+                MAX(nf.documento_cliente)   AS document_raw,
+                MAX(geo.bairro_norm)        AS bairro_norm,
+                MAX(geo.cidade_norm)        AS cidade_norm,
+                SUM(nf.valor_total)         AS revenue,
+                COUNT(nf.id)                AS invoices,
+                IF(COUNT(nf.id) > 0, SUM(nf.valor_total) / COUNT(nf.id), 0) AS average_ticket,
+                MAX(nf.data_emissao)        AS last_purchase
+            FROM biomie_notas_fiscais_canonicas nf
+            INNER JOIN biomie_clientes_geo_dim geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
+            WHERE nf.status_fiscal = \'autorizada\'
+              AND DATE(COALESCE(nf.data_competencia, nf.data_emissao)) BETWEEN :date_from AND :date_to
+              AND geo.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key
+            GROUP BY COALESCE(CAST(nf.codigo_cliente_omie AS CHAR), nf.documento_cliente, nf.nome_cliente)
+            ORDER BY revenue DESC
+            LIMIT :limit
+        ';
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':date_from', $dateFrom);
+        $stmt->bindValue(':date_to', $dateTo);
+        $stmt->bindValue(':bairro_key', $bairroKey);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (\Throwable) {
+        return [];
+    }
 }
 
 /**

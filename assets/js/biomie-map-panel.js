@@ -38,6 +38,8 @@
     document.getElementById('cnaeChartBlock')?.classList.add('is-hidden');
     window.BIomieChartHelpers?.destroy('buyerChartCanvas');
     window.BIomieChartHelpers?.destroy('cnaeChartCanvas');
+    const geo360El = document.getElementById('geo360Btn');
+    if (geo360El) geo360El.style.display = 'none';
   }
 
   function setGlobal(buyers, cnaes, formatters) {
@@ -111,22 +113,71 @@
 
   function renderNeighborhood(row, formatters) {
     const data = row || {};
-    text('selectedFeatureBadge', data.neighborhood || 'Bairro');
-    text('panelTitle', data.neighborhood || 'Bairro');
-    text('panelSubtitle', data.city ? `Fortaleza / ${data.city}` : 'Fortaleza');
+    const nbName = data.neighborhood || 'Bairro';
+    const nbKey  = data.neighborhood_key || data.bairro_key || normalizeKey(nbName);
+    const city   = data.city || 'Fortaleza';
+    text('selectedFeatureBadge', nbName);
+    text('panelTitle', nbName);
+    text('panelSubtitle', city ? `Fortaleza / ${city}` : 'Fortaleza');
     text('kpiFeatureRevenue', formatters.money(data.revenue));
     text('kpiFeatureClients', formatters.number(data.customers));
     text('kpiFeatureNotes', formatters.number(data.invoices));
     text('kpiFeatureTicket', formatters.money(data.average_ticket));
+
+    const geo360El = document.getElementById('geo360Btn');
+    if (geo360El && nbKey) {
+      geo360El.setAttribute('data-neighborhood-key', nbKey);
+      geo360El.setAttribute('data-neighborhood-name', nbName);
+      geo360El.setAttribute('data-city', city);
+      geo360El.style.display = '';
+    }
   }
 
-  function renderBuyers(rows, formatters) {
+  function normalizeKey(value) {
+    // bairro_key format: underscore-based, matching GeoKeyNormalizer::makeNeighborhoodKey().
+    return String(value ?? '').trim()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  }
+
+  function clearBuyersSourceBadge() {
+    const el = document.getElementById('buyersSourceBadge');
+    if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+  }
+
+  function renderBuyersLoading() {
+    clearBuyersSourceBadge();
+    html('topBuyersTable', '<tr><td colspan="3" style="text-align:center;color:var(--mag-muted);padding:18px;">Carregando compradores…</td></tr>');
+    document.getElementById('buyerChartBlock')?.classList.add('is-hidden');
+    window.BIomieChartHelpers?.destroy('buyerChartCanvas');
+  }
+
+  function renderBuyersError(message) {
+    clearBuyersSourceBadge();
+    html('topBuyersTable', `<tr><td colspan="3" style="text-align:center;color:var(--danger,#dc2626);padding:18px;">${escapeHtml(message || 'Erro ao carregar compradores.')}</td></tr>`);
+    document.getElementById('buyerChartBlock')?.classList.add('is-hidden');
+    window.BIomieChartHelpers?.destroy('buyerChartCanvas');
+  }
+
+  function renderBuyers(rows, formatters, sourceMode) {
     const dataRows = Array.isArray(rows) ? rows.slice(0, 10) : [];
     if (!dataRows.length) {
-      renderEmptyTable('topBuyersTable', 'Sem compradores para o filtro.', 3);
+      renderEmptyTable('topBuyersTable', 'Sem compradores neste bairro no periodo.', 3);
       document.getElementById('buyerChartBlock')?.classList.add('is-hidden');
       window.BIomieChartHelpers?.destroy('buyerChartCanvas');
       return;
+    }
+
+    const isFallback = sourceMode === 'canonical_fallback';
+    if (isFallback) {
+      const headerEl = document.getElementById('buyersSourceBadge');
+      if (headerEl) {
+        headerEl.innerHTML = '<span style="font-size:10px;font-weight:600;color:var(--warning,#d97706);background:var(--warning-soft,rgba(217,119,6,.14));border-radius:4px;padding:2px 6px;">Fonte: NF direta (mart nao materializado)</span>';
+        headerEl.style.display = '';
+      }
+    } else {
+      const headerEl = document.getElementById('buyersSourceBadge');
+      if (headerEl) headerEl.style.display = 'none';
     }
 
     html('topBuyersTable', dataRows.map((row) => {
@@ -193,6 +244,8 @@
     setGlobal,
     renderNeighborhood,
     renderBuyers,
+    renderBuyersLoading,
+    renderBuyersError,
     renderCnaes,
   };
 })();

@@ -6,8 +6,11 @@ use BIomie\Auth;
 use BIomie\Database;
 use BIomie\Http;
 use BIomie\RequestContext;
+use BIomie\Support\Geo\GeoKeyNormalizer;
 use BIomie\Support\GeoMapSupport;
+use BIomie\Support\GeoTraceDiagnostics;
 use BIomie\Support\MapFilterSupport;
+use BIomie\Support\NeighborhoodNormalizer;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -40,11 +43,31 @@ try {
     ];
 
     // City filter always applies (defaults to Fortaleza); include NULL/empty cidade_norm (unenriched rows)
-    $martWhere[] = '(LOWER(m.cidade_norm) = :city OR m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = \'\')';
+    $martWhere[] = '(LOWER(TRIM(m.cidade_norm)) = :city OR m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = \'\')';
     $params['city'] = $cityNorm;
 
-    if ($neighborhoodNorm !== null) {
-        $martWhere[] = 'LOWER(m.bairro_norm) = :neighborhood';
+    // Resolve bairro_key from request (supports bairro_key, bairro_norm, and neighborhood params).
+    $rawBairroKey  = trim((string) ($_GET['bairro_key'] ?? ''));
+    $rawBairroNorm = trim((string) ($_GET['bairro_norm'] ?? ''));
+    $resolvedBairroKey = $rawBairroKey !== ''
+        ? GeoKeyNormalizer::makeNeighborhoodKey($rawBairroKey)
+        : ($rawBairroNorm !== ''
+            ? GeoKeyNormalizer::makeNeighborhoodKey($rawBairroNorm)
+            : ($neighborhoodNorm !== null ? GeoKeyNormalizer::normToKey($neighborhoodNorm) : null));
+
+    $hasBairroKeyColNb = nbColExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
+
+    if ($resolvedBairroKey !== null && $resolvedBairroKey !== '') {
+        if ($hasBairroKeyColNb) {
+            $martWhere[] = '(m.bairro_key = :bairro_key OR (m.bairro_key IS NULL AND m.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key_fb))';
+            $params['bairro_key']    = $resolvedBairroKey;
+            $params['bairro_key_fb'] = $resolvedBairroKey;
+        } else {
+            $martWhere[] = 'LOWER(TRIM(m.bairro_norm)) = :neighborhood';
+            $params['neighborhood'] = GeoKeyNormalizer::keyToNorm($resolvedBairroKey);
+        }
+    } elseif ($neighborhoodNorm !== null) {
+        $martWhere[] = 'LOWER(TRIM(m.bairro_norm)) = :neighborhood';
         $params['neighborhood'] = $neighborhoodNorm;
     }
 
@@ -71,10 +94,10 @@ try {
                 COALESCE(SUM(m.qtd_notas), 0)                                          AS invoices,
                 IF(COALESCE(SUM(m.qtd_notas), 0) > 0, SUM(m.faturamento) / SUM(m.qtd_notas), 0) AS average_ticket,
                 MAX(m.refreshed_at)                                                    AS last_materialized_at,
-                (SUM(m.qtd_notas) > 0)                                                 AS tem_venda
+                (COALESCE(SUM(m.qtd_notas), 0) > 0 OR COALESCE(SUM(m.faturamento), 0) > 0) AS tem_venda
             FROM biomie_bairros_fortaleza_dim b
             LEFT JOIN mart_compradores_por_geo m
-              ON m.bairro_norm = b.bairro_nome_normalizado
+              ON LOWER(TRIM(m.bairro_norm)) = LOWER(TRIM(b.bairro_nome_normalizado))
              AND {$martWhereSql}
             WHERE b.ativo = 1
             GROUP BY b.bairro_nome, b.bairro_nome_normalizado
@@ -113,13 +136,47 @@ try {
 
     $data = [];
     foreach ($rows as $index => $row) {
-        $neighborhoodName = (string) ($row['neighborhood'] ?? 'Nao informado');
-        $neighborhoodKey  = (string) ($row['neighborhood_key'] ?? GeoMapSupport::normalizeKey($neighborhoodName));
+        $neighborhoodOriginal = (string) ($row['neighborhood'] ?? 'Nao informado');
+        $neighborhoodName = NeighborhoodNormalizer::displayName($neighborhoodOriginal);
+        // bairro_key: underscore-based stable technical key (new standard)
+        $bairroKeyOut = GeoKeyNormalizer::makeNeighborhoodKey($neighborhoodName !== '' ? $neighborhoodName : $neighborhoodOriginal);
+        // bairro_norm: space-based legacy key (backward compat)
+        $neighborhoodKey = GeoKeyNormalizer::normalizeNeighborhood($neighborhoodName !== '' ? $neighborhoodName : (string) ($row['neighborhood_key'] ?? ''));
+        $cityName = NeighborhoodNormalizer::displayName($city ?? 'Fortaleza');
+        $cityKey  = GeoKeyNormalizer::makeCityKey($cityName);
+        $normalization = NeighborhoodNormalizer::explain($neighborhoodName);
+        $aliasApplied = $normalization['alias_applied']['canonical_key'] ?? null;
+        $isEmptyNeighborhood = $bairroKeyOut === '' || in_array($bairroKeyOut, ['nao_informado', 'nao-informado', 'nao informado'], true);
+        $matchStatus = $isEmptyNeighborhood ? 'empty_neighborhood' : 'matched';
+        $matchQuality = NeighborhoodNormalizer::matchType($neighborhoodOriginal, $neighborhoodKey, $neighborhoodName);
         $revenue = (float) ($row['revenue'] ?? 0);
         $data[] = [
-            'city' => $city ?? 'Fortaleza',
-            'neighborhood' => $neighborhoodName,
-            'neighborhood_key' => $neighborhoodKey,
+            'city'          => $cityName,
+            'city_key'      => $cityKey,
+            'neighborhood'  => $neighborhoodName,
+            'neighborhood_key' => $bairroKeyOut,
+            'bairro_nome'   => $neighborhoodName,
+            'bairro_original' => $neighborhoodOriginal,
+            'bairro_key'    => $bairroKeyOut,
+            'bairro_norm'   => $neighborhoodKey,
+            'cidade_nome'   => $cityName,
+            'cidade_key'    => $cityKey,
+            'receita' => $revenue,
+            'notas' => (int) ($row['invoices'] ?? 0),
+            'clientes' => (int) ($row['customers'] ?? 0),
+            'pedidos' => isset($row['orders']) ? (int) $row['orders'] : null,
+            'origem' => 'mart_compradores_por_geo',
+            'competencia_inicio' => $params['start_comp'],
+            'competencia_fim' => $params['end_comp'],
+            'normalizacao_origem' => 'NeighborhoodNormalizer',
+            'alias_aplicado' => $aliasApplied,
+            'match_status' => $matchStatus,
+            'data_quality' => [
+                'match_type' => (string) ($matchQuality['match_type'] ?? ($isEmptyNeighborhood ? 'empty' : 'normalized')),
+                'confidence' => (float) ($matchQuality['confidence'] ?? ($isEmptyNeighborhood ? 0.0 : 0.95)),
+                'clientes_sem_bairro' => $isEmptyNeighborhood ? (int) ($row['customers'] ?? 0) : 0,
+                'nfs_sem_cliente' => 0,
+            ],
             'revenue' => $revenue,
             'customers' => (int) ($row['customers'] ?? 0),
             'invoices' => (int) ($row['invoices'] ?? 0),
@@ -158,7 +215,7 @@ try {
             $martTotal = (int) $pdo->query('SELECT COUNT(*) FROM mart_compradores_por_geo')->fetchColumn();
             $martSum   = (float) $pdo->query('SELECT COALESCE(SUM(faturamento),0) FROM mart_compradores_por_geo')->fetchColumn();
             if ($martTotal === 0) {
-                $motivoZero = 'mart_vazio';
+                $motivoZero = 'mart_compradores_geo_nao_materializado';
             } elseif ($martSum <= 0.0) {
                 $motivoZero = 'periodo_sem_vendas';
             } else {
@@ -215,15 +272,51 @@ try {
             'source_table' => 'mart_compradores_por_geo',
             'source_mode' => $hasBairrosDim ? 'bairros_dim_left_join' : 'gold_mart',
             'count' => count($data),
+            'materialization' => [
+                'source_table' => 'mart_compradores_por_geo',
+                'competencia_start' => $params['start_comp'],
+                'competencia_end' => $params['end_comp'],
+                'last_refreshed_at' => null,
+                'rows' => count($data),
+                'status' => count($data) > 0 ? 'ok' : 'empty',
+            ],
         ],
     ];
 
+    try {
+        $layerDiagnostics = GeoTraceDiagnostics::build($pdo, $range['date_from'], $range['date_to'], $city ?? 'Fortaleza');
+        $payload['diagnostics'] = array_merge($payload['diagnostics'] ?? [], [
+            'omie' => $layerDiagnostics['omie'] ?? [],
+            'canonical' => $layerDiagnostics['canonical'] ?? [],
+            'mart_cliente_periodo' => $layerDiagnostics['mart_cliente_periodo'] ?? [],
+            'mart_compradores_por_geo' => $layerDiagnostics['mart_compradores_por_geo'] ?? [],
+            'api' => $layerDiagnostics['api'] ?? [],
+            'map' => $layerDiagnostics['map'] ?? [],
+            'materialization' => $layerDiagnostics['materialization'] ?? [],
+            'freshness' => $layerDiagnostics['freshness'] ?? [],
+            'motivo_zero' => $layerDiagnostics['motivo_zero'] ?? ($payload['diagnostics']['motivo_zero'] ?? null),
+            'next_action' => $layerDiagnostics['next_action'] ?? null,
+            'map_status' => $layerDiagnostics['map_status'] ?? null,
+        ]);
+        $materialization = is_array($layerDiagnostics['materialization'] ?? null) ? $layerDiagnostics['materialization'] : [];
+        $payload['meta']['materialization'] = [
+            'source_table' => 'mart_compradores_por_geo',
+            'competencia_start' => $params['start_comp'],
+            'competencia_end' => $params['end_comp'],
+            'last_refreshed_at' => $materialization['last_rebuild_at'] ?? null,
+            'rows' => (int) ($materialization['period_rows']['mart_compradores_por_geo'] ?? count($data)),
+            'status' => (string) ($materialization['status'] ?? (count($data) > 0 ? 'ok' : 'empty')),
+            'next_action' => $materialization['next_action'] ?? null,
+        ];
+        $payload['map_status'] = $layerDiagnostics['map_status'] ?? null;
+    } catch (\Throwable) {}
+
     if ($totalRevenue <= 0.0) {
         $payload['empty_state'] = GeoMapSupport::emptyState();
-        $payload['diagnostics'] = [
+        $payload['diagnostics'] = array_merge($payload['diagnostics'] ?? [], [
             'motivo_zero' => $motivoZero,
             'filters_applied' => implode(', ', array_keys($params)),
-        ];
+        ]);
     }
 
     Http::json($payload);
@@ -237,4 +330,16 @@ try {
         'message' => 'Nao foi possivel carregar as vendas por bairro agora.',
         'request_id' => RequestContext::id(),
     ], 500);
+}
+
+function nbColExists(PDO $pdo, string $table, string $col): bool
+{
+    try {
+        return (int) $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$table}' AND COLUMN_NAME = '{$col}'"
+        )->fetchColumn() > 0;
+    } catch (\Throwable) {
+        return false;
+    }
 }
