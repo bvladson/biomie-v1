@@ -50,13 +50,16 @@ final class GeoDetailConsistencyHealthCheck implements CheckInterface
             )->fetchColumn();
 
             if ($hasBairroKey) {
-                // 2. Linhas com bairro_key NULL mas com faturamento
+                // 2. Linhas com bairro_key NULL mas com faturamento E bairro_norm preenchido
+                // (linhas sem bairro_norm sao data gap, nao falha de backfill)
                 $metrics['bairro_key_null'] = (int) $this->pdo->query(
                     "SELECT COUNT(*) FROM mart_compradores_por_geo
-                     WHERE (bairro_key IS NULL OR bairro_key = '') AND COALESCE(faturamento,0) > 0"
+                     WHERE (bairro_key IS NULL OR bairro_key = '')
+                       AND bairro_norm IS NOT NULL AND TRIM(bairro_norm) != ''
+                       AND COALESCE(faturamento,0) > 0"
                 )->fetchColumn();
                 if ($metrics['bairro_key_null'] > 0) {
-                    $issues[] = $metrics['bairro_key_null'] . ' linhas com faturamento sem bairro_key.';
+                    $issues[] = $metrics['bairro_key_null'] . ' linhas com bairro_norm preenchido mas sem bairro_key (backfill pendente).';
                     $actions[] = 'Execute: php tools/dev/geo_keys_backfill.php --apply --table=mart_compradores_por_geo';
                 }
 
