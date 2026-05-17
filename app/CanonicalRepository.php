@@ -698,6 +698,14 @@ final class CanonicalRepository
     /**
      * @return list<array<string,mixed>>
      */
+    public function listTopInvoicesForDisplayCommercial(string $start, string $end, int $limit = 8): array
+    {
+        return $this->readRepository()->listTopInvoicesForDisplayCommercial($start, $end, $limit);
+    }
+
+    /**
+     * @return list<array<string,mixed>>
+     */
     public function listCancelledInvoicesForDisplayCommercial(string $start, string $end): array
     {
         return $this->readRepository()->listCancelledInvoicesForDisplayCommercial($start, $end);
