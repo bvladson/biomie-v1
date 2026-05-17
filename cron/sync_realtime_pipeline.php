@@ -30,6 +30,7 @@ use BIomie\OmieOrderEventSyncService;
 use BIomie\OmieRealtimeSyncService;
 use BIomie\OmieRepository;
 use BIomie\RefreshQueue;
+use BIomie\Support\SecretMask;
 use BIomie\SyncPipelineRepository;
 use BIomie\Telemetry;
 
@@ -61,25 +62,54 @@ if (!Database::isConfigured($config, $connection)) {
 }
 
 $args = $argv ?? [];
+$options = parseOptions($args);
 $domains = parseDomains($args);
-$mode = 'delta';
+$mode = (string) ($options['mode'] ?? 'delta');
 $reconcileDays = (int) $config->get('sync_pipeline.reconcile_days', 30);
-$backfillStart = null;
-$backfillEnd = null;
+$backfillStart = isset($options['start']) ? (string) $options['start'] : null;
+$backfillEnd = isset($options['end']) ? (string) $options['end'] : null;
+$runId = isset($options['run-id']) ? (string) $options['run-id'] : null;
+$dryRun = isset($options['dry-run']);
 
 if (in_array('--reconcile', $args, true)) {
     $mode = 'reconcile';
     $index = array_search('--reconcile', $args, true);
     $reconcileDays = max(1, (int) ($args[$index + 1] ?? $reconcileDays));
-} elseif (in_array('--backfill', $args, true)) {
+}
+if (isset($options['reconcile'])) {
+    $mode = 'reconcile';
+    $reconcileDays = max(1, (int) $options['reconcile']);
+}
+if (in_array('--backfill', $args, true)) {
     $mode = 'backfill';
     $index = array_search('--backfill', $args, true);
     $backfillStart = (string) ($args[$index + 1] ?? '');
     $backfillEnd = (string) ($args[$index + 2] ?? '');
-    if ($backfillStart === '' || $backfillEnd === '') {
-        fwrite(STDERR, "Use --backfill YYYY-MM-DD YYYY-MM-DD.\n");
+}
+if ($mode === 'backfill' || $mode === 'full') {
+    if (($backfillStart ?? '') === '' || ($backfillEnd ?? '') === '') {
+        fwrite(STDERR, "Use --backfill YYYY-MM-DD YYYY-MM-DD ou --mode=backfill --start=YYYY-MM-DD --end=YYYY-MM-DD.\n");
         exit(2);
     }
+}
+
+if (!in_array($mode, ['delta', 'full', 'reconcile', 'backfill'], true)) {
+    fwrite(STDERR, "Modo invalido. Use --mode=delta|full|reconcile|backfill.\n");
+    exit(2);
+}
+
+if ($dryRun) {
+    fwrite(STDOUT, json_encode([
+        'ok' => true,
+        'dry_run' => true,
+        'mode' => $mode,
+        'domains' => $domains,
+        'start' => $backfillStart,
+        'end' => $backfillEnd,
+        'reconcile_days' => $reconcileDays,
+        'run_id' => $runId,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL);
+    exit(0);
 }
 
 $pdo = Database::connect($config, $connection);
@@ -125,30 +155,33 @@ try {
 
     if ($mode === 'reconcile') {
         $result = $service->runReconcile($reconcileDays, $domains);
-    } elseif ($mode === 'backfill') {
+    } elseif ($mode === 'backfill' || $mode === 'full') {
         $result = $service->runBackfill((string) $backfillStart, (string) $backfillEnd, $domains);
     } else {
-        $result = $service->runDelta($domains);
+        $result = $service->runDelta($domains, null, $runId);
     }
 
     if (($result['ok'] ?? false) && isset($cache)) {
-        $cache->put('biomie_live_stream_last_event_time', time());
+        $cache->put('biomie_live_stream_last_event_time', ['ts' => time()]);
     }
 
     fwrite(STDOUT, json_encode($result + [
         'domains' => $domains,
+        'mode' => $mode,
+        'run_id' => $runId,
         'finished_at' => date(DATE_ATOM),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL);
 
     exit(($result['ok'] ?? false) ? 0 : 1);
 } catch (Throwable $exception) {
+    $message = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
     $logger->error('Falha no pipeline operacional da Fase 4.', [
-        'message' => $exception->getMessage(),
+        'message' => $message,
         'trace' => $exception->getTraceAsString(),
         'mode' => $mode,
         'domains' => $domains,
     ]);
-    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+    fwrite(STDERR, $message . PHP_EOL);
     exit(1);
 } finally {
     $lock?->release();
@@ -175,4 +208,22 @@ function parseDomains(array $args): array
     }
 
     return [];
+}
+
+/**
+ * @param list<string> $args
+ * @return array<string,string|bool>
+ */
+function parseOptions(array $args): array
+{
+    $options = [];
+    foreach ($args as $arg) {
+        if (!is_string($arg) || !str_starts_with($arg, '--')) {
+            continue;
+        }
+        [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, true);
+        $options[$key] = $value;
+    }
+
+    return $options;
 }
