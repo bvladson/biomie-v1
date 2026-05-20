@@ -8,6 +8,15 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
 {
     public function refresh(string $start, string $end): int
     {
+        // Delete-before-insert: prevents stale rows from persisting across scope migrations or data corrections.
+        $this->exec(
+            'DELETE FROM mart_vendedor_dia WHERE dia BETWEEN :start AND :end',
+            ['start' => $start, 'end' => $end],
+            'materialize_vendedor_dia',
+            'mart_vendedor_dia',
+            'delete_mart_vendedor_dia_periodo',
+        );
+
         $pedidoScopeFilter = $this->commercialScopeFragment('biomie_pedidos_canonicos', '');
         $sqlComercial = <<<SQL
             INSERT INTO mart_vendedor_dia (
