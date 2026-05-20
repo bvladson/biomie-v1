@@ -13,7 +13,8 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             return 0;
         }
 
-        $sql = <<<'SQL'
+        $scopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'nf');
+        $sql = <<<SQL
             INSERT INTO mart_vendas_por_cnae_cnpj (
                 competencia, documento_normalizado, codigo_cliente_omie, cliente_nome,
                 cnae_codigo, cnae_descricao, segmento_macro,
@@ -41,7 +42,7 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = nf.codigo_cliente_omie
             LEFT JOIN biomie_clientes_geo_dim geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
             WHERE nf.status_fiscal = 'autorizada'
-              AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end
+              AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$scopeFilter}
             GROUP BY
                 DATE_FORMAT(COALESCE(nf.data_competencia, nf.data_emissao), '%Y-%m'),
                 nf.codigo_cliente_omie,

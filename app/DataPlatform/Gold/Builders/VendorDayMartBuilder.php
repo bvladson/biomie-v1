@@ -8,7 +8,8 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
 {
     public function refresh(string $start, string $end): int
     {
-        $sqlComercial = <<<'SQL'
+        $pedidoScopeFilter = $this->commercialScopeFragment('biomie_pedidos_canonicos', '');
+        $sqlComercial = <<<SQL
             INSERT INTO mart_vendedor_dia (
                 competencia, dia,
                 codigo_vendedor_omie, nome_vendedor,
@@ -37,7 +38,7 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
                 0, 0, 0, 0,
                 NOW()
             FROM biomie_pedidos_canonicos
-            WHERE COALESCE(data_faturamento, data_emissao) BETWEEN :start AND :end
+            WHERE COALESCE(data_faturamento, data_emissao) BETWEEN :start AND :end{$pedidoScopeFilter}
             GROUP BY DATE_FORMAT(COALESCE(data_faturamento, data_emissao), '%Y-%m'),
                      DATE(COALESCE(data_faturamento, data_emissao)),
                      codigo_vendedor_omie, nome_vendedor
@@ -56,7 +57,8 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
 
         $rows = $this->exec($sqlComercial, ['start' => $start, 'end' => $end], 'materialize_vendedor_dia', 'mart_vendedor_dia', 'insert_mart_vendedor_dia_comercial');
 
-        $sqlFiscal = <<<'SQL'
+        $nfScopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', '');
+        $sqlFiscal = <<<SQL
             INSERT INTO mart_vendedor_dia (
                 competencia, dia,
                 codigo_vendedor_omie, nome_vendedor,
@@ -81,7 +83,7 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
                 0, 0, 0, 0,
                 NOW()
             FROM biomie_notas_fiscais_canonicas
-            WHERE COALESCE(data_competencia, data_emissao) BETWEEN :start AND :end
+            WHERE COALESCE(data_competencia, data_emissao) BETWEEN :start AND :end{$nfScopeFilter}
             GROUP BY DATE_FORMAT(COALESCE(data_competencia, data_emissao), '%Y-%m'),
                      DATE(COALESCE(data_competencia, data_emissao)),
                      codigo_vendedor_omie, nome_vendedor

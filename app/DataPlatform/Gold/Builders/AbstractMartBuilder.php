@@ -56,6 +56,23 @@ abstract class AbstractMartBuilder
     }
 
     /**
+     * Fase H — retorna cláusula SQL para filtrar operation_scope = 'commercial'.
+     * Retorna '' se a coluna não existir (pré-migration H3).
+     *
+     * @param string $table Nome da tabela a verificar (ex: 'biomie_notas_fiscais_canonicas')
+     * @param string $alias Alias SQL sem ponto (ex: 'n', 'p', 'nf', ou '' para sem alias)
+     */
+    protected function commercialScopeFragment(string $table, string $alias): string
+    {
+        if ($this->columnExists($table, 'operation_scope')) {
+            $prefix = $alias !== '' ? $alias . '.' : '';
+            return "\n              AND {$prefix}operation_scope = 'commercial'";
+        }
+
+        return '';
+    }
+
+    /**
      * @param array<string,mixed> $params
      */
     protected function exec(string $sql, array $params, string $stage, string $table, string $label): int
