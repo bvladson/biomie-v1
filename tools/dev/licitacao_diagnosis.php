@@ -212,13 +212,13 @@ $report['nfs_canonicas'] = $nfStats;
 if (!$isJson) {
     echo "NFs CANÔNICAS (status=autorizada, período {$start}–{$end}):\n";
     echo "  Total NFs:          {$nfStats['total']}\n";
-    printf("  Valor bruto:        R$ %,.2f\n", $nfStats['value_bruto']);
-    printf("  Base Comercial NF:  R$ %,.2f\n", $nfStats['base_comercial']);
+    echo "  Valor bruto:        R$ " . number_format($nfStats['value_bruto'], 2, ',', '.') . "\n";
+    echo "  Base Comercial NF:  R$ " . number_format($nfStats['base_comercial'], 2, ',', '.') . "\n";
     echo "  Clientes distintos: {$nfStats['clientes_distintos']}\n";
     if (!empty($nfStats['por_scope'])) {
         echo "  Por operation_scope:\n";
         foreach ($nfStats['por_scope'] as $s) {
-            printf("    %-15s %d NFs  R$ %,.2f\n", $s['operation_scope'], (int)$s['nfs'], (float)$s['valor']);
+            printf("    %-15s %d NFs  R$ %s\n", $s['operation_scope'], (int)$s['nfs'], number_format((float)$s['valor'], 2, ',', '.'));
         }
     }
     echo "\n";
@@ -273,7 +273,7 @@ $report['pedidos_canonicos'] = $pedidoStats;
 if (!$isJson) {
     echo "PEDIDOS CANÔNICOS (período {$start}–{$end}):\n";
     echo "  Total pedidos:      {$pedidoStats['total']}\n";
-    printf("  Valor bruto:        R$ %,.2f\n", $pedidoStats['value_bruto']);
+    echo "  Valor bruto:        R$ " . number_format($pedidoStats['value_bruto'], 2, ',', '.') . "\n";
     echo "  Clientes distintos: {$pedidoStats['clientes_distintos']}\n\n";
 }
 
@@ -315,8 +315,8 @@ $report['titulos_financeiros'] = $tituloStats;
 if (!$isJson) {
     echo "TÍTULOS FINANCEIROS:\n";
     echo "  Total títulos:   {$tituloStats['total']}\n";
-    printf("  Valor líquido:   R$ %,.2f\n", $tituloStats['valor_liquido']);
-    printf("  Valor aberto:    R$ %,.2f\n", $tituloStats['valor_aberto']);
+    echo "  Valor líquido:   R$ " . number_format($tituloStats['valor_liquido'], 2, ',', '.') . "\n";
+    echo "  Valor aberto:    R$ " . number_format($tituloStats['valor_aberto'], 2, ',', '.') . "\n";
     echo "\n";
 }
 
@@ -362,11 +362,11 @@ if (!$isJson) {
     if (!empty($produtoStats['top10'])) {
         echo "  Top 10 produtos:\n";
         foreach ($produtoStats['top10'] as $p) {
-            printf("    [%s] %-40s  qtd: %s  valor: R$ %,.2f\n",
+            printf("    [%s] %-40s  qtd: %s  valor: R$ %s\n",
                 $p['codigo_produto'] ?? 'SEM_SKU',
                 mb_strimwidth((string)($p['descricao_produto'] ?? ''), 0, 40, '…'),
                 number_format((float)$p['quantidade'], 2, ',', '.'),
-                (float)$p['valor']
+                number_format((float)$p['valor'], 2, ',', '.')
             );
         }
     }
@@ -421,8 +421,8 @@ if (!$isJson) {
     echo "RESUMO:\n";
     echo "  Vendedores Licitação:   " . $report['summary']['vendedores_identificados'] . "\n";
     echo "  NFs afetadas:           " . $report['summary']['nfs_afetadas'] . "\n";
-    printf("  Valor bruto NFs:        R$ %,.2f\n", $report['summary']['valor_bruto_nfs']);
-    printf("  Base Comercial NF:      R$ %,.2f\n", $report['summary']['base_comercial_nfs']);
+    echo "  Valor bruto NFs:        R$ " . number_format($report['summary']['valor_bruto_nfs'], 2, ',', '.') . "\n";
+    echo "  Base Comercial NF:      R$ " . number_format($report['summary']['base_comercial_nfs'], 2, ',', '.') . "\n";
     echo "  Pedidos afetados:       " . $report['summary']['pedidos_afetados'] . "\n";
     echo "  Títulos afetados:       " . $report['summary']['titulos_afetados'] . "\n";
     echo "  SKUs afetados:          " . $report['summary']['skus_afetados'] . "\n";

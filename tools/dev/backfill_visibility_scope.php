@@ -26,8 +26,10 @@ if (PHP_SAPI !== 'cli') {
     exit('CLI only.');
 }
 
-$rootDir = dirname(__DIR__, 2);
-require $rootDir . '/api/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+require_once dirname(__DIR__, 2) . '/app/Bootstrap.php';
+\BIomie\Bootstrap::init();
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +81,7 @@ HELP;
 
 // ── DB connection ─────────────────────────────────────────────────────────────
 
+$config = new \BIomie\Config();
 $conn = \BIomie\Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
 if (!\BIomie\Database::isConfigured($config, $conn)) {
     fwrite(STDERR, "ERRO: banco de dados não configurado.\n");
