@@ -66,6 +66,27 @@ final class HomeBootstrapService
                 $overview['month_comparison'] = $overview['month_comparison'] ?? [];
             }
         }
+        $overview = $this->ensureMonthComparisonContract($overview, $start, $end);
+        if ($overview['month_comparison'] === [] && $canonical !== null) {
+            try {
+                $overview['month_comparison'] = $this->buildMonthComparison(
+                    $canonical,
+                    $targetsRepository,
+                    $start,
+                    (float) $this->config->get('flight_plan.saturday_weight', 0.33)
+                );
+                $overview = $this->ensureMonthComparisonContract($overview, $start, $end);
+            } catch (\Throwable $exception) {
+                $this->logger->warning('Home bootstrap: comparativo mensal indisponivel.', [
+                    'message' => $exception->getMessage(),
+                ]);
+                $overview['diagnostics'] = is_array($overview['diagnostics'] ?? null) ? $overview['diagnostics'] : [];
+                $overview['diagnostics']['month_comparison'] = is_array($overview['diagnostics']['month_comparison'] ?? null)
+                    ? $overview['diagnostics']['month_comparison']
+                    : [];
+                $overview['diagnostics']['month_comparison']['build_error'] = $exception->getMessage();
+            }
+        }
 
         $vendors = LegacyEndpointPayloadFactory::vendors($snapshot, $range + ['competencia' => null], 'bootstrap_snapshot');
         $vendors['meta'] = is_array($vendors['meta'] ?? null) ? $vendors['meta'] : [];
@@ -210,6 +231,7 @@ final class HomeBootstrapService
                 'invoice_total' => Support::money($invoiceTotal),
                 'merchandise_total' => Support::money((float) ($row['merchandise_total'] ?? 0)),
                 'discount_total' => Support::money((float) ($row['discount_total'] ?? 0)),
+                'last_purchase' => (string) ($row['last_purchase'] ?? ''),
                 'share_pct' => $grossRevenue > 0 ? round(($invoiceTotal / $grossRevenue) * 100, 2) : 0.0,
             ];
         }, $rows);
@@ -290,6 +312,47 @@ final class HomeBootstrapService
         }
 
         return $rows;
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>
+     */
+    private function ensureMonthComparisonContract(array $payload, string $start, string $end): array
+    {
+        $sourceKey = '';
+        foreach (['month_comparison', 'monthly_comparison', 'monthlyComparison'] as $key) {
+            if (is_array($payload[$key] ?? null)) {
+                $sourceKey = $key;
+                $payload['month_comparison'] = array_values($payload[$key]);
+                break;
+            }
+        }
+
+        if (!is_array($payload['month_comparison'] ?? null)) {
+            $payload['month_comparison'] = [];
+        }
+
+        $payload['diagnostics'] = is_array($payload['diagnostics'] ?? null) ? $payload['diagnostics'] : [];
+        if ($payload['month_comparison'] !== []) {
+            unset($payload['diagnostics']['month_comparison']);
+            return $payload;
+        }
+
+        $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
+        $payload['diagnostics']['month_comparison'] = [
+            'status' => 'empty',
+            'reason' => $sourceKey === '' ? 'chave month_comparison ausente no payload original' : 'dataset sem linhas para o periodo',
+            'expected_key' => 'month_comparison',
+            'accepted_aliases' => ['monthly_comparison', 'monthlyComparison'],
+            'source_key' => $sourceKey !== '' ? $sourceKey : null,
+            'period_start' => (string) ($meta['period_start'] ?? $start),
+            'period_end' => (string) ($meta['period_end'] ?? $end),
+            'served_from' => (string) ($meta['served_from'] ?? ($payload['source'] ?? '')),
+            'rows_count' => 0,
+        ];
+
+        return $payload;
     }
 
     /**

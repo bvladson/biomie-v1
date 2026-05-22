@@ -5,6 +5,8 @@ declare(strict_types=1);
 use BIomie\CanonicalRepository;
 use BIomie\Database;
 use BIomie\Http;
+use BIomie\Modules\Finance\Application\FinanceOverviewBuilder;
+use BIomie\Modules\Finance\Infrastructure\FinanceReadRepository;
 use BIomie\Support;
 
 $financeBootstrapCapabilities = ['jobs.view', 'sales.view', 'finance.view'];
@@ -36,13 +38,23 @@ try {
 
     $canonicalAvailable = false;
     $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
-    if (Database::isConfigured($config, $connection)) {
+    $remittanceRow = null;
+    if (Database::isConfigured($config, 'flight_plan_db') || Database::isConfigured($config, 'db')) {
         try {
             $pdo = Database::connect($config, $connection);
             $canonical = new CanonicalRepository($pdo, $logger);
             if ($canonical->isAvailable()) {
                 $canonicalAvailable = true;
                 $billed = $canonical->summarizeInvoicedCommercial($start, $end);
+                $stmtRem = $pdo->prepare(
+                    "SELECT COUNT(*) AS nf_count, COALESCE(SUM(valor_total),0) AS total_value
+                     FROM biomie_notas_fiscais_canonicas
+                     WHERE status_fiscal = 'autorizada'
+                       AND operation_scope = 'remittance'
+                       AND COALESCE(data_competencia, data_emissao) BETWEEN ? AND ?"
+                );
+                $stmtRem->execute([$start, $end]);
+                $remittanceRow = $stmtRem->fetch(\PDO::FETCH_ASSOC);
             }
         } catch (Throwable $exception) {
             $logger->warning('Commercial health sem leitura canonical.', [
@@ -53,17 +65,51 @@ try {
     }
 
     if ($finance === null) {
+        // Fallback: use canonical finance data from biomie_titulos_financeiros_canonicos
+        if (Database::isConfigured($config, $connection)) {
+            try {
+                $pdo          = $pdo ?? Database::connect($config, $connection);
+                $financeRepo  = new FinanceReadRepository(static fn (): \PDO => $pdo);
+                $financeInfo  = $financeRepo->tableInfo();
+
+                if ($financeInfo['exists'] && $financeInfo['total_rows'] > 0) {
+                    $finBuilder   = new FinanceOverviewBuilder($financeRepo);
+                    $invoiceTotal = Support::toFloat($billed['invoice_total'] ?? 0);
+                    $fSummary     = $finBuilder->build($start, $end, null, $invoiceTotal, '');
+                    $healthFmt    = FinanceOverviewBuilder::toHealthFormat($fSummary);
+
+                    Http::json(array_merge($healthFmt, [
+                        'period' => ['start' => $start, 'end' => $end, 'label' => $range['label']],
+                        'meta'   => [
+                            'canonical_available' => $canonicalAvailable,
+                            'finance_source'      => 'biomie_titulos_financeiros_canonicos',
+                            'reason_code'         => $fSummary['reason_code'] ?? null,
+                        ],
+                    ]));
+                }
+            } catch (\Throwable $canonicalEx) {
+                $logger->warning('Commercial health: canonical finance fallback failed.', [
+                    'message' => $canonicalEx->getMessage(),
+                ]);
+            }
+        }
+
         Http::json([
-            'ok' => true,
+            'ok'        => true,
             'available' => false,
-            'source' => 'finance-unconfigured',
-            'period' => ['start' => $start, 'end' => $end, 'label' => $range['label']],
-            'summary' => [
-                'invoice_total' => Support::money((float) ($billed['invoice_total'] ?? 0)),
+            'source'    => 'finance-unconfigured',
+            'period'    => ['start' => $start, 'end' => $end, 'label' => $range['label']],
+            'summary'   => [
+                'invoice_total'     => Support::money((float) ($billed['invoice_total'] ?? 0)),
                 'merchandise_total' => Support::money((float) ($billed['merchandise_total'] ?? 0)),
-                'notes_count' => (int) ($billed['notes_count'] ?? 0),
+                'notes_count'       => (int) ($billed['notes_count'] ?? 0),
             ],
-            'message' => 'Modulo financeiro Omie nao configurado para enriquecer o painel comercial.',
+            'message'   => 'Modulo financeiro nao configurado. Nenhum titulo financeiro encontrado na base canonica.',
+            'reason_code' => 'finance_table_missing',
+            'remittance_summary' => ($remittanceRow !== null && (int) ($remittanceRow['nf_count'] ?? 0) > 0) ? [
+                'nf_count'    => (int) $remittanceRow['nf_count'],
+                'total_value' => Support::money((float) $remittanceRow['total_value']),
+            ] : null,
         ]);
     }
 
@@ -115,6 +161,10 @@ try {
             'received' => Support::money((float) ($row['received'] ?? 0)),
             'titles' => (int) ($row['titles'] ?? 0),
         ], $paymentMethods),
+        'remittance_summary' => ($remittanceRow !== null && (int) ($remittanceRow['nf_count'] ?? 0) > 0) ? [
+            'nf_count'    => (int) $remittanceRow['nf_count'],
+            'total_value' => Support::money((float) $remittanceRow['total_value']),
+        ] : null,
         'meta' => [
             'canonical_available' => $canonicalAvailable,
             'canonical_connection' => $connection,

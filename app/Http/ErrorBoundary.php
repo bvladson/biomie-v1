@@ -6,6 +6,7 @@ namespace BIomie\Http;
 
 use BIomie\Auth;
 use BIomie\Bootstrap;
+use BIomie\Http\HasReasonCode;
 use BIomie\RequestContext;
 use Throwable;
 
@@ -133,10 +134,13 @@ final class ErrorBoundary
 
         $status = self::statusFromThrowable($e);
         $requestId = self::log($e, $context);
+        $errorCode = $e instanceof HasReasonCode
+            ? $e->getReasonCode()
+            : ($status >= 500 ? 'internal_error' : 'request_error');
         $payload = ErrorResponse::json(
             $requestId,
             $status,
-            $status >= 500 ? 'internal_error' : 'request_error',
+            $errorCode,
             ErrorResponse::safeMessageForStatus($status),
             $context
         );

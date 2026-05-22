@@ -28,7 +28,7 @@ final class GeoCnaeMaterializationRunner
     /**
      * Executes the full 9-stage geo/CNAE materialization pipeline.
      *
-     * @param array{dry_run?:bool,rebuild?:bool} $options
+     * @param array{dry_run?:bool,rebuild?:bool,start?:string,end?:string} $options
      * @return array<string,mixed>
      */
     public function run(array $options, ?int $actorUserId): array
@@ -89,7 +89,14 @@ final class GeoCnaeMaterializationRunner
             if ($this->tableHealth->tableExists('mart_compradores_por_geo')
                 && $this->tableHealth->tableExists('mart_cliente_periodo')) {
                 try {
-                    $report['compradores_geo_inserted'] = $this->geoBuilder->buildCompradoresPorGeo();
+                    $start = trim((string) ($options['start'] ?? ''));
+                    $end = trim((string) ($options['end'] ?? ''));
+                    if ($start !== '' && $end !== '') {
+                        $report['compradores_geo_inserted'] = $this->geoBuilder->buildCompradoresPorGeoForPeriod($start, $end);
+                    } else {
+                        $report['compradores_geo_inserted'] = 0;
+                        $report['warnings'][] = '[stage:build_compradores_geo] Pulado: informe start/end ou use geo:rebuild-period para evitar rebuild global.';
+                    }
                 } catch (Throwable $e) {
                     $report['warnings'][] = '[stage:build_compradores_geo] Falhou: ' . $e->getMessage();
                 }

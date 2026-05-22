@@ -36,12 +36,15 @@
 
     legend.display = false;
 
+    var getCssVar = function (n) {
+      return (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim();
+    };
     tooltip.enabled = true;
-    tooltip.backgroundColor = '#ffffff';
-    tooltip.borderColor = 'rgba(15, 23, 42, 0.12)';
+    tooltip.backgroundColor = getCssVar('--chart-tooltip-bg')     || 'rgba(255,255,255,0.97)';
+    tooltip.borderColor     = getCssVar('--chart-tooltip-border') || 'rgba(15,23,42,0.10)';
     tooltip.borderWidth = 1;
-    tooltip.titleColor = '#232a35';
-    tooltip.bodyColor = '#667085';
+    tooltip.titleColor      = getCssVar('--chart-tooltip-title')  || '#0f172a';
+    tooltip.bodyColor       = getCssVar('--chart-tooltip-text')   || '#475569';
     tooltip.padding = 10;
     tooltip.cornerRadius = 8;
     tooltip.boxPadding = 4;

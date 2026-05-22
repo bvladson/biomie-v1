@@ -10,6 +10,11 @@ final class Cache
     {
     }
 
+    public function directory(): string
+    {
+        return $this->cacheDir;
+    }
+
     private function filePath(string $key): string
     {
         return rtrim($this->cacheDir, '/\\') . '/' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $key) . '.json';

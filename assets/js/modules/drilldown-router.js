@@ -4,9 +4,12 @@
  * Installed once; idempotent — safe to include on multiple pages.
  *
  * Actions handled:
- *   open-vendor  → BIomieVendorDetail.open(id, { start, end })
- *   open-order   → BIomieOrderDetail.open(codigoPedido)
- *   open-invoice → BIomieInvoiceDetail.open({ numero_nf, nota_key, chave_nfe })
+ *   open-vendor        → BIomieVendorDetail.open(id, { start, end })
+ *   open-order         → BIomieOrderDetail.open(codigoPedido)
+ *   open-invoice       → BIomieInvoiceDetail.open({ numero_nf, nota_key, chave_nfe })
+ *   open-customer      → BIomieCustomerDetail.open(payload)
+ *   open-product       → BIomieProductDetail.open({ productCode, productName, start, end })
+ *   open-neighborhood  → BIomieGeoDetail.open({ neighborhoodKey, neighborhood, city, start, end })
  */
 (function () {
   'use strict';
@@ -88,5 +91,44 @@
       if (window.BIomieCustomerDetail) BIomieCustomerDetail.open(payload);
       return;
     }
+
+    if (action === 'open-product') {
+      var productCode = strAttr(trigger, 'data-product-code');
+      if (!productCode) return;
+      e.preventDefault();
+      var rangeProduct = getDateRange();
+      if (window.BIomieProductDetail) {
+        BIomieProductDetail.open({
+          productCode: productCode,
+          productName: strAttr(trigger, 'data-product-name'),
+          start: rangeProduct.start,
+          end: rangeProduct.end
+        });
+      }
+      return;
+    }
+
+    if (action === 'open-neighborhood') {
+      var neighborhoodKey = strAttr(trigger, 'data-neighborhood-key');
+      if (!neighborhoodKey) return;
+      e.preventDefault();
+      var rangeGeo = getDateRange();
+      if (window.BIomieGeoDetail) {
+        BIomieGeoDetail.open({
+          neighborhoodKey: neighborhoodKey,
+          neighborhood: strAttr(trigger, 'data-neighborhood-name'),
+          city: strAttr(trigger, 'data-city') || 'Fortaleza',
+          start: rangeGeo.start,
+          end: rangeGeo.end
+        });
+      }
+      return;
+    }
   });
+
+  // URL deep-link support (drawer-manager.js handles this if loaded;
+  // this is a no-op fallback when drawer-manager is not yet available).
+  if (window.BIomieDrawer && typeof BIomieDrawer.initFromUrl === 'function') {
+    BIomieDrawer.initFromUrl();
+  }
 }());

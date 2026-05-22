@@ -49,6 +49,121 @@ try {
     $hasBairroKeyCol = geoColExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
     $hasCidadeKeyCol = geoColExists($pdo, 'mart_compradores_por_geo', 'cidade_key');
 
+    // ── Sem bairro sentinel ───────────────────────────────────────────────────
+    // bairro_key=__sem_bairro__ shows buyers with no resolved neighborhood (geo_unclassified_or_outside_current_mesh).
+    // Possible causes: client is outside the Fortaleza bairros mesh, bairro was not propagated
+    // to the mart (builder bug), or local geo cache is incomplete. Use geo_holistic_audit to classify.
+    if ($rawBairroKey === '__sem_bairro__') {
+        $nbWhere  = ['competencia BETWEEN :start_comp AND :end_comp'];
+        $nbParams = ['start_comp' => $filters['start_comp'], 'end_comp' => $filters['end_comp']];
+        if ($cityNorm !== null) {
+            if ($hasCidadeKeyCol && $resolvedCityKey !== null) {
+                $nbWhere[]             = "(cidade_key = :city_key OR (cidade_key IS NULL AND LOWER(cidade_norm) = :city_norm) OR cidade_norm IS NULL OR TRIM(cidade_norm) = '')";
+                $nbParams['city_key']  = $resolvedCityKey;
+                $nbParams['city_norm'] = $cityNorm;
+            } else {
+                $nbWhere[]      = "(LOWER(cidade_norm) = :city OR cidade_norm IS NULL OR TRIM(cidade_norm) = '')";
+                $nbParams['city'] = $cityNorm;
+            }
+        }
+        $nbWhere[] = "(bairro_norm IS NULL OR TRIM(bairro_norm) = '' OR bairro_norm = 'NAO INFORMADO')";
+
+        $nbSql = '
+            SELECT
+                MAX(codigo_cliente_omie) AS codigo_cliente_omie,
+                MAX(cliente_nome) AS customer_name,
+                MAX(documento) AS document_raw,
+                NULL AS bairro_norm,
+                MAX(cidade_norm) AS cidade_norm,
+                SUM(faturamento) AS revenue,
+                SUM(qtd_notas) AS invoices,
+                IF(SUM(qtd_notas) > 0, SUM(faturamento) / SUM(qtd_notas), 0) AS average_ticket,
+                MAX(ultima_compra) AS last_purchase,
+                MAX(cnae_codigo) AS cnae,
+                MAX(segmento_macro) AS segment
+            FROM mart_compradores_por_geo
+            WHERE ' . implode(' AND ', $nbWhere) . '
+            GROUP BY COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)
+            ORDER BY revenue DESC
+            LIMIT :limit
+        ';
+        $nbStmt = $pdo->prepare($nbSql);
+        foreach ($nbParams as $k => $v) {
+            $nbStmt->bindValue(':' . $k, $v);
+        }
+        $nbStmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $nbStmt->execute();
+
+        $semBairroData = [];
+        $canViewFullDocuments = Auth::canViewFullDocuments();
+        foreach ($nbStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $documentRaw    = is_string($row['document_raw'] ?? null) ? $row['document_raw'] : '';
+            $documentNorm   = topBuyersDocumentDigits($documentRaw);
+            $documentMasked = DocumentMask::maskDocument(
+                $documentRaw !== '' ? $documentRaw : null, 'Nao informado'
+            ) ?? 'Nao informado';
+            $revenue        = (float) ($row['revenue'] ?? 0);
+            $invoices       = (int) ($row['invoices'] ?? 0);
+            $averageTicket  = (float) ($row['average_ticket'] ?? 0);
+            $customerName   = (string) ($row['customer_name'] ?? 'Sem nome');
+            $codigoCliente  = (string) ($row['codigo_cliente_omie'] ?? '');
+            $semBairroData[] = [
+                'customer_name'       => $customerName,
+                'document_masked'     => $documentMasked,
+                'codigo_cliente_omie' => $codigoCliente,
+                'cliente_nome'        => $customerName,
+                'cliente_documento'   => $canViewFullDocuments ? $documentRaw : $documentMasked,
+                'documento_norm'      => $canViewFullDocuments ? $documentNorm : '',
+                'bairro_norm'         => '',
+                'cidade_norm'         => (string) ($row['cidade_norm'] ?? ''),
+                'revenue'             => $revenue,
+                'invoices'            => $invoices,
+                'average_ticket'      => $averageTicket,
+                'last_purchase'       => $row['last_purchase'] ?? null,
+                'ultima_compra'       => $row['last_purchase'] ?? null,
+                'vendedor_principal'  => '',
+                'top_nf'              => '',
+                'cnae'                => $row['cnae'] ?? null,
+                'segment'             => $row['segment'] ?? null,
+                'cliente'             => $customerName,
+                'documento_mascarado' => $documentMasked,
+                'faturamento'         => $revenue,
+                'notas'               => $invoices,
+                'qtd_notas'           => $invoices,
+                'ticket_medio'        => $averageTicket,
+                'cnae_codigo'         => $row['cnae'] ?? null,
+                'segmento_macro'      => $row['segment'] ?? null,
+            ];
+        }
+
+        Http::json([
+            'ok'   => true,
+            'data' => $semBairroData,
+            'no_neighborhood_context' => [
+                'type'    => 'omie_data_quality',
+                'title'   => 'Bairro nao informado na origem',
+                'message' => 'Clientes sem bairro cadastrado no Omie. Atualize o cadastro/endereco no Omie para que aparecam no mapa.',
+                'action'  => 'Atualizar cadastro no Omie',
+            ],
+            'filters' => [
+                'date_from'    => $filters['date_from'],
+                'date_to'      => $filters['date_to'],
+                'city'         => $cityNorm,
+                'neighborhood' => $neighborNorm,
+                'bairro_key'   => '__sem_bairro__',
+                'cnae'         => $cnae,
+                'seller_id'    => $filters['seller_id'],
+            ],
+            'meta' => [
+                'request_id'   => RequestContext::id(),
+                'generated_at' => date(DATE_ATOM),
+                'source_table' => 'mart_compradores_por_geo',
+                'source_mode'  => 'no_neighborhood',
+                'count'        => count($semBairroData),
+            ],
+        ]);
+    }
+
     $where = ['competencia BETWEEN :start_comp AND :end_comp'];
     $params = [
         'start_comp' => $filters['start_comp'],

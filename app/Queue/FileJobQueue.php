@@ -6,6 +6,7 @@ namespace BIomie\Queue;
 
 use BIomie\Logger;
 use BIomie\RequestContext;
+use BIomie\Support\SecretMask;
 
 final class FileJobQueue implements JobQueueInterface
 {
@@ -70,6 +71,8 @@ final class FileJobQueue implements JobQueueInterface
             'attempts' => 0,
             'max_attempts' => $maxAttempts,
             'available_at' => (string) ($options['available_at'] ?? $now),
+            'next_attempt_at' => (string) ($options['available_at'] ?? $now),
+            'backoff_strategy' => (string) ($options['backoff_strategy'] ?? 'exponential_jitter'),
             'created_at' => $now,
             'updated_at' => $now,
             'request_id' => RequestContext::id(),
@@ -151,6 +154,8 @@ final class FileJobQueue implements JobQueueInterface
             $job['attempts'] = (int) ($job['attempts'] ?? 0) + 1;
             $job['started_at'] = date(DATE_ATOM);
             $job['reserved_at'] = $job['started_at'];
+            $job['locked_at'] = $job['started_at'];
+            $job['lock_expires_at'] = date(DATE_ATOM, time() + 600);
             $job['updated_at'] = $job['started_at'];
             $job['locked_by'] = gethostname() ?: 'worker';
             $job['_path'] = $runPath;
@@ -193,6 +198,7 @@ final class FileJobQueue implements JobQueueInterface
             return;
         }
 
+        $message = SecretMask::sanitizeErrorMessage($message, 500);
         $attempts = (int) ($job['attempts'] ?? 1);
         $maxAttempts = max(1, (int) ($job['max_attempts'] ?? 3));
         $canRetry = $retryable && $attempts < $maxAttempts;
@@ -204,10 +210,16 @@ final class FileJobQueue implements JobQueueInterface
         $job['error_summary'] = substr($message, 0, 255);
         $job['updated_at'] = $now;
         $job['failed_at'] = $now;
+        $job['locked_by'] = null;
+        $job['locked_at'] = null;
+        $job['lock_expires_at'] = null;
         if ($canRetry) {
-            $job['available_at'] = date(DATE_ATOM, time() + $this->retryDelaySeconds($attempts));
+            $retryAfter = date(DATE_ATOM, time() + $this->retryDelaySeconds($attempts));
+            $job['available_at'] = $retryAfter;
+            $job['next_attempt_at'] = $retryAfter;
         } else {
             $job['finished_at'] = $now;
+            $job['next_attempt_at'] = null;
         }
         unset($job['_path']);
 
@@ -234,7 +246,116 @@ final class FileJobQueue implements JobQueueInterface
             'driver' => 'file',
             'jobs_dir' => $this->jobsDir,
             'counts' => $counts,
+            'oldest_queued_at' => $this->oldestDate(['queued', 'failed_retryable']),
         ];
+    }
+
+    public function releaseExpiredLocks(int $ttlSeconds = 900): int
+    {
+        $released = 0;
+        foreach (glob($this->jobsDir . '/running_job_*.json') ?: [] as $path) {
+            $job = $this->readJson($path);
+            if (!is_array($job)) {
+                continue;
+            }
+
+            $expiresAt = (string) ($job['lock_expires_at'] ?? '');
+            $startedAt = (string) ($job['started_at'] ?? '');
+            $expired = $expiresAt !== ''
+                ? ((strtotime($expiresAt) ?: PHP_INT_MAX) <= time())
+                : ($startedAt !== '' && (strtotime($startedAt) ?: time()) <= time() - $ttlSeconds);
+            if (!$expired) {
+                continue;
+            }
+
+            $attempts = (int) ($job['attempts'] ?? 1);
+            $maxAttempts = max(1, (int) ($job['max_attempts'] ?? 3));
+            $status = $attempts < $maxAttempts ? 'failed_retryable' : 'failed_terminal';
+            $now = date(DATE_ATOM);
+            $job['status'] = $status;
+            $job['last_error'] = 'Job preso liberado por lock expirado.';
+            $job['error_summary'] = 'Job preso liberado por lock expirado.';
+            $job['failed_at'] = $now;
+            $job['updated_at'] = $now;
+            $job['locked_by'] = null;
+            $job['locked_at'] = null;
+            $job['lock_expires_at'] = null;
+            if ($status === 'failed_retryable') {
+                $job['available_at'] = $now;
+                $job['next_attempt_at'] = $now;
+            } else {
+                $job['finished_at'] = $now;
+                $job['next_attempt_at'] = null;
+            }
+            unset($job['_path']);
+
+            $target = $this->jobPath($status, (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
+            $this->writeJson($path, $job);
+            @rename($path, $target);
+            $released++;
+        }
+
+        return $released;
+    }
+
+    /**
+     * @param list<string> $statuses
+     * @return list<array<string,mixed>>
+     */
+    public function listJobs(array $statuses = [], int $limit = 50): array
+    {
+        $statuses = $statuses !== [] ? $statuses : $this->statuses;
+        $limit = max(1, min(500, $limit));
+        $rows = [];
+        foreach ($statuses as $status) {
+            foreach (glob($this->jobsDir . '/' . $status . '_job_*.json') ?: [] as $path) {
+                $job = $this->readJson($path);
+                if (is_array($job)) {
+                    $rows[] = $this->publicJob($job);
+                }
+            }
+        }
+
+        usort($rows, static fn (array $left, array $right): int =>
+            strcmp((string) ($right['updated_at'] ?? $right['created_at'] ?? ''), (string) ($left['updated_at'] ?? $left['created_at'] ?? ''))
+        );
+
+        return array_slice($rows, 0, $limit);
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    public function retry(string $jobId): ?array
+    {
+        $jobId = trim($jobId);
+        if ($jobId === '') {
+            return null;
+        }
+
+        foreach (['failed_terminal', 'failed_retryable'] as $status) {
+            foreach (glob($this->jobsDir . "/{$status}_job_*_{$jobId}.json") ?: [] as $path) {
+                $job = $this->readJson($path);
+                if (!is_array($job)) {
+                    continue;
+                }
+                $now = date(DATE_ATOM);
+                $job['status'] = 'queued';
+                $job['available_at'] = $now;
+                $job['next_attempt_at'] = $now;
+                $job['updated_at'] = $now;
+                $job['locked_by'] = null;
+                $job['locked_at'] = null;
+                $job['lock_expires_at'] = null;
+                unset($job['_path']);
+                $target = $this->jobPath('queued', (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
+                $this->writeJson($path, $job);
+                @rename($path, $target);
+                return $this->publicJob($job);
+            }
+        }
+
+        return null;
     }
 
     public function find(string $jobId): ?array
@@ -299,7 +420,20 @@ final class FileJobQueue implements JobQueueInterface
 
     private function retryDelaySeconds(int $attempts): int
     {
-        return min(300, max(5, (2 ** max(0, $attempts - 1)) * 10));
+        $nextAttempt = $attempts + 1;
+        $base = match (true) {
+            $nextAttempt <= 1 => 0,
+            $nextAttempt === 2 => 30,
+            $nextAttempt === 3 => 120,
+            $nextAttempt === 4 => 600,
+            default => 1800,
+        };
+
+        if ($base === 0) {
+            return 0;
+        }
+
+        return $base + random_int(0, max(1, (int) floor($base * 0.15)));
     }
 
     private function uuidFromHash(string $hash): string
@@ -361,5 +495,30 @@ final class FileJobQueue implements JobQueueInterface
                 @unlink($path);
             }
         }
+    }
+
+    /**
+     * @param list<string> $statuses
+     */
+    private function oldestDate(array $statuses): ?string
+    {
+        $oldest = null;
+        foreach ($statuses as $status) {
+            foreach (glob($this->jobsDir . '/' . $status . '_job_*.json') ?: [] as $path) {
+                $job = $this->readJson($path);
+                if (!is_array($job)) {
+                    continue;
+                }
+                $date = (string) ($job['available_at'] ?? $job['created_at'] ?? '');
+                if ($date === '') {
+                    continue;
+                }
+                if ($oldest === null || strcmp($date, $oldest) < 0) {
+                    $oldest = $date;
+                }
+            }
+        }
+
+        return $oldest;
     }
 }

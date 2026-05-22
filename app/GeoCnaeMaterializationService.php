@@ -33,7 +33,7 @@ final class GeoCnaeMaterializationService
     ) {}
 
     /**
-     * @param array{dry_run?:bool,rebuild?:bool} $options
+     * @param array{dry_run?:bool,rebuild?:bool,start?:string,end?:string} $options
      * @return array<string,mixed>
      */
     public function run(array $options = [], ?int $actorUserId = null): array

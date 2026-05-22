@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace BIomie;
 
 use BIomie\Omie\OmieExecutionContext;
+use BIomie\Support\SecretMask;
 use RuntimeException;
 
 final class OmieClient
 {
     private readonly string $executionContext;
+    private readonly ?OmieRateLimiter $rateLimiter;
 
     public function __construct(
         private readonly string $appKey,
@@ -19,8 +21,10 @@ final class OmieClient
         private readonly ?OmieMethodPolicyRegistry $policyRegistry = null,
         private readonly ?Cache $cache = null,
         ?string $executionContext = null,
+        ?OmieRateLimiter $rateLimiter = null,
     ) {
         $this->executionContext = OmieExecutionContext::normalize($executionContext);
+        $this->rateLimiter = $rateLimiter ?? ($cache !== null ? new OmieRateLimiter($cache, $logger, $appKey, $this->executionContext) : null);
     }
 
     public function post(string $endpoint, string $call, array $params = []): array
@@ -79,9 +83,11 @@ final class OmieClient
         $timeoutSeconds = $this->timeoutSecondsForPolicy($policy);
         $connectTimeoutSeconds = $this->connectTimeoutSecondsForPolicy($policy);
         $lastException = null;
-
         while ($attempt < $maxAttempts) {
             $attempt++;
+            $this->applyCentralRateLimit($call, $policy, 'request');
+            $this->applyProcessRateLimit($call, $policy);
+
             $ch = curl_init($endpoint);
             if ($ch === false) {
                 throw new RuntimeException('Nao foi possivel iniciar a conexao com a API do Omie.');
@@ -112,6 +118,10 @@ final class OmieClient
                 $decoded = json_decode($response, true);
                 if (!is_array($decoded)) {
                     throw new RuntimeException('A resposta do Omie nao veio em JSON valido.');
+                }
+
+                if ($statusCode >= 400 && !isset($decoded['faultstring']) && !isset($decoded['faultcode'])) {
+                    throw new RuntimeException('Omie respondeu HTTP ' . $statusCode . '.');
                 }
 
                 if (isset($decoded['faultstring']) || isset($decoded['faultcode'])) {
@@ -166,7 +176,8 @@ final class OmieClient
                 return $decoded;
             } catch (RuntimeException $exception) {
                 $lastException = $exception;
-                $retryable = $this->shouldRetry($exception->getMessage(), $statusCode);
+                $safeMessage = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
+                $retryable = $this->shouldRetry($safeMessage, $statusCode);
                 $shouldRetry = $attempt < $maxAttempts && $retryable;
 
                 $context = [
@@ -175,17 +186,17 @@ final class OmieClient
                     'attempt' => $attempt,
                     'max_attempts' => $maxAttempts,
                     'status' => $statusCode,
-                    'message' => $exception->getMessage(),
+                    'message' => $safeMessage,
                     'retry' => $shouldRetry,
                     'retryable' => $retryable,
                     'runtime_context' => (string) ($policy['runtime']['context'] ?? $this->executionContext),
                     'duration_ms' => max(0, (int) round((microtime(true) - $startedAt) * 1000)),
                 ];
 
-                $this->recordOperationalSignal($exception->getMessage(), $statusCode, $context);
+                $this->recordOperationalSignal($safeMessage, $statusCode, $context);
 
                 if ($shouldRetry) {
-                    $sleepMs = $this->retryDelayMs($exception->getMessage(), $statusCode, $attempt, $policy);
+                    $sleepMs = $this->retryDelayMs($safeMessage, $statusCode, $attempt, $policy);
                     $maxSleepMs = max(0, (int) ($policy['runtime']['max_sleep_ms'] ?? 0));
                     if ($sleepMs > 0 && $maxSleepMs <= 0) {
                         $context['sleep_ms'] = $sleepMs;
@@ -232,7 +243,7 @@ final class OmieClient
                     'call' => $call,
                     'attempts' => $attempt,
                     'http_status' => $statusCode,
-                    'message' => $exception->getMessage(),
+                    'message' => $safeMessage,
                 ]);
                 throw $exception;
             }
@@ -245,6 +256,137 @@ final class OmieClient
         throw $lastException instanceof RuntimeException
             ? $lastException
             : new RuntimeException('Falha desconhecida ao consultar a API do Omie.');
+    }
+
+    /**
+     * Structured wrapper for diagnostics and CLI tooling.
+     *
+     * Keeps post() backward compatible for production code while giving audits a
+     * standard envelope and an explicit dry-run/no-network mode.
+     *
+     * @param array<string,mixed> $params
+     * @param array{dry_run?:bool,no_network?:bool} $options
+     * @return array<string,mixed>
+     */
+    public function postStructured(string $endpoint, string $call, array $params = [], array $options = []): array
+    {
+        $requestId = RequestContext::id();
+        $startedAt = microtime(true);
+        $dryRun = !empty($options['dry_run']) || !empty($options['no_network']);
+
+        if ($dryRun) {
+            return [
+                'ok' => true,
+                'endpoint' => $endpoint,
+                'call' => $call,
+                'http_status' => null,
+                'duration_ms' => 0,
+                'request_id' => $requestId,
+                'data' => null,
+                'error' => null,
+                'dry_run' => true,
+            ];
+        }
+
+        try {
+            $data = $this->post($endpoint, $call, $params);
+            return [
+                'ok' => true,
+                'endpoint' => $endpoint,
+                'call' => $call,
+                'http_status' => 200,
+                'duration_ms' => max(0, (int) round((microtime(true) - $startedAt) * 1000)),
+                'request_id' => $requestId,
+                'data' => $data,
+                'error' => null,
+                'dry_run' => false,
+            ];
+        } catch (\Throwable $exception) {
+            $message = SecretMask::sanitizeErrorMessage($exception->getMessage(), 300);
+            return [
+                'ok' => false,
+                'endpoint' => $endpoint,
+                'call' => $call,
+                'http_status' => null,
+                'duration_ms' => max(0, (int) round((microtime(true) - $startedAt) * 1000)),
+                'request_id' => $requestId,
+                'data' => null,
+                'error' => [
+                    'type' => $this->classifyStructuredError($message),
+                    'message' => $message,
+                    'retryable' => $this->shouldRetry($message, 0),
+                ],
+                'dry_run' => false,
+            ];
+        }
+    }
+
+    /**
+     * Best-effort process-local throttle. Cross-process protection is handled by
+     * cron/job design and Omie method policies; this prevents tight loops inside
+     * one worker from exceeding the per-method budget.
+     *
+     * @param array<string,mixed> $policy
+     */
+    private function applyProcessRateLimit(string $call, array $policy): void
+    {
+        static $lastCallAt = [];
+
+        $runtime = is_array($policy['runtime'] ?? null) ? $policy['runtime'] : [];
+        $maxSleepMs = (int) ($runtime['max_sleep_ms'] ?? 0);
+        if ($maxSleepMs <= 0) {
+            return;
+        }
+
+        $minIntervalMs = max(250, (int) ($policy['rate_limit_min_interval_ms'] ?? 250));
+        $now = microtime(true);
+        $last = (float) ($lastCallAt[$call] ?? 0.0);
+        $elapsedMs = $last > 0 ? (int) round(($now - $last) * 1000) : $minIntervalMs;
+        if ($elapsedMs < $minIntervalMs) {
+            $sleepMs = min($minIntervalMs - $elapsedMs, $maxSleepMs);
+            if ($sleepMs > 0) {
+                usleep($sleepMs * 1000);
+            }
+        }
+        $lastCallAt[$call] = microtime(true);
+    }
+
+    /**
+     * @param array<string,mixed> $policy
+     */
+    private function applyCentralRateLimit(string $call, array $policy, string $operationType): void
+    {
+        if ($this->rateLimiter === null) {
+            return;
+        }
+
+        $signal = $this->rateLimiter->throttle($call, $policy, $operationType);
+        if (!empty($signal['enforced']) && (int) ($signal['slept_ms'] ?? 0) > 0) {
+            $this->logger->info('Rate limit local Omie aplicado antes da requisicao.', [
+                'call' => $call,
+                'context' => $signal['context'] ?? $this->executionContext,
+                'slept_ms' => (int) ($signal['slept_ms'] ?? 0),
+                'request_count_window' => (int) ($signal['request_count_window'] ?? 0),
+            ]);
+        }
+    }
+
+    private function classifyStructuredError(string $message): string
+    {
+        $normalized = $this->normalizeMessage($message);
+        if (str_contains($normalized, 'timeout') || str_contains($normalized, 'timed out')) {
+            return 'timeout';
+        }
+        if (str_contains($normalized, 'rate') || str_contains($normalized, 'too many') || str_contains($normalized, 'consumo indevido')) {
+            return 'rate_limit';
+        }
+        if (str_contains($normalized, 'json')) {
+            return 'json_error';
+        }
+        if (str_contains($normalized, 'omie retornou erro')) {
+            return 'omie_error';
+        }
+        return 'http_error';
     }
 
     private function shouldRetry(string $message, int $statusCode): bool
@@ -509,7 +651,12 @@ final class OmieClient
             return null;
         }
 
-        return 'omie_response_' . hash('sha256', implode('|', [$endpoint, $call, implode('|', $fingerprint)]));
+        return 'omie_response_' . hash('sha256', implode('|', [
+            substr(hash('sha256', $this->appKey), 0, 16),
+            $endpoint,
+            $call,
+            implode('|', $fingerprint),
+        ]));
     }
 
     private function rememberCachedResponse(?string $cacheKey, array $response): void

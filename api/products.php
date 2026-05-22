@@ -7,6 +7,8 @@ use BIomie\CanonicalRepository;
 use BIomie\Database;
 use BIomie\DatasetFreshnessService;
 use BIomie\Http;
+use BIomie\Modules\Sales\Application\Products\ProductMixReadService;
+use BIomie\Modules\Sales\Infrastructure\ProductMixReadRepository;
 use BIomie\RequestContext;
 use BIomie\Support;
 
@@ -38,6 +40,36 @@ try {
     $productCode = trim((string) Http::query('product_code', ''));
     $productLabel = trim((string) Http::query('product_label', ''));
     $breakdownLimit = max(1, min(500, (int) Http::query('limit', '200')));
+
+    // Fase Arquitetura 10/10 — fonte preferencial do Mix Faturado.
+    // A página mercadorias.php não deve depender do snapshot legado quando há NF + itens canônicos.
+    // Regra oficial: NFs autorizadas + itens canônicos por data_competencia.
+    if (Http::query('legacy', '') !== '1') {
+        try {
+            $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+            if (Database::isConfigured($config, $connection)) {
+                $pdo = Database::connect($config, $connection);
+                $repo = new ProductMixReadRepository($pdo);
+                if ($repo->isAvailable()) {
+                    $mixPayload = (new ProductMixReadService($repo))->build(
+                        $start,
+                        $end,
+                        100,
+                        $productCode,
+                        $breakdownLimit
+                    );
+                    if (($mixPayload['summary']['invoices_count'] ?? 0) > 0 || ($mixPayload['summary']['items_count'] ?? 0) > 0) {
+                        Http::json($mixPayload);
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            $logger->warning('Products: ProductMixReadService indisponivel; fallback legado sera usado.', [
+                'message' => $exception->getMessage(),
+                'request_id' => RequestContext::id(),
+            ]);
+        }
+    }
 
     $snapshot = null;
     $snapshotError = null;
@@ -195,7 +227,7 @@ try {
         'served_from' => $source === 'legacy' ? (string) ($meta['served_from'] ?? 'legacy-cache') : $source,
         'snapshot_error' => $snapshotError,
         'request_id' => RequestContext::id(),
-        'period_basis' => $canonicalSummary !== null ? 'issue_date' : ($meta['period_basis'] ?? null),
+        'period_basis' => $canonicalSummary !== null ? 'data_competencia' : ($meta['period_basis'] ?? null),
         'selected_product_code' => $productCode !== '' ? $productCode : null,
         'selected_product_label' => $productLabel !== '' ? $productLabel : null,
         'product_breakdown' => productBreakdownMeta(

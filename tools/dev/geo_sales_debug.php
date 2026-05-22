@@ -730,6 +730,62 @@ if (count($diag) === 0) {
 
 $report['pipeline_diagnosis'] = $diag;
 
+// ── Missing neighborhoods (Omie data quality) ─────────────────────────────────
+
+$missingNb = ['source' => 'mart_compradores_por_geo', 'period' => "{$startComp}–{$endComp}"];
+
+if (tableExists($pdo, 'mart_compradores_por_geo')) {
+    $mnr = safeQuery($pdo,
+        "SELECT COUNT(*) AS total_rows,
+                COUNT(DISTINCT COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)) AS distinct_clientes,
+                COALESCE(SUM(faturamento), 0) AS soma_faturamento,
+                COALESCE(SUM(qtd_notas), 0) AS soma_notas
+         FROM mart_compradores_por_geo
+         WHERE competencia BETWEEN :sc AND :ec
+           AND (bairro_norm IS NULL OR TRIM(bairro_norm) = '' OR bairro_norm = 'NAO INFORMADO')",
+        ['sc' => $startComp, 'ec' => $endComp]
+    );
+    if ($mnr !== false) {
+        $missingNb['stats'] = [
+            'rows_sem_bairro'  => (int) ($mnr['total_rows'] ?? 0),
+            'clientes_distintos' => (int) ($mnr['distinct_clientes'] ?? 0),
+            'faturamento'      => (float) ($mnr['soma_faturamento'] ?? 0),
+            'notas'            => (int) ($mnr['soma_notas'] ?? 0),
+        ];
+    } else {
+        $missingNb['stats'] = ['error' => 'Query falhou'];
+    }
+
+    $mnSample = safeQueryAll($pdo,
+        "SELECT MAX(cliente_nome) AS cliente_nome,
+                MAX(codigo_cliente_omie) AS codigo_cliente_omie,
+                MAX(cidade_norm) AS cidade_norm,
+                ROUND(SUM(faturamento), 2) AS faturamento,
+                SUM(qtd_notas) AS notas
+         FROM mart_compradores_por_geo
+         WHERE competencia BETWEEN :sc AND :ec
+           AND (bairro_norm IS NULL OR TRIM(bairro_norm) = '' OR bairro_norm = 'NAO INFORMADO')
+         GROUP BY COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)
+         ORDER BY faturamento DESC
+         LIMIT 10",
+        ['sc' => $startComp, 'ec' => $endComp]
+    );
+    $missingNb['sample_clientes'] = $mnSample ?: [];
+    // Classifica a causa do "sem bairro" em categorias distintas.
+    $missingNb['issue_categories'] = [
+        'builder_not_propagated' => 'bairro_oficial_nome_fortaleza existe em biomie_clientes_geo_dim mas nao chegou ao mart (GeoBuyerMartBuilder ignorava essa coluna antes do fix de 2026-05-18)',
+        'local_cache_missing'    => 'cliente nao possui registro em biomie_clientes_geo_dim (sync gap — cliente nao foi enriquecido)',
+        'outside_fortaleza_mesh' => 'cliente em outra cidade (RMF, interior CE, outro estado) — mapa atual cobre apenas bairros de Fortaleza',
+        'omie_missing_address'   => 'cliente em Fortaleza mas sem bairro em nenhuma fonte local (dado genuinamente ausente no Omie)',
+    ];
+    $missingNb['action']  = 'Rodar: php tools/dev/geo_holistic_audit.php --start=X --end=Y --json para classificar cada cliente por geo_issue_type';
+    $missingNb['api_endpoint'] = 'GET api/top_buyers_by_geo.php?bairro_key=__sem_bairro__';
+} else {
+    $missingNb['error'] = 'mart_compradores_por_geo nao existe';
+}
+
+$report['missing_neighborhoods'] = $missingNb;
+
 // ── Key consistency diagnostics ───────────────────────────────────────────────
 
 $hasBkColDiag      = tableExists($pdo, 'mart_compradores_por_geo') && colExists($pdo, 'mart_compradores_por_geo', 'bairro_key');
@@ -977,6 +1033,32 @@ function outputAndExit(array $report, bool $jsonMode): never
         echo "  bairro_key_missing : " . ($d['bairro_key_missing'] ? 'SIM — execute php bin/migrate.php' : 'nao') . "\n";
         echo "  case_mismatch      : " . ($d['case_mismatch'] ? 'SIM — bairro_norm tem maiusculas (rematerialize)' : 'nao') . "\n";
         echo "  accent_mismatch    : " . ($d['accent_mismatch'] ? 'SIM — bairro_norm tem acentos (backfill + rematerialize)' : 'nao') . "\n";
+    }
+
+    if (isset($report['missing_neighborhoods'])) {
+        $mn = $report['missing_neighborhoods'];
+        $stats = $mn['stats'] ?? [];
+        echo "\n── SEM BAIRRO (qualidade de cadastro Omie) ──\n";
+        if (isset($stats['error'])) {
+            echo "  ERRO: " . $stats['error'] . "\n";
+        } else {
+            echo "  clientes_distintos : " . ($stats['clientes_distintos'] ?? 0) . "\n";
+            echo "  rows_sem_bairro    : " . ($stats['rows_sem_bairro'] ?? 0) . "\n";
+            echo "  faturamento        : R$ " . number_format((float)($stats['faturamento'] ?? 0), 2, ',', '.') . "\n";
+            echo "  notas              : " . ($stats['notas'] ?? 0) . "\n";
+        }
+        if (!empty($mn['sample_clientes'])) {
+            echo "  Top clientes sem bairro:\n";
+            foreach ($mn['sample_clientes'] as $c) {
+                printf("    %-36s  R$ %12s\n",
+                    mb_substr((string) ($c['cliente_nome'] ?? 'Sem nome'), 0, 36),
+                    number_format((float)($c['faturamento'] ?? 0), 2, ',', '.')
+                );
+            }
+        }
+        if (!empty($mn['action'])) {
+            echo "  ACAO: " . $mn['action'] . "\n";
+        }
     }
 
     echo "\nPara saída JSON completa: php tools/dev/geo_sales_debug.php --start={$params['start']} --end={$params['end']} --json\n\n";

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f6f3f2" />
   <meta name="description" content="Rota comercial com meta, ritmo, carteira e acompanhamento do fechamento do periodo." />
@@ -96,27 +96,37 @@
       </div>
     </header>
 
-    <main class="page" style="padding:0;width:100%;margin:0;background:var(--surface);">
-      <!-- Minimalist Header -->
-      <div class="fp-header-clean anim">
+    <main class="page" style="padding:0;background:var(--surface-muted);min-height:60vh;">
+      <!-- Page Header -->
+      <div class="fp-header-clean mag-clean-header anim">
         <div>
-          <h1><span class="material-symbols-rounded" style="color:var(--page-accent);">travel</span> Plano de Voo Comercial</h1>
-          <p>Metas, carteira, faturamento e risco por vendedor.</p>
+          <h1 style="font-size:1.15rem;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:20px;color:var(--page-accent);">flight</span>
+            Plano de Voo Comercial
+          </h1>
+          <p style="margin:0 0 8px;font-size:0.85rem;color:var(--text-2);">Metas, carteira, faturamento e risco por vendedor.</p>
           <div class="fp-header-badges">
             <span class="fp-status-badge fp-status-none" data-bind="period-label">Periodo</span>
-            <span class="fp-status-badge fp-status-none" data-bind="last-sync">Atualizado agora</span>
-            <span class="fp-status-badge fp-status-none">Receita Fiscal Autorizada</span>
+            <span class="fp-status-badge fp-status-none" data-bind="last-sync">-</span>
+            <span class="fp-status-badge fp-status-none">NF Autorizada</span>
             <span data-bind="sync-warning"></span>
           </div>
         </div>
         <div class="fp-header-actions">
-          <a href="plano_voo_metas.php" class="biomie-btn biomie-btn--secondary"><span class="material-symbols-rounded" style="font-size:18px">edit</span>Editar metas</a>
-          <button id="syncNow" type="button" class="biomie-btn biomie-btn--primary"><span class="material-symbols-rounded" style="font-size:18px">sync</span>Atualizar visao</button>
+          <a href="vendedores.php" class="biomie-btn biomie-btn--secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
+            <span class="material-symbols-rounded" style="font-size:17px">groups</span>Ver equipe
+          </a>
+          <a href="plano_voo_metas.php" class="biomie-btn biomie-btn--secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
+            <span class="material-symbols-rounded" style="font-size:17px">edit</span>Editar metas
+          </a>
+          <button id="syncNow" type="button" class="biomie-btn biomie-btn--primary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
+            <span class="material-symbols-rounded" style="font-size:17px">sync</span>Atualizar
+          </button>
         </div>
       </div>
 
       <!-- Compact Filters -->
-      <div class="fp-filters-clean anim d1">
+      <div class="fp-filters-clean anim d1" data-mobile-filter-sheet>
         <div class="filter-group"><label class="filter-label">Data Inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
         <div class="filter-group"><label class="filter-label">Data Final</label><input id="dateEnd" type="date" class="filter-input" /></div>
         <div class="filter-actions" style="display:flex;gap:8px;align-items:center;margin-bottom:2px;">
@@ -237,5 +247,11 @@
     </main>
   </div>
 </div>
+
+<!-- Mobile FAB: editar metas (visível somente em telas <= 768px) -->
+<a href="plano_voo_metas.php" class="fp-mobile-metas-fab" aria-label="Editar metas">
+  <span class="material-symbols-rounded">edit</span>
+</a>
+
 </body>
 </html>

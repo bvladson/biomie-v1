@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace BIomie\SystemHealth;
 
+use BIomie\SystemHealth\Checks\ApiCacheHealthCheck;
+use BIomie\SystemHealth\Checks\MobileExperienceHealthCheck;
 use BIomie\SystemHealth\Checks\ServiceWorkerCacheHealthCheck;
 use BIomie\SystemHealth\Checks\ProductMixHealthCheck;
 use BIomie\SystemHealth\Checks\OPcacheHealthCheck;
 use BIomie\SystemHealth\Checks\GeoDetailConsistencyHealthCheck;
 use BIomie\SystemHealth\Checks\ProhibitedManualImportHealthCheck;
+use BIomie\SystemHealth\Checks\OperationScopeHealthCheck;
 use BIomie\SystemHealth\Checks\AssetVersionHealthCheck;
 use BIomie\SystemHealth\Checks\CustomerDataQualityCheck;
 use BIomie\SystemHealth\Checks\DatabaseHealthCheck;
@@ -49,9 +52,12 @@ final class SystemHealthService
             new OPcacheHealthCheck(),
             new AssetVersionHealthCheck(),
             new ServiceWorkerCacheHealthCheck(),
+            new ApiCacheHealthCheck(),
             new ProductMixHealthCheck($this->pdo),
             new GeoDetailConsistencyHealthCheck($this->pdo),
             new ProhibitedManualImportHealthCheck($this->pdo),
+            ...($this->pdo !== null ? [new OperationScopeHealthCheck($this->pdo)] : []),
+            new MobileExperienceHealthCheck(),
         ];
 
         $results = [];

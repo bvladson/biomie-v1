@@ -13,39 +13,42 @@ require __DIR__ . '/app/page_bootstrap.php';
 Auth::requireCapability('sales.view', false);
 
 $bootPayloads = null;
-try {
-    $range = Http::resolveDateRange();
-    Http::validateDateRange($range['start'], $range['end']);
+// Arquitetura 10/10: o boot pesado é opt-in. A página carrega shell/skeleton rápido e hidrata via APIs.
+if ((string) ($_GET['boot'] ?? '') === 'full') {
+    try {
+        $range = Http::resolveDateRange();
+        Http::validateDateRange($range['start'], $range['end']);
 
-    $bootstrap = new HomeBootstrapService(
-        $config,
-        $logger,
-        new Cache(__DIR__ . '/storage/cache')
-    );
-    $bootPayloads = $bootstrap->build($range['start'], $range['end']);
-
-    if (is_array($bootPayloads['dashboard']['overview'] ?? null)) {
-        $bootPayloads['dashboard']['overview'] = DataMasker::applyToPayload(
-            $bootPayloads['dashboard']['overview'],
-            Auth::canViewFullDocuments()
+        $bootstrap = new HomeBootstrapService(
+            $config,
+            $logger,
+            new Cache(__DIR__ . '/storage/cache')
         );
-    }
+        $bootPayloads = $bootstrap->build($range['start'], $range['end']);
 
-    if (is_array($bootPayloads['dashboard']['health'] ?? null)) {
-        $bootPayloads['dashboard']['health'] = DataMasker::applyToPayload(
-            $bootPayloads['dashboard']['health'],
-            Auth::canViewFullDocuments()
-        );
+        if (is_array($bootPayloads['dashboard']['overview'] ?? null)) {
+            $bootPayloads['dashboard']['overview'] = DataMasker::applyToPayload(
+                $bootPayloads['dashboard']['overview'],
+                Auth::canViewFullDocuments()
+            );
+        }
+
+        if (is_array($bootPayloads['dashboard']['health'] ?? null)) {
+            $bootPayloads['dashboard']['health'] = DataMasker::applyToPayload(
+                $bootPayloads['dashboard']['health'],
+                Auth::canViewFullDocuments()
+            );
+        }
+    } catch (Throwable $exception) {
+        $logger->warning('Index bootstrap indisponivel; seguindo com hidratacao client-side.', [
+            'message' => $exception->getMessage(),
+        ]);
     }
-} catch (Throwable $exception) {
-    $logger->warning('Index bootstrap indisponivel; seguindo com hidratacao client-side.', [
-        'message' => $exception->getMessage(),
-    ]);
 }
 
 echo PageRenderer::render('index.html', [
-    'page_key' => 'dashboard',
-    'user' => Auth::currentUser(),
-    'is_admin' => Auth::isAdmin(),
+    'page_key'      => 'dashboard',
+    'user'          => Auth::currentUser(),
+    'is_admin'      => Auth::isAdmin(),
     'boot_payloads' => $bootPayloads,
 ]);

@@ -15,6 +15,7 @@ use BIomie\Http;
 use BIomie\OmieHealthCheckService;
 use BIomie\OmieStatusService;
 use BIomie\PipelineStatusRepository;
+use BIomie\Support\SecretMask;
 use BIomie\SyncPipelineRepository;
 use BIomie\TableHealthService;
 
@@ -55,7 +56,7 @@ try {
     Http::json($statusService->getOverview());
 } catch (Throwable $e) {
     $logger->error('api/omie_status.php: erro ao gerar status.', [
-        'message' => $e->getMessage(),
+        'message' => SecretMask::sanitizeErrorMessage($e->getMessage(), 200),
     ]);
 
     Http::json([

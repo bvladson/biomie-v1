@@ -54,6 +54,35 @@ Discouraged sources for active KPIs: `bronze`, `external_omie`, `shadow`.
 
 ---
 
+## Official Omie Data Architecture
+
+Commercial data follows this order:
+
+```text
+Omie API
+  -> raw / staging tables
+  -> canonical layer
+  -> commercial marts
+  -> internal APIs
+  -> pages and drawers
+```
+
+The detailed contract lives in `docs/OMIE_DATA_ARCHITECTURE.md`.
+
+Official sources for the current commercial surface:
+
+| Domain | Official source | Required rule |
+|---|---|---|
+| Realized sales | `biomie_notas_fiscais_canonicas` | `status_fiscal = 'autorizada'` and `data_competencia` inside the selected period |
+| Items/products | Canonical NF items or the table used by `productDocumentBreakdownCommercial()` | Must inherit the authorized NF and `data_competencia` filters |
+| Targets | `biomie_sales_targets_monthly` | Full-month target for a full month; proportional target for partial periods |
+| Vendors | `codigo_vendedor_omie` / `vendor_id` | Vendor name is display/fallback only, never the primary key |
+| Map | `mart_compradores_por_geo` + `biomie_bairros_fortaleza_dim` | Must expose coverage diagnostics |
+
+Gold marts are preferred for dashboard speed only when they reconcile to the canonical contract above. If a mart is empty while canonical NFs exist for the same period, the API must report a materialization/coverage diagnostic instead of treating the period as zero sales.
+
+---
+
 ## Adding a New KPI
 
 1. Identify the data source and verify `source_table` and `official_date` exist in the DB.

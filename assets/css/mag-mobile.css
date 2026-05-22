@@ -1,0 +1,543 @@
+/*
+ * MAG Mobile — Chrome Mobile melhorias
+ * Responsividade para Chrome Mobile sem alterar desktop.
+ * Registrado globalmente via PageAssetRegistry BASE_CSS.
+ * Desktop (>= 768px): zero impacto — todos os blocos são @media max-width:767px.
+ */
+
+/* ── Reset de overflow horizontal (vale em todos os breakpoints) ─────────── */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ── Mobile Topbar — oculto por padrão, exibido via media query ─────────── */
+.mag-mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 330;
+  height: 52px;
+  background: var(--mag-surface, #fff);
+  border-bottom: 1px solid var(--mag-border, #e2e8f0);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .08);
+  align-items: center;
+  padding: 0 12px 0 4px;
+  gap: 8px;
+}
+
+.mag-mobile-topbar__hamburger {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--mag-text, #0f172a);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mag-mobile-topbar__hamburger:active {
+  background: var(--mag-border, #e2e8f0);
+}
+
+.mag-mobile-topbar__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mag-text, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mag-mobile-topbar__user {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--page-accent, #2563eb);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+/* ── Mobile Bottom Nav — oculto por padrão ───────────────────────────────── */
+.mag-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 330;
+  background: var(--mag-surface, #fff);
+  border-top: 1px solid var(--mag-border, #e2e8f0);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, .07);
+  /* safe-area para iPhone com notch/home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.mag-bottom-nav__list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mag-bottom-nav__item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.mag-bottom-nav__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px 6px;
+  text-decoration: none;
+  color: var(--mag-muted, #64748b);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  min-height: 52px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .15s;
+}
+
+.mag-bottom-nav__link .material-symbols-rounded {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.mag-bottom-nav__link.is-active,
+.mag-bottom-nav__link[aria-current="page"] {
+  color: var(--page-accent, #2563eb);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MEDIA QUERY MOBILE — max-width: 767px
+   Sem impacto no desktop.
+══════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* ── Mostrar elementos mobile ─────────────────────────────────── */
+  .mag-mobile-topbar {
+    display: flex;
+  }
+
+  .mag-bottom-nav {
+    display: block;
+  }
+
+  /* ── Ocultar topbar desktop no mobile ────────────────────────── */
+  .mag-topbar,
+  .topbar {
+    display: none !important;
+  }
+
+  /* ── Espaçamento do body para topbar + bottom nav ────────────── */
+  body.mag-page .shell,
+  body.mag-clean-page .shell,
+  body.mag-app-shell-page .shell {
+    padding-top: 52px;
+  }
+
+  body.mag-page .mag-app-main,
+  body.mag-clean-page .mag-app-main,
+  body.mag-app-shell-page .mag-app-main {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0));
+    min-height: 0;
+  }
+
+  /* ── Sidebar como overlay no mobile ──────────────────────────── */
+  /* shell.js já controla sidebar.open/sidebar.collapsed;
+     aqui apenas garantimos posicionamento fixo no mobile */
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .sidebar,
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .mag-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 400 !important;
+    width: min(82vw, 280px) !important;
+    min-width: min(82vw, 280px) !important;
+    max-width: min(82vw, 280px) !important;
+    transform: translate3d(-105%, 0, 0) !important;
+    transition: transform .24s cubic-bezier(.4, 0, .2, 1), box-shadow .24s !important;
+    box-shadow: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .sidebar.open,
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .mag-sidebar.open {
+    transform: translate3d(0, 0, 0) !important;
+    box-shadow: 4px 0 28px rgba(15, 23, 42, .22) !important;
+  }
+
+  /* Área principal ocupa 100% no mobile */
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .main,
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .mag-app-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  /* ── Overflow horizontal guards ───────────────────────────────── */
+  .mag-app-main,
+  main,
+  .page,
+  section,
+  .module-section,
+  .mag-page-content {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* ── Tabelas: scroll horizontal em vez de estouro ────────────── */
+  .drawer-table,
+  .biomie-table,
+  .mag-table-wrap {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Tabelas dentro de drawers sem wrapper explícito */
+  .biomie-drawer__body table,
+  #od-body table,
+  #cd-body table,
+  #vd-body table,
+  #pd-body table,
+  #id-body table,
+  #gd-body table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    min-width: 360px;
+  }
+
+  /* ── KPI cards: 2 colunas no mobile ──────────────────────────── */
+  .dashboard-kpi-strip,
+  .kpi-grid,
+  .mag-kpi-grid,
+  .status-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* ── Cards: sem overflow, word-break ─────────────────────────── */
+  .mag-kpi-card,
+  .kpi-card,
+  .sh-card,
+  .ci-kpi-card,
+  .ci-health-card,
+  .biomie-drawer__stat,
+  .mag-card--kpi,
+  .mag-card--compact {
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* ── Drawers como bottom sheet ───────────────────────────────── */
+  .biomie-drawer,
+  .mag-drawer {
+    /* sobrescreve o transform lateral para vertical */
+    inset: auto 0 0 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 90vh !important;
+    max-height: 90vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    transform: translateY(100%) !important;
+    transition: transform .28s cubic-bezier(.4, 0, .2, 1) !important;
+    overflow: hidden;
+  }
+
+  .biomie-drawer.is-open,
+  .mag-drawer.is-open {
+    transform: translateY(0) !important;
+  }
+
+  /* Handle visual do bottom sheet */
+  .biomie-drawer__header,
+  .mag-drawer-header,
+  .biomie-drawer > div:first-child {
+    position: relative;
+    padding-top: 22px !important;
+  }
+
+  .biomie-drawer__header::before,
+  .mag-drawer-header::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: var(--mag-border, #cbd5e1);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  /* Scroll interno do drawer */
+  .biomie-drawer__body,
+  .mag-drawer-body,
+  .biomie-drawer [role="tabpanel"],
+  #pd-body, #vd-body, #cd-body, #od-body, #id-body, #gd-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* ── Drawer size overrides on mobile ────────────────────────── */
+  .biomie-drawer.mag-drawer--mobile-full,
+  .mag-drawer.mag-drawer--mobile-full {
+    height: 95vh !important;
+  }
+
+  .biomie-drawer.mag-drawer--mobile-medium,
+  .mag-drawer.mag-drawer--mobile-medium {
+    height: 75vh !important;
+  }
+
+  .biomie-drawer.mag-drawer--mobile-compact,
+  .mag-drawer.mag-drawer--mobile-compact {
+    height: 55vh !important;
+  }
+
+  /* ── Mapa interativo ─────────────────────────────────────────── */
+  .biomie-map-container,
+  #biomie-map,
+  .leaflet-container {
+    touch-action: pan-x pan-y !important;
+    min-height: 220px;
+    max-height: min(55vw, 400px);
+  }
+
+  /* ── Spacing e tipografia ────────────────────────────────────── */
+  .mag-page-header,
+  .mag-clean-header {
+    padding: 12px 16px 10px;
+  }
+
+  main.page {
+    padding: 12px 14px 20px;
+    gap: 14px;
+  }
+
+  /* ── Grids de seção ──────────────────────────────────────────── */
+  .mag-grid-2,
+  .mag-2col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Botões: não quebrar layout ──────────────────────────────── */
+  .mag-mobile-topbar__hamburger,
+  .biomie-drawer__close,
+  #pd-close, #vd-close, #cd-close, #od-close, #id-close, #gd-close {
+    flex-shrink: 0;
+  }
+
+  /* ── Filter bars ─────────────────────────────────────────────── */
+  .filter-bar,
+  .mag-report-toolbar,
+  .mag-clean-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .filter-bar > *,
+  .mag-report-toolbar > *,
+  .mag-clean-toolbar > * {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+
+  /* ── Filter bottom sheet ─────────────────────────────────────── */
+  .mag-mobile-filter-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--mag-surface, #fff);
+    border: 1px solid var(--mag-border, #e0e0e0);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--mag-text, #212121);
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+
+  [data-mobile-filter-sheet][data-mobile-active] {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    z-index: 401 !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    background: var(--mag-surface, #fff) !important;
+    border-radius: 16px 16px 0 0 !important;
+    padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0)) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.14) !important;
+    transform: translateY(105%) !important;
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+    width: 100% !important;
+    flex-direction: column !important;
+    flex-wrap: wrap !important;
+  }
+
+  [data-mobile-filter-sheet][data-mobile-active]::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--mag-border, #ddd);
+    border-radius: 2px;
+    margin: 0 auto 10px;
+  }
+
+  [data-mobile-filter-sheet][data-mobile-active].is-open {
+    transform: translateY(0) !important;
+  }
+
+  .mag-mobile-filter-close {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    padding: 2px 0 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--mag-muted, #757575);
+  }
+
+  .mag-mobile-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    background: rgba(0,0,0,0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .mag-mobile-filter-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ── Card table: [data-mobile-card-table] ────────────────────── */
+  table[data-mobile-card-table] {
+    display: block;
+  }
+
+  table[data-mobile-card-table] thead {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+  }
+
+  table[data-mobile-card-table] tbody {
+    display: block;
+  }
+
+  table[data-mobile-card-table] tbody tr {
+    display: block;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--mag-border, #e0e0e0);
+    border-radius: var(--mag-radius-card, 12px);
+    background: var(--mag-surface, #fff);
+    padding: 0.375rem 0;
+    overflow: hidden;
+  }
+
+  table[data-mobile-card-table] tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.375rem 0.75rem;
+    border: none !important;
+    font-size: 0.875rem;
+    white-space: normal;
+  }
+
+  table[data-mobile-card-table] tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--mag-muted, #757575);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+  }
+
+  table[data-mobile-card-table] tbody td[data-mobile-skip] {
+    display: none;
+  }
+}
+
+/* ── Desktop: ocultar elementos exclusivos mobile ────────────────────────── */
+@media (min-width: 768px) {
+  .mag-mobile-filter-button { display: none !important; }
+  .mag-mobile-filter-close  { display: none !important; }
+}
+
+/* ── Ocultar hambúrguer no mobile — bottom nav é a navegação principal ───── */
+/* Desktop (>= 768px): sem impacto — bloco abaixo já está dentro do contexto mobile. */
+@media (max-width: 767px) {
+  .mag-mobile-topbar__hamburger,
+  .mag-mobile-topbar [data-mobile-sidebar-toggle],
+  .mag-mobile-topbar .mag-mobile-menu-button {
+    display: none !important;
+  }
+
+  .mag-mobile-topbar__title {
+    padding-left: 8px;
+  }
+}
+
+/* ── Extra pequeno: 360px ────────────────────────────────────────────────── */
+@media (max-width: 400px) {
+  .dashboard-kpi-strip,
+  .kpi-grid,
+  .mag-kpi-grid,
+  .status-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  .mag-mobile-topbar__title {
+    font-size: 13px;
+  }
+
+  .mag-bottom-nav__link {
+    font-size: 9px;
+  }
+
+  .mag-bottom-nav__link .material-symbols-rounded {
+    font-size: 20px;
+  }
+}

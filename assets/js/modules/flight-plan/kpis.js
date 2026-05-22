@@ -14,7 +14,12 @@
     dom.setText('[data-bind="period-label"]', period.label || '-');
     dom.setText('[data-bind="summary-mode"]', `${p.mode || '-'} | ${src}`);
     dom.setText('[data-bind="last-sync"]', at);
-    dom.setText('[data-bind="summary-period-basis"]', meta.period_basis === 'issue_date' ? 'Base fiscal: emissao' : 'Base comercial: faturamento');
+    var _pb = meta.realized_period_basis || meta.period_basis || '';
+    var _pbLabel = _pb === 'data_competencia' ? 'Realizado: NF autorizada (data_competencia)'
+                 : _pb === 'issue_date'       ? 'Realizado: emissao de pedido'
+                 : _pb !== ''                 ? 'Base: ' + _pb
+                 : '-';
+    dom.setText('[data-bind="summary-period-basis"]', _pbLabel);
     dom.setText('[data-bind="sync-source"]', formatters.humanizeServedFrom(meta.served_from || p.source || '', src));
     dom.setText('[data-bind="sync-coverage"]', formatters.resolveCoverageLabel(p));
     dom.setText('[data-bind="sync-reconciled-until"]', formatters.formatMetaDate(meta.reconciled_until || p.reconciled_until || ''));

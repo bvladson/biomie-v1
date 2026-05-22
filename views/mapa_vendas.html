@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f6f3f2" />
   <title>Mapa Comercial | BIomie MAG</title>
@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
   <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
-  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260501-f6" />
+  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260513-mapfix1" />
   <script src="assets/js/chart.umd.js"></script>
   <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
@@ -50,7 +50,7 @@
       </section>
 
       <section class="dashboard-controls">
-        <div class="filter-bar biomie-map-toolbar anim d1">
+        <div class="filter-bar biomie-map-toolbar anim d1" data-mobile-filter-sheet>
           <div class="filter-group">
             <label class="filter-label" for="dateStart">Periodo inicial</label>
             <input id="dateStart" type="date" class="filter-input" />
@@ -157,6 +157,15 @@
               <div class="biomie-panel-kpi"><span>Notas</span><strong id="kpiFeatureNotes">-</strong></div>
               <div class="biomie-panel-kpi"><span>Ticket medio</span><strong id="kpiFeatureTicket">-</strong></div>
             </div>
+            <div style="padding:8px 0 4px;">
+              <button type="button" id="geo360Btn" class="row-inline-link" style="display:none;font-size:0.72rem;"
+                data-biomie-action="open-neighborhood"
+                data-neighborhood-key="" data-neighborhood-name="" data-city="Fortaleza"
+                title="Geo 360 — detalhe analítico do bairro">
+                <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">open_in_new</span>
+                Geo 360
+              </button>
+            </div>
           </article>
 
           <article class="wallboard-card">
@@ -167,6 +176,7 @@
               </div>
             </div>
             <div class="biomie-panel-section">
+              <div id="buyersSourceBadge" style="display:none;margin-bottom:6px;"></div>
               <table class="mag-table mag-table-clean">
                 <thead><tr><th>Cliente</th><th style="text-align:right">Notas</th><th style="text-align:right">Faturamento</th></tr></thead>
                 <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um bairro para ver os compradores." data-empty-icon="group_off"></tbody>
@@ -248,20 +258,30 @@
         <div class="mag-technical-diagnostics__body" id="geoDiagnosticsContent">
           <div class="biomie-map-diagnostics-grid">
             <strong>GeoJSON URL</strong><span id="diagGeoUrl">-</span>
+            <strong>GeoJSON carregado</strong><span id="diagGeoLoaded">-</span>
             <strong>Bairros no GeoJSON</strong><span id="diagGeoCount">-</span>
             <strong>Propriedade de bairro</strong><span id="diagGeoProperty">-</span>
             <strong>Features sem nome</strong><span id="diagGeoNoName">-</span>
             <strong>Endpoint</strong><span id="diagEndpoint">-</span>
             <strong>Status HTTP</strong><span id="diagStatus">-</span>
+            <strong>Estado da API</strong><span id="diagApiState">-</span>
+            <strong>Estado do mapa</strong><span id="diagMapState">-</span>
             <strong>Tempo de resposta</strong><span id="diagTime">-</span>
             <strong>Filtros ativos</strong><span id="diagFilters">-</span>
             <strong>Tabela gold</strong><span id="diagGoldTable">-</span>
             <strong>Notas no mart (periodo)</strong><span id="diagGoldRows">-</span>
-            <strong>Bairros com vendas</strong><span id="diagSalesCount">-</span>
+            <strong>Bairros retornados API</strong><span id="diagSalesCount">-</span>
             <strong>Match bairros</strong><span id="diagMatchRate">-</span>
+            <strong>Confianca do match</strong><span id="diagMatchConfidence">-</span>
+            <strong>API sem match GeoJSON</strong><span id="diagApiUnmatched">-</span>
+            <strong>GeoJSON sem dados API</strong><span id="diagGeoUnmatched">-</span>
+            <strong>Aliases aplicados</strong><span id="diagAliasesUsed">-</span>
+            <strong>Exemplos normalizados</strong><span id="diagNormalizationExamples">-</span>
             <strong>Registros sem bairro</strong><span id="diagNoNeighborhood">-</span>
             <strong>Ultima materializacao</strong><span id="diagMaterialized">-</span>
             <strong>Motivo zero</strong><span id="diagMotivoZero">-</span>
+            <strong>Status em camadas</strong><span id="diagLayeredStatus">-</span>
+            <strong>Proxima acao</strong><span id="diagNextAction">-</span>
             <strong>Linhas antes filtro cidade</strong><span id="diagRowsBeforeCity">-</span>
             <strong>Linhas apos filtro cidade</strong><span id="diagRowsAfterCity">-</span>
             <strong>NFs canonical no periodo</strong><span id="diagCanonicalNfs">-</span>
@@ -280,11 +300,15 @@
 <script src="assets/js/biomie-states.js?v=20260502-p16"></script>
 <script src="assets/js/biomie-chart-helpers.js?v=20260501-f6"></script>
 <script src="assets/js/modules/drilldown-router.js"></script>
+<script src="assets/js/modules/vendor-detail/tabs.js"></script>
+<script src="assets/js/modules/vendor-detail/composition.js"></script>
+<script src="assets/js/modules/vendor-detail/charts.js"></script>
 <script src="assets/js/modules/vendor-detail/index.js"></script>
 <script src="assets/js/modules/order-detail/index.js"></script>
 <script src="assets/js/modules/invoice-detail/index.js"></script>
 <script src="assets/js/modules/customer-detail/index.js"></script>
 <script src="assets/js/biomie-map-panel.js?v=20260501-f6"></script>
-<script src="assets/js/biomie-map.js?v=20260501-f6"></script>
+<script src="assets/js/geo-normalizer.js?v=20260513-mapfix2"></script>
+<script src="assets/js/biomie-map.js?v=20260513-mapfix2"></script>
 </body>
 </html>

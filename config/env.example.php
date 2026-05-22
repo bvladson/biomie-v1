@@ -20,4 +20,12 @@ return [
     'APP_DEBUG'       => '0',
     // Feature flag: imagens de produto via Omie (desabilitado por padrão)
     'BIOMIE_PRODUCT_IMAGES_ENABLED' => 'false',
+
+    // Unsplash — wallpaper dinâmico do login.
+    // Obtenha a Access Key em https://unsplash.com/developers (nunca use a Secret Key aqui).
+    'UNSPLASH_ENABLED'           => '1',
+    'UNSPLASH_ACCESS_KEY'        => '',
+    'UNSPLASH_UTM_SOURCE'        => 'biomie_mag',
+    'UNSPLASH_QUERY'             => 'modern office,business workspace,corporate interior,office furniture,analytics dashboard',
+    'UNSPLASH_CACHE_TTL_HOURS'   => '12',
 ];

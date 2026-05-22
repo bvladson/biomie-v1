@@ -1,0 +1,158 @@
+/* ── BIomie Drawer Component ────────────────────────────────────────────────
+ * Canonical CSS for all 360-view detail drawers (Vendor, Customer, Order, Invoice).
+ * This file is the source of truth for drawer styles.
+ * Also present in module-pages.css for pages that load that bundle.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.biomie-drawer {
+  position: fixed;
+  top: 0;
+  right: -520px;
+  width: 100%;
+  max-width: 520px;
+  height: 100vh;
+  background: var(--drawer-bg, #fff);
+  border-left: 1px solid var(--border, rgba(0,0,0,.08));
+  box-shadow: -8px 0 40px rgba(15,23,42,.12);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transition: right .3s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+.biomie-drawer.is-open { right: 0; }
+
+/* Wide variant (Vendor 360) */
+.biomie-drawer--large {
+  max-width: 640px;
+  right: -640px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.biomie-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, rgba(0,0,0,.08));
+  flex-shrink: 0;
+}
+.biomie-drawer__title    { font-size: 15px; font-weight: 700; margin: 0; }
+.biomie-drawer__subtitle { font-size: 12px; color: var(--text-3); margin: 2px 0 0; }
+.biomie-drawer__close {
+  width: 32px; height: 32px;
+  border: none; background: var(--bg-hover); border-radius: 8px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text-2);
+  flex-shrink: 0;
+}
+.biomie-drawer__close:hover { background: var(--bg-muted); }
+
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+.biomie-drawer__tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.biomie-drawer__tabs::-webkit-scrollbar { display: none; }
+.biomie-drawer__tab {
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+.biomie-drawer__tab.is-active,
+.biomie-drawer__tab:hover { color: var(--page-accent); border-bottom-color: var(--page-accent); }
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+.biomie-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+
+/* ── Section ────────────────────────────────────────────────────────────── */
+.biomie-drawer__section { margin-bottom: 20px; }
+.biomie-drawer__section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+  margin: 0 0 10px;
+}
+
+/* ── Stats grid ─────────────────────────────────────────────────────────── */
+.biomie-drawer__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.biomie-drawer__stat {
+  background: var(--drawer-card-bg, #fafafa);
+  border: 1px solid var(--drawer-card-border, #eaeaea);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.biomie-drawer__stat-label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3);
+}
+.biomie-drawer__stat-value { font-size: 15px; font-weight: 700; color: var(--text-1); margin-top: 3px; }
+
+/* ── List items ─────────────────────────────────────────────────────────── */
+.biomie-drawer__list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.biomie-drawer__list-item:last-child { border-bottom: none; }
+.biomie-drawer__list-item-main  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.biomie-drawer__list-item-label { font-size: 13px; font-weight: 600; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.biomie-drawer__list-item-meta  { font-size: 11px; color: var(--text-3); }
+.biomie-drawer__list-item-value { font-size: 13px; font-weight: 700; color: var(--text-1); text-align: right; flex-shrink: 0; }
+
+.biomie-drawer__list-item--link { cursor: pointer; }
+.biomie-drawer__list-item--link:hover { background: var(--row-hover); border-radius: 6px; margin: 0 -8px; padding: 10px 8px; }
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.biomie-drawer__empty {
+  text-align: center;
+  padding: 28px 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.biomie-drawer__badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.biomie-drawer__badge--ok     { background: var(--state-billed-bg); color: var(--state-billed); }
+.biomie-drawer__badge--warn   { background: var(--state-auth-bg);   color: var(--state-auth); }
+.biomie-drawer__badge--cancel { background: var(--state-cancel-bg); color: var(--state-cancel); }
+.biomie-drawer__badge--info   { background: var(--info-soft);       color: var(--info-strong); }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .biomie-drawer         { max-width: 100%; right: -100%; }
+  .biomie-drawer--large  { max-width: 100%; right: -100%; }
+  .biomie-drawer__stats  { grid-template-columns: repeat(2, 1fr); }
+}

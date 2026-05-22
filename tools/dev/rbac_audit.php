@@ -58,8 +58,10 @@ $targets = [
     'api/status.php' => ['expected' => 'jobs.view|sales.view|finance.view|fiscal.view'],
     'api/commercial_health.php' => ['expected' => 'finance.view|jobs.view|sales.view'],
     'api/system_health.php'    => ['expected' => 'logs.view|jobs.view|admin.view'],
-    'system_health.php'        => ['expected' => 'logs.view|jobs.view|admin.view'],
+    'system_health.php'        => ['expected' => 'login', 'allow_login_only' => true],
     'api/admin_geo_rebuild.php' => ['expected' => 'admin.view|settings.manage'],
+    'api/health_public.php'    => ['expected' => 'login', 'allow_login_only' => true],
+    'api/geo_trace_nf.php'     => ['expected' => 'admin.view|admin.manage'],
 ];
 
 $summary = [

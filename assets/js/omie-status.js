@@ -17,6 +17,8 @@
   const API_FINANCE_SYNC      = 'api/finance_sync.php';
   const API_MAT_CLIENTS       = 'api/materialize_clients.php';
   const API_GEO_CNAE_MAT      = 'api/geo_cnae_materialize.php';
+  const API_DELTA_SYNC        = 'api/omie_delta_sync.php';
+  const API_REPROCESS_QUEUE   = 'api/omie_reprocess_queue.php';
 
   const STATUS_COLORS = {
     ok:      { bg: '#e8f5e9', border: '#43a047', icon: 'check_circle', text: '#2e7d32' },
@@ -45,11 +47,48 @@
     } catch { return d; }
   }
 
+  function formatDuration(ms) {
+    if (ms === null || ms === undefined || ms === '') return '-';
+    const value = Number(ms);
+    if (!Number.isFinite(value)) return '-';
+    if (value < 1000) return Math.round(value) + 'ms';
+    return (value / 1000).toFixed(1).replace('.', ',') + 's';
+  }
+
   function statusColor(status) {
     return STATUS_COLORS[status] || STATUS_COLORS.unknown;
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
+
+  function omieBootCapabilities() {
+    const boot = window.__BIOMIE_BOOTSTRAP__ || {};
+    const omie = boot.omie || {};
+    return omie.capabilities || {};
+  }
+
+  function canUseAnyCapability(names) {
+    const capabilities = omieBootCapabilities();
+    return names.some(name => capabilities[name] === true);
+  }
+
+  function hideUnavailableActions() {
+    const actions = [
+      ['btnTestConnection', ['omie_sync']],
+      ['btnDeltaSync', ['omie_sync']],
+      ['btnReprocessQueue', ['jobs_run', 'omie_sync']],
+      ['btnUpdateCommercial', ['sales_sync', 'omie_sync', 'jobs_run']],
+      ['btnMaterializeClients', ['jobs_run', 'omie_sync', 'settings_manage']],
+      ['btnMaterializeGeo', ['geo_materialize', 'jobs_run']],
+    ];
+
+    actions.forEach(([id, capabilities]) => {
+      const button = document.getElementById(id);
+      if (button && !canUseAnyCapability(capabilities)) {
+        button.remove();
+      }
+    });
+  }
 
   function showLoading() {
     const el = document.getElementById('pageLoading');
@@ -75,9 +114,9 @@
 
   // ── Cards ──────────────────────────────────────────────────────────────────
 
-  function renderStatusCards(checks) {
+  function renderStatusCards(checks, overview) {
     const container = document.getElementById('statusCards');
-    if (!container || !Array.isArray(checks)) return;
+    if (!container) return;
 
     const priority = [
       'credentials_configured', 'api_last_test',
@@ -85,11 +124,30 @@
       'materialization', 'failed_jobs', 'last_error'
     ];
 
+    const primary = [
+      ['source_sync_status', 'Sync Omie'],
+      ['canonical_freshness_status', 'Origem canonica'],
+      ['gold_materialization_status', 'Materializacao Gold'],
+      ['worker_queue_status', 'Worker/Fila'],
+      ['webhook_status', 'Webhook inbox']
+    ].map(([key, label]) => {
+      const block = overview && overview[key];
+      if (!block) return null;
+      return {
+        key,
+        label: block.label || label,
+        status: block.status || 'unknown',
+        message: block.message || '-',
+        updated_at: block.last_success_at || block.last_materialization_at || block.last_event_received_at || block.updated_at || null,
+        recommended_action: block.recommended_action || null
+      };
+    }).filter(Boolean);
+
     const ordered = priority
-      .map(k => checks.find(c => c.key === k))
+      .map(k => Array.isArray(checks) ? checks.find(c => c.key === k) : null)
       .filter(Boolean);
 
-    container.innerHTML = ordered.map(c => {
+    container.innerHTML = primary.concat(ordered).map(c => {
       const color = statusColor(c.status);
       return `<div class="omie-card" style="border-left:4px solid ${color.border};background:${color.bg}">
         <div class="omie-card-header">
@@ -125,12 +183,136 @@
         <div class="omie-data-label">${esc(d.label)}</div>
         <div class="omie-data-count" style="color:${color.text}">${d.count !== null ? formatNumber(d.count) : '-'}</div>
         <div class="omie-data-sync">${d.last_sync ? formatDate(d.last_sync) : 'Sem registro'}</div>
+        ${d.message ? `<div class="omie-data-sync">${esc(d.message)}</div>` : ''}
         ${detail}
         ${d.recommended_action ? `<div class="omie-card-action" style="font-size:11px;margin-top:3px">${esc(d.recommended_action)}</div>` : ''}
       </div>`;
     }).join('');
 
     renderGeoStatusSection(data);
+  }
+
+  function renderSyncDomainStatus(domains) {
+    const container = document.getElementById('syncDomainStatus');
+    if (!container) return;
+
+    if (!Array.isArray(domains) || domains.length === 0) {
+      container.innerHTML = '<div class="omie-no-actions">Nenhum cursor operacional registrado ainda.</div>';
+      return;
+    }
+
+    container.innerHTML = domains.map(d => {
+      const color = statusColor(d.status);
+      const age = d.age_minutes === null || d.age_minutes === undefined ? '-' : `${formatNumber(d.age_minutes)} min`;
+      return `<div class="omie-ops-card" style="border-left:3px solid ${color.border}">
+        <div class="omie-ops-title">
+          <span>${esc(d.label || d.domain)}</span>
+          <span class="omie-badge" style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">${esc(d.status || 'unknown')}</span>
+        </div>
+        <div class="omie-ops-row"><span>Ultimo sucesso</span><strong>${formatDate(d.last_success_at)}</strong></div>
+        <div class="omie-ops-row"><span>Idade</span><strong>${esc(age)}</strong></div>
+        <div class="omie-ops-row"><span>Proximo delta</span><strong>${formatDate(d.next_delta_at)}</strong></div>
+        ${d.message ? `<div class="omie-ops-warn">${esc(d.message)}</div>` : ''}
+        ${d.recommended_command ? `<div class="omie-card-action" style="font-size:11px;margin-top:3px">${esc(d.recommended_command)}</div>` : ''}
+        ${d.last_error ? `<div class="omie-ops-warn">${esc(d.last_error)}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function renderRateLimitStatus(rateLimits) {
+    const container = document.getElementById('rateLimitStatus');
+    if (!container || !rateLimits) return;
+
+    const limits = rateLimits.limits || {};
+    const domains = rateLimits.domains || {};
+    const domainRows = Object.entries(domains).map(([domain, row]) => `<tr>
+      <td>${esc(domain)}</td>
+      <td>${formatNumber(row.methods || 0)}</td>
+      <td>${formatNumber(row.max_page_size || '-')}</td>
+      <td>${formatNumber(row.cache_enabled_methods || 0)}</td>
+      <td>${formatNumber(row.max_concurrency || 0)}</td>
+    </tr>`).join('');
+
+    container.innerHTML = `<div class="omie-rate-summary">
+      <div><span>IP/min</span><strong>${formatNumber(limits.global_per_ip_per_minute || 960)}</strong></div>
+      <div><span>App+metodo/min</span><strong>${formatNumber(limits.per_app_method_per_minute || 240)}</strong></div>
+      <div><span>Concorrencia/metodo</span><strong>${formatNumber(limits.max_concurrent_per_app_method || 4)}</strong></div>
+      <div><span>Cache ID</span><strong>${formatNumber(limits.redundant_lookup_cache_seconds || 60)}s</strong></div>
+    </div>
+    <table class="omie-table-compact"><thead><tr>
+      <th>Dominio</th><th>Metodos</th><th>Pagina max.</th><th>Cache ID</th><th>Conc.</th>
+    </tr></thead><tbody>${domainRows || '<tr><td colspan="5">Sem politicas carregadas.</td></tr>'}</tbody></table>`;
+  }
+
+  function renderOperationalStatus(operational, automationCommands, workerStatus) {
+    const container = document.getElementById('operationalStatus');
+    if (!container || !operational) return;
+
+    const queueCounts = (((operational.file_queue || {}).counts) || {});
+    const recent = operational.recent_24h || {};
+    const pipeline = operational.sync_pipeline || {};
+    const webhook = pipeline.webhook_inbox || {};
+    const cursors = Array.isArray(pipeline.cursors) ? pipeline.cursors : [];
+    const pendingQueue = Number(queueCounts.queued || 0) + Number(queueCounts.failed_retryable || 0);
+    const deadLetters = (workerStatus && workerStatus.dead_letters) || {};
+    const heartbeat = (workerStatus && workerStatus.heartbeat) || {};
+
+    let html = `<div class="omie-rate-summary">
+      <div><span>Fila pendente</span><strong>${formatNumber(pendingQueue)}</strong></div>
+      <div><span>Em execucao</span><strong>${formatNumber(queueCounts.running || 0)}</strong></div>
+      <div><span>Falhas 24h</span><strong>${formatNumber(recent.failures || 0)}</strong></div>
+      <div><span>Tempo medio</span><strong>${formatDuration(recent.avg_duration_ms)}</strong></div>
+      <div><span>Dead-letter</span><strong>${formatNumber(deadLetters.unresolved || 0)}</strong></div>
+      <div><span>Webhook pendente</span><strong>${formatNumber(webhook.pending_total || 0)}</strong></div>
+    </div>`;
+
+    if (workerStatus) {
+      const color = statusColor(workerStatus.status);
+      html += `<div class="omie-ops-card" style="border-left:3px solid ${color.border};margin-top:12px">
+        <div class="omie-ops-title">
+          <span>${esc(workerStatus.label || 'Worker/Fila')}</span>
+          <span class="omie-badge" style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">${esc(workerStatus.status || 'unknown')}</span>
+        </div>
+        <div class="omie-card-message">${esc(workerStatus.message || '')}</div>
+        ${workerStatus.recommended_action ? `<div class="omie-card-action">${esc(workerStatus.recommended_action)}</div>` : ''}
+        ${heartbeat.message ? `<div class="omie-ops-row"><span>Heartbeat</span><strong>${esc(heartbeat.message)}</strong></div>` : ''}
+        ${heartbeat.latest && heartbeat.latest.last_heartbeat_at ? `<div class="omie-ops-row"><span>Ultimo heartbeat</span><strong>${formatDate(heartbeat.latest.last_heartbeat_at)}</strong></div>` : ''}
+      </div>`;
+    }
+
+    const webhookCounts = webhook.counts || {};
+    const webhookTotal = Object.values(webhookCounts).reduce((sum, value) => sum + Number(value || 0), 0);
+    if (webhookTotal === 0) {
+      html += '<div class="omie-no-actions" style="margin-top:12px">Nenhum webhook recebido. Use cron/polling ou configure webhook Omie.</div>';
+    }
+
+    if (cursors.length > 0) {
+      html += '<table class="omie-table-compact"><thead><tr><th>Dominio</th><th>Grupo</th><th>Status</th><th>Ultimo sucesso</th><th>Proximo delta</th></tr></thead><tbody>';
+      html += cursors.slice(0, 8).map(c => {
+        const color = statusColor(c.status === 'completed' ? 'ok' : (String(c.status || '').startsWith('failed') ? 'danger' : 'pending'));
+        return `<tr>
+          <td>${esc(c.domain)}</td>
+          <td>${esc(c.endpoint_group)}</td>
+          <td><span class="omie-badge" style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">${esc(c.status)}</span></td>
+          <td>${formatDate(c.last_success_at)}</td>
+          <td>${formatDate(c.next_delta_at)}</td>
+        </tr>`;
+      }).join('');
+      html += '</tbody></table>';
+    }
+
+    if (Array.isArray(automationCommands) && automationCommands.length > 0) {
+      html += '<div class="omie-table-group" style="margin-top:12px"><div class="omie-table-group-title">Comandos esperados</div>';
+      html += '<table class="omie-table-compact"><thead><tr><th>Rotina</th><th>Comando</th><th>Uso</th></tr></thead><tbody>';
+      html += automationCommands.map((row) => `<tr>
+        <td>${esc(row.label || '-')}</td>
+        <td><code>${esc(row.command || '')}</code></td>
+        <td>${esc(row.description || '')}</td>
+      </tr>`).join('');
+      html += '</tbody></table></div>';
+    }
+
+    container.innerHTML = html;
   }
 
   function renderGeoStatusSection(data) {
@@ -191,15 +373,20 @@
       html += `<div class="omie-table-group">
         <div class="omie-table-group-title">${groupLabels[group] || group}</div>
         <table class="omie-table-compact"><thead><tr>
-          <th>Tabela</th><th>Status</th><th>Registros</th><th>Atualizado</th>
+          <th>Tabela</th><th>Status</th><th>Registros</th><th>Atualizado</th><th>Diagnostico</th>
         </tr></thead><tbody>`;
       for (const t of items) {
         const color = statusColor(t.status);
+        const badge = t.badge_label || (t.exists ? (t.status === 'ok' ? 'OK' : 'Vazio') : 'Ausente');
         html += `<tr>
           <td title="${esc(t.name)}">${esc(t.label)}</td>
-          <td><span class="omie-badge" style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">${t.exists ? (t.status === 'ok' ? 'OK' : 'Vazio') : 'Ausente'}</span></td>
+          <td><span class="omie-badge" title="${esc(t.empty_class || '')}" style="background:${color.bg};color:${color.text};border:1px solid ${color.border}">${esc(badge)}</span></td>
           <td>${t.rows !== null ? formatNumber(t.rows) : '-'}</td>
           <td>${formatDate(t.last_updated)}</td>
+          <td>
+            <div>${esc(t.message || '-')}</div>
+            ${t.recommended_action ? `<div class="omie-card-action" style="font-size:11px;margin-top:2px">${esc(t.recommended_action)}</div>` : ''}
+          </td>
         </tr>`;
       }
       html += '</tbody></table></div>';
@@ -380,8 +567,13 @@
           const json = await res.json();
           showFeedback(
             json.ok ? 'success' : 'error',
-            json.message || (json.ok ? 'Materializacao comercial concluida.' : 'Nao foi possivel materializar a visao comercial.')
+            json.message || (json.ok ? 'Visao comercial recalculada com os dados locais disponiveis.' : 'Nao foi possivel recalcular a visao comercial.')
           );
+          if (json.warning) {
+            showFeedback('info', json.warning);
+          } else if (json.source_warning && json.source_warning.message) {
+            showFeedback('info', json.source_warning.message);
+          }
           if (json.report) {
             renderMaterializationReport(json.report);
           }
@@ -391,6 +583,54 @@
         } finally {
           btnSnapshot.disabled = false;
           btnSnapshot.innerHTML = '<span class="material-symbols-rounded">refresh</span>Atualizar visao comercial';
+        }
+      });
+    }
+
+    const btnDelta = document.getElementById('btnDeltaSync');
+    if (btnDelta) {
+      btnDelta.addEventListener('click', async () => {
+        btnDelta.disabled = true;
+        btnDelta.innerHTML = '<span class="material-symbols-rounded omie-spin">sync</span>Agendando...';
+        try {
+          const res = await fetch(API_DELTA_SYNC, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
+            body: JSON.stringify({ _csrf: getCsrf(), domains: ['commercial', 'finance'] }),
+          });
+          const json = await res.json();
+          showFeedback(json.ok ? 'success' : 'error', json.message || 'Sync delta agendado.');
+          if (json.follow_up) showFeedback('info', json.follow_up);
+          if (json.status_url) showFeedback('info', 'Status do job: ' + json.status_url);
+          setTimeout(loadStatus, 800);
+        } catch {
+          showFeedback('error', 'Erro ao agendar sync delta.');
+        } finally {
+          btnDelta.disabled = false;
+          btnDelta.innerHTML = '<span class="material-symbols-rounded">sync_alt</span>Sincronizar delta';
+        }
+      });
+    }
+
+    const btnReprocess = document.getElementById('btnReprocessQueue');
+    if (btnReprocess) {
+      btnReprocess.addEventListener('click', async () => {
+        btnReprocess.disabled = true;
+        btnReprocess.innerHTML = '<span class="material-symbols-rounded omie-spin">sync</span>Agendando...';
+        try {
+          const res = await fetch(API_REPROCESS_QUEUE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
+            body: JSON.stringify({ _csrf: getCsrf(), limit: 50 }),
+          });
+          const json = await res.json();
+          showFeedback(json.ok ? 'success' : 'error', json.message || 'Fila Omie agendada para reprocessamento.');
+          setTimeout(loadStatus, 800);
+        } catch {
+          showFeedback('error', 'Erro ao agendar reprocessamento da fila.');
+        } finally {
+          btnReprocess.disabled = false;
+          btnReprocess.innerHTML = '<span class="material-symbols-rounded">playlist_add_check</span>Reprocessar fila';
         }
       });
     }
@@ -494,8 +734,11 @@
         return;
       }
 
-      renderStatusCards(data.checks);
+      renderStatusCards(data.checks, data);
       renderDataStatus(data.data);
+      renderSyncDomainStatus(data.sync_domains);
+      renderRateLimitStatus(data.rate_limits);
+      renderOperationalStatus(data.operational, data.automation_commands, data.worker_queue_status);
       renderTableStatus(data.tables);
       renderActions(data.recommended_actions);
       renderRecentSyncs(data.recent_syncs);
@@ -510,6 +753,7 @@
   // ── Init ───────────────────────────────────────────────────────────────────
 
   function init() {
+    hideUnavailableActions();
     showLoading();
     setupActions();
     loadStatus();

@@ -44,7 +44,7 @@
   // ── DOM ───────────────────────────────────────────────────────────────────
   function getDrawer() {
     var d = document.getElementById(DRAWER_ID);
-    if (!d) { d = document.createElement('div'); d.id = DRAWER_ID; d.className = 'biomie-drawer'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); document.body.appendChild(d); }
+    if (!d) { d = document.createElement('div'); d.id = DRAWER_ID; d.className = 'biomie-drawer mag-drawer mag-drawer--right mag-drawer--mobile-medium'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); document.body.appendChild(d); }
     return d;
   }
 
@@ -115,7 +115,7 @@
   }
 
   function renderItens(items) {
-    if (!Array.isArray(items) || !items.length) return '<div class="biomie-drawer__empty">Nenhum item encontrado.</div>';
+    if (!Array.isArray(items) || !items.length) return '<div class="mag-empty mag-empty--compact"><div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span></div><p class="mag-empty-text">Nenhum item encontrado neste pedido.</p></div>';
     return '<div style="overflow-x:auto">' + table(
       [th('#'), th('Código'), th('Descrição'), th('Qtd'), th('Un'), th('Total')],
       items.map(function (i) { return [td(i.sequencia_item), td(i.codigo_produto), td(i.descricao_produto), td(i.quantidade), td(i.unidade), td(fmt(i.valor_unitario ? (i.quantidade * i.valor_unitario) : (i.valor_total || 0)))]; })
@@ -123,7 +123,7 @@
   }
 
   function renderNfs(invoices) {
-    if (!Array.isArray(invoices) || !invoices.length) return '<div class="biomie-drawer__empty">Nenhuma NF vinculada.</div>';
+    if (!Array.isArray(invoices) || !invoices.length) return '<div class="mag-empty mag-empty--compact"><div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">receipt_long</span></div><p class="mag-empty-text">Nenhuma NF vinculada a este pedido.</p></div>';
     return invoices.map(function (nf) {
       var num    = esc(String(nf.numero_nf || nf.numero_nfe || ''));
       var notaKey = esc(String(nf.nota_key || ''));
@@ -136,7 +136,7 @@
   }
 
   function renderParcelas(installments) {
-    if (!Array.isArray(installments) || !installments.length) return '<div class="biomie-drawer__empty">Nenhuma parcela encontrada.</div>';
+    if (!Array.isArray(installments) || !installments.length) return '<div class="mag-empty mag-empty--compact"><div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">payments</span></div><p class="mag-empty-text">Nenhuma parcela financeira encontrada para este pedido.</p></div>';
     return '<div style="overflow-x:auto">' + table(
       [th('#'), th('Vencimento'), th('Valor'), th('Status'), th('Liquidação')],
       installments.map(function (p) { return [td(p.numero), td(fmtDate(p.vencimento)), td(fmt(p.valor)), td(p.status), td(fmtDate(p.liquidacao))]; })
@@ -152,7 +152,7 @@
   }
 
   function table(headers, rows) {
-    return '<table style="width:100%;border-collapse:collapse;font-size:.82rem"><thead><tr>' + headers.join('') + '</tr></thead><tbody>' +
+    return '<table data-mobile-card-table style="width:100%;border-collapse:collapse;font-size:.82rem"><thead><tr>' + headers.join('') + '</tr></thead><tbody>' +
       rows.map(function (r) { return '<tr>' + r.join('') + '</tr>'; }).join('') + '</tbody></table>';
   }
   function th(l) { return '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-3);font-weight:500">' + esc(l) + '</th>'; }

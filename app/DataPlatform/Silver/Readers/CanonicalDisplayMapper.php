@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\DataPlatform\Silver\Readers;
 
 use BIomie\Support\CustomerDisplayResolver;
+use BIomie\Support\FiscalValueBasis;
 use BIomie\Support\SellerDisplayResolver;
 
 final class CanonicalDisplayMapper
@@ -66,7 +67,9 @@ final class CanonicalDisplayMapper
     {
         $orders = [];
         foreach ($rows as $row) {
-            $grossTotal  = (float) ($row['valor_total'] ?? 0);
+            // Fase O.4: use base comercial (valor_total - frete - outras - seguro) as gross_total.
+            // Falls back gracefully to valor_total if Fase O.1 columns are absent.
+            $grossTotal  = FiscalValueBasis::commercialBaseFromRow($row);
             $merchandise = (float) ($row['valor_mercadorias'] ?? 0);
             $discount    = (float) ($row['valor_descontos'] ?? 0);
             $number      = trim((string) ($row['numero_nf'] ?? ''));
@@ -90,21 +93,31 @@ final class CanonicalDisplayMapper
             ]);
 
             $orders[] = [
+                'nota_key'           => (string) ($row['nota_key'] ?? ''),
+                'chave_nfe'          => (string) ($row['chave_nfe'] ?? ''),
+                'numero_nf'          => (string) ($row['numero_nf'] ?? ''),
+                'serie_nf'           => (string) ($row['serie_nf'] ?? ''),
                 'codigo'             => $codigo,
                 'codigo_integracao'  => (string) ($row['codigo_pedido_origem'] ?? ($row['chave_nfe'] ?? '')),
                 'cliente'            => $customer['display_name'],
+                'customer_id'        => (string) ($row['codigo_cliente_omie'] ?? ''),
+                'codigo_cliente_omie' => (string) ($row['codigo_cliente_omie'] ?? ''),
                 'cliente_documento'  => (string) ($customer['document_masked'] ?? ''),
                 'cliente_resolution_source' => $customer['source'],
                 'cliente_resolution_quality' => $customer['quality'],
                 'cliente_missing_reason' => $customer['missing_reason'],
                 'cliente_dim_sincronizado_em' => (string) ($row['cliente_dim_sincronizado_em'] ?? ''),
                 'vendor_id'          => (string) ($row['codigo_vendedor_omie'] ?? ''),
+                'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
                 'vendor_name'        => $seller['display_name'],
                 'vendor_resolution_source' => $seller['source'],
                 'vendor_resolution_quality' => $seller['quality'],
                 'vendor_missing_reason' => $seller['missing_reason'],
                 'issue_date'         => $issueDate,
                 'billing_date'       => $issueDate,
+                'competencia_date'   => (string) ($row['data_competencia'] ?? ''),
+                'data_competencia'   => (string) ($row['data_competencia'] ?? ''),
+                'status_fiscal'      => $statusFiscal,
                 'stage'              => $statusGroup === 'cancelado' ? 'NF CANCELADA' : 'NF AUTORIZADA',
                 'status_group'       => $statusGroup,
                 'items_qty'          => (int) ($row['quantidade_itens'] ?? 0),
@@ -116,6 +129,7 @@ final class CanonicalDisplayMapper
                     ? ($cancelDate !== '' ? $cancelDate : $issueDate)
                     : $issueDate,
                 'document_key'       => (string) ($row['chave_nfe'] ?? ''),
+                'pedido_id_omie'     => (string) ($row['pedido_id_omie'] ?? ''),
                 'origin_order_code'  => (string) ($row['codigo_pedido_origem'] ?? ''),
             ];
         }

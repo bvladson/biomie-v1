@@ -1,0 +1,351 @@
+/* login-wallpaper.css — Unsplash wallpaper, two-panel commercial layout     */
+/* Rules: animate only transform/opacity; max 5 elements; 8-18s durations    */
+
+:root {
+  --lw-panel-bg:   #111827;
+  --lw-blur:       22px;
+  --lw-card-bg:    rgba(255, 255, 255, 0.94);
+  --lw-transition: 640ms cubic-bezier(.4, 0, .2, 1);
+  --lw-mag-red:    #96140A;
+  --lw-mag-blue:   #24364f;
+}
+
+/* ── Backdrop ───────────────────────────────────────────────────────────────── */
+.lw-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--lw-panel-bg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity var(--lw-transition);
+  will-change: opacity;
+}
+
+.lw-backdrop.lw-ready {
+  opacity: 1;
+}
+
+.lw-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Fallback overlay (dark): hides the flat dark background colour */
+  background: rgba(5, 8, 22, .86);
+  transition: background 480ms ease;
+}
+
+/* When a real Unsplash photo is loaded, lighten the overlay so the image shows */
+body.unsplash-ready .lw-backdrop::after {
+  background:
+    linear-gradient(90deg, rgba(8, 12, 28, .72), rgba(8, 12, 28, .52)),
+    radial-gradient(circle at 10% 20%, rgba(174, 19, 12, .24), transparent 34%);
+}
+
+/* ── Decorative orbs (CSS-only) ─────────────────────────────────────────────── */
+.lw-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.lw-orb-1 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(150, 20, 10, 0.22) 0%, transparent 68%);
+  top: -100px; left: -100px;
+  animation: lw-drift 18s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.lw-orb-2 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(36, 54, 79, 0.18) 0%, transparent 68%);
+  bottom: -60px; right: 32%;
+  animation: lw-drift 14s ease-in-out infinite reverse;
+  animation-delay: -9s;
+}
+
+.lw-orb-3 {
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(150, 20, 10, 0.10) 0%, transparent 68%);
+  top: 38%; left: 18%;
+  animation: lw-drift 11s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+body.lw-active .lw-orb {
+  opacity: 1;
+}
+
+@keyframes lw-drift {
+  0%,  100% { transform: translate(0, 0)        scale(1);    }
+  33%        { transform: translate(28px, -18px) scale(1.06); }
+  66%        { transform: translate(-18px, 14px) scale(0.96); }
+}
+
+/* ── Page layout (two-panel) ────────────────────────────────────────────────── */
+body.lw-active .page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 480px);
+  align-items: center;
+  padding: 0;
+  background: transparent !important;
+}
+
+/* ── Left panel ─────────────────────────────────────────────────────────────── */
+.lw-panel-left {
+  display: none;
+}
+
+body.lw-active .lw-panel-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 56px 64px;
+  color: #fff;
+  align-self: stretch;
+  position: relative;
+}
+
+.lw-brand-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(150, 20, 10, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 28px;
+  width: fit-content;
+}
+
+.lw-headline {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.12;
+  color: #fff;
+  margin: 0 0 18px;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+}
+
+.lw-sub {
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.65;
+  max-width: 360px;
+  margin: 0 0 40px;
+}
+
+/* ── Floating cards ─────────────────────────────────────────────────────────── */
+.lw-floating-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.lw-floating-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  width: fit-content;
+  min-width: 180px;
+  will-change: transform, opacity;
+  opacity: 0;
+}
+
+body.lw-active .lw-floating-card {
+  opacity: 1;
+}
+
+.lw-floating-card .lw-fc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.lw-floating-card strong {
+  font-size: .88rem;
+  font-weight: 700;
+  display: block;
+  line-height: 1.2;
+}
+
+.lw-floating-card small {
+  font-size: .72rem;
+  color: rgba(255, 255, 255, 0.60);
+  display: block;
+}
+
+/* Individual card colours and animations */
+.lw-fc-sales .lw-fc-icon  { background: rgba(150, 20, 10, 0.55); }
+.lw-fc-targets .lw-fc-icon { background: rgba(36, 54, 79, 0.65); }
+.lw-fc-clients .lw-fc-icon { background: rgba(5, 100, 56, 0.55); }
+.lw-fc-products .lw-fc-icon { background: rgba(100, 50, 5, 0.55); }
+
+body.lw-active .lw-fc-sales    { animation: lw-float-a 12s ease-in-out infinite; animation-delay:  0s; }
+body.lw-active .lw-fc-targets  { animation: lw-float-b 15s ease-in-out infinite; animation-delay: -4s; }
+body.lw-active .lw-fc-clients  { animation: lw-float-a 10s ease-in-out infinite; animation-delay: -7s; }
+body.lw-active .lw-fc-products { animation: lw-float-b 13s ease-in-out infinite; animation-delay: -2s; }
+
+@keyframes lw-float-a {
+  0%, 100% { transform: translateY(0);    }
+  50%       { transform: translateY(-6px); }
+}
+@keyframes lw-float-b {
+  0%, 100% { transform: translateY(0);   }
+  50%       { transform: translateY(5px); }
+}
+
+/* ── Flow line ───────────────────────────────────────────────────────────────── */
+.lw-flow-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+  font-size: .76rem;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: .04em;
+}
+
+.lw-flow-node {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lw-flow-arrow {
+  font-size: .9rem;
+  opacity: 0.4;
+}
+
+/* ── Glassmorphism card ─────────────────────────────────────────────────────── */
+body.lw-active .card {
+  background: var(--lw-card-bg);
+  backdrop-filter: blur(var(--lw-blur));
+  -webkit-backdrop-filter: blur(var(--lw-blur));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  margin: 24px;
+  animation: lw-card-enter var(--lw-transition) both;
+}
+
+@keyframes lw-card-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Unsplash attribution ───────────────────────────────────────────────────── */
+.lw-credit {
+  position: fixed;
+  bottom: 10px;
+  left: 14px;
+  font-size: .68rem;
+  color: rgba(255, 255, 255, 0.48);
+  z-index: 2;
+  pointer-events: none;
+  display: none; /* shown by JS when photographer_name is available */
+  gap: 2px;
+  align-items: center;
+}
+
+.lw-credit a {
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  pointer-events: auto;
+  transition: color 180ms;
+}
+
+.lw-credit a:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Debug node ─────────────────────────────────────────────────────────────── */
+.lw-debug {
+  position: fixed;
+  bottom: 28px;
+  left: 14px;
+  font-size: .68rem;
+  color: rgba(255, 255, 255, 0.5);
+  z-index: 9;
+}
+
+/* ── Mobile: single-column ──────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  body.lw-active .page {
+    grid-template-columns: 1fr;
+    place-items: center;
+    padding: 24px;
+  }
+
+  body.lw-active .lw-panel-left {
+    display: none;
+  }
+
+  body.lw-active .card {
+    margin: 0;
+    width: min(100%, 460px);
+  }
+
+  .lw-credit {
+    bottom: 6px;
+    font-size: .62rem;
+  }
+}
+
+/* ── Accessibility: prefers-reduced-motion ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        .001ms !important;
+    animation-iteration-count: 1      !important;
+    scroll-behavior:           auto   !important;
+    transition-duration:       .001ms !important;
+  }
+
+  .lw-orb,
+  .lw-floating-card,
+  .lw-flow-line,
+  .lw-fc-sales,
+  .lw-fc-targets,
+  .lw-fc-clients,
+  .lw-fc-products {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .lw-orb {
+    display: none !important;
+  }
+}

@@ -30,14 +30,14 @@ final class SemanticHealthCheck implements CheckInterface
 
         $ms = (int) round((microtime(true) - $start) * 1000);
 
-        $errors   = $audit['errors']   ?? [];
-        $warnings = $audit['warnings'] ?? [];
-        $stats    = $audit['stats']    ?? [];
+        $auditData = method_exists($audit, 'toArray') ? $audit->toArray() : [];
+        $errors    = is_array($auditData['errors'] ?? null) ? $auditData['errors'] : [];
+        $warnings  = is_array($auditData['warnings'] ?? null) ? $auditData['warnings'] : [];
 
         $metrics = [
-            'kpis_total'    => (int) ($stats['total']      ?? 0),
-            'kpis_active'   => (int) ($stats['active']     ?? 0),
-            'kpis_draft'    => (int) ($stats['draft']      ?? 0),
+            'kpis_total'    => (int) ($auditData['metrics_total'] ?? 0),
+            'kpis_active'   => (int) ($auditData['active'] ?? 0),
+            'kpis_draft'    => (int) ($auditData['draft'] ?? 0),
             'error_count'   => count($errors),
             'warning_count' => count($warnings),
         ];

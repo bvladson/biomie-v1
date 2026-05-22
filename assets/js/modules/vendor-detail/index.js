@@ -3,17 +3,18 @@
 
   var B = window.BIomie || {};
   B.VendorDetail = B.VendorDetail || {};
-  
+
   var DRAWER_ID = 'vendor-detail-drawer';
   var TABS = [
-    { key: 'resumo', label: 'Resumo' },
-    { key: 'composicao', label: 'Composicao' },
-    { key: 'nfs', label: 'NFs' },
-    { key: 'pedidos', label: 'Pedidos' },
-    { key: 'clientes', label: 'Clientes' },
-    { key: 'produtos', label: 'Produtos' },
-    { key: 'graficos', label: 'Graficos' },
-    { key: 'timeline', label: 'Timeline' }
+    { key: 'resumo',    label: 'Resumo' },
+    { key: 'nfs',       label: 'NFs' },
+    { key: 'pedidos',   label: 'Pedidos vinculados' },
+    { key: 'carteira',  label: 'Carteira' },
+    { key: 'clientes',  label: 'Clientes' },
+    { key: 'produtos',  label: 'Produtos' },
+    { key: 'timeline',  label: 'Evolucao diaria' },
+    { key: 'graficos',  label: 'Metas' },
+    { key: 'composicao',label: 'Diagnostico' }
   ];
 
   var state = {
@@ -30,12 +31,12 @@
   var focusTrapHandler = null;
 
   function cacheKey(id, params) {
-    return 'vendor_v2:' + id + ':' + (params.start || '') + ':' + (params.end || '');
+    return 'vendor_v3:' + id + ':' + (params.start || '') + ':' + (params.end || '');
   }
 
   function fromCache(key) {
     var entry = cache[key];
-    return entry && Date.now() - entry.ts < 60000 ? entry.data : null;
+    return entry && Date.now() - entry.ts < 90000 ? entry.data : null;
   }
 
   function toCache(key, data) {
@@ -73,7 +74,7 @@
     if (!drawer) {
       drawer = document.createElement('div');
       drawer.id = DRAWER_ID;
-      drawer.className = 'biomie-drawer biomie-drawer--large';
+      drawer.className = 'biomie-drawer biomie-drawer--large mag-drawer mag-drawer--right mag-drawer--wide mag-drawer--mobile-full';
       drawer.setAttribute('role', 'dialog');
       drawer.setAttribute('aria-modal', 'true');
       document.body.appendChild(drawer);
@@ -100,9 +101,11 @@
   function renderTabs() {
     var target = document.getElementById('vd-tabs');
     if (!target) return;
+    var T = B.VendorDetail.Tabs;
+    var esc = T ? T.esc : function(v) { return String(v == null ? '' : v); };
     target.innerHTML = TABS.map(function (tab) {
       var active = tab.key === state.tab;
-      return '<button class="biomie-drawer__tab' + (active ? ' is-active' : '') + '" data-tab="' + B.VendorDetail.Tabs.esc(tab.key) + '" role="tab" aria-selected="' + (active ? 'true' : 'false') + '">' + B.VendorDetail.Tabs.esc(tab.label) + '</button>';
+      return '<button class="biomie-drawer__tab' + (active ? ' is-active' : '') + '" data-tab="' + esc(tab.key) + '" role="tab" aria-selected="' + (active ? 'true' : 'false') + '">' + esc(tab.label) + '</button>';
     }).join('');
     target.querySelectorAll('.biomie-drawer__tab').forEach(function (button) {
       button.addEventListener('click', function () {
@@ -116,42 +119,88 @@
   function renderBody() {
     var body = document.getElementById('vd-body');
     if (!body) return;
-    
+
     var T = B.VendorDetail.Tabs;
     if (!T) {
       body.innerHTML = '<div class="biomie-drawer__empty">Erro interno: modulos nao carregados.</div>';
       return;
     }
 
-    if (state.loading) {
-      body.innerHTML = skeleton();
+    if (state.loading) { body.innerHTML = skeleton(); return; }
+    if (state.error)   {
+      body.innerHTML = '<div class="mag-empty mag-empty--compact">' +
+        '<div class="mag-empty-icon" style="background:rgba(220,38,38,.1);color:#b91c1c"><span class="material-symbols-rounded" aria-hidden="true">error</span></div>' +
+        '<strong class="mag-empty-title">Erro ao carregar</strong>' +
+        '<p class="mag-empty-text">' + T.esc(state.error) + '</p>' +
+        '</div>';
       return;
     }
-    if (state.error) {
-      body.innerHTML = '<div class="biomie-drawer__empty" style="color:var(--danger)">' + T.esc(state.error) + '</div>';
-      return;
-    }
-    if (!state.data) {
-      body.innerHTML = '<div class="biomie-drawer__empty">Sem dados disponiveis para este vendedor.</div>';
+    if (!state.data)   {
+      body.innerHTML = '<div class="mag-empty mag-empty--compact">' +
+        '<div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">person_off</span></div>' +
+        '<strong class="mag-empty-title">Sem dados para este vendedor</strong>' +
+        '<p class="mag-empty-text">Nenhuma NF autorizada foi encontrada no periodo selecionado.</p>' +
+        '</div>';
       return;
     }
 
     var data = state.data;
-    if (state.tab === 'resumo') body.innerHTML = T.renderResumo(data);
-    else if (state.tab === 'composicao') body.innerHTML = B.VendorDetail.Composition ? B.VendorDetail.Composition.renderComposition(data) : T.empty('Modulo composition nao carregado.');
-    else if (state.tab === 'nfs') body.innerHTML = T.renderInvoices(data.invoices || []);
-    else if (state.tab === 'pedidos') body.innerHTML = T.renderOrders(data.orders || data.wallet_orders || []);
-    else if (state.tab === 'clientes') body.innerHTML = T.renderCustomers(data.customers || []);
-    else if (state.tab === 'produtos') body.innerHTML = T.renderProducts(data.products || []);
-    else if (state.tab === 'graficos') body.innerHTML = B.VendorDetail.Charts ? B.VendorDetail.Charts.renderCharts(data) : T.empty('Modulo charts nao carregado.');
-    else if (state.tab === 'timeline') body.innerHTML = T.renderTimeline(data);
-    else body.innerHTML = '<div class="biomie-drawer__empty">Aba desconhecida.</div>';
+    var tab  = state.tab;
+
+    if (tab === 'resumo') {
+      body.innerHTML = T.renderResumo(data);
+    } else if (tab === 'composicao') {
+      body.innerHTML = B.VendorDetail.Composition
+        ? B.VendorDetail.Composition.renderComposition(data)
+        : T.empty('Modulo composition nao carregado.');
+    } else if (tab === 'nfs') {
+      body.innerHTML = T.renderInvoices(data.invoices || []);
+    } else if (tab === 'pedidos') {
+      // Pedidos que geraram NFs via bridge (linked_orders). summary passado para estado vazio contextual.
+      body.innerHTML = T.renderLinkedOrders(data.linked_orders || [], data.summary);
+    } else if (tab === 'carteira') {
+      // Pedidos autorizados sem NF (wallet_orders)
+      body.innerHTML = T.renderWalletOrders(data.wallet_orders || []);
+    } else if (tab === 'clientes') {
+      body.innerHTML = T.renderCustomers(data.customers || []);
+    } else if (tab === 'produtos') {
+      body.innerHTML = T.renderProducts(data.products || []);
+    } else if (tab === 'graficos') {
+      body.innerHTML = B.VendorDetail.Charts
+        ? B.VendorDetail.Charts.renderCharts(data)
+        : T.empty('Modulo charts nao carregado.');
+    } else if (tab === 'timeline') {
+      body.innerHTML = T.renderTimeline(data);
+    } else {
+      body.innerHTML = '<div class="biomie-drawer__empty">Aba desconhecida.</div>';
+    }
   }
 
   function skeleton() {
     return '<div class="biomie-drawer__stats">' +
       Array(6).fill('<div class="biomie-drawer__stat"><div style="background:var(--skeleton-base);border-radius:4px;height:12px;width:68px">&nbsp;</div><div style="background:var(--skeleton-base);border-radius:4px;height:18px;width:92px;margin-top:4px">&nbsp;</div></div>').join('') +
       '</div>';
+  }
+
+  function fetchEndpoint(endpoint, qs, signal) {
+    return fetch(endpoint + '?' + qs.toString(), {
+      credentials: 'same-origin',
+      signal: signal,
+      cache: 'no-store'
+    }).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (json) {
+        if (!response.ok || json.ok === false) throw new Error(json.message || 'Nao foi possivel carregar o vendedor.');
+        return json;
+      });
+    });
+  }
+
+  function fetchVendorPayload(qs, signal) {
+    // vendor_detail.php é a fonte oficial; flight_plan_vendor_detail.php é fallback
+    return fetchEndpoint('api/vendor_detail.php', qs, signal).catch(function (error) {
+      if (error && error.name === 'AbortError') throw error;
+      return fetchEndpoint('api/flight_plan_vendor_detail.php', qs, signal);
+    });
   }
 
   function open(vendorId, params) {
@@ -164,11 +213,11 @@
     }
 
     state.vendorId = vendorId;
-    state.params = params || {};
-    state.tab = 'resumo';
-    state.data = null;
-    state.error = '';
-    state.loading = true;
+    state.params   = params || {};
+    state.tab      = 'resumo';
+    state.data     = null;
+    state.error    = '';
+    state.loading  = true;
     state.openerEl = document.activeElement;
 
     var drawer = buildShell();
@@ -181,11 +230,11 @@
       installFocusTrap(drawer);
     }, 80);
 
-    var key = cacheKey(vendorId, state.params);
+    var key    = cacheKey(vendorId, state.params);
     var cached = fromCache(key);
     if (cached) {
       state.loading = false;
-      state.data = cached;
+      state.data    = cached;
       fillMeta(cached);
       renderBody();
       return;
@@ -197,39 +246,29 @@
     state.abortCtrl = new AbortController();
     var qs = new URLSearchParams({ vendor_id: vendorId });
     if (state.params.start) qs.set('start', state.params.start);
-    if (state.params.end) qs.set('end', state.params.end);
+    if (state.params.end)   qs.set('end',   state.params.end);
 
-    fetch('api/flight_plan_vendor_detail.php?' + qs.toString(), {
-      credentials: 'same-origin',
-      signal: state.abortCtrl.signal,
-      cache: 'no-store'
-    })
-      .then(function (response) {
-        return response.json().catch(function () { return {}; }).then(function (json) {
-          if (!response.ok || json.ok === false) throw new Error(json.message || 'Nao foi possivel carregar o vendedor.');
-          return json;
-        });
-      })
+    fetchVendorPayload(qs, state.abortCtrl.signal)
       .then(function (json) {
-        state.loading = false;
+        state.loading   = false;
         state.abortCtrl = null;
-        state.data = json;
+        state.data      = json;
         toCache(key, json);
         fillMeta(json);
         renderBody();
       })
       .catch(function (error) {
         if (error && error.name === 'AbortError') return;
-        state.loading = false;
+        state.loading   = false;
         state.abortCtrl = null;
-        state.error = (error && error.message) || 'Falha ao carregar Vendor 360.';
+        state.error     = (error && error.message) || 'Falha ao carregar Vendor 360.';
         renderBody();
       });
   }
 
   function openOperationalDrawer(params) {
     state.vendorId = '__SEM_VENDEDOR__';
-    state.params = params || {};
+    state.params   = params || {};
     state.openerEl = document.activeElement;
 
     var drawer = getDrawer();
@@ -249,47 +288,48 @@
     document.getElementById('vd-close').addEventListener('click', close);
     document.addEventListener('keydown', onKeyDown);
     requestAnimationFrame(function () { drawer.classList.add('is-open'); });
-    
+
     var subtitleEl = document.getElementById('vd-subtitle');
     if (subtitleEl) subtitleEl.textContent = [params.start || '', params.end || ''].filter(Boolean).join(' ate ');
 
     var qs = new URLSearchParams({ vendor_id: '__SEM_VENDEDOR__' });
     if (params.start) qs.set('start', params.start);
-    if (params.end) qs.set('end', params.end);
+    if (params.end)   qs.set('end',   params.end);
 
-    fetch('api/flight_plan_vendor_detail.php?' + qs.toString())
-      .then(function(res) { return res.json(); })
-      .then(function(json) {
+    fetchVendorPayload(qs)
+      .then(function (json) {
         var body = document.getElementById('vd-body');
         if (!body) return;
         var T = B.VendorDetail.Tabs;
         var s = json.summary || {};
-        body.innerHTML = '<div style="background:var(--danger-muted);color:var(--danger);padding:12px;border-radius:4px;border-left:4px solid var(--danger);margin-bottom:16px;">' +
+        body.innerHTML =
+          '<div style="background:var(--danger-muted);color:var(--danger);padding:12px;border-radius:4px;border-left:4px solid var(--danger);margin-bottom:16px;">' +
           '<strong>Acao recomendada:</strong> Corrigir vendedor na origem canonica/pedido/NF para entrar no ranking comercial.' +
           '</div>' +
           '<div class="biomie-drawer__stats" style="margin-bottom:16px;">' +
-          T.stat('Valor retido', T.money(s.gross_total)) +
-          T.stat('NFs orfas', T.number(s.invoices_count)) +
-          T.stat('Pedidos orfaos', T.number(s.orders_count)) +
+          T.stat('Valor retido',        T.money(s.gross_total || s.realized_total)) +
+          T.stat('NFs orfas',           T.number(s.invoices_count)) +
           T.stat('Clientes impactados', T.number(s.customers_count)) +
           '</div>' +
           T.renderInvoices(json.invoices || []);
       })
-      .catch(function() {
+      .catch(function () {
         var body = document.getElementById('vd-body');
         if (body) body.innerHTML = '<div class="biomie-drawer__empty">Erro ao carregar bucket sem vendedor.</div>';
       });
   }
 
   function fillMeta(json) {
-    var vendor = (json && json.vendor) || {};
-    var period = (json && json.period) || state.params || {};
-    var titleEl = document.getElementById('vd-title');
-    var subtitleEl = document.getElementById('vd-subtitle');
-    var name = vendor.name || state.vendorId || 'Vendedor 360';
-    var risk = vendor.risk_status ? '<span class="biomie-drawer__badge">' + B.VendorDetail.Tabs.esc(vendor.risk_status) + '</span>' : '';
+    var vendor    = (json && json.vendor) || {};
+    var period    = (json && json.period) || state.params || {};
+    var titleEl   = document.getElementById('vd-title');
+    var subtitleEl= document.getElementById('vd-subtitle');
+    var name      = vendor.name || vendor.vendor_name || state.vendorId || 'Vendedor 360';
+    var risk      = vendor.risk_status
+      ? '<span class="biomie-drawer__badge">' + B.VendorDetail.Tabs.esc(vendor.risk_status) + '</span>'
+      : '';
 
-    if (titleEl) titleEl.innerHTML = B.VendorDetail.Tabs.esc(name) + ' ' + risk;
+    if (titleEl)    titleEl.innerHTML   = B.VendorDetail.Tabs.esc(name) + ' ' + risk;
     if (subtitleEl) subtitleEl.textContent = [period.start || '', period.end || ''].filter(Boolean).join(' ate ');
   }
 

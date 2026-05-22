@@ -12,11 +12,11 @@ _Source of truth: `MetricRegistry::build()` — this document is generated from 
 
 | ID | Name | Status | Source | Table | Official Date | Permission | Freshness |
 |---|---|---|---|---|---|---|---|
-| `vendas_comerciais` | Vendas Comerciais | active | gold | `mart_fiscal_nfe` | `COALESCE(data_competencia, data_emissao)` | sales.view | sales |
+| `vendas_comerciais` | Vendas Comerciais | active | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | sales.view | sales |
 | `pedidos_faturados` | Pedidos Faturados | active | gold | `mart_cliente_periodo` | `COALESCE(data_faturamento, data_emissao)` | sales.view | sales |
 | `pedidos_em_aberto` | Pedidos em Aberto | **draft** | canonical | `biomie_pedidos_canonicos` | `data_emissao` | sales.view | sales |
-| `ranking_vendedor` | Ranking de Vendedores | active | gold | `mart_vendedor_dia` | `data_referencia` | sales.view | sales |
-| `ticket_medio_pedido` | Ticket Medio por Pedido | **draft** | gold | `mart_fiscal_nfe` | `COALESCE(data_competencia, data_emissao)` | sales.view | sales |
+| `ranking_vendedor` | Ranking de Vendedores | active | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | sales.view | sales |
+| `ticket_medio_pedido` | Ticket Medio por Pedido | **draft** | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | sales.view | sales |
 | `top_clientes` | Top Clientes | active | gold | `mart_cliente_periodo` | `competencia` | sales.view | sales |
 | `top_produtos` | Top Produtos | active | gold | `mart_produto_periodo` | `competencia` | sales.view | sales |
 
@@ -30,11 +30,11 @@ _Source of truth: `MetricRegistry::build()` — this document is generated from 
 
 | ID | Name | Status | Source | Table | Official Date | Permission | Freshness |
 |---|---|---|---|---|---|---|---|
-| `receita_fiscal` | Receita Fiscal | active | gold | `mart_fiscal_nfe` | `COALESCE(data_competencia, data_emissao)` | fiscal.view | fiscal |
-| `notas_autorizadas` | Notas Autorizadas | active | gold | `mart_fiscal_nfe` | `COALESCE(data_competencia, data_emissao)` | fiscal.view | fiscal |
-| `notas_canceladas` | Notas Canceladas | active | gold | `mart_fiscal_nfe` | `COALESCE(data_competencia, data_emissao)` | fiscal.view | fiscal |
-| `valor_cancelado` | Valor Cancelado | active | gold | `mart_fiscal_nfe` | `COALESCE(data_competencia, data_emissao)` | fiscal.view | fiscal |
-| `devolucoes` | Devoluções | **draft** | canonical | `biomie_notas_fiscais_canonicas` | `data_emissao` | fiscal.view | fiscal |
+| `receita_fiscal` | Receita Fiscal | active | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | fiscal.view | fiscal |
+| `notas_autorizadas` | Notas Autorizadas | active | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | fiscal.view | fiscal |
+| `notas_canceladas` | Notas Canceladas | active | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | fiscal.view | fiscal |
+| `valor_cancelado` | Valor Cancelado | active | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | fiscal.view | fiscal |
+| `devolucoes` | Devoluções | **draft** | canonical | `biomie_notas_fiscais_canonicas` | `data_competencia` | fiscal.view | fiscal |
 
 **Draft notes:**
 - `devolucoes` — identificação por CFOP/tipo_nf não formalizada.

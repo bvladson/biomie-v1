@@ -91,10 +91,10 @@
   --drawer-card-border: #eaeaea;
 
   --chart-grid: rgba(0, 0, 0, 0.08);
-  --chart-tooltip-bg: #ffffff;
-  --chart-tooltip-border: rgba(0, 0, 0, 0.12);
-  --chart-tooltip-title: #111318;
-  --chart-tooltip-text: #4b5263;
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.97);
+  --chart-tooltip-border: rgba(15, 23, 42, 0.10);
+  --chart-tooltip-title: #0f172a;
+  --chart-tooltip-text: #475569;
   --skeleton-base: #eceff4;
   --skeleton-highlight: #ffffff;
   --skeleton-edge: rgba(17, 19, 24, 0.05);
@@ -155,6 +155,22 @@
   --page-border: var(--border-soft);
   --text-main: var(--text-primary);
   --text-dim: var(--text-secondary);
+
+  /* Compatibility aliases used by older internal/admin pages. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --color-surface: var(--mag-surface);
+  --color-surface-2: var(--mag-surface-2);
+  --color-border: var(--mag-border);
+  --color-text: var(--mag-text);
+  --color-text-muted: var(--mag-muted);
+  --color-text-subtle: var(--mag-muted-2);
 }
 
 html {

@@ -428,6 +428,7 @@ final class CompetenciaPayloadBuilder
             'invoice_total' => Support::money((float) ($row['invoice_total'] ?? 0)),
             'merchandise_total' => Support::money((float) ($row['merchandise_total'] ?? 0)),
             'discount_total' => Support::money((float) ($row['discount_total'] ?? 0)),
+            'last_purchase' => (string) ($row['last_purchase'] ?? ''),
             'share_pct' => $grossRevenue > 0 ? round(((float) ($row['invoice_total'] ?? 0) / $grossRevenue) * 100, 2) : 0.0,
         ], $canonicalClients);
 

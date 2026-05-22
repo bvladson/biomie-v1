@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Support\Asset;
+use BIomie\Support\HttpCache;
+
 final class PageRenderer
 {
     /**
@@ -56,6 +59,7 @@ final class PageRenderer
      */
     private static function renderDocument(string $html, string $templateFile, array $context): string
     {
+        HttpCache::noStoreHtml();
         $user = $context['user'] ?? null;
         $isAdmin = self::resolveIsAdmin($context);
         $bootPayloads = is_array($context['boot_payloads'] ?? null) ? $context['boot_payloads'] : null;
@@ -65,6 +69,11 @@ final class PageRenderer
         $meta = self::pageMeta($activePage, $context);
 
         $parts = self::extractDocumentParts($html);
+
+        // Inject page-specific CSS/JS from registry into head and body extra
+        $parts['head']  = self::injectRegistryHead($activePage, $parts['head']);
+        $parts['extra'] = self::injectRegistryBody($activePage, $parts['extra']);
+
         $pageActions = is_array($context['pageActions'] ?? null) ? $context['pageActions'] : [];
         $contentHtml = self::ensureMainHasPageHeader($parts['main'], $meta, [
             'user'        => $user,
@@ -131,13 +140,30 @@ final class PageRenderer
             . '<meta name="biomie-request-id" content="%s" />',
             htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8'),
             htmlspecialchars(RequestContext::id(), ENT_QUOTES, 'UTF-8')
-        );
+        ) . "\n" . Asset::tagsMeta();
 
         if (preg_match('/<head[^>]*>/i', $html) === 1) {
-            return preg_replace('/<head([^>]*)>/i', '<head$1>' . $metaTags, $html, 1) ?: $html;
+            $html = preg_replace('/<head([^>]*)>/i', '<head$1>' . $metaTags, $html, 1) ?: $html;
+        } else {
+            $html = preg_replace('/<\/head>/i', $metaTags . '</head>', $html, 1) ?: $html;
         }
 
-        return preg_replace('/<\/head>/i', $metaTags . '</head>', $html, 1) ?: $html;
+        // Garantir viewport correto com viewport-fit=cover para Chrome Mobile / iPhone
+        $correctViewport = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />';
+        if (preg_match('/<meta[^>]+name=["\']viewport["\'][^>]*>/i', $html) === 1) {
+            // Substituir viewport existente pelo correto
+            $html = preg_replace(
+                '/<meta[^>]+name=["\']viewport["\'][^>]*>/i',
+                $correctViewport,
+                $html,
+                1
+            ) ?: $html;
+        } else {
+            // Inserir após <head>
+            $html = preg_replace('/<head([^>]*)>/i', '<head$1>' . "\n" . $correctViewport, $html, 1) ?: $html;
+        }
+
+        return $html;
     }
 
     /**
@@ -224,6 +250,8 @@ final class PageRenderer
             'cockpit_interno' => 'cockpit-interno',
             'metric_catalog' => 'catalogo-kpis',
             'catalogo_kpis' => 'catalogo-kpis',
+            'system_health' => 'system-health',
+            'saude-sistema' => 'system-health',
         ];
 
         return $aliases[$normalized] ?? $normalized;
@@ -407,6 +435,7 @@ final class PageRenderer
             'observabilidade' => ['Observabilidade', 'Acompanhe saúde técnica, logs e sinais operacionais.', 'Sistema', 'monitoring'],
             'cockpit-interno' => ['Cockpit Interno MAG', 'Visão executiva dos KPIs oficiais, freshness e saúde semântica.', 'Sistema', 'dashboard_customize'],
             'catalogo-kpis'   => ['Catálogo de KPIs', 'Lista oficial dos KPIs, fonte de verdade, status, domínio e permissão.', 'Sistema', 'hub'],
+            'system-health'   => ['Saúde do Sistema', 'Status em tempo real dos checks de infraestrutura, dados e jobs.', 'Sistema', 'monitor_heart'],
         ];
 
         $row = $definitions[$pageKey] ?? $definitions['dashboard'];
@@ -417,6 +446,61 @@ final class PageRenderer
             'badge' => (string) ($context['badge'] ?? $context['pageBadge'] ?? $row[2]),
             'icon' => (string) ($context['icon'] ?? $context['pageIcon'] ?? $row[3]),
         ];
+    }
+
+    /**
+     * Injeta no head os CSS e JS-head do registro que ainda não estejam declarados.
+     */
+    private static function injectRegistryHead(string $pageKey, string $headHtml): string
+    {
+        $inject = [];
+
+        foreach (PageAssetRegistry::cssForPage($pageKey) as $path) {
+            if (!PageAssetRegistry::alreadyPresent($headHtml, $path)) {
+                $inject[] = sprintf(
+                    '<link rel="stylesheet" href="%s" />',
+                    htmlspecialchars(Asset::url($path), ENT_QUOTES, 'UTF-8')
+                );
+            }
+        }
+
+        foreach (PageAssetRegistry::jsHeadForPage($pageKey) as $path) {
+            if (!PageAssetRegistry::alreadyPresent($headHtml, $path)) {
+                $inject[] = sprintf(
+                    '<script src="%s"></script>',
+                    htmlspecialchars(Asset::url($path), ENT_QUOTES, 'UTF-8')
+                );
+            }
+        }
+
+        if ($inject === []) {
+            return $headHtml;
+        }
+
+        return $headHtml . "\n" . implode("\n", $inject);
+    }
+
+    /**
+     * Injeta antes do conteúdo extra os JS-body do registro que ainda não estejam declarados.
+     */
+    private static function injectRegistryBody(string $pageKey, string $extraHtml): string
+    {
+        $inject = [];
+
+        foreach (PageAssetRegistry::jsBodyForPage($pageKey) as $path) {
+            if (!PageAssetRegistry::alreadyPresent($extraHtml, $path)) {
+                $inject[] = sprintf(
+                    '<script src="%s" defer></script>',
+                    htmlspecialchars(Asset::url($path), ENT_QUOTES, 'UTF-8')
+                );
+            }
+        }
+
+        if ($inject === []) {
+            return $extraHtml;
+        }
+
+        return implode("\n", $inject) . ($extraHtml !== '' ? "\n" . $extraHtml : '');
     }
 
     private static function withMagDesignSystem(string $html): string
@@ -430,6 +514,7 @@ final class PageRenderer
             'assets/js/shell.js',
             'assets/js/chart-helpers.js',
             'assets/js/mag-ui.js',
+            'assets/js/cache-refresh.js',
         ];
 
         // Per-file versions derived from filemtime; fallback to compile-time constant.

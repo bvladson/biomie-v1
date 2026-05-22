@@ -20,6 +20,7 @@ use BIomie\Database;
 use BIomie\Http;
 use BIomie\RequestContext;
 use BIomie\Support;
+use BIomie\Support\FiscalValueBasis;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -27,6 +28,8 @@ Auth::requireAnyCapability(['fiscal.view', 'sales.view'], true);
 
 try {
     $numeroNf = trim((string) Http::query('numero_nf'));
+    $numeroNf = preg_replace('/^\s*(nota\s*fiscal|nf-e|nfe|nf)\s*[:#-]?\s*/i', '', $numeroNf) ?? $numeroNf;
+    $numeroNf = preg_replace('/\s+/', '', $numeroNf) ?? $numeroNf;
     $notaKey  = trim((string) Http::query('nota_key'));
     $chaveNfe = trim((string) Http::query('chave_nfe'));
 
@@ -136,13 +139,19 @@ try {
         $financeTitles = [];
     }
 
-    // ── Totals ────────────────────────────────────────────────────────────────
+    // ── Totals — Fase O: full fiscal breakdown ───────────────────────────────
+    $fiscalComp = FiscalValueBasis::fiscalComponentsFromRow($invoice);
     $totals = [
-        'subtotal'  => Support::money((float) ($invoice['valor_mercadorias'] ?? 0)),
-        'discount'  => Support::money((float) ($invoice['valor_descontos'] ?? 0)),
-        'ipi'       => 0.0,
-        'icms_st'   => 0.0,
-        'total'     => Support::money((float) ($invoice['valor_total'] ?? 0)),
+        'subtotal'         => Support::money($fiscalComp['valor_mercadorias']),
+        'discount'         => Support::money($fiscalComp['valor_descontos']),
+        'ipi'              => Support::money($fiscalComp['valor_ipi']),
+        'icms_st'          => 0.0,
+        'freight'          => Support::money($fiscalComp['valor_frete']),
+        'other_expenses'   => Support::money($fiscalComp['valor_outras_despesas']),
+        'insurance'        => Support::money($fiscalComp['valor_seguro']),
+        'total'            => Support::money($fiscalComp['valor_total']),
+        'base_comercial'   => Support::money($fiscalComp['valor_base_comercial']),
+        'has_deductions'   => FiscalValueBasis::hasNonCommissionableAddons($invoice),
     ];
 
     // ── Seller / customer ─────────────────────────────────────────────────────
@@ -174,18 +183,28 @@ try {
         // Table may not exist yet — degrade silently
     }
 
+    // Fase H — escopo de operação (colunas adicionadas pela migration H3; null quando ausentes)
+    $opScope      = isset($invoice['operation_scope'])       ? (string) $invoice['operation_scope']       : null;
+    $opName       = isset($invoice['omie_operation_name'])   ? (string) $invoice['omie_operation_name']   : null;
+    $opConfidence = isset($invoice['operation_scope_confidence']) ? (string) $invoice['operation_scope_confidence'] : null;
+    $opSource     = isset($invoice['operation_scope_source'])    ? (string) $invoice['operation_scope_source']    : null;
+
     Http::json([
         'ok'      => true,
         'invoice' => [
-            'numero_nfe'    => (string) ($invoice['numero_nf'] ?? ''),
-            'serie_nfe'     => (string) ($invoice['serie_nf'] ?? ''),
-            'chave_nfe'     => (string) ($invoice['chave_nfe'] ?? ''),
-            'status_nfe'    => (string) ($invoice['status_fiscal'] ?? ''),
-            'data_emissao'  => (string) ($invoice['data_emissao'] ?? ''),
-            'hora_emissao'  => null,
-            'data_fatura'   => (string) ($invoice['data_competencia'] ?? ''),
-            'danfe'         => $danfe,
-            'xml_distr'     => $xmlUrl,
+            'numero_nfe'               => (string) ($invoice['numero_nf'] ?? ''),
+            'serie_nfe'                => (string) ($invoice['serie_nf'] ?? ''),
+            'chave_nfe'                => (string) ($invoice['chave_nfe'] ?? ''),
+            'status_nfe'               => (string) ($invoice['status_fiscal'] ?? ''),
+            'data_emissao'             => (string) ($invoice['data_emissao'] ?? ''),
+            'hora_emissao'             => null,
+            'data_fatura'              => (string) ($invoice['data_competencia'] ?? ''),
+            'danfe'                    => $danfe,
+            'xml_distr'                => $xmlUrl,
+            'operation_scope'          => $opScope,
+            'omie_operation_name'      => $opName,
+            'operation_scope_confidence' => $opConfidence,
+            'operation_scope_source'   => $opSource,
         ],
         'order'          => $order ?? [],
         'customer'       => $customer,

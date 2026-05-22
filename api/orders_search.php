@@ -1,25 +1,23 @@
 <?php
 
 /**
- * api/orders_search.php — Busca e filtros de pedidos canonicos.
+ * api/orders_search.php — Busca de NFs na camada canonical.
  *
- * Consulta a tabela biomie_pedidos_canonicos com filtros combinados.
+ * Consulta biomie_notas_fiscais_canonicas com filtros combinados.
  * Nunca chama o Omie diretamente.
  *
- * Parâmetros (todos opcionais):
- *   q          — busca livre (numero_pedido, codigo_pedido, nome_cliente, documento_cliente)
- *   vendor     — codigo ou nome do vendedor
- *   status     — status_comercial
+ * Parâmetros (todos opcionais — entradas inválidas são normalizadas silenciosamente):
+ *   q          — busca livre (número NF, pedido, cliente, CNPJ, vendedor)
+ *   scope      — commercial | remittance | all  (padrão: commercial)
+ *   vendor     — código numérico ou nome parcial do vendedor
  *   start      — data início emissão (YYYY-MM-DD)
  *   end        — data fim emissão (YYYY-MM-DD)
  *   min_value  — valor mínimo (valor_total)
  *   max_value  — valor máximo (valor_total)
- *   sort       — campo de ordenação: emissao (padrão) | valor | cliente | pedido
- *   order      — asc | desc (padrão: desc)
- *   page       — página (1-based, padrão: 1)
- *   per_page   — itens por página (padrão: 50, máx: 200)
- *
- * Permissão: sales.view ou fiscal.view
+ *   sort       — emissao (padrão) | valor | cliente | nf | mercadoria
+ *   direction  — asc | desc  (padrão: desc)
+ *   page       — página 1-based  (padrão: 1)
+ *   per_page   — itens por página  (padrão: 50, máx: 200)
  */
 
 declare(strict_types=1);
@@ -28,7 +26,7 @@ use BIomie\Auth;
 use BIomie\Database;
 use BIomie\Http;
 use BIomie\RequestContext;
-use BIomie\Support;
+use BIomie\Support\FiscalValueBasis;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -41,185 +39,219 @@ try {
     }
     $pdo = Database::connect($config, $conn);
 
-    // ── Params ────────────────────────────────────────────────────────────────
+    // ── Params (normalize silently — never 400 for bad inputs) ───────────────
     $q        = trim((string) Http::query('q', ''));
+    $scopeRaw = strtolower(trim((string) Http::query('scope', 'commercial')));
+    $scope    = in_array($scopeRaw, ['commercial', 'remittance', 'all'], true) ? $scopeRaw : 'commercial';
     $vendor   = trim((string) Http::query('vendor', ''));
-    $status   = trim((string) Http::query('status', ''));
     $start    = trim((string) Http::query('start', ''));
     $end      = trim((string) Http::query('end', ''));
     $minValue = trim((string) Http::query('min_value', ''));
     $maxValue = trim((string) Http::query('max_value', ''));
     $sortRaw  = trim((string) Http::query('sort', 'emissao'));
-    $orderRaw = strtolower(trim((string) Http::query('order', 'desc')));
+    $dirRaw   = strtolower(trim((string) Http::query('direction', 'desc')));
     $page     = max(1, (int) Http::query('page', 1));
     $perPage  = min(200, max(1, (int) Http::query('per_page', 50)));
 
-    // Validate dates if provided
-    if ($start !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start)) {
-        Http::json(['ok' => false, 'message' => 'Parâmetro start inválido. Use YYYY-MM-DD.', 'request_id' => RequestContext::id()], 400);
-    }
-    if ($end !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)) {
-        Http::json(['ok' => false, 'message' => 'Parâmetro end inválido. Use YYYY-MM-DD.', 'request_id' => RequestContext::id()], 400);
-    }
+    if ($start !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start)) { $start = ''; }
+    if ($end   !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end))   { $end   = ''; }
 
-    // ── Sort column map ───────────────────────────────────────────────────────
+    // ── Sort map ──────────────────────────────────────────────────────────────
     $sortMap = [
-        'emissao' => 'data_emissao',
-        'valor'   => 'valor_total',
-        'cliente' => 'nome_cliente',
-        'pedido'  => 'codigo_pedido',
+        'emissao'    => 'nf.data_emissao',
+        'valor'      => 'nf.valor_total',
+        'cliente'    => 'nf.nome_cliente',
+        'nf'         => 'CAST(nf.numero_nf AS UNSIGNED)',
+        'mercadoria' => 'nf.valor_mercadorias',
     ];
-    $sortCol = $sortMap[$sortRaw] ?? 'data_emissao';
-    $sortDir = $orderRaw === 'asc' ? 'ASC' : 'DESC';
+    $sortCol = $sortMap[$sortRaw] ?? 'nf.data_emissao';
+    $sortDir = $dirRaw === 'asc' ? 'ASC' : 'DESC';
 
     // ── Build WHERE ───────────────────────────────────────────────────────────
     $where  = [];
     $params = [];
 
+    // Scope filter — regra absoluta: commercial só commercial, remittance só remittance
+    if ($scope === 'commercial') {
+        $where[] = "nf.operation_scope = 'commercial'";
+    } elseif ($scope === 'remittance') {
+        $where[] = "nf.operation_scope = 'remittance'";
+    }
+    // scope='all': sem filtro de operation_scope
+
     if ($q !== '') {
-        $like = '%' . $q . '%';
-        $where[]            = '(codigo_pedido LIKE :q1 OR pedido_id_omie LIKE :q2 OR nome_cliente LIKE :q3 OR documento_cliente LIKE :q4 OR codigo_integracao LIKE :q5)';
-        $params['q1']       = $like;
-        $params['q2']       = $like;
-        $params['q3']       = $like;
-        $params['q4']       = $like;
-        $params['q5']       = $like;
+        $qLike = '%' . $q . '%';
+        $params['q_like'] = $qLike;
+
+        $qConds = [
+            'nf.nome_cliente LIKE :q_like',
+            "COALESCE(v.nome_vendedor, nf.nome_vendedor, '') LIKE :q_like",
+            'nf.codigo_pedido_origem LIKE :q_like',
+            "CONCAT(nf.serie_nf, '/', nf.numero_nf) LIKE :q_like",
+            'nf.numero_nf LIKE :q_like',
+        ];
+
+        // CNPJ/CPF sem pontuação
+        $qDigits = preg_replace('/[^0-9]/', '', $q);
+        if ($qDigits !== '') {
+            $qConds[] = "REPLACE(REPLACE(REPLACE(nf.documento_cliente, '.', ''), '-', ''), '/', '') LIKE :q_cnpj";
+            $params['q_cnpj'] = '%' . $qDigits . '%';
+        }
+
+        // Correspondência numérica exata (remove zeros à esquerda)
+        $qNumStr = ltrim($q, '0') ?: '0';
+        if (ctype_digit($qNumStr) && $qNumStr !== '0') {
+            $qConds[] = 'CAST(nf.numero_nf AS UNSIGNED) = :q_num';
+            $params['q_num'] = (int) $qNumStr;
+        }
+
+        $where[] = '(' . implode(' OR ', $qConds) . ')';
     }
 
     if ($vendor !== '') {
-        // Match by numeric ID or by name (partial)
         if (ctype_digit($vendor)) {
-            $where[]           = '(codigo_vendedor_omie = :vendor_id OR nome_vendedor LIKE :vendor_name)';
+            $where[]               = "(nf.codigo_vendedor_omie = :vendor_id OR COALESCE(v.nome_vendedor, nf.nome_vendedor, '') LIKE :vendor_name)";
             $params['vendor_id']   = $vendor;
             $params['vendor_name'] = '%' . $vendor . '%';
         } else {
-            $where[]           = 'nome_vendedor LIKE :vendor_name';
+            $where[]               = "COALESCE(v.nome_vendedor, nf.nome_vendedor, '') LIKE :vendor_name";
             $params['vendor_name'] = '%' . $vendor . '%';
         }
     }
 
-    if ($status !== '') {
-        $where[]          = 'status_comercial = :status';
-        $params['status'] = $status;
-    }
-
-    if ($start !== '') {
-        $where[]         = 'data_emissao >= :start';
-        $params['start'] = $start;
-    }
-
-    if ($end !== '') {
-        $where[]       = 'data_emissao <= :end';
-        $params['end'] = $end;
-    }
+    if ($start !== '') { $where[] = 'nf.data_emissao >= :start'; $params['start'] = $start; }
+    if ($end   !== '') { $where[] = 'nf.data_emissao <= :end';   $params['end']   = $end;   }
 
     if ($minValue !== '' && is_numeric($minValue)) {
-        $where[]              = 'valor_total >= :min_value';
-        $params['min_value']  = (float) $minValue;
+        $where[] = 'nf.valor_total >= :min_value'; $params['min_value'] = (float) $minValue;
     }
-
     if ($maxValue !== '' && is_numeric($maxValue)) {
-        $where[]              = 'valor_total <= :max_value';
-        $params['max_value']  = (float) $maxValue;
+        $where[] = 'nf.valor_total <= :max_value'; $params['max_value'] = (float) $maxValue;
     }
 
-    $whereSql = $where !== [] ? 'WHERE ' . implode(' AND ', $where) : '';
+    $whereSql = $where !== [] ? 'WHERE ' . implode(' AND ', $where) : 'WHERE 1=1';
+    $fromSql  = 'FROM biomie_notas_fiscais_canonicas nf LEFT JOIN biomie_vendedores_omie v ON v.codigo_vendedor_omie = nf.codigo_vendedor_omie';
 
-    // ── Count total ───────────────────────────────────────────────────────────
-    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM biomie_pedidos_canonicos $whereSql");
-    $stmtCount->execute($params);
-    $total = (int) $stmtCount->fetchColumn();
+    // ── Fiscal basis availability (Fase O) ───────────────────────────────────
+    $hasFiscalBasis = (bool) $pdo->query(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biomie_notas_fiscais_canonicas' AND COLUMN_NAME = 'valor_frete'"
+    )->fetchColumn();
+    $baseSumExpr = $hasFiscalBasis
+        ? FiscalValueBasis::commercialBaseSql('nf')
+        : 'nf.valor_total';
+
+    // ── Search summary ────────────────────────────────────────────────────────
+    $stmtSum = $pdo->prepare(
+        "SELECT COUNT(*) AS nf_count,
+                COALESCE(SUM({$baseSumExpr}), 0)        AS base_value,
+                COALESCE(SUM(nf.valor_total), 0)        AS total_value,
+                COALESCE(SUM(nf.valor_mercadorias), 0)  AS merchandise_value,
+                COALESCE(SUM(nf.valor_descontos), 0)    AS discount_value
+         $fromSql $whereSql"
+    );
+    $stmtSum->execute($params);
+    $sum = $stmtSum->fetch(PDO::FETCH_ASSOC);
+
+    $nfCount  = (int)   ($sum['nf_count']         ?? 0);
+    $baseVal  = (float) ($sum['base_value']        ?? 0);
+    $totVal   = (float) ($sum['total_value']       ?? 0);
+    $mercVal  = (float) ($sum['merchandise_value'] ?? 0);
+    $discVal  = (float) ($sum['discount_value']    ?? 0);
 
     // ── Fetch page ────────────────────────────────────────────────────────────
-    $offset    = ($page - 1) * $perPage;
-    $totalPages = max(1, (int) ceil($total / $perPage));
+    $offset     = ($page - 1) * $perPage;
+    $totalPages = max(1, (int) ceil($nfCount / $perPage));
+
+    // Fiscal basis columns added conditionally to avoid errors on pre-migration DBs.
+    $fiscalSelectCols = $hasFiscalBasis
+        ? ",\n            nf.valor_ipi, nf.valor_frete, nf.valor_outras_despesas, nf.valor_seguro,\n            {$baseSumExpr} AS valor_base_comercial"
+        : ",\n            0 AS valor_ipi, 0 AS valor_frete, 0 AS valor_outras_despesas, 0 AS valor_seguro,\n            nf.valor_total AS valor_base_comercial";
 
     $stmtData = $pdo->prepare(
         "SELECT
-            codigo_pedido,
-            pedido_id_omie,
-            codigo_integracao,
-            status_comercial,
-            etapa_omie,
-            data_emissao,
-            data_faturamento,
-            nome_cliente,
-            documento_cliente,
-            codigo_cliente_omie,
-            nome_vendedor,
-            codigo_vendedor_omie,
-            valor_mercadorias,
-            valor_descontos,
-            valor_total,
-            numero_nf_faturamento,
-            updated_at
-         FROM biomie_pedidos_canonicos
-         $whereSql
+            nf.nota_key,
+            nf.numero_nf,
+            nf.serie_nf,
+            nf.codigo_pedido_origem,
+            nf.nome_cliente,
+            nf.documento_cliente,
+            nf.codigo_cliente_omie,
+            COALESCE(v.nome_vendedor, nf.nome_vendedor, '') AS nome_vendedor,
+            nf.codigo_vendedor_omie,
+            nf.status_fiscal,
+            nf.data_emissao,
+            nf.data_competencia,
+            nf.valor_total,
+            nf.valor_mercadorias,
+            nf.valor_descontos,
+            nf.quantidade_itens,
+            nf.operation_scope{$fiscalSelectCols}
+         $fromSql $whereSql
          ORDER BY $sortCol $sortDir
          LIMIT :limit OFFSET :offset"
     );
     foreach ($params as $key => $val) {
         $stmtData->bindValue(':' . $key, $val);
     }
-    $stmtData->bindValue(':limit', $perPage, PDO::PARAM_INT);
-    $stmtData->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmtData->bindValue(':limit',  $perPage, PDO::PARAM_INT);
+    $stmtData->bindValue(':offset', $offset,  PDO::PARAM_INT);
     $stmtData->execute();
     $rows = $stmtData->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Normalize rows for display ────────────────────────────────────────────
-    $results = array_map(static function (array $row): array {
+    // ── Normalize rows ────────────────────────────────────────────────────────
+    $orders = array_map(static function (array $row): array {
         return [
-            'codigo_pedido'          => (string) ($row['codigo_pedido'] ?? ''),
-            'pedido_id_omie'         => (string) ($row['pedido_id_omie'] ?? ''),
-            'codigo_integracao'      => (string) ($row['codigo_integracao'] ?? ''),
-            'status'                 => (string) ($row['status_comercial'] ?? ''),
-            'etapa'                  => (string) ($row['etapa_omie'] ?? ''),
-            'data_emissao'           => (string) ($row['data_emissao'] ?? ''),
-            'data_faturamento'       => (string) ($row['data_faturamento'] ?? ''),
-            'cliente'                => (string) ($row['nome_cliente'] ?? ''),
-            'documento_cliente'      => (string) ($row['documento_cliente'] ?? ''),
-            'codigo_cliente_omie'    => (string) ($row['codigo_cliente_omie'] ?? ''),
-            'vendedor'               => (string) ($row['nome_vendedor'] ?? ''),
-            'codigo_vendedor_omie'   => (string) ($row['codigo_vendedor_omie'] ?? ''),
-            'valor_mercadorias'      => Support::money((float) ($row['valor_mercadorias'] ?? 0)),
-            'valor_descontos'        => Support::money((float) ($row['valor_descontos'] ?? 0)),
-            'valor_total'            => Support::money((float) ($row['valor_total'] ?? 0)),
-            'numero_nf'              => (string) ($row['numero_nf_faturamento'] ?? ''),
-            'updated_at'             => (string) ($row['updated_at'] ?? ''),
+            'nota_key'              => (string) ($row['nota_key']             ?? ''),
+            'numero_nf'             => (string) ($row['numero_nf']            ?? ''),
+            'serie_nf'              => (string) ($row['serie_nf']             ?? ''),
+            'codigo_pedido_origem'  => (string) ($row['codigo_pedido_origem'] ?? ''),
+            'nome_cliente'          => (string) ($row['nome_cliente']         ?? ''),
+            'documento_cliente'     => (string) ($row['documento_cliente']    ?? ''),
+            'codigo_cliente_omie'   => (string) ($row['codigo_cliente_omie']  ?? ''),
+            'nome_vendedor'         => (string) ($row['nome_vendedor']        ?? ''),
+            'codigo_vendedor_omie'  => (string) ($row['codigo_vendedor_omie'] ?? ''),
+            'status_fiscal'         => (string) ($row['status_fiscal']        ?? ''),
+            'data_emissao'          => (string) ($row['data_emissao']         ?? ''),
+            'data_competencia'      => (string) ($row['data_competencia']     ?? ''),
+            'valor_total'           => round((float) ($row['valor_total']           ?? 0), 2),
+            'valor_mercadorias'     => round((float) ($row['valor_mercadorias']      ?? 0), 2),
+            'valor_descontos'       => round((float) ($row['valor_descontos']        ?? 0), 2),
+            // Fase O: fiscal basis components
+            'valor_ipi'             => round((float) ($row['valor_ipi']              ?? 0), 2),
+            'valor_frete'           => round((float) ($row['valor_frete']            ?? 0), 2),
+            'valor_outras_despesas' => round((float) ($row['valor_outras_despesas']  ?? 0), 2),
+            'valor_seguro'          => round((float) ($row['valor_seguro']           ?? 0), 2),
+            'valor_base_comercial'  => round((float) ($row['valor_base_comercial']   ?? 0), 2),
+            'quantidade_itens'      => (int) ($row['quantidade_itens'] ?? 0),
+            'operation_scope'       => (string) ($row['operation_scope'] ?? 'commercial'),
         ];
     }, $rows);
 
-    // ── Active filters summary ────────────────────────────────────────────────
-    $activeFilters = array_filter([
-        'q'         => $q ?: null,
-        'vendor'    => $vendor ?: null,
-        'status'    => $status ?: null,
-        'start'     => $start ?: null,
-        'end'       => $end ?: null,
-        'min_value' => $minValue !== '' ? (float) $minValue : null,
-        'max_value' => $maxValue !== '' ? (float) $maxValue : null,
-    ]);
-
     Http::json([
-        'ok'      => true,
-        'results' => $results,
+        'ok'             => true,
+        'search_summary' => [
+            'nf_count'          => $nfCount,
+            'base_value'        => round($baseVal, 2), // Fase O: valor_total - frete - outras - seguro
+            'total_value'       => round($totVal,  2), // valor_total bruto NF (diagnóstico)
+            'merchandise_value' => round($mercVal, 2),
+            'discount_value'    => round($discVal, 2),
+            'scope'             => $scope,
+        ],
+        'orders'     => $orders,
         'pagination' => [
             'page'        => $page,
             'per_page'    => $perPage,
-            'total'       => $total,
+            'total'       => $nfCount,
             'total_pages' => $totalPages,
             'has_next'    => $page < $totalPages,
             'has_prev'    => $page > 1,
         ],
         'sort' => [
-            'field' => $sortRaw,
-            'order' => $orderRaw === 'asc' ? 'asc' : 'desc',
+            'field'     => $sortRaw,
+            'direction' => $sortDir === 'ASC' ? 'asc' : 'desc',
         ],
-        'filters' => $activeFilters,
-        'meta'    => [
-            'source'     => 'canonical',
-            'request_id' => RequestContext::id(),
-        ],
+        'request_id' => RequestContext::id(),
     ]);
 } catch (Throwable $e) {
     $logger->error('Falha no orders_search.', ['message' => $e->getMessage(), 'request_id' => RequestContext::id()]);

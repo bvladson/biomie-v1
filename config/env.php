@@ -61,6 +61,7 @@ return [
             'invoices'            => 'https://app.omie.com.br/api/v1/produtos/nfconsultar/',
             'vendors'             => 'https://app.omie.com.br/api/v1/geral/vendedores/',
             'clients'             => 'https://app.omie.com.br/api/v1/geral/clientes/',
+            'cities'              => 'https://app.omie.com.br/api/v1/geral/cidades/',
             'order_stages'        => 'https://app.omie.com.br/api/v1/produtos/pedidoetapas/',
             'orders_fat'          => 'https://app.omie.com.br/api/v1/produtos/pedidovendafat/',
             'accounts_receivable' => 'https://app.omie.com.br/api/v1/financas/contareceber/',
@@ -110,6 +111,7 @@ return [
         'canonical_reads_orders' => (bool) env('CANONICAL_READS_ORDERS', '1', $secrets),
         'canonical_reads_overview' => (bool) env('CANONICAL_READS_OVERVIEW', '1', $secrets),
         'canonical_fiscal_ready' => (bool) env('CANONICAL_FISCAL_READY', '1', $secrets),
+        'operation_scope_enforced' => true,
     ],
     'flight_plan' => [
         'saturday_weight' => 0.33,
@@ -170,6 +172,14 @@ return [
                 'sample_rate' => (float) env('SHADOW_VALIDATION_RECONCILIATION_RATE', '5', $secrets),
             ],
         ],
+    ],
+    'unsplash' => [
+        // Access key NOT stored here — read directly via getenv() in LoginUnsplashWallpaperService
+        // to prevent it from appearing in config dumps or debug pages.
+        'enabled'         => (bool) env('UNSPLASH_ENABLED', '1', $secrets),
+        'utm_source'      => env('UNSPLASH_UTM_SOURCE', 'biomie_mag', $secrets),
+        'query'           => env('UNSPLASH_QUERY', 'modern office,business workspace,corporate interior,analytics dashboard', $secrets),
+        'cache_ttl_hours' => (int) env('UNSPLASH_CACHE_TTL_HOURS', '12', $secrets),
     ],
     'migrations' => [
         'enabled' => (bool) env('MIGRATIONS_ENABLED', '1', $secrets),

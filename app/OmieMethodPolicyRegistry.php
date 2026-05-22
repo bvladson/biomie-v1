@@ -157,6 +157,87 @@ final class OmieMethodPolicyRegistry
             'redundant_cache_ttl_seconds' => 60,
             'redundant_id_keys' => ['codigo_cliente_omie'],
         ],
+        'PesquisarCidades' => [
+            'domain' => 'master_data',
+            'page_size_target' => 100,
+            'max_concurrency' => 1,
+            'window' => [
+                'strategy' => 'cached_lookup',
+                'refresh_minutes' => 1440,
+                'notes' => 'Cadastro de cidades deve ser consultado em job/cache, nunca no mapa.',
+            ],
+            'retry' => [
+                'max_attempts' => 3,
+                'base_delay_ms' => 400,
+                'max_delay_ms' => 4000,
+            ],
+            'fallback' => [
+                'criteria' => 'Persistindo falha, manter cache local e reprocessar posteriormente.',
+                'calls' => [],
+            ],
+            'redundant_cache_ttl_seconds' => 3600,
+            'redundant_id_keys' => ['cNome', 'cUF', 'nCodIBGE'],
+        ],
+        'ConsultarPedido' => [
+            'domain' => 'commercial',
+            'page_size_target' => 1,
+            'max_concurrency' => 1,
+            'window' => [
+                'strategy' => 'repair_only',
+                'notes' => 'Consulta de pedido individual apenas para reparo ou rastreabilidade pontual.',
+            ],
+            'retry' => [
+                'max_attempts' => 2,
+                'base_delay_ms' => 800,
+                'max_delay_ms' => 4000,
+            ],
+            'fallback' => [
+                'criteria' => 'Preferir ListarPedidos por janela antes de consulta item a item.',
+                'calls' => ['ListarPedidos'],
+            ],
+            'redundant_cache_ttl_seconds' => 60,
+            'redundant_id_keys' => ['codigo_pedido', 'numero_pedido'],
+        ],
+        'StatusPedido' => [
+            'domain' => 'commercial',
+            'page_size_target' => 1,
+            'max_concurrency' => 1,
+            'window' => [
+                'strategy' => 'repair_only',
+                'notes' => 'Status pontual de pedido deve ser usado somente em auditoria ou reparo.',
+            ],
+            'retry' => [
+                'max_attempts' => 2,
+                'base_delay_ms' => 800,
+                'max_delay_ms' => 4000,
+            ],
+            'fallback' => [
+                'criteria' => 'Preferir ListarPedidos no fluxo operacional.',
+                'calls' => ['ListarPedidos'],
+            ],
+            'redundant_cache_ttl_seconds' => 60,
+            'redundant_id_keys' => ['codigo_pedido', 'numero_pedido'],
+        ],
+        'ConsultarNF' => [
+            'domain' => 'fiscal',
+            'page_size_target' => 1,
+            'max_concurrency' => 1,
+            'window' => [
+                'strategy' => 'repair_only',
+                'notes' => 'Consulta de NF individual apenas para rastreabilidade; sync usa ListarNF.',
+            ],
+            'retry' => [
+                'max_attempts' => 2,
+                'base_delay_ms' => 800,
+                'max_delay_ms' => 4000,
+            ],
+            'fallback' => [
+                'criteria' => 'Preferir ListarNF por janela.',
+                'calls' => ['ListarNF'],
+            ],
+            'redundant_cache_ttl_seconds' => 60,
+            'redundant_id_keys' => ['nCodNF', 'nNF', 'cChaveNFe'],
+        ],
         'ListarContasCorrentes' => [
             'domain' => 'finance',
             'page_size_target' => 100,
@@ -444,6 +525,13 @@ final class OmieMethodPolicyRegistry
      */
     private function withRuntimeDefaults(array $policy): array
     {
+        $policy['rate_limit_per_minute'] = max(1, (int) ($policy['rate_limit_per_minute'] ?? 240));
+        $policy['global_rate_limit_per_minute'] = max(1, (int) ($policy['global_rate_limit_per_minute'] ?? 960));
+        $policy['rate_limit_min_interval_ms'] = max(
+            1,
+            (int) ($policy['rate_limit_min_interval_ms'] ?? (int) ceil(60000 / $policy['rate_limit_per_minute']))
+        );
+
         $retryDefaults = [
             'hint_cap_ms' => 60000,
         ];

@@ -13,7 +13,25 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             return 0;
         }
 
+        // Delete-before-insert: removes stale rows when NFs are reclassified (scope changes).
+        $this->exec(
+            "DELETE FROM mart_vendas_por_cnae_cnpj
+             WHERE competencia BETWEEN DATE_FORMAT(:start, '%Y-%m') AND DATE_FORMAT(:end, '%Y-%m')",
+            ['start' => $start, 'end' => $end],
+            'materialize_vendas_cnae_cnpj',
+            'mart_vendas_por_cnae_cnpj',
+            'delete_mart_vendas_cnae_periodo',
+        );
+
+        // Align INSERT to first day of month — DELETE removes the full month, so the
+        // INSERT must cover from day 1, not from the potentially mid-month $start.
+        $monthStart = date('Y-m-01', strtotime($start));
+
         $scopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'nf');
+        // Fase O: use fiscal basis formula when columns exist; fall back to valor_total pre-migration.
+        $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
+            ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('nf')
+            : 'nf.valor_total';
         $sql = <<<SQL
             INSERT INTO mart_vendas_por_cnae_cnpj (
                 competencia, documento_normalizado, codigo_cliente_omie, cliente_nome,
@@ -26,15 +44,15 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
                 nf.documento_cliente,
                 nf.codigo_cliente_omie,
                 MAX(nf.nome_cliente),
-                MAX(dim.cnae_codigo),
-                MAX(dim.cnae_descricao),
+                COALESCE(MAX(dim.cnae_codigo),    'SEM_CNAE'),
+                COALESCE(MAX(dim.cnae_descricao), 'Sem CNAE informado'),
                 COALESCE(MAX(dim.segmento_macro), 'Nao classificado'),
                 COALESCE(MAX(geo.uf), 'NA'),
                 COALESCE(MAX(geo.cidade_norm), 'NAO INFORMADA'),
                 COALESCE(MAX(geo.bairro_norm), 'NAO INFORMADO'),
                 COUNT(nf.id),
-                SUM(nf.valor_total),
-                SUM(nf.valor_total) / NULLIF(COUNT(nf.id), 0),
+                SUM({$nfBasisExpr}),
+                SUM({$nfBasisExpr}) / NULLIF(COUNT(nf.id), 0),
                 MIN(nf.data_emissao),
                 MAX(nf.data_emissao),
                 NOW()
@@ -63,6 +81,6 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
                 refreshed_at          = NOW()
         SQL;
 
-        return $this->exec($sql, ['start' => $start, 'end' => $end], 'materialize_vendas_cnae_cnpj', 'mart_vendas_por_cnae_cnpj', 'insert_mart_vendas_por_cnae_cnpj');
+        return $this->exec($sql, ['start' => $monthStart, 'end' => $end], 'materialize_vendas_cnae_cnpj', 'mart_vendas_por_cnae_cnpj', 'insert_mart_vendas_por_cnae_cnpj');
     }
 }

@@ -29,7 +29,13 @@
     B.setText('[data-bind="period-label"]', (data && data.period && data.period.label) || '-');
     var syncTime = data && data.meta && (data.meta.freshness_at || data.meta.last_sync || data.meta.generated_at);
     B.setText('[data-bind="last-sync"]', syncTime ? new Date(syncTime).toLocaleString('pt-BR') : '-');
-    B.setText('[data-bind="summary-period-basis"]', (data && data.meta && data.meta.period_basis === 'issue_date') ? 'Base fiscal: emissao' : 'Base comercial: faturamento');
+    var _meta = (data && data.meta) || {};
+    var _rpb  = _meta.realized_period_basis || _meta.period_basis || '';
+    var _rpbLabel = _rpb === 'data_competencia' ? 'Realizado: NF autorizada (data_competencia)'
+                  : _rpb === 'issue_date'       ? 'Realizado: emissao de pedido'
+                  : _rpb !== ''                 ? 'Base: ' + _rpb
+                  : '-';
+    B.setText('[data-bind="summary-period-basis"]', _rpbLabel);
     B.setHtml('[data-bind="summary-mode"]', B.renderStatusBadge((data && data.mode) || 'demo'));
     B.setText('[data-bind="sync-source"]', B.humanizeServedFrom((data && data.meta && data.meta.served_from) || (data && data.source) || ''));
     B.setText('[data-bind="sync-coverage"]', B.resolveCoverageLabel(data));
@@ -410,7 +416,11 @@
     var productCode = row.product_code || '';
     var disabled    = !state.available;
     var hint        = B.productBreakdownPrimaryMessage(state, 'trigger');
-    return '<button type="button" class="product-breakdown-trigger" data-product-code="' + B.escapeHtml(productCode) + '" data-product-label="' + B.escapeHtml(description) + '"' + (disabled ? ' disabled aria-disabled="true" title="' + B.escapeHtml(hint) + '"' : '') + '><strong>' + B.escapeHtml(description) + '</strong><div class="small text-muted">' + B.escapeHtml(productCode || 'Sem SKU') + '</div><div class="product-breakdown-hint' + (disabled ? ' product-breakdown-hint--muted' : '') + '">' + B.escapeHtml(hint) + '</div></button>';
+    var breakdownBtn = '<button type="button" class="product-breakdown-trigger" data-product-code="' + B.escapeHtml(productCode) + '" data-product-label="' + B.escapeHtml(description) + '"' + (disabled ? ' disabled aria-disabled="true" title="' + B.escapeHtml(hint) + '"' : '') + '><strong>' + B.escapeHtml(description) + '</strong><div class="small text-muted">' + B.escapeHtml(productCode || 'Sem SKU') + '</div><div class="product-breakdown-hint' + (disabled ? ' product-breakdown-hint--muted' : '') + '">' + B.escapeHtml(hint) + '</div></button>';
+    var p360Btn = productCode
+      ? '<button type="button" class="row-inline-link" style="margin-top:4px;font-size:0.72rem;" data-biomie-action="open-product" data-product-code="' + B.escapeHtml(productCode) + '" data-product-name="' + B.escapeHtml(description) + '" title="Product 360"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">open_in_new</span> Product 360</button>'
+      : '';
+    return '<div class="pd-trigger-cell">' + breakdownBtn + p360Btn + '</div>';
   };
 
   B.renderProductBreakdownRows = function (rows) {
@@ -423,8 +433,15 @@
       var clientName = String(row.client_name || row.cliente || 'Cliente nao informado').trim();
       var rawDocument = String(row.client_document || row.cliente_documento || '');
       var docPayload = rawDocument.indexOf('*') >= 0 ? '' : rawDocument;
+      // nota_key / invoice_key are the canonical identifiers; document_key is kept as chave_nfe fallback
+      var notaKey = String(row.nota_key || row.invoice_key || '').trim();
+      var chaveNfe = String(row.chave_nfe || row.document_key || '').trim();
       var nfCell = nfCode
-        ? '<button type="button" class="row-inline-link" data-biomie-action="open-invoice" data-numero-nf="' + B.escapeHtml(nfCode) + '" data-chave-nfe="' + B.escapeHtml(row.document_key || row.chave_nfe || '') + '">' + B.escapeHtml(nfCode) + '</button>'
+        ? '<button type="button" class="row-inline-link" data-biomie-action="open-invoice"' +
+          (notaKey ? ' data-nota-key="' + B.escapeHtml(notaKey) + '"' : '') +
+          ' data-numero-nf="' + B.escapeHtml(nfCode) + '"' +
+          (chaveNfe ? ' data-chave-nfe="' + B.escapeHtml(chaveNfe) + '"' : '') +
+          '>' + B.escapeHtml(nfCode) + '</button>'
         : '<span style="color:var(--text-3)">-</span>';
       var orderCell = orderCode
         ? '<button type="button" class="row-inline-link" data-biomie-action="open-order" data-pedido-codigo="' + B.escapeHtml(orderCode) + '">' + B.escapeHtml(orderCode) + '</button>'
@@ -452,6 +469,73 @@
       var value = B.formatAlertValue(alert);
       return '<article class="insight-row"><div><strong>' + B.escapeHtml(alert.title) + '</strong><span>' + B.escapeHtml(alert.message) + '</span></div><div class="insight-metric"><small>' + B.escapeHtml(alert.metric || 'Indicador') + '</small><strong>' + value + '</strong></div></article>';
     }).join('');
+  };
+
+  B.renderAttentionSignals = function (container, signals, summary, diagnostics) {
+    if (!container) return;
+    if (!signals || !signals.length) {
+      container.innerHTML = '<div class="mag-signal mag-signal--success"><div class="mag-signal__body"><strong class="mag-signal__title">Nenhum ponto critico no periodo</strong><p class="mag-signal__description">Operacao sem desvios relevantes nos filtros atuais.</p></div></div>';
+      return;
+    }
+
+    var severityLabels = { danger: 'Critico', warning: 'Atencao', success: 'Positivo', info: 'Info' };
+    var categoryLabels = { destaque: 'Destaque', carteira: 'Carteira', cancelamento: 'Cancelamento', meta: 'Meta', financeiro: 'Financeiro', operacao: 'Operacao', dados: 'Dados' };
+
+    function isValidActionUrl(url) {
+      if (!url || typeof url !== 'string') return false;
+      var lower = url.toLowerCase().trim();
+      if (lower.indexOf('javascript:') === 0) return false;
+      if (lower.indexOf('data:') === 0) return false;
+      if (lower.indexOf('http://') === 0 || lower.indexOf('https://') === 0) return false;
+      return true;
+    }
+
+    function renderSignal(s) {
+      var sev       = s.severity || 'info';
+      var category  = B.escapeHtml(categoryLabels[s.category] || s.category || '');
+      var sevLabel  = B.escapeHtml(severityLabels[sev] || sev);
+      var title     = B.escapeHtml(s.title || '');
+      var value     = s.value != null ? B.escapeHtml(String(s.value)) : null;
+      var desc      = B.escapeHtml(s.description || '');
+      var amount    = (s.amount != null && s.amount !== '' && !isNaN(Number(s.amount))) ? B.formatCurrency(Number(s.amount)) : null;
+      var amountLbl = s.amount_label ? B.escapeHtml(s.amount_label) : null;
+      var basis     = s.period_basis ? B.escapeHtml(s.period_basis) : null;
+      var action    = (s.action && isValidActionUrl(s.action.url))
+        ? '<a href="' + B.escapeHtml(s.action.url) + '" class="mag-signal__action">' + B.escapeHtml(s.action.label || 'Ver mais') + '</a>'
+        : '';
+      return '<div class="mag-signal mag-signal--' + B.escapeHtml(sev) + '">'
+        + '<div class="mag-signal__body">'
+        + '<div class="mag-signal__header">'
+        + (category ? '<span class="mag-signal__category">' + category + '</span>' : '')
+        + '<span class="mag-badge mag-badge--' + B.escapeHtml(sev) + '">' + sevLabel + '</span>'
+        + '</div>'
+        + '<strong class="mag-signal__title">' + title + '</strong>'
+        + (value ? '<div class="mag-signal__value">' + value + '</div>' : '')
+        + (amount ? '<div class="mag-signal__amount"><small>' + (amountLbl || 'Valor') + '</small> ' + amount + '</div>' : '')
+        + (desc ? '<p class="mag-signal__description">' + desc + '</p>' : '')
+        + ((basis || action) ? '<div class="mag-signal__footer">'
+            + (basis ? '<span class="mag-signal__basis">Base: ' + basis + '</span>' : '')
+            + action
+            + '</div>' : '')
+        + '</div>'
+        + '</div>';
+    }
+
+    var html = signals.map(renderSignal).join('');
+
+    if (summary && summary.hidden_count > 0) {
+      html += '<div class="mag-signal-more"><small>' + Number(summary.hidden_count) + ' sinal(is) oculto(s). Refine o periodo para ver todos.</small></div>';
+    }
+
+    if (diagnostics && (diagnostics.rules_failed > 0 || (diagnostics.errors && diagnostics.errors.length))) {
+      var reqId = (diagnostics.errors && diagnostics.errors[0] && diagnostics.errors[0].request_id) || '';
+      html += '<details class="mag-signal-diag"><summary>Diagnostico</summary>'
+        + '<small>Regras: ' + Number(diagnostics.rules_evaluated || 0) + ' | Falhas: ' + Number(diagnostics.rules_failed || 0) + ' | Ignoradas: ' + Number(diagnostics.rules_skipped || 0)
+        + (reqId ? ' | request_id: ' + B.escapeHtml(reqId) : '')
+        + '</small></details>';
+    }
+
+    container.innerHTML = html;
   };
 
   B.renderTopClients = function (rows) {
@@ -565,4 +649,268 @@
     }).join('');
   };
 
+  // ── Badge helpers (Fase 7 — Design System MAG) ──────────────────────────
+
+  B.sourceBadge = function (source) {
+    source = String(source || '').toLowerCase().trim();
+    var map = {
+      'canonical':              ['canonical', 'canonical-db', 'canonical_db'],
+      'gold':                   ['gold', 'gold_mart', 'mart'],
+      'fallback':               ['fallback', 'legacy', 'legacy-fallback', 'nf_fallback'],
+      'cache':                  ['cache', 'cached', 'snapshot'],
+      'empty':                  ['empty', 'none', '']
+    };
+    var labels = {
+      'canonical': 'Canonical',
+      'gold':      'Gold',
+      'fallback':  'Fallback',
+      'cache':     'Cache',
+      'empty':     'Sem dados'
+    };
+    var match = 'empty';
+    for (var key in map) {
+      if (map[key].indexOf(source) !== -1) { match = key; break; }
+    }
+    return '<span class="mag-badge mag-badge--source-' + match + '">' + labels[match] + '</span>';
+  };
+
+  B.freshnessBadge = function (status) {
+    status = String(status || '').toLowerCase().trim();
+    var map = {
+      'ok':       ['ok', 'fresh', 'live', 'updated', 'atualizado'],
+      'warning':  ['warning', 'stale', 'partial', 'delayed', 'attention'],
+      'critical': ['critical', 'error', 'outdated', 'missing', 'empty'],
+      'unknown':  ['unknown', '', 'unavailable']
+    };
+    var labels = {
+      'ok':       'Atualizado',
+      'warning':  'Atenção',
+      'critical': 'Crítico',
+      'unknown':  'Desconhecido'
+    };
+    var match = 'unknown';
+    for (var key in map) {
+      if (map[key].indexOf(status) !== -1) { match = key; break; }
+    }
+    return '<span class="mag-badge mag-badge--fresh-' + match + '">' + labels[match] + '</span>';
+  };
+
+  B.periodBasisBadge = function (periodBasis) {
+    periodBasis = String(periodBasis || '').toLowerCase().trim();
+    var label;
+    if (periodBasis === 'data_competencia' || periodBasis === 'competencia') {
+      label = 'data_competencia';
+    } else if (periodBasis === 'data_emissao' || periodBasis === 'issue_date') {
+      label = 'data_emissão';
+    } else if (periodBasis === 'year_month') {
+      label = 'ano/mês';
+    } else if (periodBasis !== '') {
+      label = periodBasis;
+    } else {
+      return '';
+    }
+    return '<span class="mag-badge mag-badge--source-canonical" title="Base de período">' + B.escapeHtml(label) + '</span>';
+  };
+
+  B.emptyStateHtml = function (opts) {
+    opts = opts || {};
+    var icon    = opts.icon    || 'inbox';
+    var title   = opts.title   || 'Sem dados';
+    var text    = opts.text    || 'Nenhum registro encontrado para o período.';
+    var action  = opts.action  || null;
+    var debug   = opts.debug   || null;
+    var compact = opts.compact ? ' mag-empty--compact' : '';
+    var html = '<div class="mag-empty' + compact + '">';
+    html += '<div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">' + B.escapeHtml(icon) + '</span></div>';
+    html += '<strong class="mag-empty-title">' + B.escapeHtml(title) + '</strong>';
+    html += '<p class="mag-empty-text">' + B.escapeHtml(text) + '</p>';
+    if (action) {
+      html += '<button type="button" class="mag-empty-action">' + B.escapeHtml(action) + '</button>';
+    }
+    if (debug) {
+      html += '<details class="mag-empty-debug"><summary>Detalhes técnicos</summary><pre>' + B.escapeHtml(JSON.stringify(debug, null, 2)) + '</pre></details>';
+    }
+    html += '</div>';
+    return html;
+  };
+
 })(window.BIomie || (window.BIomie = {}));
+
+// ── Alias global legado — garante que renderPanelState nunca derruba dashboard
+// mesmo se app.js ainda não carregou (cache stale) ou chamada fora do namespace.
+(function () {
+  'use strict';
+  function _fallbackRenderPanelState(container, state) {
+    if (!container) return;
+    state = state || {};
+    var target = container.querySelector('.dashboard-panel__body')
+      || container.querySelector('.panel-body')
+      || container;
+    var empty = target.querySelector('.dashboard-empty-state');
+    if (!empty) {
+      empty = document.createElement('div');
+      empty.className = 'dashboard-empty-state';
+      target.appendChild(empty);
+    }
+    empty.hidden = false;
+    var icon  = state.state === 'error' ? 'error' : 'info';
+    var title = String(state.title   || 'Dados indisponíveis');
+    var msg   = String(state.message || 'Não foi possível carregar este painel.');
+    empty.innerHTML =
+      '<span class="material-symbols-rounded">' + icon + '</span>' +
+      '<strong>' + title + '</strong>' +
+      '<p>' + msg + '</p>';
+  }
+
+  // ── Finance Overview card ─────────────────────────────────────────────────
+
+  B.renderFinanceOverview = function (container, data) {
+    if (!container) return;
+    var fs = data && (data.finance_summary || data.financeSummary || data.financial_summary || data);
+    if (!fs || fs.available === false) {
+      var reasonCode = (fs && fs.reason_code) || 'unavailable';
+      var emptyMsg   = reasonCode === 'finance_table_missing' || reasonCode === 'table_not_found'
+        ? 'Tabela de titulos financeiros nao encontrada.'
+        : reasonCode === 'finance_table_empty' || reasonCode === 'table_empty'
+          ? 'Nenhum titulo financeiro cadastrado.'
+          : 'Dados de recebimentos indisponiveis no momento.';
+      container.innerHTML =
+        '<div class="mag-finance-empty">' +
+        '<span class="material-symbols-rounded">account_balance_wallet</span>' +
+        '<p>' + B.escapeHtml(emptyMsg) + '</p>' +
+        (reasonCode ? '<code class="mag-finance-reason">' + B.escapeHtml(reasonCode) + '</code>' : '') +
+        '</div>';
+      return;
+    }
+
+    var totals  = fs.totals   || {};
+    var counts  = fs.counts   || {};
+    var risk    = fs.risk     || {};
+    var overdue = Array.isArray(fs.overdue_customers) ? fs.overdue_customers : [];
+
+    var riskLevel  = String(risk.level || 'unknown').toLowerCase();
+    var riskClass  = riskLevel === 'critical'  ? 'mag-finance-risk--critical'
+                   : riskLevel === 'attention' ? 'mag-finance-risk--attention'
+                   : riskLevel === 'ok'        ? 'mag-finance-risk--ok'
+                   : 'mag-finance-risk--unknown';
+    var riskLabel  = riskLevel === 'critical'  ? 'Risco critico'
+                   : riskLevel === 'attention' ? 'Atencao'
+                   : riskLevel === 'ok'        ? 'Saudavel'
+                   : 'Indeterminado';
+
+    var convPct = totals.cash_conversion_pct != null ? Number(totals.cash_conversion_pct).toFixed(1) + '%' : '-';
+
+    var kpis = [
+      { label: 'Recebido',    value: B.formatCurrency(totals.received),   count: B.formatNumber(counts.received_titles) + ' tit.' },
+      { label: 'Em aberto',   value: B.formatCurrency(totals.open),       count: B.formatNumber(counts.open_titles) + ' tit.' },
+      { label: 'Vencido',     value: B.formatCurrency(totals.overdue),    count: B.formatNumber(counts.overdue_titles) + ' tit.' },
+      { label: 'Conv. caixa', value: convPct,                             count: '' },
+    ];
+
+    var kpiHtml = kpis.map(function (k) {
+      return '<div class="mag-finance-kpi">' +
+        '<span class="mag-finance-kpi__label">' + B.escapeHtml(k.label) + '</span>' +
+        '<span class="mag-finance-kpi__value">' + B.escapeHtml(k.value) + '</span>' +
+        (k.count ? '<span class="mag-finance-kpi__count">' + B.escapeHtml(k.count) + '</span>' : '') +
+        '</div>';
+    }).join('');
+
+    var overdueSection = '';
+    if (overdue.length) {
+      overdueSection = '<div class="mag-finance-overdue"><table class="mag-finance-table"><thead><tr><th>Cliente</th><th>Vencido</th><th>Tit.</th><th>Max dias</th></tr></thead><tbody>' +
+        overdue.slice(0, 5).map(function (r) {
+          return '<tr><td>' + B.escapeHtml(r.customer_name || 'N/I') + '</td>' +
+            '<td>' + B.formatCurrency(r.overdue_amount || 0) + '</td>' +
+            '<td>' + B.formatNumber(r.titles_count || 0) + '</td>' +
+            '<td>' + B.formatNumber(r.max_days_overdue || 0) + 'd</td></tr>';
+        }).join('') +
+        '</tbody></table></div>';
+    } else if ((totals.overdue || 0) === 0) {
+      overdueSection = '<p class="mag-finance-no-overdue"><span class="material-symbols-rounded">check_circle</span> Sem inadimplência no período.</p>';
+    }
+
+    container.innerHTML =
+      '<div class="mag-finance-grid">' + kpiHtml + '</div>' +
+      '<div class="mag-finance-risk ' + B.escapeHtml(riskClass) + '">' +
+        '<span class="material-symbols-rounded">' + (riskLevel === 'critical' ? 'warning' : riskLevel === 'ok' ? 'check_circle' : 'info') + '</span>' +
+        '<span>' + B.escapeHtml(riskLabel) + '</span>' +
+      '</div>' +
+      overdueSection;
+  };
+
+  // ── Monthly Comparison executive view ────────────────────────────────────
+
+  B.renderMonthlyComparison = function (container, data) {
+    if (!container) return;
+    var mc = data && (data.month_comparison || data.monthly_comparison || data.monthlyComparison || data);
+    var isRich = mc && typeof mc === 'object' && !Array.isArray(mc) && mc.current;
+    if (!isRich || !mc.available) {
+      container.innerHTML = '';
+      return;
+    }
+
+    var cur  = mc.current  || {};
+    var prev = mc.previous || {};
+    var avg3 = mc.last_3_months_avg || null;
+    var proj = mc.projection || null;
+    var del  = mc.deltas    || {};
+    var ins  = Array.isArray(mc.insights) ? mc.insights : [];
+    var period = mc.period || {};
+
+    function deltaBadge(pct) {
+      if (pct == null) return '';
+      var cls = pct > 0 ? 'mag-delta--positive' : pct < 0 ? 'mag-delta--negative' : 'mag-delta--neutral';
+      return '<span class="mag-delta ' + cls + '">' + (pct > 0 ? '+' : '') + Number(pct).toFixed(1) + '%</span>';
+    }
+
+    var rows = [
+      ['Mes atual', cur.label || cur.year_month || '-', B.formatCurrency(cur.revenue), cur.target > 0 ? B.formatCurrency(cur.target) : '-', cur.attainment_pct != null ? Number(cur.attainment_pct).toFixed(1) + '%' : '-', deltaBadge(del.vs_previous_pct)],
+      ['Mes anterior', prev.label || prev.year_month || '-', B.formatCurrency(prev.revenue), prev.target > 0 ? B.formatCurrency(prev.target) : '-', prev.attainment_pct != null ? Number(prev.attainment_pct).toFixed(1) + '%' : '-', ''],
+      avg3 ? ['Media 3 meses', '-', B.formatCurrency(avg3.revenue), '-', '-', deltaBadge(del.vs_3m_avg_pct)] : null,
+    ].filter(Boolean);
+
+    var tableHtml = '<table class="mag-month-comparison__table"><thead><tr>' +
+      '<th></th><th>Periodo</th><th>Receita</th><th>Meta</th><th>Ating.</th><th>vs anterior</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr><td class="mag-month-comparison__rowlabel">' + B.escapeHtml(r[0]) + '</td>' +
+          r.slice(1).map(function (v, i) {
+            return '<td' + (i === r.length - 2 ? ' class="mag-month-comparison__delta"' : '') + '>' + v + '</td>';
+          }).join('') + '</tr>';
+      }).join('') +
+      '</tbody></table>';
+
+    var projHtml = '';
+    if (proj && period.is_month_in_progress) {
+      projHtml = '<div class="mag-month-comparison__projection">' +
+        '<span class="material-symbols-rounded">trending_up</span>' +
+        '<span>Projecao ao ritmo atual: <strong>' + B.formatCurrency(proj.probable) + '</strong>' +
+        ' (' + B.formatNumber(period.elapsed_days || 0) + '/' + B.formatNumber(period.calendar_days || 0) + ' dias)</span>' +
+        '</div>';
+    }
+
+    var insHtml = '';
+    if (ins.length) {
+      insHtml = '<ul class="mag-insight-list">' +
+        ins.slice(0, 6).map(function (insight) {
+          var sev = String(insight.severity || 'info');
+          var pct = insight.value_pct != null ? ' (' + (insight.value_pct > 0 ? '+' : '') + Number(insight.value_pct).toFixed(1) + '%)' : '';
+          return '<li class="mag-insight mag-insight--' + B.escapeHtml(sev) + '">' +
+            '<span class="mag-insight__label">' + B.escapeHtml(insight.label || '') + pct + '</span>' +
+            '<span class="mag-insight__detail">' + B.escapeHtml(insight.detail || '') + '</span></li>';
+        }).join('') +
+        '</ul>';
+    }
+
+    container.innerHTML =
+      '<div class="mag-month-comparison">' +
+        tableHtml +
+        projHtml +
+        insHtml +
+      '</div>';
+  };
+
+  window.BIomie = window.BIomie || {};
+  window.BIomie.renderPanelState = window.BIomie.renderPanelState || _fallbackRenderPanelState;
+  window.renderPanelState        = window.renderPanelState        || _fallbackRenderPanelState;
+})();

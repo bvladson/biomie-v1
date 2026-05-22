@@ -79,6 +79,20 @@ const RCA_DELTA_TOLERANCE = 0.01;
 $nfHasScope  = rcaColExists($pdo, 'biomie_notas_fiscais_canonicas', 'operation_scope');
 $ordHasScope = rcaColExists($pdo, 'biomie_pedidos_canonicos', 'operation_scope');
 
+// Fase O.1 fiscal basis columns
+$nfHasFiscalBasis = rcaColExists($pdo, 'biomie_notas_fiscais_canonicas', 'valor_base_comercial_nf');
+$nfHasFrete       = rcaColExists($pdo, 'biomie_notas_fiscais_canonicas', 'valor_frete');
+
+if ($nfHasFiscalBasis) {
+    $baseComercialExpr = 'COALESCE(nf.valor_base_comercial_nf, '
+        . 'nf.valor_total - COALESCE(nf.valor_frete,0) - COALESCE(nf.valor_outras_despesas,0) - COALESCE(nf.valor_seguro,0))';
+} elseif ($nfHasFrete) {
+    $baseComercialExpr = 'nf.valor_total - COALESCE(nf.valor_frete,0) '
+        . '- COALESCE(nf.valor_outras_despesas,0) - COALESCE(nf.valor_seguro,0)';
+} else {
+    $baseComercialExpr = 'nf.valor_total';
+}
+
 if (!$nfHasScope) {
     $msg = 'Migration H3 nao aplicada: operation_scope ausente em biomie_notas_fiscais_canonicas.';
     if ($isJson) {
@@ -129,6 +143,7 @@ $stmtCanon = $pdo->prepare("
     SELECT
         COUNT(*)                                AS nf_count,
         COALESCE(SUM(nf.valor_total),       0)  AS revenue,
+        COALESCE(SUM({$baseComercialExpr}), 0)  AS base_comercial,
         COALESCE(SUM(nf.valor_mercadorias), 0)  AS merchandise,
         COALESCE(SUM(nf.valor_descontos),   0)  AS discount,
         MIN(COALESCE(nf.data_competencia, nf.data_emissao)) AS date_min,
@@ -141,10 +156,12 @@ $stmtCanon = $pdo->prepare("
 $stmtCanon->execute($nfDateParams);
 $canon = $stmtCanon->fetch(\PDO::FETCH_ASSOC);
 
-$canonRevenue     = (float) ($canon['revenue']     ?? 0);
-$canonMerchandise = (float) ($canon['merchandise'] ?? 0);
-$canonNfCount     = (int)   ($canon['nf_count']    ?? 0);
-$canonDiscount    = (float) ($canon['discount']    ?? 0);
+$canonRevenue          = (float) ($canon['revenue']       ?? 0);
+$canonBaseComercial    = (float) ($canon['base_comercial'] ?? $canonRevenue);
+$canonNaoComissionavel = max(0.0, round($canonRevenue - $canonBaseComercial, 2));
+$canonMerchandise      = (float) ($canon['merchandise']   ?? 0);
+$canonNfCount          = (int)   ($canon['nf_count']      ?? 0);
+$canonDiscount         = (float) ($canon['discount']      ?? 0);
 
 // Scope breakdown (all authorized NFs)
 $stmtScope = $pdo->query("
@@ -311,8 +328,8 @@ try {
 
         $addCheck(
             'mart_cliente_periodo.valor_nfe',
-            'mart_cliente_periodo.valor_nfe = canonical commercial revenue',
-            $canonRevenue,
+            'mart_cliente_periodo.valor_nfe = canonical commercial base comercial (excl. frete/outras/seguro)',
+            $canonBaseComercial,
             (float) $mc['revenue'],
             'valor_nfe',
         );
@@ -337,7 +354,7 @@ try {
         $mv = $stmtMv->fetch(\PDO::FETCH_ASSOC);
 
         $mvRevenue = (float) $mv['revenue'];
-        $mvDelta   = round($mvRevenue - $canonRevenue, 2);
+        $mvDelta   = round($mvRevenue - $canonBaseComercial, 2);
 
         // Detect if delta matches known remittance NF value
         $remittanceNote = null;
@@ -352,8 +369,8 @@ try {
 
         $addCheck(
             'mart_vendedor_dia.valor_nfe',
-            'mart_vendedor_dia.valor_nfe = canonical commercial revenue (deve excluir remessa)',
-            $canonRevenue,
+            'mart_vendedor_dia.valor_nfe = canonical commercial base comercial (deve excluir remessa)',
+            $canonBaseComercial,
             $mvRevenue,
             'valor_nfe',
             null,
@@ -378,8 +395,8 @@ try {
 
         $addCheck(
             'mart_compradores_por_geo.faturamento',
-            'mart_compradores_por_geo.faturamento = canonical commercial revenue',
-            $canonRevenue,
+            'mart_compradores_por_geo.faturamento = canonical commercial base comercial (excl. frete/outras/seguro)',
+            $canonBaseComercial,
             (float) $mg['revenue'],
             'faturamento',
         );
@@ -416,32 +433,80 @@ try {
                 $cvContamRevenue > 0 ? 'Remessa/unknown encontrado no mart CNAE: ' . json_encode($cvRows) : null,
             );
         } else {
-            // Scope column absent — do a join-based check for remittance NFs
+            // Scope column absent — check only clients who appear in mart but have ONLY
+            // remittance NFs (no commercial NFs). Clients with both types are fine.
             $stmtCv = $pdo->prepare("
                 SELECT COUNT(*) AS contam_count
                 FROM mart_vendas_por_cnae_cnpj cv
-                JOIN biomie_notas_fiscais_canonicas nf
-                  ON nf.codigo_cliente_omie = cv.codigo_cliente_omie
-                WHERE nf.operation_scope = 'remittance'
-                  AND nf.status_fiscal   = 'autorizada'
-                  {$martDateFilter}
+                WHERE cv.codigo_cliente_omie IN (
+                    SELECT codigo_cliente_omie FROM biomie_notas_fiscais_canonicas
+                    WHERE operation_scope = 'remittance' AND status_fiscal = 'autorizada'
+                )
+                AND cv.codigo_cliente_omie NOT IN (
+                    SELECT codigo_cliente_omie FROM biomie_notas_fiscais_canonicas
+                    WHERE operation_scope = 'commercial' AND status_fiscal = 'autorizada'
+                )
             ");
-            $stmtCv->execute($martDateParams);
+            $stmtCv->execute();
             $cvContam = (int) $stmtCv->fetchColumn();
 
             $addCheck(
-                'mart_vendas_por_cnae_cnpj.no_remittance_join',
-                'mart_vendas_por_cnae_cnpj: clientes sem NF de remessa cruzada',
+                'mart_vendas_por_cnae_cnpj.remittance_only_clients',
+                'mart_vendas_por_cnae_cnpj: clientes que possuem apenas NF remessa (sem NF commercial)',
                 0.0,
                 (float) $cvContam,
                 'operation_scope_join',
                 null,
-                $cvContam > 0 ? 'Clientes com NF remessa presentes no mart CNAE (join-based). Pode ser false positive se escopo nao foi propagado ao mart.' : null,
+                $cvContam > 0 ? "$cvContam linha(s) no mart CNAE pertencentes a clientes sem nenhuma NF commercial — remessa pode ter entrado no mart." : null,
             );
         }
     }
 } catch (\Throwable $e) {
     $addCheck('mart_vendas_por_cnae_cnpj.scope', 'mart_vendas_por_cnae_cnpj', 0.0, null, 'operation_scope', $e->getMessage());
+}
+
+// ── Check: mart_vendas_por_cnae_cnpj aggregate revenue ────────────────────────
+// Revenue in the mart must cover canonical commercial (undershoot = incomplete materialization).
+
+try {
+    if (rcaTableExists($pdo, 'mart_vendas_por_cnae_cnpj')) {
+        $stmtCvAgg = $pdo->prepare("
+            SELECT COALESCE(SUM(faturamento), 0) AS revenue, COUNT(*) AS n
+            FROM mart_vendas_por_cnae_cnpj
+            WHERE 1=1 {$martDateFilter}
+        ");
+        $stmtCvAgg->execute($martDateParams);
+        $cvAgg = $stmtCvAgg->fetch(\PDO::FETCH_ASSOC);
+
+        $cvAggRevenue = (float) $cvAgg['revenue'];
+        $cvAggDelta   = round($cvAggRevenue - $canonBaseComercial, 2);
+
+        $cvAggNote = null;
+        if ($cvAggDelta < -RCA_DELTA_TOLERANCE) {
+            $cvAggNote = sprintf(
+                'Deficit de %s no mart CNAE: NFs do inicio do mes podem ter sido deletadas sem reinsercao. '
+                . 'Rematerialize com range cobrindo o primeiro dia do mes.',
+                rcaFmt(abs($cvAggDelta))
+            );
+        } elseif ($cvAggDelta > RCA_DELTA_TOLERANCE) {
+            $cvAggNote = sprintf(
+                'Overshoot de %s no mart CNAE: possivel dupla insercao ou remessa contaminando o mart.',
+                rcaFmt($cvAggDelta)
+            );
+        }
+
+        $addCheck(
+            'mart_vendas_por_cnae_cnpj.faturamento',
+            'mart_vendas_por_cnae_cnpj.faturamento = canonical commercial base comercial (excl. frete/outras/seguro)',
+            $canonBaseComercial,
+            $cvAggRevenue,
+            'faturamento',
+            null,
+            $cvAggNote,
+        );
+    }
+} catch (\Throwable $e) {
+    $addCheck('mart_vendas_por_cnae_cnpj.faturamento', 'mart_vendas_por_cnae_cnpj (agg)', 0.0, null, 'faturamento', $e->getMessage());
 }
 
 // ── Check: pedidos faturados — nenhum remittance ───────────────────────────────
@@ -520,12 +585,15 @@ $output = [
     'date_filter'           => $dateLabel,
     'migration_h3_applied'  => ['nf_scope' => $nfHasScope, 'order_scope' => $ordHasScope],
     'canonical_commercial'  => [
-        'nf_count'    => $canonNfCount,
-        'revenue'     => round($canonRevenue,     2),
-        'merchandise' => round($canonMerchandise, 2),
-        'discount'    => round($canonDiscount,    2),
-        'date_min'    => $canon['date_min'],
-        'date_max'    => $canon['date_max'],
+        'nf_count'              => $canonNfCount,
+        'revenue'               => round($canonRevenue,          2),
+        'base_comercial'        => round($canonBaseComercial,    2),
+        'non_commissionable'    => round($canonNaoComissionavel, 2),
+        'merchandise'           => round($canonMerchandise,      2),
+        'discount'              => round($canonDiscount,         2),
+        'fiscal_basis_columns'  => $nfHasFiscalBasis,
+        'date_min'              => $canon['date_min'],
+        'date_max'              => $canon['date_max'],
     ],
     'remittance_summary'    => ['nf_count' => $remitCount, 'revenue' => round($remitRevenue, 2)],
     'nf_scope_breakdown'    => $nfScopeBreakdown,
@@ -553,11 +621,17 @@ echo "\n=== commercial_recalibration_audit (Fase I) ===\n";
 echo "Filtro: {$dateLabel}\n\n";
 
 echo "FONTE CANONICA (commercial NFs autorizadas):\n";
-printf("  NFs:        %d\n",        $canonNfCount);
-printf("  Receita:    %s\n",        rcaFmt($canonRevenue));
-printf("  Mercadoria: %s\n",        rcaFmt($canonMerchandise));
-printf("  Desconto:   %s\n",        rcaFmt($canonDiscount));
-printf("  Periodo:    %s a %s\n\n", $canon['date_min'] ?? '—', $canon['date_max'] ?? '—');
+printf("  NFs:                   %d\n",   $canonNfCount);
+printf("  Receita bruta:         %s  (valor_total)\n",  rcaFmt($canonRevenue));
+printf("  Base comercial:        %s  (excl. frete/outras/seguro)\n", rcaFmt($canonBaseComercial));
+if ($canonNaoComissionavel > 0.009) {
+    printf("  Nao comissionavel:     %s  (frete+outras+seguro)\n", rcaFmt($canonNaoComissionavel));
+}
+printf("  Mercadoria:            %s\n",   rcaFmt($canonMerchandise));
+printf("  Desconto:              %s\n",   rcaFmt($canonDiscount));
+$basisLabel = $nfHasFiscalBasis ? 'colunas O.1 presentes' : ($nfHasFrete ? 'formula frete/outras/seguro' : 'fallback valor_total');
+printf("  Basis fonte:           %s\n",   $basisLabel);
+printf("  Periodo:               %s a %s\n\n", $canon['date_min'] ?? '—', $canon['date_max'] ?? '—');
 
 echo "REMESSA (somente NF do Periodo / fiscal):\n";
 printf("  NFs:   %d\n",   $remitCount);

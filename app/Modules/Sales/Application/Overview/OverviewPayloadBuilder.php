@@ -104,7 +104,8 @@ final class OverviewPayloadBuilder
             ]);
         }
 
-        if ($this->config->isCanonicalEnabled('overview') && (bool) $this->config->get('features.canonical_fiscal_ready', false)) {
+        $enforceScope = (bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false);
+        if (($this->config->isCanonicalEnabled('overview') && (bool) $this->config->get('features.canonical_fiscal_ready', false)) || $enforceScope) {
             $connection = Database::isConfigured($this->config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
             if (Database::isConfigured($this->config, $connection)) {
                 try {
@@ -266,35 +267,64 @@ final class OverviewPayloadBuilder
 
     /**
      * Ensures the monthly comparison dataset keeps the overview API contract.
+     * Handles both the legacy flat-array format and the new rich-object format
+     * (which has a 'rows' key for chart backward-compat).
      *
      * @param array<string,mixed> $payload
      * @return array<string,mixed>
      */
     private function ensureMonthComparisonContract(array $payload, string $start, string $end): array
     {
-        $sourceKey = '';
+        $sourceKey  = '';
         $invalidKey = '';
+
         foreach (['month_comparison', 'monthly_comparison', 'monthlyComparison'] as $key) {
             if (!array_key_exists($key, $payload)) {
                 continue;
             }
 
-            if (is_array($payload[$key])) {
-                $sourceKey = $key;
-                $payload['month_comparison'] = array_values($payload[$key]);
+            $value = $payload[$key];
+
+            if (!is_array($value)) {
+                $sourceKey  = $key;
+                $invalidKey = $key;
                 break;
             }
 
             $sourceKey = $key;
-            $invalidKey = $key;
+
+            // New rich-object format: has a 'rows' key
+            if (array_key_exists('rows', $value)) {
+                $rows = is_array($value['rows'] ?? null) ? array_values($value['rows']) : [];
+                $value['rows'] = $rows;
+                $payload['month_comparison'] = $value;
+                break;
+            }
+
+            // Legacy flat-array format: wrap in minimal rich object
+            $rows = array_values($value);
+            $payload['month_comparison'] = [
+                'available'    => $rows !== [],
+                'source'       => 'legacy',
+                'period_basis' => 'data_competencia',
+                'rows'         => $rows,
+                'reason_code'  => $rows === [] ? 'no_data' : null,
+            ];
             break;
         }
 
-        if (!is_array($payload['month_comparison'] ?? null)) {
-            $payload['month_comparison'] = [];
+        // Ensure the key always exists as a valid rich object
+        if (!is_array($payload['month_comparison'] ?? null) || !array_key_exists('rows', $payload['month_comparison'])) {
+            $payload['month_comparison'] = [
+                'available'   => false,
+                'source'      => 'empty',
+                'rows'        => [],
+                'reason_code' => 'not_available',
+            ];
         }
 
-        if ($payload['month_comparison'] !== []) {
+        $rows = $payload['month_comparison']['rows'];
+        if ($rows !== []) {
             if (is_array($payload['diagnostics'] ?? null)) {
                 unset($payload['diagnostics']['month_comparison']);
             }
@@ -311,16 +341,16 @@ final class OverviewPayloadBuilder
 
         $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
         $payload['diagnostics']['month_comparison'] = [
-            'status' => 'empty',
-            'reason' => $reason,
-            'expected_key' => 'month_comparison',
+            'status'           => 'empty',
+            'reason'           => $reason,
+            'expected_key'     => 'month_comparison',
             'accepted_aliases' => ['monthly_comparison', 'monthlyComparison'],
-            'source_key' => $sourceKey !== '' ? $sourceKey : null,
-            'period_start' => (string) ($meta['period_start'] ?? $start),
-            'period_end' => (string) ($meta['period_end'] ?? $end),
-            'source_of_truth' => (string) ($meta['source_of_truth'] ?? ''),
-            'served_from' => (string) ($meta['served_from'] ?? ($payload['source'] ?? '')),
-            'rows_count' => 0,
+            'source_key'       => $sourceKey !== '' ? $sourceKey : null,
+            'period_start'     => (string) ($meta['period_start'] ?? $start),
+            'period_end'       => (string) ($meta['period_end'] ?? $end),
+            'source_of_truth'  => (string) ($meta['source_of_truth'] ?? ''),
+            'served_from'      => (string) ($meta['served_from'] ?? ($payload['source'] ?? '')),
+            'rows_count'       => 0,
         ];
 
         return $payload;
@@ -413,9 +443,20 @@ final class OverviewPayloadBuilder
             ];
         }
 
+        if (!isset($payload['finance_summary'])) {
+            $payload['finance_summary'] = [
+                'available'   => false,
+                'source'      => 'not_included',
+                'reason_code' => 'payload_missing',
+            ];
+            $payload['financeSummary'] = $payload['finance_summary'];
+        }
+
         if (!isset($payload['empty_states'])) {
-            $topClients     = $payload['top_clients']     ?? [];
-            $monthComparison = $payload['month_comparison'] ?? [];
+            $topClients      = $payload['top_clients']     ?? [];
+            $mc              = $payload['month_comparison'] ?? [];
+            $mcRows          = is_array($mc['rows'] ?? null) ? $mc['rows'] : (is_array($mc) && !array_key_exists('rows', $mc) ? $mc : []);
+            $mcEmpty         = $mcRows === [];
             $payload['empty_states'] = [
                 'top_clients' => [
                     'is_empty'    => $topClients === [],
@@ -425,8 +466,8 @@ final class OverviewPayloadBuilder
                     'action'      => null,
                 ],
                 'month_comparison' => [
-                    'is_empty'    => $monthComparison === [],
-                    'reason_code' => $monthComparison === [] ? 'not_enough_months' : null,
+                    'is_empty'    => $mcEmpty,
+                    'reason_code' => $mcEmpty ? (is_string($mc['reason_code'] ?? null) ? $mc['reason_code'] : 'not_enough_months') : null,
                     'title'       => null,
                     'message'     => null,
                     'action'      => null,

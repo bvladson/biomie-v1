@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie;
 
 use BIomie\Migrations\MigrationRunner;
+use BIomie\Queue\FileJobQueue;
 use BIomie\Support\SecretMask;
 use PDO;
 use Throwable;
@@ -107,8 +108,9 @@ final class OmieHealthCheckService
     {
         $groups = ['bronze' => [], 'canonical' => [], 'gold' => [], 'jobs' => []];
 
-        foreach (self::TABLE_CATALOG as $def) {
+        foreach (self::TABLE_CATALOG as $key => $def) {
             $status = $this->tableHealth->tableStatus($def['table'], $def['label']);
+            $status = $this->classifyTableStatus((string) $key, (string) $def['group'], $status);
             $groups[$def['group']][] = $status;
         }
 
@@ -329,6 +331,18 @@ final class OmieHealthCheckService
 
     private function checkJobsQueue(): array
     {
+        $fileQueue = new FileJobQueue(Bootstrap::rootPath('storage/cache'), $this->logger);
+        $summary = $fileQueue->summary();
+        $counts = is_array($summary['counts'] ?? null) ? $summary['counts'] : [];
+        $queued = (int) ($counts['queued'] ?? 0) + (int) ($counts['failed_retryable'] ?? 0);
+        $runningFileJobs = (int) ($counts['running'] ?? 0);
+
+        if ($queued > 0 && $runningFileJobs === 0) {
+            return $this->check('jobs_queue', 'Fila de jobs', 'warning',
+                'Jobs agendados, mas worker nao processou.',
+                'Execute php cron/worker.php --queue=high,default,low --limit=50 --max-runtime=55.');
+        }
+
         if (!$this->tableHealth->tableExists('biomie_pipeline_jobs')) {
             return $this->check('jobs_queue', 'Fila de jobs', 'warning',
                 'Tabela de jobs ausente.', 'Aplique migrations.', 'admin.php?tab=migrations');
@@ -344,12 +358,13 @@ final class OmieHealthCheckService
         }
 
         $lastRun = $this->pipelineStatus?->lastSuccessfulRun('gold_mart_refresh');
-        $message = $running > 0
-            ? "{$running} job(s) em execucao."
+        $totalRunning = $running + $runningFileJobs;
+        $message = $totalRunning > 0
+            ? "{$totalRunning} job(s) em execucao."
             : ($lastRun !== null ? "Ultimo job concluido em {$lastRun}." : 'Nenhum job registrado.');
 
         return $this->check('jobs_queue', 'Fila de jobs',
-            $running > 0 ? 'ok' : ($lastRun !== null ? 'ok' : 'pending'),
+            $totalRunning > 0 ? 'ok' : ($lastRun !== null ? 'ok' : 'pending'),
             $message,
             $lastRun === null ? 'Execute a primeira materializacao.' : null,
             null, $lastRun);
@@ -433,13 +448,31 @@ final class OmieHealthCheckService
                 'Verifique o diagnostico tecnico.', 'admin.php?tab=diagnostico', $lastRun);
         }
 
+        $source = $this->canonicalSourceFreshness();
+        $sourceStatus = (string) ($source['status'] ?? 'unknown');
         $ageHours = (time() - strtotime($lastRun)) / 3600;
-        if ($ageHours <= self::SYNC_OK_HOURS) {
+        $goldStatus = $ageHours <= self::SYNC_OK_HOURS
+            ? 'ok'
+            : ($ageHours <= self::SYNC_WARNING_HOURS ? 'warning' : 'danger');
+
+        if ($goldStatus === 'ok' && $sourceStatus !== 'ok') {
+            return $this->check('materialization', 'Materializacao', 'warning',
+                'Visao gold atualizada, mas a origem Omie/canonica esta atrasada.',
+                'Execute o sync delta Omie antes de confiar nos marts.', null, $lastRun);
+        }
+
+        if ($goldStatus === 'ok') {
             return $this->check('materialization', 'Materializacao', 'ok',
                 'Visao gold atualizada.', null, null, $lastRun);
         }
 
-        if ($ageHours <= self::SYNC_WARNING_HOURS) {
+        if ($goldStatus === 'warning' && $sourceStatus === 'danger') {
+            return $this->check('materialization', 'Materializacao', 'danger',
+                'Visao gold e origem Omie/canonica estao atrasadas.',
+                'Execute sync delta e depois materialize a visao comercial.', null, $lastRun);
+        }
+
+        if ($goldStatus === 'warning') {
             return $this->check('materialization', 'Materializacao', 'warning',
                 'Visao gold pode estar desatualizada.',
                 'Atualize a visao comercial.', null, $lastRun);
@@ -476,8 +509,16 @@ final class OmieHealthCheckService
         $cursor = $this->syncPipeline->getCursor($domain, $domain);
 
         if ($cursor === null) {
+            $cursors = $this->countRows('biomie_sync_cursors') ?? 0;
+            $runs = $this->countRows('biomie_sync_runs') ?? 0;
+            if ($cursors === 0 && $runs === 0) {
+                return $this->check($key, $label, 'warning',
+                    'Pipeline delta nunca executado. Configure o cron/worker ou execute sincronizacao manual.',
+                    'Execute php cron/sync_realtime_pipeline.php --domains=' . $domain . '.');
+            }
+
             return $this->check($key, $label, 'pending',
-                'Aguardando primeira sincronizacao.',
+                "Pipeline delta ainda nao executou o dominio {$domain}.",
                 "Execute a sincronizacao {$label}.");
         }
 
@@ -542,6 +583,73 @@ final class OmieHealthCheckService
     }
 
     /**
+     * @param array<string,mixed> $status
+     * @return array<string,mixed>
+     */
+    private function classifyTableStatus(string $key, string $group, array $status): array
+    {
+        if (($status['exists'] ?? false) !== true) {
+            $status['empty_class'] = 'empty_error';
+            $status['badge_label'] = 'Ausente';
+            return $status;
+        }
+
+        $rows = $status['rows'] ?? null;
+        if ($rows !== 0 && $rows !== null) {
+            $status['empty_class'] = null;
+            $status['badge_label'] = 'OK';
+            return $status;
+        }
+
+        $table = (string) ($status['name'] ?? '');
+        $status['empty_class'] = 'empty_not_synced';
+        $status['badge_label'] = 'Nao sincronizado';
+
+        if (in_array($key, ['sync_cursors', 'sync_runs'], true)) {
+            $status['status'] = 'warning';
+            $status['message'] = 'Pipeline ainda nao executado.';
+            $status['empty_class'] = 'empty_not_synced';
+            $status['badge_label'] = 'Pipeline nao executado';
+            $status['recommended_action'] = 'Execute php cron/sync_realtime_pipeline.php --domains=commercial,finance.';
+            return $status;
+        }
+
+        if ($key === 'webhook_inbox') {
+            $status['status'] = 'ok';
+            $status['message'] = 'Sem webhooks recebidos. Normal se estiver usando cron.';
+            $status['empty_class'] = 'empty_optional';
+            $status['badge_label'] = 'Opcional';
+            $status['recommended_action'] = null;
+            return $status;
+        }
+
+        if ($table === 'biomie_titulos_financeiros_canonicos') {
+            $status['message'] = 'Financeiro ainda nao sincronizado.';
+            $status['recommended_action'] = 'Execute php cron/sync_realtime_pipeline.php --domains=finance.';
+            return $status;
+        }
+
+        if ($table === 'mart_financeiro_titulo' && (int) ($this->tableHealth->safeCount('biomie_titulos_financeiros_canonicos') ?? 0) === 0) {
+            $status['message'] = 'Dependente do sync financeiro.';
+            $status['empty_class'] = 'empty_expected';
+            $status['badge_label'] = 'Dependente';
+            $status['recommended_action'] = 'Sincronize o financeiro e depois materialize os marts.';
+            return $status;
+        }
+
+        if ($group === 'gold') {
+            $status['empty_class'] = 'empty_expected';
+            $status['badge_label'] = 'Sem mart';
+            $status['message'] = 'Mart ainda nao materializado com dados locais.';
+            $status['recommended_action'] = 'Execute php bin/materialize_marts.php.';
+            return $status;
+        }
+
+        $status['message'] = (string) ($status['message'] ?? 'Tabela vazia.');
+        return $status;
+    }
+
+    /**
      * @param list<string> $tables
      */
     private function checkTableGroupExists(array $tables, string $key, string $label): array
@@ -570,6 +678,94 @@ final class OmieHealthCheckService
         return $this->check($key, $label, 'warning',
             "{$missingCount} de {$total} tabela(s) ausente(s).",
             'Aplique migrations.', 'admin.php?tab=migrations');
+    }
+
+    /**
+     * @return array{status:string,last_sync:?string}
+     */
+    private function canonicalSourceFreshness(): array
+    {
+        $statuses = [];
+        $lastSync = null;
+        foreach ([
+            'biomie_pedidos_canonicos',
+            'biomie_notas_fiscais_canonicas',
+            'biomie_titulos_financeiros_canonicos',
+        ] as $table) {
+            $freshness = $this->tableFreshness($table);
+            $statuses[] = $freshness['status'];
+            if ($freshness['last_sync'] !== null && ($lastSync === null || strtotime($freshness['last_sync']) > strtotime($lastSync))) {
+                $lastSync = $freshness['last_sync'];
+            }
+        }
+
+        return [
+            'status' => $this->worstStatus($statuses),
+            'last_sync' => $lastSync,
+        ];
+    }
+
+    /**
+     * @return array{status:string,last_sync:?string}
+     */
+    private function tableFreshness(string $table): array
+    {
+        if (!$this->tableHealth->tableExists($table)) {
+            return ['status' => 'danger', 'last_sync' => null];
+        }
+
+        $rows = $this->tableHealth->safeCount($table);
+        if ($rows === null || $rows === 0) {
+            return ['status' => 'warning', 'last_sync' => null];
+        }
+
+        $lastSync = $this->tableHealth->lastUpdatedAt($table, [
+            'sincronizado_em',
+            'synced_at',
+            'updated_at',
+            'fetched_at',
+            'ingested_at',
+            'created_at',
+            'data_competencia',
+            'data_emissao',
+            'data_vencimento',
+        ]);
+        if ($lastSync === null) {
+            return ['status' => 'warning', 'last_sync' => null];
+        }
+
+        $ageHours = (time() - strtotime($lastSync)) / 3600;
+        return [
+            'status' => $ageHours <= self::SYNC_OK_HOURS
+                ? 'ok'
+                : ($ageHours <= self::SYNC_WARNING_HOURS ? 'warning' : 'danger'),
+            'last_sync' => $lastSync,
+        ];
+    }
+
+    /**
+     * @param list<string> $statuses
+     */
+    private function worstStatus(array $statuses): string
+    {
+        $rank = ['unknown' => 0, 'ok' => 1, 'pending' => 2, 'warning' => 3, 'danger' => 4];
+        $worst = 'unknown';
+        foreach ($statuses as $status) {
+            if (($rank[$status] ?? 0) > ($rank[$worst] ?? 0)) {
+                $worst = $status;
+            }
+        }
+
+        return $worst;
+    }
+
+    private function countRows(string $table): ?int
+    {
+        if (!$this->tableHealth->tableExists($table)) {
+            return null;
+        }
+
+        return $this->tableHealth->safeCount($table, true);
     }
 
     /**

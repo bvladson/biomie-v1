@@ -16,7 +16,8 @@
   var B = window.BIomie || {};
 
   function isVendorsPage() {
-    return document.body && document.body.getAttribute('data-page') === 'vendors';
+    var page = document.body ? document.body.getAttribute('data-page') : '';
+    return ['vendors', 'time-comercial'].includes(page);
   }
 
   function getRange() {

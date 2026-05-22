@@ -46,6 +46,8 @@ $activePage = $magPageKey;
 </head>
 <body class="<?php echo htmlspecialchars($magBodyClass, ENT_QUOTES, 'UTF-8'); ?>" data-page="<?php echo htmlspecialchars($magPageKey, ENT_QUOTES, 'UTF-8'); ?>">
 <div class="overlay" id="overlay" aria-hidden="true"></div>
+<?php require dirname(__DIR__) . '/partials/mobile_topbar.php'; ?>
+<?php require dirname(__DIR__) . '/partials/mobile_bottom_nav.php'; ?>
 
 <div class="shell mag-app-shell">
   <?php require dirname(__DIR__) . '/partials/sidebar.php'; ?>
@@ -67,6 +69,7 @@ $activePage = $magPageKey;
   </div>
 </div>
 
+<?php require dirname(__DIR__) . '/partials/drawer-root.php'; ?>
 <?php echo $magBodyExtraHtml; ?>
 </body>
 </html>

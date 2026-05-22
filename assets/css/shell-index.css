@@ -2012,6 +2012,32 @@ body::before {
 }
 
 /* ── Detail button on each chart panel ── */
+/* Top clients card */
+.dashboard-panel__body--top-clients {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard-panel__body--top-clients .chart-shell--md {
+  height: 190px;
+}
+
+.top-clients-list {
+  overflow-x: auto;
+}
+
+.top-clients-table {
+  min-width: 560px;
+  font-size: 12px;
+}
+
+.top-clients-table th,
+.top-clients-table td {
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
 .btn-detail {
   display: inline-flex;
   align-items: center;
@@ -2071,6 +2097,38 @@ body::before {
 /* ══════════════════════════════════════════════════════════════════════════════
    OVERVIEW DETAIL DRAWER
    ══════════════════════════════════════════════════════════════════════════════ */
+/* Empty-state diagnostics */
+.dashboard-empty-state__facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 12px;
+  width: min(100%, 420px);
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mag-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--mag-surface-muted, #f8fafc);
+  text-align: left;
+}
+
+.dashboard-empty-state__facts div {
+  display: contents;
+}
+
+.dashboard-empty-state__facts dt {
+  color: var(--mag-muted, #667085);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dashboard-empty-state__facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--mag-text, #101828);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
 .overview-detail-backdrop {
   position: fixed;
   inset: 0;

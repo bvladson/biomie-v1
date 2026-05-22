@@ -51,10 +51,22 @@
     } catch (_) { return null; }
   }
 
+  function cleanLookupValue(value) {
+    return String(value == null ? '' : value).trim();
+  }
+
+  function cleanInvoiceNumber(value) {
+    var text = cleanLookupValue(value);
+    if (!text) return '';
+    text = text.replace(/^\s*(nota\s*fiscal|nf-e|nfe|nf)\s*[:#-]?\s*/i, '');
+    text = text.replace(/\s+/g, '');
+    return text;
+  }
+
   // ── DOM ───────────────────────────────────────────────────────────────────
   function getDrawer() {
     var d = document.getElementById(DRAWER_ID);
-    if (!d) { d = document.createElement('div'); d.id = DRAWER_ID; d.className = 'biomie-drawer'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); document.body.appendChild(d); }
+    if (!d) { d = document.createElement('div'); d.id = DRAWER_ID; d.className = 'biomie-drawer mag-drawer mag-drawer--right mag-drawer--mobile-medium'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); document.body.appendChild(d); }
     return d;
   }
 
@@ -87,7 +99,10 @@
   function renderBody() {
     var body = document.getElementById('id-body'); if (!body) return;
     if (state.loading) { body.innerHTML = skeleton(); return; }
-    if (!state.data)   { body.innerHTML = '<div class="biomie-drawer__empty">Nota fiscal não encontrada.</div>'; return; }
+    if (!state.data)   {
+      body.innerHTML = '<div class="mag-empty mag-empty--compact"><div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">receipt_long</span></div><strong class="mag-empty-title">Nota fiscal não encontrada</strong><p class="mag-empty-text">Verifique se a NF foi sincronizada do Omie.</p></div>';
+      return;
+    }
     var d = state.data;
     switch (state.tab) {
       case 'resumo':     body.innerHTML = renderResumo(d); break;
@@ -106,6 +121,77 @@
     return '<div class="biomie-drawer__stat"><div class="biomie-drawer__stat-label">' + esc(label) + '</div><div class="biomie-drawer__stat-value">' + esc(String(value ?? '—')) + '</div></div>';
   }
 
+  // H6/T5 — scope badge + business explanation for the NF drawer
+  var SCOPE_BADGE = {
+    commercial: {
+      label: 'Orçamento-PD — base comercial',
+      color: 'var(--green-500,#16a34a)', bg: 'var(--green-50,#f0fdf4)', icon: 'shopping_bag',
+      alertBg: 'var(--green-50,#f0fdf4)', alertBorder: 'var(--green-200,#bbf7d0)',
+      alertColor: 'var(--green-800,#166534)', alertIcon: 'check_circle',
+      explanation: 'Esta NF compõe o faturamento comercial, ranking, mix, metas e Plano de Voo. KPI principal: <strong>Base Comercial NF</strong> (total − frete − outras despesas − seguro). IPI permanece na base.',
+    },
+    remittance: {
+      label: 'Remessa de Produto — conferência fiscal',
+      color: 'var(--yellow-700,#b45309)', bg: 'var(--yellow-50,#fffbeb)', icon: 'local_shipping',
+      alertBg: 'var(--yellow-50,#fffbeb)', alertBorder: 'var(--yellow-200,#fde68a)',
+      alertColor: 'var(--yellow-800,#92400e)', alertIcon: 'info',
+      explanation: 'Esta NF registra movimentação de mercadoria e <strong>não compõe</strong> faturamento comercial, ticket médio, ranking, metas, Plano de Voo, Mix ou Geo.',
+    },
+    unknown: {
+      label: 'Operação não identificada',
+      color: 'var(--text-3,#94a3b8)', bg: 'var(--surface-2,#f8fafc)', icon: 'help_outline',
+      alertBg: 'var(--surface-2,#f8fafc)', alertBorder: 'var(--border,#e2e8f0)',
+      alertColor: 'var(--text-2,#64748b)', alertIcon: 'help_outline',
+      explanation: 'Esta NF está fora dos KPIs comerciais até classificação.',
+    },
+  };
+
+  function renderScopeBadge(inv) {
+    var scope = inv.operation_scope;
+    if (!scope) return '';
+    var cfg = SCOPE_BADGE[scope] || SCOPE_BADGE.unknown;
+    // Raw codes look like "1", "4", "5.915", "6.101" — digits-only or CFOP pattern.
+    var opName = inv.omie_operation_name || '';
+    var isRawCode = /^\d+(\.\d+)?$/.test(opName.trim());
+    var opDetail = (opName && !isRawCode) ? '<div style="font-size:.7rem;margin-top:3px;opacity:.8">' + esc(opName) + '</div>' : '';
+    var badge = '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:.72rem;font-weight:600;color:' + cfg.color + ';background:' + cfg.bg + ';margin-bottom:8px">' +
+      '<span class="material-symbols-rounded" style="font-size:12px;vertical-align:middle">' + cfg.icon + '</span>' + esc(cfg.label) + '</span>';
+    var alert = '<div role="alert" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:8px;background:' + cfg.alertBg + ';border:1px solid ' + cfg.alertBorder + ';font-size:.78rem;color:' + cfg.alertColor + ';margin-bottom:8px">' +
+      '<span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px">' + cfg.alertIcon + '</span>' +
+      '<div>' + cfg.explanation + opDetail + '</div></div>';
+    return badge + alert;
+  }
+
+  function renderComposicaoNF(t, scope) {
+    if (scope !== 'commercial') return '';
+    var zero = '<span style="color:var(--text-3)">R$ 0,00</span>';
+    var frete  = t.freight       && t.freight       !== 0 ? t.freight       : null;
+    var outras = t.other_expenses && t.other_expenses !== 0 ? t.other_expenses : null;
+    var seguro = t.insurance      && t.insurance      !== 0 ? t.insurance      : null;
+    var ipi    = t.ipi            && t.ipi            !== 0 ? t.ipi            : null;
+
+    var freteBadge  = frete  ? ' <span class="nf-freight-indicator" title="NF com frete">+F</span>' : '';
+    var outrasBadge = outras ? ' <span class="nf-outros-indicator" title="NF com outras despesas">+O</span>' : '';
+    var seguroBadge = seguro ? ' <span class="nf-seguro-indicator" title="NF com seguro">+S</span>' : '';
+
+    var rowStyle      = 'display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:.8rem;';
+    var rowStyleMuted = rowStyle + 'color:var(--text-2);';
+    var rowStyleNC    = rowStyle + 'color:var(--yellow-700,#b45309);';
+    var divider       = '<div style="border-top:1px solid var(--border);margin:6px 0"></div>';
+
+    return '<div class="biomie-drawer__section">' +
+      '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:10px">Composição da NF</div>' +
+      '<div style="' + rowStyleMuted + '"><span>Total da NF</span><span>' + fmt(t.total) + '</span></div>' +
+      '<div style="' + rowStyleMuted + '"><span style="display:flex;align-items:center;gap:4px">IPI <span style="font-size:.65rem;color:var(--green-700,#15803d);background:var(--green-50,#f0fdf4);padding:1px 4px;border-radius:3px;font-weight:600">dentro da base</span></span><span>' + (ipi ? fmt(ipi) : zero) + '</span></div>' +
+      '<div style="' + (frete ? rowStyleNC : rowStyleMuted) + '"><span>Frete' + freteBadge + '</span><span>' + (frete ? fmt(frete) : zero) + '</span></div>' +
+      '<div style="' + (outras ? rowStyleNC : rowStyleMuted) + '"><span>Outras despesas' + outrasBadge + '</span><span>' + (outras ? fmt(outras) : zero) + '</span></div>' +
+      '<div style="' + (seguro ? rowStyleNC : rowStyleMuted) + '"><span>Seguro' + seguroBadge + '</span><span>' + (seguro ? fmt(seguro) : zero) + '</span></div>' +
+      divider +
+      '<div style="' + rowStyle + 'font-weight:700"><span style="color:var(--green-700,#15803d)">Base Comercial NF</span><span style="color:var(--green-700,#15803d)">' + fmt(t.base_comercial || t.total) + '</span></div>' +
+      '<div style="font-size:.7rem;color:var(--text-3);margin-top:8px">Frete, outras despesas e seguro não entram na base comercial.</div>' +
+    '</div>';
+  }
+
   function renderResumo(d) {
     var inv = d.invoice || {}, c = d.customer || {}, s = d.seller || {}, t = d.totals || {};
     var o   = d.order || {};
@@ -116,14 +202,19 @@
     var pedidoOrigemBtn = (o.codigo_pedido || o.numero_pedido)
       ? '<button type="button" class="row-inline-link" data-biomie-action="open-order" data-pedido-codigo="' + esc(String(o.codigo_pedido || o.numero_pedido || '')) + '">Ver pedido origem</button>'
       : '';
-    return '<div class="biomie-drawer__section"><div class="biomie-drawer__stats">' +
+    var baseComercialStat = (inv.operation_scope === 'commercial' && t.base_comercial != null)
+      ? stat('Base Comercial NF', fmt(t.base_comercial))
+      : stat('Total NF', fmt(t.total));
+    return renderScopeBadge(inv) +
+    '<div class="biomie-drawer__section"><div class="biomie-drawer__stats">' +
       stat('Número', inv.numero_nfe) + stat('Série', inv.serie_nfe) +
       stat('Status', inv.status_nfe) + stat('Emissão', fmtDate(inv.data_emissao)) +
-      stat('Total', fmt(t.total)) + stat('Desconto', fmt(t.discount)) +
+      baseComercialStat + stat('Desconto', fmt(t.discount)) +
     '</div>' +
     '<div style="margin-top:12px;font-size:.83rem">' + links + '</div>' +
     (pedidoOrigemBtn ? '<div style="margin-top:10px">' + pedidoOrigemBtn + '</div>' : '') +
     '</div>' +
+    renderComposicaoNF(t, inv.operation_scope) +
     '<div class="biomie-drawer__section"><div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px">Cliente</div>' +
       '<div class="biomie-drawer__list-item"><span>Nome</span><span>' + esc(c.name || '—') + '</span></div>' +
       '<div class="biomie-drawer__list-item"><span>Documento</span><span>' + esc(c.document || '—') + '</span></div>' +
@@ -136,7 +227,7 @@
   }
 
   function renderItens(items) {
-    if (!Array.isArray(items) || !items.length) return '<div class="biomie-drawer__empty">Nenhum item encontrado.</div>';
+    if (!Array.isArray(items) || !items.length) return '<div class="mag-empty mag-empty--compact"><div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span></div><p class="mag-empty-text">Nenhum item encontrado nesta NF.</p></div>';
     return '<div style="overflow-x:auto">' + table(
       [th('#'), th('Código'), th('Descrição'), th('Qtd'), th('Un'), th('Total')],
       items.map(function (i) { return [td(i.sequencia_item), td(i.codigo_produto), td(i.descricao_produto), td(i.quantidade), td(i.unidade), td(fmt(i.valor_total_item || i.valor_total || 0))]; })
@@ -144,7 +235,7 @@
   }
 
   function renderFinanceiro(titles) {
-    if (!Array.isArray(titles) || !titles.length) return '<div class="biomie-drawer__empty">Nenhum título financeiro vinculado.</div>';
+    if (!Array.isArray(titles) || !titles.length) return '<div class="mag-empty mag-empty--compact"><div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span></div><p class="mag-empty-text">Nenhum título financeiro vinculado a esta NF.</p></div>';
     return '<div style="overflow-x:auto">' + table(
       [th('Vencimento'), th('Valor'), th('Status'), th('Espécie'), th('Liquidação')],
       titles.map(function (t) { return [td(fmtDate(t.data_vencimento)), td(fmt(t.valor_liquido || t.valor_aberto)), td(t.status_titulo), td(t.especie_documento), td(fmtDate(t.data_liquidacao))]; })
@@ -169,6 +260,11 @@
   // ── Open / close ──────────────────────────────────────────────────────────
   function open(lookup) {
     lookup = lookup || {};
+    lookup = {
+      nota_key: cleanLookupValue(lookup.nota_key),
+      chave_nfe: cleanLookupValue(lookup.chave_nfe),
+      numero_nf: cleanInvoiceNumber(lookup.numero_nf || lookup.codigo || lookup.nf_code)
+    };
     state.tab = 'resumo'; state.data = null; state.loading = true;
     state.openerEl = document.activeElement;
 
@@ -187,6 +283,13 @@
       var closeBtn = document.getElementById('id-close'); if (closeBtn) closeBtn.focus();
       installFocusTrap(drawer);
     }, 80);
+
+    if (!cacheKey) {
+      state.loading = false;
+      state.data = null;
+      renderBody();
+      return;
+    }
 
     if (cacheKey) {
       var cached = fromCache(cacheKey);

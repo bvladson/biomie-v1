@@ -1,0 +1,93 @@
+(function () {
+  'use strict';
+
+  var B = window.BIomie || {};
+  B.ProductDetail = B.ProductDetail || {};
+
+  B.ProductDetail.Charts = {
+
+    /**
+     * Renders the timeline (evolução) tab inside the product drawer body.
+     * Destroys any previous Chart.js instance before rendering.
+     */
+    renderTimeline: function (data) {
+      var T       = B.ProductDetail.Tabs;
+      var rows    = (data && data.timeline) || [];
+      var es      = (data && data.empty_states && data.empty_states.sales) || {};
+
+      if (!rows.length) {
+        return es.is_empty
+          ? (T ? T.empty(es.message || 'Produto sem dados de evolucao no periodo.') : '<div class="biomie-drawer__empty">Produto sem dados de evolucao no periodo.</div>')
+          : '<div class="biomie-drawer__empty">Sem dados de evolucao temporal para este produto.</div>';
+      }
+
+      var canvasId = 'pd-timeline-chart-' + Date.now();
+      var html = '<div class="pd-chart-wrap"><canvas id="' + canvasId + '" height="220"></canvas></div>' +
+        '<div class="pd-chart-note" style="font-size:0.75rem;color:var(--text-3);margin-top:8px;">Base: data_competencia</div>';
+
+      // Defer chart render until after DOM insertion
+      window.setTimeout(function () {
+        B.ProductDetail.Charts._drawTimeline(canvasId, rows);
+      }, 50);
+
+      return html;
+    },
+
+    _drawTimeline: function (canvasId, rows) {
+      var canvas = document.getElementById(canvasId);
+      if (!canvas || !window.Chart) return;
+
+      // Destroy existing instance if any
+      if (B._destroyChart) {
+        try { B._destroyChart(canvasId); } catch (e) {}
+      }
+      if (window.BIOMIE_CHARTS && typeof BIOMIE_CHARTS.destroyChart === 'function') {
+        try { BIOMIE_CHARTS.destroyChart(canvasId); } catch (e) {}
+      }
+
+      var labels   = rows.map(function (r) { return String(r.label || r.bucket || ''); });
+      var revenues = rows.map(function (r) { return Number(r.revenue_raw != null ? r.revenue_raw : (r.revenue || 0)); });
+      var qtys     = rows.map(function (r) { return Number(r.quantity || 0); });
+
+      try {
+        new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Receita (R$)',
+                data: revenues,
+                backgroundColor: 'rgba(59,130,246,0.7)',
+                borderRadius: 4,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Quantidade',
+                data: qtys,
+                type: 'line',
+                borderColor: 'rgba(16,185,129,0.9)',
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                pointRadius: 3,
+                yAxisID: 'y2'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: {
+              y:  { position: 'left',  beginAtZero: true, title: { display: true, text: 'Receita' } },
+              y2: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Qtd' } }
+            }
+          }
+        });
+      } catch (e) {}
+    }
+  };
+
+  window.BIomie = B;
+}());

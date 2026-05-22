@@ -11,6 +11,7 @@ use BIomie\CommercialMaterializationService;
 use BIomie\Config;
 use BIomie\CustomerDimensionMaterializationService;
 use BIomie\Database;
+use BIomie\DataPlatform\Gold\GeoPeriodRebuildService;
 use BIomie\FinanceAnalyticsService;
 use BIomie\FinanceRepository;
 use BIomie\GeoCnaeMaterializationService;
@@ -18,10 +19,12 @@ use BIomie\GoldMartBuilder;
 use BIomie\Logger;
 use BIomie\Omie\OmieExecutionContext;
 use BIomie\OmieClient;
+use BIomie\OmieFinanceCanonicalSyncService;
 use BIomie\OmieFiscalSyncService;
 use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieOrderEventSyncService;
 use BIomie\OmieRepository;
+use BIomie\OmieRealtimeSyncService;
 use BIomie\PipelineStatusRepository;
 use BIomie\RefreshQueue;
 use BIomie\SalesAnalyticsService;
@@ -54,6 +57,7 @@ final class JobRunner
             'finance.snapshot.refresh' => $this->refreshFinance($payload),
             'sales.snapshot.refresh' => $this->refreshSales($payload),
             'webhook.inbox.process' => $this->processWebhookInbox($payload),
+            'omie.delta.sync' => $this->syncDelta($payload),
             'canonical.sync' => $this->syncCanonical($payload),
             'clients.materialize' => $this->materializeClients($payload),
             'geo.materialize' => $this->materializeGeo($payload),
@@ -140,6 +144,57 @@ final class JobRunner
      * @param array<string,mixed> $payload
      * @return array<string,mixed>
      */
+    private function syncDelta(array $payload): array
+    {
+        $this->requireOmieCredentials();
+        $pdo = $this->connectAnalytic();
+        $reconnect = fn () => $this->connectAnalytic();
+        $pipeline = new SyncPipelineRepository($pdo, $this->logger);
+        $pipeline->ensureSchema();
+        $canonical = new CanonicalRepository($pdo, $this->logger, $reconnect);
+        $bronze = new BronzeRepository($pdo, $this->logger);
+        $bronze->ensureSchema();
+        $canonical->ensureFiscalSchema();
+
+        $client = $this->omieClient();
+        $omie = new OmieRepository($client, $this->config, $bronze, 'job-delta-sync');
+        $fiscalSync = new OmieFiscalSyncService($this->config, $omie, $canonical, $this->logger);
+        $eventSync = new OmieOrderEventSyncService($omie, $canonical, $this->logger);
+        $financeRepository = new FinanceRepository($client, $this->config, $this->logger, $this->cache, $bronze, 'job-delta-sync');
+        $financeSync = new OmieFinanceCanonicalSyncService($financeRepository, $canonical, $this->logger);
+        $queue = new RefreshQueue($this->rootDir . '/storage/cache', $this->logger);
+        $finance = new FinanceAnalyticsService($this->config, $this->cache, $this->logger, $financeRepository, $omie, $queue);
+        $service = new OmieRealtimeSyncService(
+            $this->config,
+            $this->logger,
+            $pipeline,
+            $fiscalSync,
+            $eventSync,
+            $financeSync,
+            $finance,
+            $queue
+        );
+
+        $domains = array_values(array_filter(array_map('strval', (array) ($payload['domains'] ?? []))));
+        $runId = trim((string) ($payload['run_id'] ?? ''));
+        $result = $service->runDelta($domains, null, $runId !== '' ? $runId : null);
+        if (empty($result['ok'])) {
+            throw new RuntimeException('Sync delta Omie falhou.');
+        }
+
+        return $result + [
+            'ok' => true,
+            'type' => 'omie.delta.sync',
+            'domains' => $domains,
+            'run_id' => $runId !== '' ? $runId : null,
+            'generated_at' => date(DATE_ATOM),
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>
+     */
     private function syncCanonical(array $payload): array
     {
         $this->requireOmieCredentials();
@@ -191,15 +246,19 @@ final class JobRunner
     private function materializeGeo(array $payload): array
     {
         $range = $this->range($payload);
-        $canonical = new CanonicalRepository($this->connectAnalytic(), $this->logger);
-        $missingTables = $canonical->missingGeoAnalyticsTables();
-        if ($missingTables !== []) {
-            throw new RuntimeException('Tabelas geograficas ausentes: ' . implode(', ', $missingTables));
+        $service = new GeoPeriodRebuildService($this->connectAnalytic(), $this->logger);
+        $result = $service->rebuild($range['start'], $range['end'], [
+            'assert' => (bool) ($payload['assert'] ?? true),
+            'allow_open_month' => (bool) ($payload['allow_open_month'] ?? true),
+            'force_full_month' => (bool) ($payload['force_full_month'] ?? false),
+            'actor_user_id' => isset($payload['actor_user_id']) ? (int) $payload['actor_user_id'] : null,
+            'source' => 'job_runner_geo.materialize',
+        ]);
+        if (empty($result['ok'])) {
+            throw new RuntimeException('Materializacao geo falhou: ' . implode('; ', array_map('strval', (array) ($result['errors'] ?? []))));
         }
 
-        $canonical->reconstructGeoFactTables($range['start'], $range['end']);
-        return [
-            'ok' => true,
+        return $result + [
             'type' => 'geo.materialize',
             'start' => $range['start'],
             'end' => $range['end'],

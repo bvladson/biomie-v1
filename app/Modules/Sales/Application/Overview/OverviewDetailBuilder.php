@@ -137,18 +137,23 @@ final class OverviewDetailBuilder
     private function handleRevenueEvolution(string $start, string $end, array $filters, int $limit, int $offset): array
     {
         $dateFilter = $filters['date'] ?? '';
-        $where = ['n.data_emissao >= :start', 'n.data_emissao <= :end'];
+        $where = ["n.status_fiscal = 'autorizada'", 'n.data_competencia >= :start', 'n.data_competencia <= :end'];
         $params = [':start' => $start, ':end' => $end];
 
         if ($dateFilter !== '') {
-            $where[] = 'n.data_emissao = :date_filter';
+            $where[] = 'n.data_competencia = :date_filter';
             $params[':date_filter'] = $dateFilter;
         }
 
-        $sql = 'SELECT n.numero_nf AS code, n.data_emissao AS date, n.valor_total AS revenue,
+        $sql = 'SELECT n.nota_key,
+                       n.chave_nfe,
+                       n.numero_nf,
+                       n.numero_nf AS code,
+                       n.data_competencia AS date,
+                       n.valor_total AS revenue,
                        COALESCE(n.nome_vendedor, \'Nao identificado\') AS vendor_name,
                        COALESCE(n.nome_cliente, \'Cliente nao informado\') AS client
-                FROM mart_fiscal_nfe n
+                FROM biomie_notas_fiscais_canonicas n
                 WHERE ' . implode(' AND ', $where) . '
                 ORDER BY n.valor_total DESC
                 LIMIT :lim OFFSET :off';
@@ -171,13 +176,18 @@ final class OverviewDetailBuilder
      */
     private function handleVendorRanking(string $start, string $end, array $filters, int $limit, int $offset): array
     {
-        $sql = 'SELECT COALESCE(n.nome_vendedor, \'Nao identificado\') AS vendor_name,
+        $sql = 'SELECT COALESCE(NULLIF(n.codigo_vendedor_omie, \'\'), \'__SEM_VENDEDOR__\') AS vendor_id,
+                       COALESCE(NULLIF(n.nome_vendedor, \'\'), \'Nao identificado\') AS vendor_name,
                        COUNT(*) AS orders,
+                       COUNT(*) AS invoices_count,
+                       COUNT(DISTINCT COALESCE(NULLIF(CAST(n.codigo_cliente_omie AS CHAR), \'\'), NULLIF(n.documento_cliente, \'\'), NULLIF(n.nome_cliente, \'\'))) AS customers_count,
                        SUM(n.valor_total) AS revenue,
                        AVG(n.valor_total) AS ticket
-                FROM mart_fiscal_nfe n
-                WHERE n.data_emissao >= :start AND n.data_emissao <= :end
-                GROUP BY vendor_name
+                FROM biomie_notas_fiscais_canonicas n
+                WHERE n.status_fiscal = \'autorizada\'
+                  AND n.data_competencia >= :start
+                  AND n.data_competencia <= :end
+                GROUP BY vendor_id, vendor_name
                 ORDER BY revenue DESC
                 LIMIT :lim OFFSET :off';
 
@@ -274,8 +284,52 @@ final class OverviewDetailBuilder
     {
         $sourceTables = [];
         $rows = [];
+        $hasCanonicalInvoices = $this->tableExists('biomie_notas_fiscais_canonicas');
 
-        if ($this->tableExists('mart_fiscal_nfe')) {
+        if ($hasCanonicalInvoices) {
+            $itemsJoin = $this->tableExists('biomie_notas_fiscais_itens_canonicos')
+                ? 'LEFT JOIN (SELECT nota_key, COUNT(*) AS items_qty FROM biomie_notas_fiscais_itens_canonicos GROUP BY nota_key) i ON i.nota_key = n.nota_key'
+                : '';
+            $itemsExpr = $itemsJoin !== '' ? 'COALESCE(i.items_qty, n.quantidade_itens, 0)' : 'COALESCE(n.quantidade_itens, 0)';
+            $sourceTables[] = 'biomie_notas_fiscais_canonicas';
+            if ($itemsJoin !== '') {
+                $sourceTables[] = 'biomie_notas_fiscais_itens_canonicos';
+            }
+
+            $sql = "SELECT n.nota_key,
+                           n.chave_nfe,
+                           n.numero_nf AS code,
+                           n.numero_nf AS numero_nf,
+                           n.serie_nf AS serie,
+                           n.chave_nfe AS document_key,
+                           n.data_competencia AS issue_date,
+                           COALESCE(n.nome_cliente, 'Cliente nao informado') AS client,
+                           n.documento_cliente AS customer_document,
+                           COALESCE(n.nome_vendedor, 'Nao identificado') AS vendor_name,
+                           {$itemsExpr} AS items_qty,
+                           n.valor_total AS total,
+                           n.valor_mercadorias AS merchandise_total,
+                           n.valor_descontos AS discount_total,
+                           n.codigo_pedido_origem AS origin_order_code
+                    FROM biomie_notas_fiscais_canonicas n
+                    {$itemsJoin}
+                    WHERE n.status_fiscal = 'autorizada'
+                      AND n.data_competencia >= :start
+                      AND n.data_competencia <= :end
+                    ORDER BY n.valor_total DESC
+                    LIMIT :lim OFFSET :off";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':start', $start);
+            $stmt->bindValue(':end', $end);
+            $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
+            $stmt->bindValue(':off', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        }
+
+        if ($rows === [] && !$hasCanonicalInvoices && $this->tableExists('mart_fiscal_nfe')) {
+            $sourceTables = ['mart_fiscal_nfe'];
             $itemsJoin = $this->tableExists('biomie_notas_fiscais_itens_canonicos')
                 ? 'LEFT JOIN (SELECT nota_key, COUNT(*) AS items_qty FROM biomie_notas_fiscais_itens_canonicos GROUP BY nota_key) i ON i.nota_key = n.nota_key'
                 : '';
@@ -284,7 +338,6 @@ final class OverviewDetailBuilder
                 ? 'LEFT JOIN mart_bridge_pedido_nfe_titulo b ON b.nota_key = n.nota_key'
                 : '';
             $bridgeExpr = $bridgeJoin !== '' ? "COALESCE(b.codigo_pedido, '')" : "''";
-            $sourceTables[] = 'mart_fiscal_nfe';
             if ($itemsJoin !== '') {
                 $sourceTables[] = 'biomie_notas_fiscais_itens_canonicos';
             }
@@ -307,46 +360,6 @@ final class OverviewDetailBuilder
                     FROM mart_fiscal_nfe n
                     {$itemsJoin}
                     {$bridgeJoin}
-                    WHERE COALESCE(n.data_competencia, n.data_emissao) >= :start
-                      AND COALESCE(n.data_competencia, n.data_emissao) <= :end
-                    ORDER BY n.valor_total DESC
-                    LIMIT :lim OFFSET :off";
-
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->bindValue(':start', $start);
-            $stmt->bindValue(':end', $end);
-            $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
-            $stmt->bindValue(':off', $offset, \PDO::PARAM_INT);
-            $stmt->execute();
-            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
-        }
-
-        if ($rows === [] && $this->tableExists('biomie_notas_fiscais_canonicas')) {
-            $sourceTables = ['biomie_notas_fiscais_canonicas'];
-            $itemsJoin = $this->tableExists('biomie_notas_fiscais_itens_canonicos')
-                ? 'LEFT JOIN (SELECT nota_key, COUNT(*) AS items_qty FROM biomie_notas_fiscais_itens_canonicos GROUP BY nota_key) i ON i.nota_key = n.nota_key'
-                : '';
-            $itemsExpr = $itemsJoin !== '' ? 'COALESCE(i.items_qty, n.quantidade_itens, 0)' : 'COALESCE(n.quantidade_itens, 0)';
-            if ($itemsJoin !== '') {
-                $sourceTables[] = 'biomie_notas_fiscais_itens_canonicos';
-            }
-
-            $sql = "SELECT n.nota_key,
-                           n.numero_nf AS code,
-                           n.numero_nf AS numero_nf,
-                           n.serie_nf AS serie,
-                           n.chave_nfe AS document_key,
-                           COALESCE(n.data_competencia, n.data_emissao) AS issue_date,
-                           COALESCE(n.nome_cliente, 'Cliente nao informado') AS client,
-                           n.documento_cliente AS customer_document,
-                           COALESCE(n.nome_vendedor, 'Nao identificado') AS vendor_name,
-                           {$itemsExpr} AS items_qty,
-                           n.valor_total AS total,
-                           n.valor_mercadorias AS merchandise_total,
-                           n.valor_descontos AS discount_total,
-                           n.codigo_pedido_origem AS origin_order_code
-                    FROM biomie_notas_fiscais_canonicas n
-                    {$itemsJoin}
                     WHERE COALESCE(n.data_competencia, n.data_emissao) >= :start
                       AND COALESCE(n.data_competencia, n.data_emissao) <= :end
                     ORDER BY n.valor_total DESC

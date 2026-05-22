@@ -86,7 +86,7 @@
     if (!drawer) {
       drawer = document.createElement('div');
       drawer.id = DRAWER_ID;
-      drawer.className = 'biomie-drawer';
+      drawer.className = 'biomie-drawer mag-drawer mag-drawer--right mag-drawer--mobile-medium';
       drawer.setAttribute('role', 'dialog');
       drawer.setAttribute('aria-modal', 'true');
       drawer.setAttribute('aria-labelledby', 'cd-title');
@@ -135,11 +135,18 @@
       return;
     }
     if (state.error) {
-      body.innerHTML = '<div class="biomie-drawer__empty"><strong>' + esc(EMPTY) + '</strong><br>' + esc(state.error) + '</div>';
+      body.innerHTML = '<div class="mag-empty mag-empty--compact">' +
+        '<div class="mag-empty-icon" style="background:rgba(220,38,38,.1);color:#b91c1c"><span class="material-symbols-rounded" aria-hidden="true">error</span></div>' +
+        '<strong class="mag-empty-title">Erro ao carregar cliente</strong>' +
+        '<p class="mag-empty-text">' + esc(state.error) + '</p>' +
+        '</div>';
       return;
     }
     if (!state.data) {
-      body.innerHTML = '<div class="biomie-drawer__empty">' + esc(EMPTY) + '</div>';
+      body.innerHTML = '<div class="mag-empty mag-empty--compact">' +
+        '<div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">person_off</span></div>' +
+        '<p class="mag-empty-text">' + esc(EMPTY) + '</p>' +
+        '</div>';
       return;
     }
 
@@ -338,12 +345,15 @@
 
   function emptyWithDiagnostics(message) {
     var diag = state.data && state.data.meta ? renderDiagnostics(state.data.meta) : '';
-    return '<div class="biomie-drawer__empty"><strong>' + esc(EMPTY) + '</strong><br>' + esc(message) + '</div>' + diag;
+    return '<div class="mag-empty mag-empty--compact">' +
+      '<div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">inbox</span></div>' +
+      '<p class="mag-empty-text">' + esc(message) + '</p>' +
+      '</div>' + diag;
   }
 
   function table(headers, rows, cellsMayContainHtml) {
     return '<div style="overflow-x:auto">' +
-      '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>' +
+      '<table data-mobile-card-table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>' +
       headers.map(function (h) { return '<th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-3);font-weight:700;white-space:nowrap">' + esc(h) + '</th>'; }).join('') +
       '</tr></thead><tbody>' +
       rows.map(function (row) {

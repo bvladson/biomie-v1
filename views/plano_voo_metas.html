@@ -3,19 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f6f3f2" />
   <meta name="description" content="Metas comerciais por vendedor para acompanhamento da rota comercial." />
   <meta name="application-name" content="BIomie" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="BIomie" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Metas Comerciais | BIomie MAG</title>
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
-  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -23,11 +18,11 @@
   <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
-  <link rel="stylesheet" href="assets/css/finance-realizado.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-p17" />
-<script src="assets/js/shell.js?v=20260425-ui1"></script>
-<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
-<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
+  <link rel="stylesheet" href="assets/css/flight-plan-clean.css" />
+  <script src="assets/js/shell.js?v=20260425-ui1"></script>
+  <script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+  <script src="assets/js/biomie-states.js?v=20260502-p16"></script>
   <script src="assets/js/flight-plan-targets.js?v=20260404w6" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
 </head>
@@ -35,81 +30,134 @@
 <div class="overlay" id="overlay"></div>
 <div class="shell">
   <div class="main">
-    <header class="topbar">
-      <div class="topbar-left">
-        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
-          <span class="material-symbols-rounded">menu</span>
-        </button>
-        <div class="topbar-badge">
-          <span class="material-symbols-rounded">target</span>Metas Comerciais
+    <main class="page" style="padding:0;background:var(--surface-muted);min-height:60vh;">
+
+      <!-- Page Header -->
+      <div class="fp-header-clean mag-clean-header" style="border-bottom:1px solid var(--border);">
+        <div>
+          <h1 style="font-size:1.15rem;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:20px;color:var(--page-accent);">target</span>
+            Metas Comerciais
+          </h1>
+          <p style="margin:0;font-size:0.85rem;color:var(--text-2);">
+            Defina a meta mensal de cada vendedor. A Rota Comercial usa esses valores para ritmo e projecoes.
+          </p>
+        </div>
+        <div class="fp-header-actions">
+          <a href="vendedores.php" class="biomie-btn biomie-btn--secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
+            <span class="material-symbols-rounded" style="font-size:17px">groups</span>Ver equipe
+          </a>
+          <a href="plano_voo.php" class="biomie-btn biomie-btn--secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
+            <span class="material-symbols-rounded" style="font-size:17px">flight</span>Rota Comercial
+          </a>
         </div>
       </div>
-      <div class="topbar-actions">
-        <a href="plano_voo.php" class="btn-secondary btn-sm"><span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span>Voltar</a>
-        <span id="loadingIndicator" class="topbar-loading" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)"><span class="material-symbols-rounded spin-icon">sync</span>Carregando...</span>
-      </div>
-    </header>
-    <main class="page">
-      <div class="filter-bar anim d1">
-        <div class="filter-group"><label class="filter-label">Mes de referencia</label><input id="dateStart" type="month" class="filter-input" /></div>
-        <div class="filter-group" style="min-width:240px">
+
+      <!-- Filters -->
+      <div class="fp-filters-clean anim d1">
+        <div class="filter-group">
+          <label class="filter-label">Mes de referencia</label>
+          <input id="dateStart" type="month" class="filter-input" />
+        </div>
+        <div class="filter-group" style="min-width:220px">
           <label class="filter-label">Buscar vendedor</label>
-          <input id="targetSellerSearch" type="search" class="filter-input" placeholder="Nome ou codigo do vendedor" />
+          <input id="targetSellerSearch" type="search" class="filter-input" placeholder="Nome ou codigo" />
         </div>
-        <div class="filter-actions">
-          <button id="syncNow" type="button" class="btn-secondary"><span class="material-symbols-rounded">sync</span>Atualizar lista</button>
+        <div style="flex-grow:1"></div>
+        <button id="syncNow" type="button" class="biomie-btn biomie-btn--secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
+          <span class="material-symbols-rounded" style="font-size:17px">sync</span>Atualizar
+        </button>
+        <span id="loadingIndicator" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
+          <span class="material-symbols-rounded spin-icon" style="font-size:16px">sync</span>Carregando...
+        </span>
+      </div>
+
+      <!-- Summary Chips -->
+      <div class="fp-kpi-strip anim d2" style="padding:16px 24px;gap:12px;">
+        <div class="fp-kpi-card" style="padding:12px 16px;height:auto;">
+          <div class="fp-kpi-label">Mes ativo</div>
+          <div class="fp-kpi-value" style="font-size:1rem;" id="targetsMonthChip">-</div>
+        </div>
+        <div class="fp-kpi-card" style="padding:12px 16px;height:auto;">
+          <div class="fp-kpi-label">Vendedores</div>
+          <div class="fp-kpi-value" style="font-size:1rem;" id="targetsSellerCount">0</div>
+          <div class="fp-kpi-sub">no radar</div>
+        </div>
+        <div class="fp-kpi-card" style="padding:12px 16px;height:auto;">
+          <div class="fp-kpi-label">Metas definidas</div>
+          <div class="fp-kpi-value" style="font-size:1rem;" id="targetsConfiguredCount">0</div>
+          <div class="fp-kpi-sub" style="color:var(--warning,#c58c00);"><span id="targetsMissingCount">0</span> pendentes</div>
+        </div>
+        <div class="fp-kpi-card" style="padding:12px 16px;height:auto;border-left:3px solid var(--page-accent);">
+          <div class="fp-kpi-label">Meta consolidada</div>
+          <div class="fp-kpi-value" style="font-size:1rem;" id="targetsTeamTarget">R$ 0,00</div>
+        </div>
+        <div class="fp-kpi-card" style="padding:12px 16px;height:auto;">
+          <div class="fp-kpi-label">Modo</div>
+          <div class="fp-kpi-value" style="font-size:0.85rem;font-weight:600;" id="targetsModeChip">-</div>
+        </div>
+        <div style="flex-grow:1"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="targetsSaveStatus" class="module-alert" style="display:none"></span>
         </div>
       </div>
-      <div class="control-meta-strip anim d2" style="margin-bottom:18px">
-        <span class="control-chip"><span class="material-symbols-rounded">calendar_month</span><strong id="targetsMonthChip">-</strong> mes ativo</span>
-        <span class="control-chip"><span class="material-symbols-rounded">lock</span><strong id="targetsModeChip">-</strong> modo</span>
-        <span class="control-chip"><span class="material-symbols-rounded">groups</span><strong id="targetsSellerCount">0</strong> vendedores no radar</span>
-        <span class="control-chip"><span class="material-symbols-rounded">target</span><strong id="targetsConfiguredCount">0</strong> metas definidas</span>
-        <span class="control-chip"><span class="material-symbols-rounded">warning</span><strong id="targetsMissingCount">0</strong> pendentes</span>
-        <span class="control-chip"><span class="material-symbols-rounded">payments</span><strong id="targetsTeamTarget">R$ 0,00</strong> meta consolidada</span>
+
+      <!-- Targets Table -->
+      <div style="padding:0 24px 24px;" class="anim d3">
+        <div class="fp-card">
+          <div class="fp-card-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+            <div>
+              <h3>Metas mensais por vendedor</h3>
+              <small>Atualize apenas o mes em foco. Campo em branco nao altera a meta cadastrada.</small>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button id="saveAllTargets" class="biomie-btn biomie-btn--primary" style="display:none;align-items:center;gap:6px;font-size:0.85rem;">
+                <span class="material-symbols-rounded" style="font-size:17px">save</span>Salvar todas
+              </button>
+            </div>
+          </div>
+          <div class="fp-table-wrapper">
+            <table class="fp-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left">Vendedor</th>
+                  <th>Meta atual</th>
+                  <th>Nova meta (R$)</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="targetsFormTable">
+                <tr>
+                  <td colspan="5" style="padding:20px 16px;">
+                    <div class="module-loading-table">
+                      <div class="module-loading-row">
+                        <span class="skeleton-line md" style="width:30%"></span>
+                        <span class="skeleton-line md" style="width:16%"></span>
+                        <span class="skeleton-line md" style="width:20%"></span>
+                        <span class="skeleton-line md" style="width:14%"></span>
+                      </div>
+                      <div class="module-loading-row">
+                        <span class="skeleton-line md" style="width:24%"></span>
+                        <span class="skeleton-line md" style="width:18%"></span>
+                        <span class="skeleton-line md" style="width:22%"></span>
+                        <span class="skeleton-line md" style="width:12%"></span>
+                      </div>
+                      <div class="module-loading-row">
+                        <span class="skeleton-line md" style="width:28%"></span>
+                        <span class="skeleton-line md" style="width:14%"></span>
+                        <span class="skeleton-line md" style="width:18%"></span>
+                        <span class="skeleton-line md" style="width:16%"></span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <div class="section-label anim d2" id="metas">Metas da equipe</div>
-      <section class="chart-card flight-table-card anim d3" id="targetsSection">
-        <div class="chart-card-header">
-          <div>
-            <h3>Metas mensais por vendedor</h3>
-            <small>Atualize apenas o mes em foco. A Rota Comercial usa esses valores para calcular cobertura, ritmo e projecoes.</small>
-          </div>
-          <div class="topbar-actions">
-            <span id="targetsSaveStatus" class="module-alert" style="display:none"></span>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="flight-table">
-            <thead>
-              <tr>
-                <th>Vendedor</th>
-                <th>Meta atual</th>
-                <th>Nova meta mes (R$)</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="targetsFormTable">
-              <tr>
-                <td colspan="5" class="empty-row">
-                  <div class="module-loading-table" style="padding:10px 0">
-                    <div class="module-loading-row"><span class="skeleton-line md" style="width:28%"></span><span class="skeleton-line md" style="width:16%"></span><span class="skeleton-line md" style="width:20%"></span><span class="skeleton-line md" style="width:14%"></span></div>
-                    <div class="module-loading-row"><span class="skeleton-line md" style="width:24%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:22%"></span><span class="skeleton-line md" style="width:12%"></span></div>
-                    <div class="module-loading-row"><span class="skeleton-line md" style="width:26%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:16%"></span></div>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div style="padding: 12px 20px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button id="saveAllTargets" class="btn-primary" style="display:none">
-            <span class="material-symbols-rounded">save</span>Salvar metas
-          </button>
-          <small style="color:var(--text-secondary)">Mes fechado fica somente leitura. Campo em branco nao altera a meta cadastrada e a atualizacao reflete na pagina da Rota Comercial.</small>
-        </div>
-      </section>
+
     </main>
   </div>
 </div>
@@ -124,4 +172,3 @@
 </script>
 </body>
 </html>
-

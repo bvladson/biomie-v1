@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Support\SecretMask;
 use PDO;
 
 final class SyncPipelineRepository
@@ -153,6 +154,7 @@ final class SyncPipelineRepository
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
 
+        $this->ensurePhase7Columns();
         $this->schemaReady = true;
     }
 
@@ -330,6 +332,10 @@ final class SyncPipelineRepository
     {
         $this->ensureSchema();
 
+        if (array_key_exists('last_error', $values) && $values['last_error'] !== null) {
+            $values['last_error'] = SecretMask::sanitizeErrorMessage((string) $values['last_error'], 500);
+        }
+
         $current = $this->getCursor($domain, $endpointGroup);
         $record = SyncCursorState::merge($current, $domain, $endpointGroup, $values);
 
@@ -453,7 +459,10 @@ final class SyncPipelineRepository
             'context_json' => $contextJson,
         ]);
 
-        return (int) $this->pdo->lastInsertId();
+        $id = (int) $this->pdo->lastInsertId();
+        $this->updateRunOperationalMeta($id, $runType, $domain, $context);
+
+        return $id;
     }
 
     /**
@@ -466,6 +475,7 @@ final class SyncPipelineRepository
         ?string $error = null,
     ): void {
         $this->ensureSchema();
+        $error = $error !== null ? SecretMask::sanitizeErrorMessage($error, 500) : null;
 
         $stmt = $this->pdo->prepare(<<<'SQL'
             UPDATE biomie_sync_runs
@@ -488,6 +498,8 @@ final class SyncPipelineRepository
             'result_json' => $result !== [] ? OperationalPayloadFingerprint::encodeJson(OperationalPayloadFingerprint::normalizeValue($result)) : null,
             'error_summary' => $error,
         ]);
+
+        $this->updateRunFinishMeta($runId, $result, $error);
     }
 
     /**
@@ -576,6 +588,151 @@ final class SyncPipelineRepository
         return is_array($row) ? $row : null;
     }
 
+    private function ensurePhase7Columns(): void
+    {
+        foreach ([
+            [self::TABLE_SYNC_RUNS, 'run_id', 'VARCHAR(80) NULL'],
+            [self::TABLE_SYNC_RUNS, 'duration_ms', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'records_seen', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'records_inserted', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'records_updated', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'records_skipped', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'records_failed', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'pages_processed', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_RUNS, 'cursor_before', 'LONGTEXT NULL'],
+            [self::TABLE_SYNC_RUNS, 'cursor_after', 'LONGTEXT NULL'],
+            [self::TABLE_SYNC_RUNS, 'window_start', 'DATETIME NULL'],
+            [self::TABLE_SYNC_RUNS, 'window_end', 'DATETIME NULL'],
+            [self::TABLE_SYNC_RUNS, 'error_code', 'VARCHAR(80) NULL'],
+            [self::TABLE_SYNC_RUNS, 'error_message_sanitized', 'TEXT NULL'],
+            [self::TABLE_SYNC_RUNS, 'request_id', 'VARCHAR(80) NULL'],
+            [self::TABLE_SYNC_RUNS, 'triggered_by', 'VARCHAR(40) NULL'],
+            [self::TABLE_SYNC_CURSORS, 'entity_type', 'VARCHAR(64) NULL'],
+            [self::TABLE_SYNC_CURSORS, 'cursor_key', 'VARCHAR(120) NULL'],
+            [self::TABLE_SYNC_CURSORS, 'cursor_value', 'LONGTEXT NULL'],
+            [self::TABLE_SYNC_CURSORS, 'last_attempt_at', 'DATETIME NULL'],
+            [self::TABLE_SYNC_CURSORS, 'last_error_at', 'DATETIME NULL'],
+            [self::TABLE_SYNC_CURSORS, 'last_error_message_sanitized', 'TEXT NULL'],
+            [self::TABLE_SYNC_CURSORS, 'last_run_id', 'VARCHAR(80) NULL'],
+            [self::TABLE_SYNC_CURSORS, 'records_total', 'INT UNSIGNED NULL'],
+            [self::TABLE_SYNC_CURSORS, 'is_stale', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            [self::TABLE_WEBHOOK_INBOX, 'provider', 'VARCHAR(64) NULL'],
+            [self::TABLE_WEBHOOK_INBOX, 'event_id', 'VARCHAR(160) NULL'],
+            [self::TABLE_WEBHOOK_INBOX, 'event_type', 'VARCHAR(120) NULL'],
+            [self::TABLE_WEBHOOK_INBOX, 'payload_sanitized', 'LONGTEXT NULL'],
+            [self::TABLE_WEBHOOK_INBOX, 'job_id', 'VARCHAR(80) NULL'],
+            [self::TABLE_WEBHOOK_INBOX, 'request_id', 'VARCHAR(80) NULL'],
+            [self::TABLE_WEBHOOK_INBOX, 'failed_at', 'DATETIME NULL'],
+        ] as [$table, $column, $definition]) {
+            $this->maybeAddColumn($table, $column, $definition);
+        }
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     */
+    private function updateRunOperationalMeta(int $id, string $runType, string $domain, array $context): void
+    {
+        $assignments = [];
+        $params = ['id' => $id];
+        $values = [
+            'run_id' => (string) ($context['run_id'] ?? $context['correlation_id'] ?? RequestContext::id()),
+            'triggered_by' => (string) ($context['trigger_source'] ?? 'cron'),
+            'request_id' => RequestContext::id(),
+            'window_start' => ($context['period_start'] ?? null) ?: null,
+            'window_end' => ($context['period_end'] ?? null) ?: null,
+        ];
+
+        foreach ($values as $column => $value) {
+            if ($this->columnExists(self::TABLE_SYNC_RUNS, $column)) {
+                $assignments[] = "{$column} = :{$column}";
+                $params[$column] = $value;
+            }
+        }
+        if ($assignments === []) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('UPDATE biomie_sync_runs SET ' . implode(', ', $assignments) . ' WHERE id = :id');
+        $stmt->execute($params);
+    }
+
+    /**
+     * @param array<string,mixed> $result
+     */
+    private function updateRunFinishMeta(int $id, array $result, ?string $error): void
+    {
+        $assignments = [];
+        $params = ['id' => $id];
+        $values = [
+            'duration_ms' => isset($result['duration_ms']) ? (int) $result['duration_ms'] : null,
+            'records_seen' => (int) ($result['items_discovered'] ?? $result['records_seen'] ?? 0),
+            'records_inserted' => (int) ($result['records_inserted'] ?? $result['inserted'] ?? 0),
+            'records_updated' => (int) ($result['records_updated'] ?? $result['updated'] ?? 0),
+            'records_skipped' => (int) ($result['records_skipped'] ?? $result['skipped'] ?? 0),
+            'records_failed' => (int) ($result['items_failed'] ?? $result['records_failed'] ?? 0),
+            'pages_processed' => (int) ($result['pages_processed'] ?? 0),
+            'error_code' => $error !== null ? $this->errorCode($error) : null,
+            'error_message_sanitized' => $error,
+        ];
+
+        foreach ($values as $column => $value) {
+            if ($this->columnExists(self::TABLE_SYNC_RUNS, $column)) {
+                $assignments[] = "{$column} = :{$column}";
+                $params[$column] = $value;
+            }
+        }
+        if ($assignments === []) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('UPDATE biomie_sync_runs SET ' . implode(', ', $assignments) . ' WHERE id = :id');
+        $stmt->execute($params);
+    }
+
+    private function maybeAddColumn(string $table, string $column, string $definition): void
+    {
+        if (!$this->tableExists($table) || $this->columnExists($table, $column)) {
+            return;
+        }
+
+        try {
+            $this->pdo->exec(sprintf('ALTER TABLE `%s` ADD COLUMN `%s` %s', $table, $column, $definition));
+        } catch (\Throwable $exception) {
+            $this->logger->warning('SyncPipelineRepository: falha ao aplicar coluna expansiva.', [
+                'table' => $table,
+                'column' => $column,
+                'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 160),
+            ]);
+        }
+    }
+
+    private function tableExists(string $table): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
+        $stmt->execute([$table]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+        $stmt->execute([$table, $column]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    private function errorCode(string $error): string
+    {
+        $lower = mb_strtolower($error);
+        return match (true) {
+            str_contains($lower, 'timeout') => 'timeout',
+            str_contains($lower, '429'), str_contains($lower, 'rate') => 'rate_limit',
+            str_contains($lower, 'credencial'), str_contains($lower, 'app_key'), str_contains($lower, 'app_secret') => 'credentials_error',
+            str_contains($lower, 'schema'), str_contains($lower, 'tabela') => 'schema_error',
+            default => 'sync_error',
+        };
+    }
+
     /**
      * @param array<string,mixed> $result
      */
@@ -587,6 +744,7 @@ final class SyncPipelineRepository
         array $result,
     ): void {
         $this->ensureSchema();
+        $message = $message !== null ? SecretMask::sanitizeErrorMessage($message, 500) : null;
 
         $availableAt = $status === 'falhou_temporariamente'
             ? date('Y-m-d H:i:s', time() + max($delaySeconds, 60))

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie\DataPlatform\Silver\Readers;
 
+use BIomie\Support\OperationScopeEnforcedException;
 use Closure;
 use PDO;
 use RuntimeException;
@@ -76,6 +77,7 @@ final class CanonicalReadSupport
             WHERE nota.status_fiscal = 'autorizada'
               AND nota.data_competencia BETWEEN :start AND :end
         SQL;
+        $sql .= $this->commercialScopeFilter('nota.');
 
         if ($productCode !== null && trim($productCode) !== '') {
             $sql .= ' AND item.codigo_produto = :product_code';
@@ -134,6 +136,8 @@ final class CanonicalReadSupport
                 ON nota.nota_key = item.nota_key
             WHERE nota.status_fiscal = 'autorizada'
               AND nota.data_competencia BETWEEN :start AND :end
+        SQL . $this->commercialScopeFilter('nota.') . <<<'SQL'
+
             GROUP BY product_code, description
             ORDER BY revenue DESC, quantity DESC, description ASC
             LIMIT :limit
@@ -156,10 +160,13 @@ final class CanonicalReadSupport
                 COUNT(*) AS notes_count,
                 COALESCE(SUM(valor_total), 0) AS invoice_total,
                 COALESCE(SUM(valor_mercadorias), 0) AS merchandise_total,
-                COALESCE(SUM(valor_descontos), 0) AS discount_total
+                COALESCE(SUM(valor_descontos), 0) AS discount_total,
+                MAX(data_competencia) AS last_purchase
             FROM biomie_notas_fiscais_canonicas
             WHERE status_fiscal = 'autorizada'
               AND data_competencia BETWEEN :start AND :end
+        SQL . $this->commercialScopeFilter() . <<<'SQL'
+
             GROUP BY codigo_cliente_omie, client_name, client_document
             ORDER BY invoice_total DESC, notes_count DESC, client_name ASC
             LIMIT :limit
@@ -174,6 +181,19 @@ final class CanonicalReadSupport
 
     public function invoiceSelectSql(): string
     {
+        // Fase O: include fiscal basis columns when available; fall back to 0 for pre-migration rows.
+        // Fase O.1: also include pre-computed base + boolean flags when available.
+        $hasFiscal = $this->fiscalBasisColumnsAvailable();
+        $hasPreComp = $this->preComputedBaseAvailable();
+
+        $fiscalCols = $hasFiscal
+            ? "                nf.valor_ipi,\n                nf.valor_frete,\n                nf.valor_outras_despesas,\n                nf.valor_seguro\n        "
+            : "                0 AS valor_ipi,\n                0 AS valor_frete,\n                0 AS valor_outras_despesas,\n                0 AS valor_seguro\n        ";
+
+        $preCompCols = $hasPreComp
+            ? ",\n                nf.valor_base_comercial_nf,\n                nf.has_frete,\n                nf.has_outras_despesas,\n                nf.has_seguro,\n                nf.has_componentes_nao_comissionaveis,\n                nf.fiscal_basis_source\n        "
+            : ",\n                NULL AS valor_base_comercial_nf,\n                0 AS has_frete,\n                0 AS has_outras_despesas,\n                0 AS has_seguro,\n                0 AS has_componentes_nao_comissionaveis,\n                NULL AS fiscal_basis_source\n        ";
+
         return <<<'SQL'
             SELECT
                 nf.nota_key,
@@ -200,9 +220,8 @@ final class CanonicalReadSupport
                 nf.valor_total,
                 nf.valor_mercadorias,
                 nf.valor_descontos,
-                nf.quantidade_itens
-
-        SQL;
+                nf.quantidade_itens,
+        SQL . "\n" . $fiscalCols . $preCompCols;
     }
 
     public function pendingOrderSelectSql(): string
@@ -249,6 +268,7 @@ final class CanonicalReadSupport
         SQL;
 
         $params = ['status' => $status, 'start' => $start, 'end' => $end];
+        $sql .= $this->commercialScopeFilter();
         if ($vendorId !== null && $vendorId !== '') {
             $sql .= ' AND codigo_vendedor_omie = :vendor_id';
             $params['vendor_id'] = $vendorId;
@@ -283,6 +303,154 @@ final class CanonicalReadSupport
         ]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Fase H — retorna cláusula SQL para filtrar escopo comercial.
+     *
+     * Retorna '' se a coluna operation_scope ainda não existir (pré-migration H3).
+     * Retorna "AND {alias}operation_scope = 'commercial'" quando a coluna existir.
+     *
+     * @param string $tableAlias prefixo de tabela com ponto, ex: 'nota.' ou '' para sem alias
+     */
+    public function commercialScopeFilter(string $tableAlias = ''): string
+    {
+        if (!$this->operationScopeColumnExists()) {
+            if ((bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false)) {
+                throw new OperationScopeEnforcedException(
+                    'Enforce mode ativo: coluna operation_scope ausente em biomie_notas_fiscais_canonicas. ' .
+                    'Execute: php tools/dev/backfill_operation_scope.php --migrate'
+                );
+            }
+
+            return '';
+        }
+
+        return " AND {$tableAlias}operation_scope = 'commercial'";
+    }
+
+    /**
+     * Fase H — retorna cláusula SQL para filtrar qualquer escopo de operação.
+     *
+     * Retorna '' se a coluna não existir. $scope deve ser um dos valores válidos
+     * ('commercial', 'remittance', 'unknown'). Outros valores retornam ''.
+     *
+     * @param string $tableAlias prefixo de tabela com ponto, ex: 'nf.'
+     * @param string $scope      'commercial', 'remittance' ou 'unknown'
+     */
+    public function scopeFilter(string $tableAlias, string $scope): string
+    {
+        if (!in_array($scope, ['commercial', 'remittance', 'unknown'], true)) {
+            return '';
+        }
+
+        if (!$this->operationScopeColumnExists()) {
+            return '';
+        }
+
+        return " AND {$tableAlias}operation_scope = '$scope'";
+    }
+
+    public function operationScopeAvailable(): bool
+    {
+        return $this->operationScopeColumnExists();
+    }
+
+    /**
+     * Fase O.1 — retorna expressão SQL para base comercial em 3 tiers:
+     *   1. valor_base_comercial_nf pré-computado (se disponível e não-null)
+     *   2. Fórmula inline (valor_total − frete − outras − seguro) quando colunas existem
+     *   3. Fallback para {alias}valor_total pré-Fase O
+     *
+     * @param string $alias alias de tabela sem ponto ('nf', 'n', '') — ponto adicionado internamente
+     */
+    public function commercialBaseSql(string $alias = ''): string
+    {
+        if ($this->preComputedBaseAvailable()) {
+            return \BIomie\Support\FiscalValueBasis::preComputedBaseSql($alias);
+        }
+
+        if ($this->fiscalBasisColumnsAvailable()) {
+            return \BIomie\Support\FiscalValueBasis::commercialBaseSql($alias);
+        }
+
+        $p = $alias !== '' ? rtrim($alias, '.') . '.' : '';
+        return "{$p}valor_total";
+    }
+
+    public function fiscalBasisAvailable(): bool
+    {
+        return $this->fiscalBasisColumnsAvailable();
+    }
+
+    private ?bool $scopeColumnExists            = null;
+    private ?bool $fiscalBasisColumnExists      = null;
+    private ?bool $fiscalBaseComercialExists    = null;
+
+    private function fiscalBasisColumnsAvailable(): bool
+    {
+        if ($this->fiscalBasisColumnExists !== null) {
+            return $this->fiscalBasisColumnExists;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'biomie_notas_fiscais_canonicas'
+                   AND COLUMN_NAME = 'valor_frete'"
+            );
+            $stmt->execute();
+            $this->fiscalBasisColumnExists = (int) $stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            $this->fiscalBasisColumnExists = false;
+        }
+
+        return $this->fiscalBasisColumnExists;
+    }
+
+    private function preComputedBaseAvailable(): bool
+    {
+        if ($this->fiscalBaseComercialExists !== null) {
+            return $this->fiscalBaseComercialExists;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'biomie_notas_fiscais_canonicas'
+                   AND COLUMN_NAME = 'valor_base_comercial_nf'"
+            );
+            $stmt->execute();
+            $this->fiscalBaseComercialExists = (int) $stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            $this->fiscalBaseComercialExists = false;
+        }
+
+        return $this->fiscalBaseComercialExists;
+    }
+
+    private function operationScopeColumnExists(): bool
+    {
+        if ($this->scopeColumnExists !== null) {
+            return $this->scopeColumnExists;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'biomie_notas_fiscais_canonicas'
+                   AND COLUMN_NAME = 'operation_scope'"
+            );
+            $stmt->execute();
+            $this->scopeColumnExists = (int) $stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            $this->scopeColumnExists = false;
+        }
+
+        return $this->scopeColumnExists;
     }
 
     private function pdo(): PDO

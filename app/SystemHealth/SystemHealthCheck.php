@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BIomie\SystemHealth;
 
+use BIomie\Support\SecretMask;
+
 /**
  * Immutable result of a single health check.
  *
@@ -67,7 +69,7 @@ final class SystemHealthCheck
     ): self {
         return new self(
             $id, $label, 'unknown', 'critical',
-            'Check falhou com exceção: ' . $e->getMessage(),
+            'Check falhou com excecao: ' . SecretMask::sanitizeErrorMessage($e->getMessage(), 220),
             [],
             ['Verificar logs do sistema para mais detalhes.'],
             date('c'),

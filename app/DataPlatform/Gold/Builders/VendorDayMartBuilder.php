@@ -67,6 +67,10 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
         $rows = $this->exec($sqlComercial, ['start' => $start, 'end' => $end], 'materialize_vendedor_dia', 'mart_vendedor_dia', 'insert_mart_vendedor_dia_comercial');
 
         $nfScopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', '');
+        // Fase O: use fiscal basis formula when columns exist; fall back to valor_total pre-migration.
+        $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
+            ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('')
+            : 'valor_total';
         $sqlFiscal = <<<SQL
             INSERT INTO mart_vendedor_dia (
                 competencia, dia,
@@ -87,7 +91,7 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
                 0, 0, 0,
                 0, 0,
                 SUM(status_fiscal = 'autorizada'),
-                SUM(IF(status_fiscal = 'autorizada', valor_total, 0)),
+                SUM(IF(status_fiscal = 'autorizada', {$nfBasisExpr}, 0)),
                 SUM(IF(status_fiscal = 'autorizada', valor_mercadorias, 0)),
                 0, 0, 0, 0,
                 NOW()

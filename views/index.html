@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f6f3f2" />
   <meta name="description" content="Visao comercial do BIomie com faturamento, carteira, clientes e saude financeira em uma leitura executiva." />
@@ -16,428 +16,394 @@
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
   <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
-
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
-  <script src="assets/js/chart.umd.js"></script>
-  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260509-10g" />
-  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
-  <link rel="stylesheet" href="assets/css/mag-clean.css?v=20260429-clean1" />
-  <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
-  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260509-10g" />
-  <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
-  <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+  <!-- Assets base e específicos injetados pelo PageAssetRegistry -->
 </head>
 
-<body class="nav-md mag-page mag-clean-page" data-page="index">
-<div class="overlay" id="overlay"></div>
+<body class="mag-page mag-clean-page" data-page="index">
+<main class="page dashboard-shell">
 
-<div class="shell">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <img src="images/logo-mag-wide.png" alt="MAG Moveis Corporativos" onerror="this.style.display='none'" />
-      <span class="logo-pill">BIomie</span>
+  <!-- ═══ PAGE HEADER ═══ -->
+  <section class="mag-page-header mag-page-header-shell mag-page-title anim">
+    <div class="mag-page-title__copy">
+      <div class="mag-kicker"><span class="material-symbols-rounded">space_dashboard</span>Visao geral</div>
+      <h1>Dashboard Comercial</h1>
+      <p>Visao rapida dos principais indicadores da operacao.</p>
     </div>
-    <div class="sidebar-profile">
-      <div class="profile-avatar">M</div>
-      <div class="profile-info">
-        <span>Bem-vindo,</span>
-        <strong>Comercial MAG</strong>
+    <div class="mag-page-title__actions">
+      <a class="btn-secondary" href="mapa_vendas.php"><span class="material-symbols-rounded">map</span>Geografia</a>
+      <a class="btn-secondary" href="financeiro.php"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</a>
+    </div>
+  </section>
+
+  <!-- ═══ KPI STRIP ═══ -->
+  <section class="dashboard-kpi-strip anim d1" id="cards">
+    <article class="mag-kpi-card">
+      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Faturamento Orç-PD</span><span class="material-symbols-rounded mag-kpi-card__icon">payments</span></div>
+      <strong class="mag-kpi-card__value" data-bind="summary-revenue"><span class="skeleton-text"></span></strong>
+      <small class="mag-kpi-card__sub" style="font-size:10px;color:var(--text-3);margin-top:2px;display:block;">Somente Orçamento-PD. Remessas excluídas.</small>
+    </article>
+    <article class="mag-kpi-card">
+      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">NFs Orç-PD</span><span class="material-symbols-rounded mag-kpi-card__icon">receipt_long</span></div>
+      <strong class="mag-kpi-card__value" data-bind="summary-orders"><span class="skeleton-text"></span></strong>
+      <small class="mag-kpi-card__sub" style="font-size:10px;color:var(--text-3);margin-top:2px;display:block;">Pedidos faturados Orçamento-PD.</small>
+    </article>
+    <article class="mag-kpi-card">
+      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Ticket Orç-PD</span><span class="material-symbols-rounded mag-kpi-card__icon">sell</span></div>
+      <strong class="mag-kpi-card__value" data-bind="summary-ticket"><span class="skeleton-text"></span></strong>
+      <small class="mag-kpi-card__sub" style="font-size:10px;color:var(--text-3);margin-top:2px;display:block;">Ticket médio Orçamento-PD faturado.</small>
+    </article>
+    <article class="mag-kpi-card">
+      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Clientes</span><span class="material-symbols-rounded mag-kpi-card__icon">groups</span></div>
+      <strong class="mag-kpi-card__value" data-bind="summary-clients"><span class="skeleton-text"></span></strong>
+    </article>
+    <article class="mag-kpi-card">
+      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Em aberto</span><span class="material-symbols-rounded mag-kpi-card__icon">pending_actions</span></div>
+      <strong class="mag-kpi-card__value" data-bind="summary-pending-value"><span class="skeleton-text"></span></strong>
+    </article>
+    <article class="mag-kpi-card">
+      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Canceladas</span><span class="material-symbols-rounded mag-kpi-card__icon">cancel</span></div>
+      <strong class="mag-kpi-card__value" data-bind="summary-cancelled-value"><span class="skeleton-text"></span></strong>
+    </article>
+  </section>
+
+  <!-- ═══ FILTER BAR ═══ -->
+  <section class="dashboard-controls">
+    <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" data-mobile-filter-sheet>
+      <div class="filter-group">
+        <label class="filter-label">Periodo inicial</label>
+        <input id="dateStart" type="date" class="filter-input" />
       </div>
-    </div>
-
-    <nav class="sidebar-nav" id="sidebar-menu">
-      <div class="nav-section-label">BIomie</div>
-      <a href="index.html" class="nav-item active">
-        <span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial
-      </a>
-      <a href="vendedores.html" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">groups</span>Time Comercial
-      </a>
-      <a href="pedidos.html" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo
-      </a>
-      <a href="mercadorias.html" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">inventory_2</span>Mix Faturado
-      </a>
-      <a href="financeiro.html" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro
-      </a>
-      <a href="plano_voo.html" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">flight</span>Rota Comercial
-      </a>
-      <a href="integracoes.html" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie
-      </a>
-      <div class="nav-section-label">Atalhos</div>
-      <a href="#cards" class="nav-item"><span class="material-symbols-rounded">insights</span>Radar</a>
-      <a href="#graficos" class="nav-item"><span class="material-symbols-rounded">monitoring</span>Ritmo</a>
-      <a href="#tabelas" class="nav-item"><span class="material-symbols-rounded">table_view</span>Mesa</a>
-    </nav>
-
-    <div class="sidebar-footer hidden-small">
-      <a href="integracoes.html" title="Conexao"><span class="material-symbols-rounded">settings</span></a>
-      <a href="index.html" title="Painel"><span class="material-symbols-rounded">dashboard</span></a>
-      <a href="pedidos.html" title="NF"><span class="material-symbols-rounded">shopping_bag</span></a>
-      <a href="mercadorias.html" title="Mix"><span class="material-symbols-rounded">chair</span></a>
-    </div>
-  </aside>
-
-  <div class="main">
-    <header class="topbar">
-      <div class="topbar-left">
-        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
-          <span class="material-symbols-rounded">menu</span>
+      <div class="filter-group">
+        <label class="filter-label">Periodo final</label>
+        <input id="dateEnd" type="date" class="filter-input" />
+      </div>
+      <div class="filter-actions">
+        <button class="btn-preset" data-range-preset="month">Mes atual</button>
+        <button class="btn-preset" data-range-preset="year">Ano atual</button>
+        <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
+        <button id="applyFilters" type="button" class="btn-primary mag-button-primary">
+          <span class="material-symbols-rounded">filter_alt</span>Aplicar
         </button>
-        <div class="topbar-badge">
-          <span class="material-symbols-rounded">partner_exchange</span>Visao Comercial
+        <button id="syncNow" type="button" class="btn-secondary mag-button-secondary">
+          <span class="material-symbols-rounded">sync</span>Atualizar
+        </button>
+      </div>
+    </div>
+    <div id="syncFeedback"></div>
+    <div id="pageError" class="d-none"></div>
+    <div id="pageLoading" class="module-loading-shell d-none" aria-live="polite" aria-busy="true">
+      <div class="module-loading-grid cols-2">
+        <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+        <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+      </div>
+      <div class="module-loading-grid cols-3">
+        <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
+        <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
+        <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ GRID PRINCIPAL ═══ -->
+  <section class="dashboard-grid anim d2" id="graficos">
+
+    <!-- Evolucao de receita (span 7) + Ranking comercial (span 5) -->
+    <article class="dashboard-panel span-7" data-chart-id="revenue_evolution">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Evolucao do faturamento Orç-PD</h3>
+          <small>Faturamento Orçamento-PD diário — remessas excluídas</small>
         </div>
-        <div class="topbar-meta mag-data-diagnostics mag-diagnostics-collapsed">
-          <span>Periodo: <strong data-bind="period-label">-</strong></span>
-          <span>Leitura: <strong data-bind="summary-mode">-</strong></span>
-          <span>Atualizado: <strong data-bind="last-sync">-</strong></span>
-          <span><strong data-bind="summary-period-basis">Base analisada: emissao fiscal</strong></span>
-          <span>Origem: <strong data-bind="sync-source">-</strong></span>
-          <span>Cobertura: <strong data-bind="sync-coverage">-</strong></span>
-          <span>Conferencia: <strong data-bind="sync-reconciled-until">-</strong></span>
-          <span data-bind="sync-warning"><span class="mag-status-chip mag-status-demo">Carregando</span></span>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="revenue_evolution" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
         </div>
       </div>
-      <div class="topbar-actions">
-        <div class="weather-dock" id="weatherDock" title="Carregando clima em Fortaleza" aria-label="Resumo do clima local">
-          <span class="weather-dock-icon">
-            <span class="material-symbols-rounded" id="weatherIcon">partly_cloudy_day</span>
-          </span>
-          <span class="weather-dock-copy">
-            <strong id="weatherTemperature">--</strong>
-            <span id="weatherDescription">Carregando clima...</span>
-          </span>
-        </div>
-        <div class="live-dot" title="Status de sincronizacao"></div>
-        <button class="btn-icon" title="Ajuda"><span class="material-symbols-rounded">help</span></button>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--main"><canvas id="salesTimelineChart"></canvas></div>
       </div>
-    </header>
+    </article>
 
-    <main class="page dashboard-shell">
-      <section class="mag-page-header mag-page-header-shell mag-page-title anim">
-        <div class="mag-page-title__copy">
-          <div class="mag-kicker"><span class="material-symbols-rounded">space_dashboard</span>Visao geral</div>
-          <h1>Dashboard Comercial</h1>
-          <p>Visao rapida dos principais indicadores da operacao.</p>
+    <article class="dashboard-panel span-5" data-chart-id="vendor_ranking">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Ranking comercial — Orç-PD</h3>
+          <small>Receita e ticket Orçamento-PD por vendedor (remessas excluídas)</small>
         </div>
-        <div class="mag-page-title__actions">
-          <a class="btn-secondary" href="mapa_vendas.php"><span class="material-symbols-rounded">map</span>Geografia</a>
-          <a class="btn-secondary" href="financeiro.php"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</a>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="vendor_ranking" title="Ver equipe">
+            <span class="material-symbols-rounded">open_in_new</span>Equipe
+          </button>
         </div>
-      </section>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--main"><canvas id="vendorsBarChart"></canvas></div>
+      </div>
+    </article>
 
-      <!-- ═══ COMPACT KPI STRIP ═══ -->
-      <section class="dashboard-kpi-strip anim d1" id="cards">
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Vendas</span><span class="material-symbols-rounded mag-kpi-card__icon">payments</span></div>
-          <strong class="mag-kpi-card__value" data-bind="summary-revenue"><span class="skeleton-text"></span></strong>
-        </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Pedidos</span><span class="material-symbols-rounded mag-kpi-card__icon">receipt_long</span></div>
-          <strong class="mag-kpi-card__value" data-bind="summary-orders"><span class="skeleton-text"></span></strong>
-        </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Ticket medio</span><span class="material-symbols-rounded mag-kpi-card__icon">sell</span></div>
-          <strong class="mag-kpi-card__value" data-bind="summary-ticket"><span class="skeleton-text"></span></strong>
-        </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Clientes</span><span class="material-symbols-rounded mag-kpi-card__icon">groups</span></div>
-          <strong class="mag-kpi-card__value" data-bind="summary-clients"><span class="skeleton-text"></span></strong>
-        </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Em aberto</span><span class="material-symbols-rounded mag-kpi-card__icon">pending_actions</span></div>
-          <strong class="mag-kpi-card__value" data-bind="summary-pending-value"><span class="skeleton-text"></span></strong>
-        </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Sync</span><span class="material-symbols-rounded mag-kpi-card__icon">sync</span></div>
-          <strong class="mag-kpi-card__value" data-bind="last-sync">-</strong>
-        </article>
-      </section>
-
-      <!-- ═══ FILTER BAR ═══ -->
-      <section class="dashboard-controls">
-        <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1">
-          <div class="filter-group">
-            <label class="filter-label">Periodo inicial</label>
-            <input id="dateStart" type="date" class="filter-input" />
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Periodo final</label>
-            <input id="dateEnd" type="date" class="filter-input" />
-          </div>
-          <div class="filter-actions">
-            <button class="btn-preset" data-range-preset="month">Mes atual</button>
-            <button class="btn-preset" data-range-preset="year">Ano atual</button>
-            <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
-            <button id="applyFilters" type="button" class="btn-primary mag-button-primary">
-              <span class="material-symbols-rounded">filter_alt</span>Aplicar
-            </button>
-            <button id="syncNow" type="button" class="btn-secondary mag-button-secondary">
-              <span class="material-symbols-rounded">sync</span>Atualizar visao
-            </button>
-          </div>
+    <!-- Top Produtos (4) + Top Clientes (4) + Pipeline (4) -->
+    <article class="dashboard-panel span-4" data-chart-id="top_products">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Produtos em destaque — Orç-PD</h3>
+          <small>Itens com maior peso no faturamento Orçamento-PD (remessas excluídas)</small>
         </div>
-        <div id="syncFeedback"></div>
-        <div id="pageError" class="d-none"></div>
-        <div id="pageLoading" class="module-loading-shell d-none" aria-live="polite" aria-busy="true">
-          <div class="module-loading-grid cols-2">
-            <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
-            <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
-          </div>
-          <div class="module-loading-grid cols-3">
-            <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
-            <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
-            <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
-          </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="top_products" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
         </div>
-      </section>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--md"><canvas id="topProductsChart"></canvas></div>
+      </div>
+    </article>
 
-      <!-- ═══ DASHBOARD GRID — Phase 10G ═══ -->
-      <section class="dashboard-grid anim d2" id="graficos">
+    <article class="dashboard-panel span-4" data-chart-id="top_customers">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Clientes em destaque — Orç-PD</h3>
+          <small>Concentração e recorrência no faturamento Orçamento-PD</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="top_customers" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body dashboard-panel__body--top-clients">
+        <div class="chart-shell chart-shell--md"><canvas id="topClientsChart"></canvas></div>
+        <div class="top-clients-list">
+          <table class="mag-table mag-table-clean top-clients-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Valor faturado</th>
+                <th>Quantidade de NFs</th>
+                <th>Ticket medio</th>
+                <th>Ultima compra</th>
+              </tr>
+            </thead>
+            <tbody id="topClientsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </article>
 
-        <!-- Row 1: Revenue Evolution (7 cols) + Vendor Ranking (5 cols) -->
-        <article class="dashboard-panel span-7" data-chart-id="revenue_evolution">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Evolucao da receita</h3>
-              <small>Receita diaria comparada ao volume de notas fiscais</small>
-            </div>
-            <div class="dashboard-panel__actions">
-              <button type="button" class="btn-detail" data-drill="revenue_evolution" title="Ver detalhamento">
-                <span class="material-symbols-rounded">open_in_new</span>Detalhar
-              </button>
-            </div>
-          </div>
-          <div class="dashboard-panel__body">
-            <div class="chart-shell chart-shell--main"><canvas id="salesTimelineChart"></canvas></div>
-          </div>
-        </article>
+    <article class="dashboard-panel span-4" data-chart-id="pipeline_status">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Pipeline Orç-PD</h3>
+          <small>Faturado, carteira e cancelamentos — base Orçamento-PD</small>
+        </div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--md"><canvas id="dailyMixedChart"></canvas></div>
+      </div>
+    </article>
 
-        <article class="dashboard-panel span-5" data-chart-id="vendor_ranking">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Ranking comercial</h3>
-              <small>Receita e ticket dos vendedores em destaque</small>
-            </div>
-            <div class="dashboard-panel__actions">
-              <button type="button" class="btn-detail" data-drill="vendor_ranking" title="Ver detalhamento">
-                <span class="material-symbols-rounded">open_in_new</span>Detalhar
-              </button>
-            </div>
-          </div>
-          <div class="dashboard-panel__body">
-            <div class="chart-shell chart-shell--main"><canvas id="vendorsBarChart"></canvas></div>
-          </div>
-        </article>
-
-        <!-- Row 2: Top Products (4) + Top Clients (4) + Pipeline (4) -->
-        <article class="dashboard-panel span-4" data-chart-id="top_products">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Produtos em destaque</h3>
-              <small>Itens que mais contribuiram para a receita</small>
-            </div>
-            <div class="dashboard-panel__actions">
-              <button type="button" class="btn-detail" data-drill="top_products" title="Ver detalhamento">
-                <span class="material-symbols-rounded">open_in_new</span>Detalhar
-              </button>
-            </div>
-          </div>
-          <div class="dashboard-panel__body">
-            <div class="chart-shell chart-shell--md"><canvas id="topProductsChart"></canvas></div>
-          </div>
-        </article>
-
-        <article class="dashboard-panel span-4" data-chart-id="top_customers">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Clientes em destaque</h3>
-              <small>Concentracao e recorrencia da receita</small>
-            </div>
-            <div class="dashboard-panel__actions">
-              <button type="button" class="btn-detail" data-drill="top_customers" title="Ver detalhamento">
-                <span class="material-symbols-rounded">open_in_new</span>Detalhar
-              </button>
-            </div>
-          </div>
-          <div class="dashboard-panel__body">
-            <div class="chart-shell chart-shell--md"><canvas id="topClientsChart"></canvas></div>
-          </div>
-        </article>
-
-        <article class="dashboard-panel span-4" data-chart-id="pipeline_status">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Pipeline do periodo</h3>
-              <small>Faturado, carteira e cancelamentos</small>
-            </div>
-          </div>
-          <div class="dashboard-panel__body">
-            <div class="chart-shell chart-shell--md"><canvas id="dailyMixedChart"></canvas></div>
-          </div>
-        </article>
-
-        <!-- Row 3: Maiores NFs (8 cols) + Geo compact (4 cols) -->
-        <article class="dashboard-panel span-8" data-chart-id="top_invoices" id="tabelas">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Maiores notas fiscais</h3>
-              <small>Documentos com maior peso na receita</small>
-            </div>
-            <div class="dashboard-panel__actions">
-              <button type="button" class="btn-detail" data-drill="top_invoices" title="Ver detalhamento">
-                <span class="material-symbols-rounded">open_in_new</span>Detalhar
-              </button>
-            </div>
-          </div>
-          <div class="dashboard-panel__body dashboard-panel__body--table">
-            <table class="mag-table">
-              <thead>
-                <tr>
-                  <th>NF</th>
-                  <th>Emissao</th>
-                  <th>Cliente / Doc</th>
-                  <th>Vendedor</th>
-                  <th>Itens</th>
-                  <th>Valor</th>
-                  <th>Acao</th>
-                </tr>
-              </thead>
-              <tbody id="topOrdersTable" data-empty-title="Sem notas fiscais" data-empty-message="Nao ha documentos para o periodo ou filtro selecionado." data-empty-icon="receipt_long"></tbody>
-            </table>
-          </div>
-          <details class="mag-technical-diagnostics mag-top-orders-diagnostics" id="topOrdersIdentityDiagnostics" hidden>
-            <summary aria-expanded="false" aria-controls="topOrdersIdentityDiagnosticsBody">
-              <span class="material-symbols-rounded">manage_search</span>Diagnostico de clientes e vendedores
-            </summary>
-            <div class="mag-technical-diagnostics__body" id="topOrdersIdentityDiagnosticsBody">
-              <h2>Vinculos da leitura fiscal</h2>
-              <p>Contagens agregadas da resolucao de cliente e vendedor, sem documento aberto.</p>
-              <div class="mag-technical-diagnostics__grid" id="topOrdersIdentityDiagnosticsGrid"></div>
-            </div>
-          </details>
-        </article>
-
-        <article class="dashboard-panel span-4" data-chart-id="geo_compact">
-          <div class="dashboard-panel__header">
-            <div>
-              <h3>Geo compacto</h3>
-              <small>Top bairros por faturamento</small>
-            </div>
-            <div class="dashboard-panel__actions">
-              <a class="btn-detail" href="mapa_vendas.php" title="Abrir mapa completo">
-                <span class="material-symbols-rounded">map</span>Mapa completo
-              </a>
-            </div>
-          </div>
-          <div class="dashboard-panel__body dashboard-panel__body--table geo-compact-ranking">
-            <table class="mag-table">
-              <thead>
-                <tr>
-                  <th>Bairro</th>
-                  <th>Receita</th>
-                  <th>Share</th>
-                </tr>
-              </thead>
-              <tbody id="indexNeighborhoodsRanking" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></tbody>
-            </table>
-          </div>
-        </article>
-
-      </section>
-
-      <!-- ═══ SECONDARY INFO — below the fold ═══ -->
-      <section class="dashboard-grid anim d4">
-        <article class="dashboard-panel span-4">
-          <div class="dashboard-panel__header"><div><h3>Recebimentos e risco</h3><small>Leitura financeira para caixa e atrasos</small></div>
-            <div id="commercialHealthBadge" class="topbar-badge" style="padding:4px 10px;font-size:11px;box-shadow:none;">Carregando</div>
-          </div>
-          <div class="dashboard-panel__body">
-            <div class="module-tiny-kpis" style="margin-bottom:12px;">
-              <div class="mini"><span>Recebido</span><strong data-bind="health-received">-</strong></div>
-              <div class="mini"><span>Em aberto</span><strong data-bind="health-open">-</strong></div>
-              <div class="mini"><span>Vencido</span><strong data-bind="health-overdue">-</strong></div>
-              <div class="mini"><span>Conv. caixa</span><strong data-bind="health-cash-conversion">-</strong></div>
-            </div>
-            <div id="commercialHealthInfo" class="module-alert module-alert--info"><strong>Carregando</strong><span>Buscando dados financeiros.</span></div>
-            <div style="overflow-x:auto;margin-top:12px">
-              <table class="mag-table">
-                <thead><tr><th>Cliente em atraso</th><th>Vencido</th><th>Titulos</th><th>Max dias</th></tr></thead>
-                <tbody id="commercialHealthClientsTable" data-empty-title="Sem inadimplencia" data-empty-message="Nenhum cliente em atraso nos filtros atuais." data-empty-icon="verified"></tbody>
-              </table>
-            </div>
-          </div>
-        </article>
-
-        <article class="dashboard-panel span-4">
-          <div class="dashboard-panel__header"><div><h3>Pontos de atencao</h3><small>Risco, meta e sinais do periodo</small></div></div>
-          <div class="dashboard-panel__body"><div id="alertsList" class="insight-list"></div></div>
-        </article>
-
-        <article class="dashboard-panel span-4">
-          <div class="dashboard-panel__header"><div><h3>Comparativo mensal</h3><small>Mes atual versus historico recente</small></div></div>
-          <div class="dashboard-panel__body">
-            <div class="chart-shell chart-shell--sm"><canvas id="monthComparisonChart"></canvas></div>
-          </div>
-        </article>
-      </section>
-
-      <!-- ═══ DIAGNOSTICS ═══ -->
-      <details class="mag-technical-diagnostics mag-page-main-diagnostics">
-        <summary aria-expanded="false" aria-controls="dashboardCommercialDiagnostics">
-          <span class="material-symbols-rounded">tune</span>Diagnostico da leitura
+    <!-- Maiores NFs (8) + Geo compacto (4) -->
+    <article class="dashboard-panel span-8" data-chart-id="top_invoices" id="tabelas">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Maiores NFs Orçamento-PD</h3>
+          <small>Documentos com maior peso no faturamento Orçamento-PD (remessas excluídas)</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="top_invoices" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body dashboard-panel__body--table">
+        <table class="mag-table">
+          <thead>
+            <tr>
+              <th>NF</th>
+              <th>Emissao</th>
+              <th>Cliente</th>
+              <th>Vendedor</th>
+              <th>Itens</th>
+              <th>Base Comercial</th>
+              <th>Acao</th>
+            </tr>
+          </thead>
+          <tbody id="topOrdersTable"
+            data-empty-title="Sem notas fiscais"
+            data-empty-message="Nao ha documentos para o periodo ou filtro selecionado."
+            data-empty-icon="receipt_long">
+          </tbody>
+        </table>
+      </div>
+      <details class="mag-technical-diagnostics mag-top-orders-diagnostics" id="topOrdersIdentityDiagnostics" hidden>
+        <summary aria-expanded="false" aria-controls="topOrdersIdentityDiagnosticsBody">
+          <span class="material-symbols-rounded">manage_search</span>Diagnostico de clientes e vendedores
         </summary>
-        <div class="mag-technical-diagnostics__body" id="dashboardCommercialDiagnostics">
-          <h2>Dados carregados</h2>
-          <p>Informacoes tecnicas ficam recolhidas para manter a tela principal limpa.</p>
-          <div class="mag-technical-diagnostics__grid">
-            <span>Periodo</span><strong data-bind="period-label">-</strong>
-            <span>Leitura</span><strong data-bind="summary-mode">-</strong>
-            <span>Atualizado</span><strong data-bind="last-sync">-</strong>
-            <span>Origem</span><strong data-bind="sync-source">-</strong>
-            <span>Cobertura</span><strong data-bind="sync-coverage">-</strong>
-            <span>Conferencia</span><strong data-bind="sync-reconciled-until">-</strong>
-          </div>
-          <div class="status-meter" style="margin-top:14px;">
-            <div class="status-meter-bar" id="statusMeterBar" style="--meter-billed:0%;--meter-auth:0%;--meter-cancel:0%">
-              <span></span><span></span><span></span>
-            </div>
-          </div>
-          <div class="status-meter-legend">
-            <span><strong data-bind="pipeline-billed">-</strong> NF</span>
-            <span><strong data-bind="pipeline-authorized">-</strong> carteira</span>
-            <span><strong data-bind="pipeline-cancelled">-</strong> canceladas</span>
-          </div>
+        <div class="mag-technical-diagnostics__body" id="topOrdersIdentityDiagnosticsBody">
+          <h2>Vinculos da leitura fiscal</h2>
+          <p>Contagens agregadas da resolucao de cliente e vendedor, sem documento aberto.</p>
+          <div class="mag-technical-diagnostics__grid" id="topOrdersIdentityDiagnosticsGrid"></div>
         </div>
       </details>
+    </article>
+
+    <article class="dashboard-panel span-4" data-chart-id="geo_compact">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Top bairros</h3>
+          <small>Concentracao geografica da receita</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <a class="btn-detail" href="mapa_vendas.php" title="Abrir mapa completo">
+            <span class="material-symbols-rounded">map</span>Mapa
+          </a>
+        </div>
+      </div>
+      <div class="dashboard-panel__body dashboard-panel__body--table geo-compact-ranking">
+        <table class="mag-table">
+          <thead>
+            <tr>
+              <th>Bairro</th>
+              <th>Receita</th>
+              <th>Share</th>
+            </tr>
+          </thead>
+          <tbody id="indexNeighborhoodsRanking"
+            data-empty-title="Sem bairros"
+            data-empty-message="Nenhum bairro com venda no periodo."
+            data-empty-icon="location_off">
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ═══ INFORMACOES SECUNDARIAS ═══ -->
+  <section class="dashboard-grid anim d4">
+
+    <article class="dashboard-panel span-4">
+      <div class="dashboard-panel__header">
+        <div><h3>Recebimentos e risco</h3><small>Leitura financeira de caixa e atrasos</small></div>
+        <div id="commercialHealthBadge" class="topbar-badge" style="padding:4px 10px;font-size:11px;box-shadow:none;">Carregando</div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="module-tiny-kpis" style="margin-bottom:12px;">
+          <div class="mini"><span>Recebido</span><strong data-bind="health-received">-</strong></div>
+          <div class="mini"><span>Em aberto</span><strong data-bind="health-open">-</strong></div>
+          <div class="mini"><span>Vencido</span><strong data-bind="health-overdue">-</strong></div>
+          <div class="mini"><span>Conv. caixa</span><strong data-bind="health-cash-conversion">-</strong></div>
+        </div>
+        <div id="commercialHealthInfo" class="module-alert module-alert--info">
+          <strong>Carregando</strong><span>Buscando dados financeiros.</span>
+        </div>
+        <div id="remittanceSummaryCard" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;background:#fef3c7;border:1px solid #fde68a;color:#78350f;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;">local_shipping</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;line-height:1.2;">Remessa de Produto</div>
+              <div style="font-size:10px;color:#92400e;margin-top:1px;">Movimentação fiscal/logística — fora do faturamento comercial</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="font-size:12px;"><strong id="remittanceSummaryText">-</strong></div>
+            <a id="remittanceSummaryLink" href="pedidos.php" style="font-size:11px;font-weight:600;color:#92400e;text-decoration:none;padding:3px 8px;border:1px solid #fbbf24;border-radius:4px;white-space:nowrap;background:#fff8;display:inline-flex;align-items:center;gap:4px;">
+              <span class="material-symbols-rounded" style="font-size:12px;">open_in_new</span>Ver remessas
+            </a>
+          </div>
+        </div>
+        <div style="overflow-x:auto;margin-top:12px">
+          <table class="mag-table">
+            <thead><tr><th>Cliente em atraso</th><th>Vencido</th><th>Titulos</th><th>Max dias</th></tr></thead>
+            <tbody id="commercialHealthClientsTable"
+              data-empty-title="Sem inadimplencia"
+              data-empty-message="Nenhum cliente em atraso nos filtros atuais."
+              data-empty-icon="verified">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <article class="dashboard-panel span-4">
+      <div class="dashboard-panel__header">
+        <div><h3>Pontos de atencao</h3><small>Risco, meta e sinais do periodo</small></div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div id="alertsList" class="mag-signal-list"></div>
+      </div>
+    </article>
+
+    <article class="dashboard-panel span-4">
+      <div class="dashboard-panel__header">
+        <div><h3>Comparativo mensal</h3><small>Mes atual versus historico recente</small></div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--sm"><canvas id="monthComparisonChart"></canvas></div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ═══ DIAGNOSTICOS ═══ -->
+  <details class="mag-technical-diagnostics mag-page-main-diagnostics">
+    <summary aria-expanded="false" aria-controls="dashboardCommercialDiagnostics">
+      <span class="material-symbols-rounded">tune</span>Diagnostico da leitura
+    </summary>
+    <div class="mag-technical-diagnostics__body" id="dashboardCommercialDiagnostics">
+      <h2>Dados carregados</h2>
+      <p>Informacoes tecnicas ficam recolhidas para manter a tela principal limpa.</p>
+      <div class="mag-technical-diagnostics__grid">
+        <span>Periodo</span><strong data-bind="period-label">-</strong>
+        <span>Leitura</span><strong data-bind="summary-mode">-</strong>
+        <span>Atualizado</span><strong data-bind="last-sync">-</strong>
+        <span>Origem</span><strong data-bind="sync-source">-</strong>
+        <span>Cobertura</span><strong data-bind="sync-coverage">-</strong>
+        <span>Conferencia</span><strong data-bind="sync-reconciled-until">-</strong>
+      </div>
+      <div class="status-meter" style="margin-top:14px;">
+        <div class="status-meter-bar" id="statusMeterBar"
+          style="--meter-billed:0%;--meter-auth:0%;--meter-cancel:0%">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="status-meter-legend">
+        <span><strong data-bind="pipeline-billed">-</strong> NF</span>
+        <span><strong data-bind="pipeline-authorized">-</strong> carteira</span>
+        <span><strong data-bind="pipeline-cancelled">-</strong> canceladas</span>
+      </div>
+    </div>
+  </details>
 
 </main>
+
+<!-- Drawers e scripts inline -->
+<div id="clientDossierDrawer" class="mag-drawer hidden" aria-hidden="true"></div>
+
+<div class="overview-detail-backdrop" id="overviewDetailBackdrop"></div>
+<div class="overview-detail-drawer" id="overviewDetailDrawer" role="dialog" aria-modal="true"
+  aria-labelledby="overviewDetailTitle" aria-hidden="true">
+  <div class="overview-detail-drawer__header">
+    <div>
+      <h2 id="overviewDetailTitle">Detalhamento</h2>
+      <p id="overviewDetailSubtitle"></p>
+    </div>
+    <button type="button" class="overview-detail-drawer__close" id="overviewDetailClose" aria-label="Fechar detalhamento">
+      <span class="material-symbols-rounded">close</span>
+    </button>
   </div>
+  <div class="overview-detail-drawer__tabs" id="overviewDetailTabs" role="tablist"></div>
+  <div class="overview-detail-drawer__body" id="overviewDetailBody"></div>
 </div>
 
-<script src="assets/js/shell.js?v=20260425-ui1"></script>
-<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
-<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
-<script src="assets/js/client_dossier.js?v=20260425-geo1"></script>
-<script src="assets/js/index_geo.js?v=20260509-10g"></script>
-<script src="assets/js/core/utils.js"></script>
-<script src="assets/js/core/render-helpers.js"></script>
-<script src="assets/js/core/chart-factory.js"></script>
-<script src="assets/js/modules/overview/overview-detail-drawer.js?v=20260509-10g"></script>
-<script src="assets/js/app.js?v=20260509-10g" defer></script>
 <script>
-// Auto-init: render EmptyState in any tbody with data-empty-title that has no rows
 document.addEventListener('DOMContentLoaded', function () {
   if (!window.BIOMIE_STATES) return;
-  // Delayed check — allow app.js to populate tables first
   setTimeout(function () {
     document.querySelectorAll('tbody[data-empty-title]').forEach(function (tbody) {
       if (tbody.children.length === 0) {
@@ -447,20 +413,5 @@ document.addEventListener('DOMContentLoaded', function () {
   }, 3000);
 });
 </script>
-<!-- Drawer -->
-<div id="clientDossierDrawer" class="mag-drawer hidden" aria-hidden="true"></div>
-
-<!-- Overview Detail Drawer -->
-<div class="overview-detail-backdrop" id="overviewDetailBackdrop"></div>
-<div class="overview-detail-drawer" id="overviewDetailDrawer" role="dialog" aria-modal="true" aria-labelledby="overviewDetailTitle" aria-hidden="true">
-  <div class="overview-detail-drawer__header">
-    <div><h2 id="overviewDetailTitle">Detalhamento</h2><p id="overviewDetailSubtitle"></p></div>
-    <button type="button" class="overview-detail-drawer__close" id="overviewDetailClose" aria-label="Fechar detalhamento">
-      <span class="material-symbols-rounded">close</span>
-    </button>
-  </div>
-  <div class="overview-detail-drawer__tabs" id="overviewDetailTabs" role="tablist"></div>
-  <div class="overview-detail-drawer__body" id="overviewDetailBody"></div>
-</div>
 </body>
 </html>

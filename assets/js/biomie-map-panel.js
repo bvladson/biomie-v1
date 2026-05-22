@@ -239,10 +239,61 @@
     });
   }
 
+  function renderNoNeighborhood(formatters, count, revenue, buyerRows, context) {
+    clearBuyersSourceBadge();
+    const ctx = context || {};
+    text('selectedFeatureBadge', 'Sem bairro');
+    text('panelTitle', ctx.title || 'Sem bairro cadastrado');
+    text('panelSubtitle', 'Qualidade de cadastro Omie — nao e um bug tecnico');
+    text('kpiFeatureRevenue', formatters.money(revenue || 0));
+    text('kpiFeatureClients', formatters.number(count || 0));
+    text('kpiFeatureNotes', '-');
+    text('kpiFeatureTicket', '-');
+
+    const message = ctx.message || 'Clientes sem bairro cadastrado no Omie. Atualize o cadastro/endereco do cliente no Omie para que aparecam no mapa.';
+
+    const geo360El = document.getElementById('geo360Btn');
+    if (geo360El) geo360El.style.display = 'none';
+
+    if (Array.isArray(buyerRows) && buyerRows.length > 0) {
+      html('topBuyersTable', buyerRows.slice(0, 10).map((row) => {
+        const attrs = buyerAttrs(row);
+        const name = row.customer_name || row.cliente || row.cliente_nome || 'Sem nome';
+        return `
+          <tr class="geo-buyer-row" ${attrs} tabindex="0" style="cursor:pointer;" title="Abrir Cliente 360">
+            <td>
+              <button type="button" class="row-inline-link" ${attrs} style="font-weight:700;text-align:left;">${escapeHtml(name)}</button>
+              <div style="color:var(--mag-muted);font-size:12px;">${escapeHtml(row.document_masked || row.documento_mascarado || 'Nao informado')}</div>
+            </td>
+            <td style="text-align:right;">${formatters.number(row.invoices || row.qtd_notas || 0)}</td>
+            <td style="text-align:right;"><strong>${formatters.money(row.revenue || row.faturamento || 0)}</strong></td>
+          </tr>
+        `;
+      }).join(''));
+    } else {
+      html('topBuyersTable', `
+        <tr>
+          <td colspan="3" style="padding:14px 8px;">
+            <div style="font-size:13px;color:var(--mag-muted,#6b7280);line-height:1.5;">
+              ${escapeHtml(message)}
+            </div>
+          </td>
+        </tr>
+      `);
+    }
+
+    renderEmptyTable('cnaeRevenueTable', 'CNAE indisponivel para registros sem bairro.', 3);
+    document.getElementById('buyerChartBlock')?.classList.add('is-hidden');
+    document.getElementById('cnaeChartBlock')?.classList.add('is-hidden');
+    window.BIomieChartHelpers?.destroy('buyerChartCanvas');
+    window.BIomieChartHelpers?.destroy('cnaeChartCanvas');
+  }
+
   window.BIomieMapPanel = {
     setInitial,
     setGlobal,
     renderNeighborhood,
+    renderNoNeighborhood,
     renderBuyers,
     renderBuyersLoading,
     renderBuyersError,

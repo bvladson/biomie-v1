@@ -53,7 +53,8 @@ final class GoldRefreshCoordinator
             $fiscal     = $this->fiscal()->refresh($start, $end);
             $financeiro = $this->finance()->refresh($start, $end);
             $vendorDay  = $this->vendor()->refresh($start, $end);
-            $compGeo    = $this->geoBuyer()->refresh($start, $end);
+            $geoResult  = $this->geoBuyer()->refreshReplace($start, $end, $competencias);
+            $compGeo    = (int) ($geoResult['inserted_rows'] ?? 0);
             $cnaeCnpj   = $this->cnaeSales()->refresh($start, $end);
 
             $clientePeriodo = 0;
@@ -61,7 +62,8 @@ final class GoldRefreshCoordinator
             foreach ($competencias as $competencia) {
                 $compStart = $competencia . '-01';
                 $compEnd   = date('Y-m-t', strtotime($compStart));
-                $clientePeriodo += $this->customer()->refresh($competencia, $compStart, $compEnd);
+                $customerResult = $this->customer()->refreshReplace($competencia, $compStart, $compEnd);
+                $clientePeriodo += (int) ($customerResult['final_rows'] ?? 0);
                 $produtoPeriodo += $this->product()->refresh($competencia, $compStart, $compEnd);
             }
 
@@ -112,7 +114,8 @@ final class GoldRefreshCoordinator
             foreach ($competencias as $competencia) {
                 $compStart = $competencia . '-01';
                 $compEnd   = date('Y-m-t', strtotime($compStart));
-                $clientePeriodo += $this->customer()->refresh($competencia, $compStart, $compEnd);
+                $customerResult = $this->customer()->refreshReplace($competencia, $compStart, $compEnd);
+                $clientePeriodo += (int) ($customerResult['final_rows'] ?? 0);
                 $produtoPeriodo += $this->product()->refresh($competencia, $compStart, $compEnd);
             }
 

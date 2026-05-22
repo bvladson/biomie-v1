@@ -27,6 +27,17 @@ final class FlightPlanV2Service
             ? $this->targetsRepository->getTargetsForMonths($months, $vendorFilter)
             : [];
 
+        // Phase F: enriched period fields
+        $yearMonth    = substr($start, 0, 7);
+        $startDt      = new DateTimeImmutable($start);
+        $endDt        = new DateTimeImmutable($end);
+        $calendarDays = (int) $startDt->diff($endDt)->days + 1;
+        $elapsedDays  = $today >= $startDt
+            ? min($calendarDays, (int) $startDt->diff($today <= $endDt ? $today : $endDt)->days + 1)
+            : 0;
+        $remainingDays  = max(0, $calendarDays - $elapsedDays);
+        $isCurrentMonth = $today >= $startDt && $today <= $endDt;
+
         $vendorMap = [];
         $vendorNameIndex = [];
 
@@ -172,6 +183,11 @@ final class FlightPlanV2Service
             );
             $targetMonth = CommercialPlanning::resolveFullMonthTarget($vendorId, $months, $targetsMap, $vendorName);
 
+            // Phase F rule 7: exclude vendors without active target from Plano de Voo
+            if ($targetPeriod <= 0.0) {
+                continue;
+            }
+
             $invoiced = $invoicedByVendor[$vendorKey] ?? [];
             $pipeline = $pipelineByVendor[$vendorKey] ?? [];
             $cancelled = $cancelledByVendor[$vendorKey] ?? [];
@@ -256,11 +272,29 @@ final class FlightPlanV2Service
                 'ticket_avg' => $notesCount > 0 ? Support::money($realized / $notesCount) : 0.0,
             ];
 
+            // Phase F: risk classification (on_track / attention / critical / no_sales)
+            $riskNew            = self::classifyRisk($targetPeriod, $realized, $forecastPct);
+            $row['risk']        = $riskNew;
+            $row['risk_label']  = self::riskLabel($riskNew);
+            $row['risk_reason'] = self::riskReasonText($riskNew, $forecastPct);
+            $row['risk_severity'] = match ($riskNew) {
+                'critical'  => 'danger',
+                'no_sales'  => 'warning',
+                'attention' => 'warning',
+                default     => 'success',
+            };
+            $row['risk_sort'] = match ($riskNew) {
+                'critical'  => 3,
+                'no_sales'  => 2,
+                'attention' => 1,
+                default     => 0,
+            };
+
             $vendors[] = $row;
 
             $team['realized_period'] += $realized;
             $team['invoice_total'] += $invoiceTotal;
-            $team['merchandise_total'] += $realized;
+            $team['merchandise_total'] += $merchandiseTotal;
             $team['discount_total'] += $discountTotal;
             $team['target_period'] += $targetPeriod;
             $team['target_month'] += $targetMonth;
@@ -310,8 +344,14 @@ final class FlightPlanV2Service
             (float) $team['line_85_value']
         );
         $team['workdays'] = $workdays;
-        $team['basis_value'] = 'merchandise_total';
-        $team['period_basis'] = 'issue_date';
+        $team['basis_value']            = 'invoice_total';
+        $team['realized_source_table']  = 'biomie_notas_fiscais_canonicas';
+        $team['target_source_table']    = 'biomie_sales_targets_monthly';
+        $team['join_key']               = 'vendor_id/codigo_vendedor_omie';
+        $team['period_basis']           = 'data_competencia';  // backward compat (realized)
+        $team['realized_period_basis']  = 'data_competencia';  // NFs autorizadas — campo data_competencia
+        $team['wallet_period_basis']    = 'data_emissao';      // carteira — campo data_emissao do pedido
+        $team['target_period_basis']    = 'year_month';        // metas — competencia mensal
         $team['active_vendors_count'] = count(array_filter($vendors, static fn (array $row): bool => (float) ($row['realized_period'] ?? 0) > 0));
         $team['missing_targets_count'] = count(array_filter($vendors, static function (array $row): bool {
             return (float) ($row['target_period'] ?? 0) <= 0
@@ -334,6 +374,13 @@ final class FlightPlanV2Service
                 : 0.0;
         }
 
+        // Phase F: team risk counts (all vendors now have targets)
+        $team['active_target_vendors'] = count($vendors);
+        $team['vendors_on_track']  = count(array_filter($vendors, static fn (array $v): bool => ($v['risk'] ?? '') === 'on_track'));
+        $team['vendors_attention'] = count(array_filter($vendors, static fn (array $v): bool => ($v['risk'] ?? '') === 'attention'));
+        $team['vendors_critical']  = count(array_filter($vendors, static fn (array $v): bool => ($v['risk'] ?? '') === 'critical'));
+        $team['vendors_no_sales']  = count(array_filter($vendors, static fn (array $v): bool => ($v['risk'] ?? '') === 'no_sales'));
+
         $dailySalesMap = [];
         foreach (Support::eachDate($start, $end) as $date) {
             $dailySalesMap[$date] = [
@@ -353,8 +400,9 @@ final class FlightPlanV2Service
                 }
 
                 $notesCount = (int) ($row['notes_count'] ?? 0);
-                $dailySalesMap[$date]['gross_revenue'] = Support::money((float) ($row['merchandise_total'] ?? 0));
-                $dailySalesMap[$date]['invoice_total'] = Support::money((float) ($row['invoice_total'] ?? 0));
+                $invoiceTotal = Support::money((float) ($row['invoice_total'] ?? 0));
+                $dailySalesMap[$date]['gross_revenue'] = $invoiceTotal;
+                $dailySalesMap[$date]['invoice_total'] = $invoiceTotal;
                 $dailySalesMap[$date]['notes_count'] = $notesCount;
                 $dailySalesMap[$date]['orders'] = $notesCount;
             }
@@ -370,16 +418,17 @@ final class FlightPlanV2Service
                     continue;
                 }
 
-                $date = (string) ($row['issue_date'] ?? $row['billing_date'] ?? '');
+                $date = (string) ($row['competencia_date'] ?? $row['data_competencia'] ?? $row['issue_date'] ?? $row['billing_date'] ?? '');
                 if ($date === '' || !isset($dailySalesMap[$date])) {
                     continue;
                 }
 
+                $invoiceTotal = Support::toFloat($row['gross_total'] ?? $row['invoice_total'] ?? $row['total'] ?? 0);
                 $dailySalesMap[$date]['gross_revenue'] = Support::money(
-                    (float) $dailySalesMap[$date]['gross_revenue'] + Support::toFloat($row['merchandise_total'] ?? $row['total'] ?? 0)
+                    (float) $dailySalesMap[$date]['gross_revenue'] + $invoiceTotal
                 );
                 $dailySalesMap[$date]['invoice_total'] = Support::money(
-                    (float) $dailySalesMap[$date]['invoice_total'] + Support::toFloat($row['gross_total'] ?? $row['total'] ?? 0)
+                    (float) $dailySalesMap[$date]['invoice_total'] + $invoiceTotal
                 );
                 $dailySalesMap[$date]['notes_count']++;
                 $dailySalesMap[$date]['orders']++;
@@ -397,27 +446,63 @@ final class FlightPlanV2Service
             default             => 'empty',
         };
 
+        // Phase F: risks panel — top critical/attention/no_sales vendors sorted by risk_sort desc
+        $riskVendors = array_filter($vendors, static fn (array $v): bool =>
+            in_array($v['risk'] ?? '', ['critical', 'no_sales', 'attention'], true)
+        );
+        usort($riskVendors, static fn (array $a, array $b): int => ($b['risk_sort'] ?? 0) <=> ($a['risk_sort'] ?? 0));
+        $risks = [];
+        foreach (array_slice(array_values($riskVendors), 0, 10) as $rv) {
+            $risks[] = [
+                'severity'       => $rv['risk_severity'] ?? 'warning',
+                'vendor_id'      => $rv['vendor_id'],
+                'vendor_name'    => $rv['vendor_name'],
+                'title'          => $rv['risk_label'] ?? 'Risco',
+                'description'    => $rv['risk_reason'] ?? '',
+                'gap'            => $rv['gap_to_target'] ?? 0,
+                'projection_pct' => $rv['forecast_pct'] ?? 0,
+                'action'         => ['label' => 'Ver vendedor', 'url' => ''],
+            ];
+        }
+
+        $dailySalesArr = array_values($dailySalesMap);
+        $alertsArr     = $this->buildAlerts($vendors, $team, $hasOperationalData);
+
         return [
-            'ok' => true,
-            'mode' => 'canonical',
-            'source' => 'canonical',
+            'ok'           => true,
+            'mode'         => 'canonical',
+            'source'       => 'flight_plan_v2',
             'data_quality' => $dataQuality,
             'period' => [
-                'start' => $start,
-                'end' => $end,
-                'label' => self::periodLabel($start, $end),
+                'start'                => $start,
+                'end'                  => $end,
+                'year_month'           => $yearMonth,
+                'elapsed_days'         => $elapsedDays,
+                'calendar_days'        => $calendarDays,
+                'remaining_days'       => $remainingDays,
+                'is_month_in_progress' => $isCurrentMonth,
+                'label'                => self::periodLabel($start, $end),
             ],
-            'team' => $team,
-            'vendors' => $vendors,
-            'daily_sales' => array_values($dailySalesMap),
-            'alerts' => $this->buildAlerts($vendors, $team, $hasOperationalData),
+            'team'        => $team,
+            'summary'     => $team,          // Phase F alias
+            'vendors'     => $vendors,
+            'daily_sales' => $dailySalesArr,
+            'daily'       => $dailySalesArr, // Phase F alias
+            'alerts'      => $alertsArr,
+            'risks'       => $risks,
             'meta' => [
-                'generated_at' => date(DATE_ATOM),
-                'last_sync' => $this->canonical->lastSyncAt($start, $end) ?: null,
-                'period_basis' => 'issue_date',
-                'value_basis' => 'merchandise_total',
+                'generated_at'          => date(DATE_ATOM),
+                'last_sync'             => $this->canonical->lastSyncAt($start, $end) ?: null,
+                'period_basis'          => 'data_competencia',
+                'realized_period_basis' => 'data_competencia',
+                'wallet_period_basis'   => 'data_emissao',
+                'target_period_basis'   => 'year_month',
+                'value_basis'           => 'invoice_total',
+                'realized_source_table' => 'biomie_notas_fiscais_canonicas',
+                'target_source_table'   => 'biomie_sales_targets_monthly',
+                'join_key'              => 'vendor_id/codigo_vendedor_omie',
                 'targets' => [
-                    'months' => $months,
+                    'months'                => $months,
                     'missing_vendors_count' => (int) ($team['missing_targets_count'] ?? 0),
                 ],
             ],
@@ -524,8 +609,9 @@ final class FlightPlanV2Service
                 'total' => $total,
                 'year_month' => $yearMonth,
                 'source' => 'flight_plan_v2',
-                'period_basis' => 'issue_date',
-                'value_basis' => 'merchandise_total',
+                'period_basis' => 'year_month',
+                'value_basis' => 'target_amount',
+                'target_source_table' => 'biomie_sales_targets_monthly',
                 'locked' => $locked,
                 'seller_count' => $total,
                 'with_target_count' => $withTargetCount,
@@ -695,6 +781,42 @@ final class FlightPlanV2Service
     private static function syntheticVendorKey(string $vendorName): string
     {
         return 'name:' . md5(self::normalizeVendorName($vendorName));
+    }
+
+    // ── Phase F: risk helpers ─────────────────────────────────────────────────
+
+    private static function classifyRisk(float $target, float $realized, float $forecastPct): string
+    {
+        if ($target > 0 && $realized <= 0.0) {
+            return 'no_sales';
+        }
+        if ($forecastPct < 70.0) {
+            return 'critical';
+        }
+        if ($forecastPct < 95.0) {
+            return 'attention';
+        }
+        return 'on_track';
+    }
+
+    private static function riskLabel(string $risk): string
+    {
+        return match ($risk) {
+            'critical'  => 'Meta em risco',
+            'no_sales'  => 'Sem vendas',
+            'attention' => 'Atenção',
+            default     => 'No ritmo',
+        };
+    }
+
+    private static function riskReasonText(string $risk, float $forecastPct): string
+    {
+        return match ($risk) {
+            'critical'  => sprintf('Projeção %.1f%% — abaixo do mínimo de 70%%', $forecastPct),
+            'no_sales'  => 'Sem faturamento no período',
+            'attention' => sprintf('Projeção %.1f%% — abaixo de 95%%', $forecastPct),
+            default     => sprintf('Projeção %.1f%% — no alvo', $forecastPct),
+        };
     }
 
     /**

@@ -26,6 +26,10 @@ final class CanonicalWriteRepository
     private const TABLE_FINANCIAL_TITLES = 'biomie_titulos_financeiros_canonicos';
     private const TABLE_EVENTS = 'biomie_eventos_canonicos';
 
+    private ?bool $nfScopeColumnExists       = null;
+    private ?bool $ordScopeColumnExists      = null;
+    private ?bool $nfFiscalBasisColumnExists = null;
+
     public function __construct(
         private readonly Closure $pdoResolver,
         private readonly Closure $beginTransaction,
@@ -150,7 +154,44 @@ final class CanonicalWriteRepository
             'fonte'          => (string) ($order['fonte_sync'] ?? 'cron'),
         ]);
 
+        $this->tryUpdateOrderScope($pedidoId, $order);
+
         return $row ? 'updated' : 'inserted';
+    }
+
+    private function tryUpdateOrderScope(int $pedidoId, array $order): void
+    {
+        if (!isset($order['operation_scope'])) {
+            return;
+        }
+
+        $this->ordScopeColumnExists ??= $this->checkColumnExists(self::TABLE_ORDERS, 'operation_scope');
+        if (!$this->ordScopeColumnExists) {
+            return;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                'UPDATE ' . self::TABLE_ORDERS . '
+                 SET omie_operation_name        = :op_name,
+                     operation_scope            = :scope,
+                     operation_scope_source     = :src,
+                     operation_scope_confidence = :conf,
+                     operation_scope_rule       = :rule,
+                     operation_scope_checked_at = NOW()
+                 WHERE pedido_id_omie = :pid'
+            );
+            $stmt->execute([
+                'op_name' => ($order['omie_operation_name'] ?? null) ?: null,
+                'scope'   => (string) ($order['operation_scope'] ?? 'unknown'),
+                'src'     => ($order['operation_scope_source'] ?? null) ?: null,
+                'conf'    => ($order['operation_scope_confidence'] ?? null) ?: null,
+                'rule'    => ($order['operation_scope_rule'] ?? null) ?: null,
+                'pid'     => $pedidoId,
+            ]);
+        } catch (\Throwable) {
+            // Never interrupt sync due to scope column issues.
+        }
     }
 
     /**
@@ -378,6 +419,8 @@ final class CanonicalWriteRepository
             }
 
             $this->upsertXmlDocument($this->buildXmlDocumentFromInvoice($invoice, $hash));
+            $this->tryUpdateInvoiceScope($noteKey, $invoice);
+            $this->tryUpdateFiscalBasis($noteKey, $invoice);
 
             if ($startedTransaction && $pdo->inTransaction()) {
                 $pdo->commit();
@@ -390,6 +433,128 @@ final class CanonicalWriteRepository
         }
 
         return $row ? 'updated' : 'inserted';
+    }
+
+    private function tryUpdateFiscalBasis(string $noteKey, array $invoice): void
+    {
+        if (!isset($invoice['valor_frete'])) {
+            return;
+        }
+
+        $this->nfFiscalBasisColumnExists ??= $this->checkColumnExists(self::TABLE_INVOICES, 'valor_frete');
+        if (!$this->nfFiscalBasisColumnExists) {
+            return;
+        }
+
+        $frete  = (float) ($invoice['valor_frete'] ?? 0);
+        $outras = (float) ($invoice['valor_outras_despesas'] ?? 0);
+        $seguro = (float) ($invoice['valor_seguro'] ?? 0);
+        $total  = (float) ($invoice['valor_total'] ?? 0);
+        $base   = max(0.0, $total - $frete - $outras - $seguro);
+
+        try {
+            // Fase O: write raw components.
+            // Fase O.1: also write pre-computed base + flags when columns exist.
+            $hasPreComp = $this->checkColumnExists(self::TABLE_INVOICES, 'valor_base_comercial_nf');
+
+            if ($hasPreComp) {
+                $stmt = $this->pdo()->prepare(
+                    'UPDATE ' . self::TABLE_INVOICES . '
+                     SET valor_ipi                          = :ipi,
+                         valor_frete                        = :frete,
+                         valor_outras_despesas              = :outras,
+                         valor_seguro                       = :seguro,
+                         valor_base_comercial_nf            = :base,
+                         has_frete                          = :hfrete,
+                         has_outras_despesas                = :houtras,
+                         has_seguro                         = :hseguro,
+                         has_componentes_nao_comissionaveis = :hcomp,
+                         fiscal_basis_source                = :src,
+                         fiscal_basis_checked_at            = NOW()
+                     WHERE nota_key = :nota_key'
+                );
+                $stmt->execute([
+                    'ipi'      => (float) ($invoice['valor_ipi'] ?? 0),
+                    'frete'    => $frete,
+                    'outras'   => $outras,
+                    'seguro'   => $seguro,
+                    'base'     => $base,
+                    'hfrete'   => $frete  > 0.009 ? 1 : 0,
+                    'houtras'  => $outras > 0.009 ? 1 : 0,
+                    'hseguro'  => $seguro > 0.009 ? 1 : 0,
+                    'hcomp'    => ($frete > 0.009 || $outras > 0.009 || $seguro > 0.009) ? 1 : 0,
+                    'src'      => 'sync_mapper',
+                    'nota_key' => $noteKey,
+                ]);
+            } else {
+                $stmt = $this->pdo()->prepare(
+                    'UPDATE ' . self::TABLE_INVOICES . '
+                     SET valor_ipi              = :ipi,
+                         valor_frete            = :frete,
+                         valor_outras_despesas  = :outras,
+                         valor_seguro           = :seguro
+                     WHERE nota_key = :nota_key'
+                );
+                $stmt->execute([
+                    'ipi'      => (float) ($invoice['valor_ipi'] ?? 0),
+                    'frete'    => $frete,
+                    'outras'   => $outras,
+                    'seguro'   => $seguro,
+                    'nota_key' => $noteKey,
+                ]);
+            }
+        } catch (\Throwable) {
+            // Never interrupt sync due to fiscal basis column issues.
+        }
+    }
+
+    private function tryUpdateInvoiceScope(string $noteKey, array $invoice): void
+    {
+        if (!isset($invoice['operation_scope'])) {
+            return;
+        }
+
+        $this->nfScopeColumnExists ??= $this->checkColumnExists(self::TABLE_INVOICES, 'operation_scope');
+        if (!$this->nfScopeColumnExists) {
+            return;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                'UPDATE ' . self::TABLE_INVOICES . '
+                 SET omie_operation_name        = :op_name,
+                     operation_scope            = :scope,
+                     operation_scope_source     = :src,
+                     operation_scope_confidence = :conf,
+                     operation_scope_rule       = :rule,
+                     operation_scope_checked_at = NOW()
+                 WHERE nota_key = :nota_key'
+            );
+            $stmt->execute([
+                'op_name'  => ($invoice['omie_operation_name'] ?? null) ?: null,
+                'scope'    => (string) ($invoice['operation_scope'] ?? 'unknown'),
+                'src'      => ($invoice['operation_scope_source'] ?? null) ?: null,
+                'conf'     => ($invoice['operation_scope_confidence'] ?? null) ?: null,
+                'rule'     => ($invoice['operation_scope_rule'] ?? null) ?: null,
+                'nota_key' => $noteKey,
+            ]);
+        } catch (\Throwable) {
+            // Never interrupt sync due to scope column issues.
+        }
+    }
+
+    private function checkColumnExists(string $table, string $column): bool
+    {
+        try {
+            $stmt = $this->pdo()->prepare(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+            );
+            $stmt->execute([$table, $column]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     // ── Títulos Financeiros ──────────────────────────────────────────────────

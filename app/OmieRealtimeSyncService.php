@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Support\SecretMask;
 use DateTimeImmutable;
 
 final class OmieRealtimeSyncService
@@ -74,11 +75,12 @@ final class OmieRealtimeSyncService
                 ];
             } catch (\Throwable $exception) {
                 $retryable = $this->isRetryable($exception);
+                $messageText = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
                 if ($retryable) {
                     $retryableFailures++;
                     $this->pipeline->markWebhookTemporaryFailure(
                         (int) $message['id'],
-                        $exception->getMessage(),
+                        $messageText,
                         300,
                         ['exception' => $exception::class]
                     );
@@ -86,19 +88,19 @@ final class OmieRealtimeSyncService
                         'items_discovered' => 1,
                         'items_processed' => 0,
                         'items_failed' => 1,
-                    ], $exception->getMessage());
+                    ], $messageText);
                 } else {
                     $terminalFailures++;
                     $this->pipeline->markWebhookPermanentFailure(
                         (int) $message['id'],
-                        $exception->getMessage(),
+                        $messageText,
                         ['exception' => $exception::class]
                     );
                     $this->pipeline->finishRun($runId, 'failed_terminal', [
                         'items_discovered' => 1,
                         'items_processed' => 0,
                         'items_failed' => 1,
-                    ], $exception->getMessage());
+                    ], $messageText);
                 }
 
                 $this->logger->warning('Falha ao despachar webhook Omie.', [
@@ -106,7 +108,7 @@ final class OmieRealtimeSyncService
                     'domain' => $domain,
                     'endpoint_group' => $endpointGroup,
                     'retryable' => $retryable,
-                    'message' => $exception->getMessage(),
+                    'message' => $messageText,
                 ]);
             }
 
@@ -142,7 +144,7 @@ final class OmieRealtimeSyncService
      *   results:list<array<string,mixed>>
      * }
      */
-    public function runDelta(array $domains = [], ?DateTimeImmutable $now = null): array
+    public function runDelta(array $domains = [], ?DateTimeImmutable $now = null, ?string $runId = null): array
     {
         $telemetry = Telemetry::global();
         $span = $telemetry?->startSpan('sync.delta', [
@@ -161,14 +163,15 @@ final class OmieRealtimeSyncService
                     $group['start_at'],
                     $group['end_at'],
                     'delta',
-                    'cron-delta'
+                    'cron-delta',
+                    $runId
                 );
             } catch (\Throwable $exception) {
                 $errors++;
                 $results[] = [
                     'domain' => $group['domain'],
                     'status' => 'failed_terminal',
-                    'message' => $exception->getMessage(),
+                    'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 500),
                 ];
             }
         }
@@ -396,7 +399,7 @@ final class OmieRealtimeSyncService
                 $results[] = [
                     'domain' => $domain,
                     'status' => 'failed_terminal',
-                    'message' => $exception->getMessage(),
+                    'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 500),
                 ];
             }
         }
@@ -423,6 +426,7 @@ final class OmieRealtimeSyncService
         DateTimeImmutable $endAt,
         string $runType,
         string $source,
+        ?string $runId = null,
     ): array {
         $telemetry = Telemetry::global();
         $span = $telemetry?->startSpan('sync.domain_window', [
@@ -444,6 +448,7 @@ final class OmieRealtimeSyncService
             'period_start' => $startAt->format('Y-m-d H:i:s'),
             'period_end' => $endAt->format('Y-m-d H:i:s'),
             'cursor_count' => count($cursorTargets),
+            'run_id' => $runId,
         ]);
         $startedAt = new DateTimeImmutable('now');
 
@@ -516,12 +521,13 @@ final class OmieRealtimeSyncService
             $retryable = $this->isRetryable($exception);
             $failureStatus = $retryable ? 'failed_retryable' : 'failed_terminal';
             $finishedAt = new DateTimeImmutable('now');
+            $messageText = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
 
             foreach ($cursorTargets as $cursor) {
                 $values = [
                     'last_run_finished_at' => $finishedAt->format('Y-m-d H:i:s'),
                     'status' => $failureStatus,
-                    'last_error' => $exception->getMessage(),
+                    'last_error' => $messageText,
                     'rule_version' => self::RULE_VERSION,
                 ];
 
@@ -538,12 +544,12 @@ final class OmieRealtimeSyncService
                 'items_discovered' => count($cursorTargets),
                 'items_processed' => 0,
                 'items_failed' => count($cursorTargets),
-            ], $exception->getMessage());
+            ], $messageText);
             $telemetry?->recordEvent('ERROR', 'sync.domain_window.error', 'Falha em janela de sync por dominio.', [
                 'domain' => $domain,
                 'run_type' => $runType,
                 'source' => $source,
-                'message' => $exception->getMessage(),
+                'message' => $messageText,
             ], 'sync', 'realtime_pipeline');
             $telemetry?->recordMetric('sync_run_duration_ms', $this->durationBetween($startedAt, $finishedAt), 'histogram', [
                 'domain' => $domain,
@@ -553,7 +559,7 @@ final class OmieRealtimeSyncService
             $span?->finish('error', [
                 'cursor_count' => count($cursorTargets),
                 'status' => $failureStatus,
-                'message' => $exception->getMessage(),
+                'message' => $messageText,
             ]);
 
             throw $exception;

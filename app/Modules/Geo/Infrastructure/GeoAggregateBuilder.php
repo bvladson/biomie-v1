@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie\Modules\Geo\Infrastructure;
 
+use BIomie\DataPlatform\Gold\Builders\CompradoresPorGeo;
 use BIomie\Support\Geo\GeoKeyNormalizer;
 use PDO;
 use RuntimeException;
@@ -37,6 +38,11 @@ final class GeoAggregateBuilder
         $hasCidadeRaw      = $this->columnExists('biomie_clientes_dim', 'cidade');
         $hasUfInDim        = $this->columnExists('biomie_clientes_dim', 'uf');
 
+        // Optional mart columns added by migration (geo quality/scope).
+        $hasBairroOficial = $this->columnExists('biomie_clientes_geo_dim', 'bairro_oficial_nome_fortaleza');
+        $hasGeoQualityCol = $this->columnExists('mart_compradores_por_geo', 'geo_quality');
+        $hasGeoScopeCol   = $this->columnExists('mart_compradores_por_geo', 'geo_scope');
+
         $nomeExpr = $hasNomeExibicao
             ? 'COALESCE(cd.cliente_nome_exibicao, cd.nome_cliente, cp.nome_cliente)'
             : 'COALESCE(cd.nome_cliente, cp.nome_cliente)';
@@ -65,6 +71,20 @@ final class GeoAggregateBuilder
             ? "COALESCE(NULLIF(g.bairro_norm, ''), NULLIF({$bairroFallback}, ''))"
             : "g.bairro_norm";
 
+        // geo_quality and geo_scope — inserted only when columns exist.
+        $extraInsertCols   = '';
+        $extraSelectVals   = '';
+        if ($hasGeoQualityCol) {
+            $geoQualityExpr  = CompradoresPorGeo::geoQualitySql($hasBairroOficial, 'g');
+            $extraInsertCols .= ', geo_quality';
+            $extraSelectVals .= ",\n                 {$geoQualityExpr}";
+        }
+        if ($hasGeoScopeCol) {
+            $geoScopeExpr    = CompradoresPorGeo::geoScopeSql('g');
+            $extraInsertCols .= ', geo_scope';
+            $extraSelectVals .= ",\n                 {$geoScopeExpr}";
+        }
+
         $startedTransaction = false;
         try {
             if (!$this->pdo->inTransaction()) {
@@ -82,7 +102,7 @@ final class GeoAggregateBuilder
                      (competencia, codigo_cliente_omie, cliente_nome, documento,
                       uf, cidade_norm, bairro_norm, regiao_nome,
                       cnae_codigo, cnae_descricao, segmento_macro,
-                      qtd_notas, faturamento, ticket_medio, ultima_compra, refreshed_at)
+                      qtd_notas, faturamento, ticket_medio, ultima_compra, refreshed_at{$extraInsertCols})
                  SELECT
                      cp.competencia,
                      cp.codigo_cliente_omie,
@@ -99,7 +119,7 @@ final class GeoAggregateBuilder
                      cp.valor_nfe                                                         AS faturamento,
                      IF(cp.nfes_emitidas > 0, cp.valor_nfe / cp.nfes_emitidas, 0)       AS ticket_medio,
                      NULL                                                                 AS ultima_compra,
-                     NOW()                                                                AS refreshed_at
+                     NOW()                                                                AS refreshed_at{$extraSelectVals}
                  FROM mart_cliente_periodo AS cp
                  LEFT JOIN biomie_clientes_dim AS cd ON cd.codigo_cliente_omie = cp.codigo_cliente_omie
                  LEFT JOIN biomie_clientes_geo_dim AS g  ON g.codigo_cliente_omie = cp.codigo_cliente_omie

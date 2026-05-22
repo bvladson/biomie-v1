@@ -51,15 +51,25 @@ try {
         'created_by' => $actorUserId,
     ]);
     $statusUrl = sprintf('refresh_status.php?job_id=%s', rawurlencode((string) $queueResult['job_id']));
+    $sourceWarning = commercialMaterializationSourceWarning($config, $logger);
 
     Http::accepted([
         'ok' => true,
         'status' => 'queued',
         'message' => $queueResult['queued']
-            ? 'Atualizacao da visao comercial agendada.'
-            : 'Atualizacao da visao comercial ja esta em andamento para esse periodo.',
+            ? 'Job agendado para recalcular a visao comercial com os dados locais disponiveis. Requer worker ativo para executar.'
+            : 'Recalculo da visao comercial ja esta agendado para esse periodo. Requer worker ativo para executar.',
         'job_id' => $queueResult['job_id'],
         'status_url' => $statusUrl,
+        'omie_status_url' => 'api/omie_status.php',
+        'local_data_only' => true,
+        'worker_required' => true,
+        'feedback_message' => 'Visao comercial recalculada com os dados locais disponiveis.',
+        'source_warning' => $sourceWarning,
+        'warning' => is_array($sourceWarning)
+            ? 'Atencao: a visao foi materializada, mas os dados Omie/canonicos estao desatualizados.'
+            : null,
+        'recommended_worker_command' => 'php cron/worker.php --queue=high,default,low --limit=50 --max-runtime=55',
         'queue' => $queueResult,
         'meta' => [
             'request_id' => RequestContext::id(),
@@ -131,7 +141,7 @@ function materializationMessage(array $report): string
         $itens = (int) ($source['itens_nf_canonicos'] ?? 0);
 
         return sprintf(
-            'Visao comercial atualizada. %d pedidos, %d notas e %d itens foram processados.',
+            'Visao comercial recalculada com os dados locais disponiveis. %d pedidos, %d notas e %d itens foram processados.',
             $pedidos,
             $notas,
             $itens
@@ -153,4 +163,91 @@ function materializationMessage(array $report): string
     }
 
     return 'Nao foi possivel atualizar a visao comercial agora. O erro tecnico foi registrado no diagnostico.';
+}
+
+/**
+ * @return array<string,mixed>|null
+ */
+function commercialMaterializationSourceWarning(\BIomie\Config $config, \BIomie\Logger $logger): ?array
+{
+    try {
+        $connectionName = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+        if (!Database::isConfigured($config, $connectionName)) {
+            return [
+                'status' => 'warning',
+                'message' => 'Nao foi possivel verificar a freshness canonica local.',
+            ];
+        }
+
+        $pdo = Database::connect($config, $connectionName);
+        $tableHealth = new TableHealthService($pdo, $logger);
+        $statuses = [];
+        $details = [];
+
+        foreach ([
+            'biomie_pedidos_canonicos' => 'Pedidos canonicos',
+            'biomie_notas_fiscais_canonicas' => 'NF canonicas',
+        ] as $table => $label) {
+            if (!$tableHealth->tableExists($table)) {
+                $statuses[] = 'danger';
+                $details[] = [
+                    'table' => $table,
+                    'label' => $label,
+                    'status' => 'danger',
+                    'message' => 'Tabela ausente.',
+                ];
+                continue;
+            }
+
+            $rows = $tableHealth->safeCount($table, true) ?? 0;
+            $lastSync = $tableHealth->lastUpdatedAt($table, [
+                'sincronizado_em',
+                'synced_at',
+                'updated_at',
+                'fetched_at',
+                'ingested_at',
+                'created_at',
+                'data_competencia',
+                'data_emissao',
+            ]);
+            $status = 'warning';
+            if ($rows > 0 && $lastSync !== null) {
+                $ageHours = max(0.0, (time() - (strtotime($lastSync) ?: time())) / 3600);
+                $status = $ageHours <= 24 ? 'ok' : ($ageHours <= 72 ? 'warning' : 'danger');
+            }
+
+            $statuses[] = $status;
+            $details[] = [
+                'table' => $table,
+                'label' => $label,
+                'rows' => $rows,
+                'last_sync' => $lastSync,
+                'status' => $status,
+            ];
+        }
+
+        $rank = ['ok' => 1, 'pending' => 2, 'warning' => 3, 'danger' => 4, 'unknown' => 0];
+        $worst = 'ok';
+        foreach ($statuses as $status) {
+            if (($rank[$status] ?? 0) > ($rank[$worst] ?? 0)) {
+                $worst = $status;
+            }
+        }
+
+        if ($worst === 'ok') {
+            return null;
+        }
+
+        return [
+            'status' => $worst,
+            'message' => 'Atencao: a visao foi materializada, mas os dados Omie/canonicos estao desatualizados.',
+            'details' => $details,
+        ];
+    } catch (Throwable $exception) {
+        return [
+            'status' => 'warning',
+            'message' => 'Nao foi possivel verificar a freshness canonica local.',
+            'detail' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 160),
+        ];
+    }
 }

@@ -101,7 +101,10 @@
     }
 
     try {
-      const registration = await navigator.serviceWorker.register(serviceWorkerUrl, { scope: scopePath });
+      const buildMeta = document.querySelector('meta[name="biomie-build"]');
+      const buildVersion = buildMeta ? buildMeta.content.trim() : '';
+      const swUrl = buildVersion ? serviceWorkerUrl + '?v=' + encodeURIComponent(buildVersion) : serviceWorkerUrl;
+      const registration = await navigator.serviceWorker.register(swUrl, { scope: scopePath });
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }

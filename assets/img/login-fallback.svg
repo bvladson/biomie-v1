@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#0f172a"/>
+      <stop offset="48%"  stop-color="#111827"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <radialGradient id="g1" cx="18%" cy="22%" r="45%">
+      <stop offset="0%"   stop-color="#96140a" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#96140a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="82%" cy="78%" r="42%">
+      <stop offset="0%"   stop-color="#3730a3" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#3730a3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g3" cx="55%" cy="10%" r="35%">
+      <stop offset="0%"   stop-color="#7c3aed" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#g1)"/>
+  <rect width="1920" height="1080" fill="url(#g2)"/>
+  <rect width="1920" height="1080" fill="url(#g3)"/>
+  <!-- Subtle dot grid -->
+  <g fill="rgba(255,255,255,0.035)">
+    <circle cx="192"  cy="108"  r="1.5"/>
+    <circle cx="384"  cy="108"  r="1.5"/>
+    <circle cx="576"  cy="108"  r="1.5"/>
+    <circle cx="768"  cy="108"  r="1.5"/>
+    <circle cx="960"  cy="108"  r="1.5"/>
+    <circle cx="1152" cy="108"  r="1.5"/>
+    <circle cx="1344" cy="108"  r="1.5"/>
+    <circle cx="1536" cy="108"  r="1.5"/>
+    <circle cx="1728" cy="108"  r="1.5"/>
+    <circle cx="192"  cy="270"  r="1.5"/>
+    <circle cx="384"  cy="270"  r="1.5"/>
+    <circle cx="576"  cy="270"  r="1.5"/>
+    <circle cx="768"  cy="270"  r="1.5"/>
+    <circle cx="960"  cy="270"  r="1.5"/>
+    <circle cx="1152" cy="270"  r="1.5"/>
+    <circle cx="1344" cy="270"  r="1.5"/>
+    <circle cx="1536" cy="270"  r="1.5"/>
+    <circle cx="1728" cy="270"  r="1.5"/>
+    <circle cx="192"  cy="432"  r="1.5"/>
+    <circle cx="384"  cy="432"  r="1.5"/>
+    <circle cx="576"  cy="432"  r="1.5"/>
+    <circle cx="768"  cy="432"  r="1.5"/>
+    <circle cx="960"  cy="432"  r="1.5"/>
+    <circle cx="1152" cy="432"  r="1.5"/>
+    <circle cx="1344" cy="432"  r="1.5"/>
+    <circle cx="1536" cy="432"  r="1.5"/>
+    <circle cx="1728" cy="432"  r="1.5"/>
+    <circle cx="192"  cy="594"  r="1.5"/>
+    <circle cx="384"  cy="594"  r="1.5"/>
+    <circle cx="576"  cy="594"  r="1.5"/>
+    <circle cx="768"  cy="594"  r="1.5"/>
+    <circle cx="960"  cy="594"  r="1.5"/>
+    <circle cx="1152" cy="594"  r="1.5"/>
+    <circle cx="1344" cy="594"  r="1.5"/>
+    <circle cx="1536" cy="594"  r="1.5"/>
+    <circle cx="1728" cy="594"  r="1.5"/>
+    <circle cx="192"  cy="756"  r="1.5"/>
+    <circle cx="384"  cy="756"  r="1.5"/>
+    <circle cx="576"  cy="756"  r="1.5"/>
+    <circle cx="768"  cy="756"  r="1.5"/>
+    <circle cx="960"  cy="756"  r="1.5"/>
+    <circle cx="1152" cy="756"  r="1.5"/>
+    <circle cx="1344" cy="756"  r="1.5"/>
+    <circle cx="1536" cy="756"  r="1.5"/>
+    <circle cx="1728" cy="756"  r="1.5"/>
+    <circle cx="192"  cy="918"  r="1.5"/>
+    <circle cx="384"  cy="918"  r="1.5"/>
+    <circle cx="576"  cy="918"  r="1.5"/>
+    <circle cx="768"  cy="918"  r="1.5"/>
+    <circle cx="960"  cy="918"  r="1.5"/>
+    <circle cx="1152" cy="918"  r="1.5"/>
+    <circle cx="1344" cy="918"  r="1.5"/>
+    <circle cx="1536" cy="918"  r="1.5"/>
+    <circle cx="1728" cy="918"  r="1.5"/>
+  </g>
+  <!-- Subtle diagonal lines -->
+  <g stroke="rgba(255,255,255,0.04)" stroke-width="1" fill="none">
+    <line x1="0" y1="0" x2="480" y2="1080"/>
+    <line x1="480" y1="0" x2="960" y2="1080"/>
+    <line x1="960" y1="0" x2="1440" y2="1080"/>
+    <line x1="1440" y1="0" x2="1920" y2="1080"/>
+  </g>
+</svg>

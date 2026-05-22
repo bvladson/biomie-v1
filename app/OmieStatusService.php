@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Queue\FileJobQueue;
+use BIomie\Queue\DeadLetterRepository;
+use BIomie\Queue\WorkerHeartbeatRepository;
 use BIomie\Support\SecretMask;
 use PDO;
 use Throwable;
@@ -16,6 +19,9 @@ use Throwable;
  */
 final class OmieStatusService
 {
+    private const FRESH_OK_HOURS = 24;
+    private const FRESH_WARNING_HOURS = 72;
+
     public function __construct(
         private readonly Config $config,
         private readonly PDO $pdo,
@@ -39,10 +45,19 @@ final class OmieStatusService
             'generated_at' => date('Y-m-d H:i:s'),
             'credentials' => $this->getCredentialStatus(),
             'api' => $this->getApiStatus(),
+            'source_sync_status' => $this->getSourceSyncStatus(),
+            'canonical_freshness_status' => $this->getCanonicalFreshnessStatus(),
+            'gold_materialization_status' => $this->getGoldStatus(),
+            'worker_queue_status' => $this->getWorkerQueueStatus(),
+            'webhook_status' => $this->getWebhookStatus(),
             'data' => $this->getDataStatus(),
             'tables' => $this->getTableStatus(),
             'gold' => $this->getGoldStatus(),
             'jobs' => $this->getJobStatus(),
+            'operational' => $this->getOperationalStatus(),
+            'automation_commands' => $this->getAutomationCommands(),
+            'rate_limits' => $this->getRateLimitStatus(),
+            'sync_domains' => $this->getSyncDomainOverview(),
             'last_error' => $this->getLastError(),
             'checks' => $this->healthChecks->runAll(),
             'recommended_actions' => $this->getRecommendedActions(),
@@ -100,6 +115,202 @@ final class OmieStatusService
             'clients_geo' => $this->domainDataStatus('biomie_clientes_geo_dim', 'Clientes geo'),
             'bairros_dim' => $this->bairrosDimStatus(),
             'finance'     => $this->domainDataStatus('biomie_titulos_financeiros_canonicos', 'Titulos'),
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getSourceSyncStatus(): array
+    {
+        $cursorsCount = $this->countRows('biomie_sync_cursors');
+        $runsCount = $this->countRows('biomie_sync_runs');
+        $lastRun = $this->latestSyncRun();
+        $lastSuccessAt = $this->latestSyncSuccessAt();
+        $lastCommercialSyncAt = $this->latestSyncSuccessAtForDomain('commercial');
+        $lastFinanceSyncAt = $this->latestSyncSuccessAtForDomain('finance');
+        $lastFiscalSyncAt = $this->latestSyncSuccessAtForDomain('fiscal') ?? $lastCommercialSyncAt;
+        $recordsProcessed24h = $this->recordsProcessedLast24h();
+        $domains = $this->getSyncDomainOverview();
+
+        if (($cursorsCount ?? 0) === 0 && ($runsCount ?? 0) === 0) {
+            return [
+                'label' => 'Sync Omie',
+                'status' => 'warning',
+                'state' => 'never_ran',
+                'message' => 'Pipeline delta nunca executado. Configure o cron/worker ou execute sincronizacao manual.',
+                'recommended_action' => 'Rode php cron/sync_realtime_pipeline.php --domains=commercial e php cron/sync_realtime_pipeline.php --domains=finance, ou agende pelo worker.',
+                'cursors_count' => (int) ($cursorsCount ?? 0),
+                'runs_count' => (int) ($runsCount ?? 0),
+                'last_success_at' => null,
+                'last_commercial_sync_at' => null,
+                'last_fiscal_sync_at' => null,
+                'last_finance_sync_at' => null,
+                'records_processed_24h' => 0,
+                'domains' => $domains,
+                'last_run' => null,
+            ];
+        }
+
+        $status = 'pending';
+        $message = 'Pipeline delta registrado, aguardando primeira execucao com sucesso.';
+        $recommended = 'Verifique cron e worker.';
+        if (is_array($lastRun) && in_array((string) ($lastRun['status'] ?? ''), ['failed_retryable', 'failed_terminal'], true)) {
+            $status = 'danger';
+            $message = 'Ultima execucao do sync delta falhou.';
+            $recommended = 'Verifique o erro sanitizado em Historico sync runs e rode novamente o sync.';
+        } elseif ($lastSuccessAt !== null) {
+            $status = $this->freshnessStatus($lastSuccessAt);
+            $message = match ($status) {
+                'ok' => 'Sync Omie atualizado.',
+                'warning' => 'Sync Omie pode estar atrasado.',
+                default => 'Sync Omie atrasado.',
+            };
+            $recommended = $status === 'ok' ? null : 'Execute php cron/sync_realtime_pipeline.php --domains=commercial,finance.';
+        }
+
+        return [
+            'label' => 'Sync Omie',
+            'status' => $status,
+            'state' => $lastSuccessAt !== null ? 'has_success' : 'no_success_yet',
+            'message' => $message,
+            'recommended_action' => $recommended,
+            'cursors_count' => (int) ($cursorsCount ?? 0),
+            'runs_count' => (int) ($runsCount ?? 0),
+            'last_success_at' => $lastSuccessAt,
+            'last_commercial_sync_at' => $lastCommercialSyncAt,
+            'last_fiscal_sync_at' => $lastFiscalSyncAt,
+            'last_fiscal_sync_note' => $lastFiscalSyncAt !== null && $lastFiscalSyncAt === $lastCommercialSyncAt
+                ? 'Fiscal/NF e executado pelo dominio commercial neste pipeline.'
+                : null,
+            'last_finance_sync_at' => $lastFinanceSyncAt,
+            'records_processed_24h' => $recordsProcessed24h,
+            'domains' => $domains,
+            'last_error' => is_array($lastRun) && !empty($lastRun['error_summary'])
+                ? SecretMask::sanitizeErrorMessage((string) $lastRun['error_summary'], 160)
+                : null,
+            'last_run' => $lastRun,
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getCanonicalFreshnessStatus(): array
+    {
+        $datasets = [
+            'commercial_orders' => $this->canonicalTableFreshness('biomie_pedidos_canonicos', 'Pedidos canonicos'),
+            'invoices' => $this->canonicalTableFreshness('biomie_notas_fiscais_canonicas', 'NF canonicas'),
+            'finance_titles' => $this->canonicalTableFreshness('biomie_titulos_financeiros_canonicos', 'Titulos financeiros'),
+        ];
+
+        $status = $this->worstStatus(array_map(
+            static fn (array $row): string => (string) ($row['status'] ?? 'unknown'),
+            $datasets
+        ));
+
+        $message = match ($status) {
+            'ok' => 'Camada canonica atualizada.',
+            'warning' => 'Camada canonica incompleta ou com atraso moderado.',
+            'danger' => 'Camada canonica desatualizada ou indisponivel.',
+            default => 'Camada canonica sem leitura conclusiva.',
+        };
+
+        return [
+            'label' => 'Origem canonica',
+            'status' => $status,
+            'message' => $message,
+            'datasets' => $datasets,
+            'freshness_rule' => [
+                'ok_hours' => self::FRESH_OK_HOURS,
+                'warning_hours' => self::FRESH_WARNING_HOURS,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function canonicalTableFreshness(string $table, string $label): array
+    {
+        if (!$this->tableHealth->tableExists($table)) {
+            return [
+                'table' => $table,
+                'label' => $label,
+                'rows' => null,
+                'last_sync' => null,
+                'age_hours' => null,
+                'status' => 'danger',
+                'empty_class' => 'empty_error',
+                'message' => 'Tabela canonica ausente.',
+                'recommended_action' => 'Aplique migrations e execute o sync Omie.',
+            ];
+        }
+
+        $rows = $this->tableHealth->safeCount($table);
+        $lastSync = $this->tableHealth->lastUpdatedAt($table, [
+            'sincronizado_em',
+            'synced_at',
+            'updated_at',
+            'fetched_at',
+            'ingested_at',
+            'created_at',
+            'data_competencia',
+            'data_emissao',
+            'data_vencimento',
+        ]);
+
+        if (($rows ?? 0) === 0) {
+            $message = $table === 'biomie_titulos_financeiros_canonicos'
+                ? 'Financeiro ainda nao sincronizado.'
+                : 'Dados canonicos ainda nao sincronizados.';
+
+            return [
+                'table' => $table,
+                'label' => $label,
+                'rows' => (int) ($rows ?? 0),
+                'last_sync' => $lastSync,
+                'age_hours' => null,
+                'status' => 'warning',
+                'empty_class' => 'empty_not_synced',
+                'message' => $message,
+                'recommended_action' => $table === 'biomie_titulos_financeiros_canonicos'
+                    ? 'Execute php cron/sync_realtime_pipeline.php --domains=finance.'
+                    : 'Execute php cron/sync_realtime_pipeline.php --domains=commercial.',
+            ];
+        }
+
+        if ($lastSync === null) {
+            return [
+                'table' => $table,
+                'label' => $label,
+                'rows' => (int) $rows,
+                'last_sync' => null,
+                'age_hours' => null,
+                'status' => 'warning',
+                'empty_class' => null,
+                'message' => 'Sem timestamp local confiavel para medir freshness.',
+                'recommended_action' => 'Verifique colunas de sincronizacao da tabela.',
+            ];
+        }
+
+        $ageHours = $this->ageHours($lastSync);
+        $status = $this->freshnessStatus($lastSync);
+
+        return [
+            'table' => $table,
+            'label' => $label,
+            'rows' => (int) $rows,
+            'last_sync' => $lastSync,
+            'age_hours' => $ageHours,
+            'status' => $status,
+            'empty_class' => null,
+            'message' => match ($status) {
+                'ok' => 'Atualizado nas ultimas 24h.',
+                'warning' => 'Atualizado entre 24h e 72h.',
+                default => 'Atualizacao acima de 72h.',
+            },
+            'recommended_action' => $status === 'ok' ? null : 'Execute o sync delta Omie do dominio correspondente.',
         ];
     }
 
@@ -264,6 +475,11 @@ final class OmieStatusService
 
         $status = 'pending';
         $lastRawStatus = is_array($lastJob) ? (string) ($lastJob['status'] ?? '') : '';
+        $canonicalFreshness = $this->getCanonicalFreshnessStatus();
+        $canonicalStatus = (string) ($canonicalFreshness['status'] ?? 'unknown');
+        $canonicalIsFresh = $canonicalStatus === 'ok';
+        $sourceWarning = null;
+
         if ($lastRawStatus === 'failed') {
             $status = 'danger';
         } elseif ($lastRawStatus === 'running') {
@@ -273,6 +489,13 @@ final class OmieStatusService
         } elseif ($lastCommercial !== null) {
             $ageHours = (time() - strtotime($lastCommercial)) / 3600;
             $status = $ageHours <= 24 ? 'ok' : ($ageHours <= 72 ? 'warning' : 'danger');
+            if ($status === 'ok' && !$canonicalIsFresh) {
+                $status = $canonicalStatus === 'danger' ? 'danger' : 'warning';
+                $sourceWarning = 'Gold foi materializado, mas a origem Omie/canonica esta atrasada.';
+            } elseif ($status === 'warning' && $canonicalStatus === 'danger') {
+                $status = 'danger';
+                $sourceWarning = 'Gold e origem Omie/canonica estao atrasados.';
+            }
         }
 
         return [
@@ -281,6 +504,15 @@ final class OmieStatusService
             'geo_ready' => $geoReady,
             'cnae_ready' => $cnaeReady,
             'status' => $status,
+            'message' => $sourceWarning ?? match ($status) {
+                'ok' => 'Gold atualizado e fonte canonica recente.',
+                'warning' => 'Materializacao Gold requer atencao.',
+                'danger' => 'Gold ou origem canonica estao atrasados.',
+                default => 'Materializacao Gold pendente.',
+            },
+            'source_canonical_status' => $canonicalStatus,
+            'source_warning' => $sourceWarning,
+            'canonical_freshness' => $canonicalFreshness,
         ];
     }
 
@@ -441,7 +673,400 @@ final class OmieStatusService
             'app_key_configured' => SecretMask::isConfigured($appKey),
             'app_key_masked' => SecretMask::isConfigured($appKey) ? SecretMask::maskSecret($appKey) : null,
             'app_secret_configured' => SecretMask::isConfigured((string) $this->config->get('omie.app_secret', '')),
+            'rate_limits' => $this->getRateLimitStatus(),
+            'operational' => $this->getOperationalStatus(),
             'latest_materialization' => $this->latestMaterializationEvent(),
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getOperationalStatus(): array
+    {
+        $queue = new FileJobQueue(Bootstrap::rootPath('storage/cache'), $this->logger);
+        $fileQueue = $queue->summary();
+        $syncState = [
+            'webhook_inbox' => null,
+            'cursors' => [],
+            'recent_runs' => [],
+        ];
+
+        if ($this->syncPipeline !== null) {
+            try {
+                $summary = $this->syncPipeline->summarizeOperationalState(20);
+                $syncState['webhook_inbox'] = $summary['webhook_inbox'] ?? null;
+                $syncState['cursors'] = $this->publicCursors((array) ($summary['cursors'] ?? []));
+                $syncState['recent_runs'] = $this->publicRecentRuns((array) ($summary['recent_runs'] ?? []));
+            } catch (Throwable $exception) {
+                $syncState['error'] = SecretMask::sanitizeErrorMessage($exception->getMessage(), 180);
+            }
+        }
+
+        return [
+            'file_queue' => $fileQueue,
+            'sync_pipeline' => $syncState,
+            'recent_24h' => $this->syncRunsLast24h(),
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getWorkerQueueStatus(): array
+    {
+        $queue = new FileJobQueue(Bootstrap::rootPath('storage/cache'), $this->logger);
+        $summary = $queue->summary();
+        $counts = is_array($summary['counts'] ?? null) ? $summary['counts'] : [];
+        $queued = (int) ($counts['queued'] ?? 0) + (int) ($counts['failed_retryable'] ?? 0);
+        $running = (int) ($counts['running'] ?? 0);
+        $lastExecuted = $this->latestFileQueueJob(['completed', 'failed_terminal', 'failed_retryable', 'running']);
+        $deadLetterCounts = $this->deadLetterCounts();
+        $heartbeat = $this->workerHeartbeatSummary();
+
+        if ($queued > 0 && $running === 0) {
+            return [
+                'label' => 'Worker/Fila',
+                'status' => (($heartbeat['status'] ?? '') === 'critical') ? 'danger' : 'warning',
+                'state' => 'queued_without_worker',
+                'message' => 'Jobs agendados, mas worker nao processou.',
+                'recommended_action' => 'Execute php cron/worker.php --queue=high,default,low --limit=50 --max-runtime=55.',
+                'queued' => $queued,
+                'running' => $running,
+                'dead_letters' => $deadLetterCounts,
+                'heartbeat' => $heartbeat,
+                'counts' => $counts,
+                'last_executed_job' => $lastExecuted,
+            ];
+        }
+
+        if ($running > 0) {
+            return [
+                'label' => 'Worker/Fila',
+                'status' => 'ok',
+                'state' => 'running',
+                'message' => "{$running} job(s) em processamento.",
+                'recommended_action' => null,
+                'queued' => $queued,
+                'running' => $running,
+                'dead_letters' => $deadLetterCounts,
+                'heartbeat' => $heartbeat,
+                'counts' => $counts,
+                'last_executed_job' => $lastExecuted,
+            ];
+        }
+
+        $lastAt = is_array($lastExecuted) ? (string) ($lastExecuted['finished_at'] ?? $lastExecuted['updated_at'] ?? '') : '';
+        $status = $lastAt !== '' && $this->ageHours($lastAt) <= self::FRESH_OK_HOURS ? 'ok' : 'pending';
+        if ((int) ($deadLetterCounts['unresolved'] ?? 0) > 0) {
+            $status = 'warning';
+        }
+
+        return [
+            'label' => 'Worker/Fila',
+            'status' => $status,
+            'state' => $lastAt !== '' ? 'idle_with_history' : 'idle_no_history',
+            'message' => $lastAt !== ''
+                ? 'Fila sem pendencias. Ultimo job registrado em ' . $lastAt . '.'
+                : 'Fila sem pendencias, mas nenhum worker recente foi observado.',
+            'recommended_action' => $lastAt !== '' ? null : 'Agende o worker via cron para processar jobs em background.',
+            'queued' => $queued,
+            'running' => $running,
+            'dead_letters' => $deadLetterCounts,
+            'heartbeat' => $heartbeat,
+            'counts' => $counts,
+            'last_executed_job' => $lastExecuted,
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getWebhookStatus(): array
+    {
+        if ($this->syncPipeline === null) {
+            return [
+                'label' => 'Webhook inbox',
+                'status' => 'unknown',
+                'message' => 'Pipeline de webhook indisponivel.',
+                'total_events' => null,
+            ];
+        }
+
+        try {
+            $summary = $this->syncPipeline->summarizeOperationalState(1);
+            $webhook = is_array($summary['webhook_inbox'] ?? null) ? $summary['webhook_inbox'] : [];
+            $counts = is_array($webhook['counts'] ?? null) ? $webhook['counts'] : [];
+            $total = array_sum(array_map('intval', $counts));
+            $failed = (int) ($counts['falhou_temporariamente'] ?? 0) + (int) ($counts['falhou_definitivamente'] ?? 0);
+            $pending = (int) ($webhook['pending_total'] ?? 0);
+
+            return [
+                'label' => 'Webhook inbox',
+                'status' => $failed > 0 ? 'warning' : 'ok',
+                'message' => $total === 0
+                    ? 'Nenhum webhook recebido. Use cron/polling ou configure webhook Omie.'
+                    : sprintf('%d evento(s), %d pendente(s), %d falha(s).', $total, $pending, $failed),
+                'total_events' => $total,
+                'last_event_received_at' => $this->lastWebhookReceivedAt(),
+                'processed_events' => (int) ($counts['processado'] ?? 0),
+                'duplicate_events' => (int) ($counts['ignorado_por_deduplicacao'] ?? 0),
+                'failed_events' => $failed,
+                'pending_events' => $pending,
+                'counts' => $counts,
+            ];
+        } catch (Throwable $exception) {
+            return [
+                'label' => 'Webhook inbox',
+                'status' => 'unknown',
+                'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 160),
+                'total_events' => null,
+            ];
+        }
+    }
+
+    /**
+     * @return list<array{label:string,command:string,description:string}>
+     */
+    private function getAutomationCommands(): array
+    {
+        return [
+            [
+                'label' => 'Sync comercial',
+                'command' => 'php cron/sync_realtime_pipeline.php --domains=commercial',
+                'description' => 'Atualiza pedidos, NFs e eventos comerciais a partir da Omie.',
+            ],
+            [
+                'label' => 'Sync financeiro',
+                'command' => 'php cron/sync_realtime_pipeline.php --domains=finance',
+                'description' => 'Atualiza titulos financeiros canonicos.',
+            ],
+            [
+                'label' => 'Worker',
+                'command' => 'php cron/worker.php --queue=high,default,low --limit=50 --max-runtime=55',
+                'description' => 'Processa jobs agendados pelos botoes da interface.',
+            ],
+            [
+                'label' => 'Materializar Gold',
+                'command' => 'php bin/materialize_marts.php',
+                'description' => 'Recalcula marts com os dados locais disponiveis.',
+            ],
+            [
+                'label' => 'Rebuild Geo periodo',
+                'command' => 'php cron/geo_rebuild_period.php --start=YYYY-MM-01 --end=YYYY-MM-DD --assert --allow-open-month --json',
+                'description' => 'Reconstroi marts geograficos do periodo.',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getRateLimitStatus(): array
+    {
+        $registry = new OmieMethodPolicyRegistry($this->config);
+        $policies = $registry->all();
+        $summary = OmieRateLimiter::summarizePolicies($policies);
+        $domains = [];
+        foreach ($summary as $row) {
+            $domain = (string) ($row['domain'] ?? 'generic');
+            $domains[$domain] ??= [
+                'methods' => 0,
+                'min_page_size' => 100,
+                'max_page_size' => 1,
+                'cache_enabled_methods' => 0,
+                'max_concurrency' => 0,
+            ];
+            $domains[$domain]['methods']++;
+            $domains[$domain]['min_page_size'] = min((int) $domains[$domain]['min_page_size'], (int) ($row['page_size_target'] ?? 100));
+            $domains[$domain]['max_page_size'] = max((int) $domains[$domain]['max_page_size'], (int) ($row['page_size_target'] ?? 1));
+            $domains[$domain]['max_concurrency'] = max((int) $domains[$domain]['max_concurrency'], (int) ($row['max_concurrency'] ?? 1));
+            if ((int) ($row['cache_ttl_seconds'] ?? 0) > 0) {
+                $domains[$domain]['cache_enabled_methods']++;
+            }
+        }
+
+        ksort($domains);
+
+        return [
+            'limits' => [
+                'global_per_ip_per_minute' => 960,
+                'per_app_method_per_minute' => 240,
+                'max_concurrent_per_app_method' => 4,
+                'redundant_lookup_cache_seconds' => 60,
+            ],
+            'domains' => $domains,
+            'methods' => array_slice($summary, 0, 24),
+        ];
+    }
+
+    /**
+     * @return list<array<string,mixed>>
+     */
+    private function getSyncDomainOverview(): array
+    {
+        $definitions = [
+            'commercial' => ['label' => 'Comercial', 'cursor' => 'commercial', 'cron' => 'cron/sync_realtime_pipeline.php --domains=commercial'],
+            'fiscal' => ['label' => 'Fiscal/NF', 'cursor' => 'commercial', 'cron' => 'cron/sync_canonical.php'],
+            'finance' => ['label' => 'Financeiro', 'cursor' => 'finance', 'cron' => 'cron/sync_realtime_pipeline.php --domains=finance'],
+            'clients' => ['label' => 'Clientes', 'cursor' => 'commercial', 'cron' => 'cron/sync_realtime_pipeline.php --domains=commercial'],
+            'geo' => ['label' => 'Geo', 'cursor' => 'geo', 'cron' => 'cron/geo_rebuild_period.php'],
+        ];
+
+        $rows = [];
+        foreach ($definitions as $domain => $definition) {
+            $cursor = null;
+            if ($this->syncPipeline !== null) {
+                try {
+                    $cursor = $this->syncPipeline->getCursor((string) $definition['cursor'], (string) $definition['cursor']);
+                } catch (Throwable) {
+                    $cursor = null;
+                }
+            }
+
+            $lastSuccess = is_array($cursor) ? ($cursor['last_success_at'] ?? null) : null;
+            $ageMinutes = $lastSuccess ? max(0, (int) floor((time() - strtotime((string) $lastSuccess)) / 60)) : null;
+            $status = 'pending';
+            if (is_array($cursor)) {
+                $rawStatus = (string) ($cursor['status'] ?? 'idle');
+                $status = match (true) {
+                    in_array($rawStatus, ['failed_retryable', 'failed_terminal'], true) => 'danger',
+                    $rawStatus === 'running' => 'pending',
+                    $ageMinutes !== null && $ageMinutes <= self::FRESH_OK_HOURS * 60 => 'ok',
+                    $ageMinutes !== null && $ageMinutes <= self::FRESH_WARNING_HOURS * 60 => 'warning',
+                    default => 'danger',
+                };
+            }
+
+            if ($domain === 'geo') {
+                $lastGeo = $this->tableHealth->tableExists('mart_compradores_por_geo')
+                    ? $this->tableHealth->lastUpdatedAt('mart_compradores_por_geo', ['refreshed_at', 'updated_at'])
+                    : null;
+                $lastSuccess = $lastGeo ?: $lastSuccess;
+                $ageMinutes = $lastSuccess ? max(0, (int) floor((time() - strtotime((string) $lastSuccess)) / 60)) : null;
+                $status = $lastGeo !== null ? ($ageMinutes !== null && $ageMinutes <= self::FRESH_WARNING_HOURS * 60 ? 'ok' : 'warning') : 'pending';
+            }
+
+            $rows[] = [
+                'domain' => $domain,
+                'label' => $definition['label'],
+                'status' => $status,
+                'last_success_at' => $lastSuccess,
+                'age_minutes' => $ageMinutes,
+                'next_delta_at' => is_array($cursor) ? ($cursor['next_delta_at'] ?? null) : null,
+                'recommended_command' => $definition['cron'],
+                'message' => is_array($cursor)
+                    ? ($status === 'ok' ? 'Atualizado nas ultimas 24h.' : ($status === 'warning' ? 'Atualizado entre 24h e 72h.' : 'Atualizacao acima de 72h ou falha registrada.'))
+                    : 'Pipeline delta nunca executado para este dominio.',
+                'last_error' => is_array($cursor) && !empty($cursor['last_error'])
+                    ? SecretMask::sanitizeErrorMessage((string) $cursor['last_error'], 120)
+                    : null,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param list<array<string,mixed>> $cursors
+     * @return list<array<string,mixed>>
+     */
+    private function publicCursors(array $cursors): array
+    {
+        $result = [];
+        foreach ($cursors as $cursor) {
+            if (!is_array($cursor)) {
+                continue;
+            }
+
+            $lastSuccess = (string) ($cursor['last_success_at'] ?? '');
+            $result[] = [
+                'domain' => (string) ($cursor['domain_name'] ?? ''),
+                'endpoint_group' => (string) ($cursor['endpoint_group'] ?? ''),
+                'status' => (string) ($cursor['status'] ?? 'unknown'),
+                'last_success_at' => $lastSuccess !== '' ? $lastSuccess : null,
+                'next_delta_at' => ($cursor['next_delta_at'] ?? null) ?: null,
+                'age_minutes' => $lastSuccess !== '' ? max(0, (int) floor((time() - strtotime($lastSuccess)) / 60)) : null,
+                'last_error' => !empty($cursor['last_error'])
+                    ? SecretMask::sanitizeErrorMessage((string) $cursor['last_error'], 120)
+                    : null,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param list<array<string,mixed>> $runs
+     * @return list<array<string,mixed>>
+     */
+    private function publicRecentRuns(array $runs): array
+    {
+        $result = [];
+        foreach (array_slice($runs, 0, 10) as $run) {
+            if (!is_array($run)) {
+                continue;
+            }
+
+            $result[] = [
+                'domain' => (string) ($run['domain_name'] ?? ''),
+                'type' => (string) ($run['run_type'] ?? ''),
+                'status' => (string) ($run['status'] ?? ''),
+                'started_at' => (string) ($run['started_at'] ?? ''),
+                'finished_at' => ($run['finished_at'] ?? null) ?: null,
+                'items_processed' => (int) ($run['items_processed'] ?? 0),
+                'items_failed' => (int) ($run['items_failed'] ?? 0),
+                'error' => !empty($run['error_summary'])
+                    ? SecretMask::sanitizeErrorMessage((string) $run['error_summary'], 120)
+                    : null,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function syncRunsLast24h(): array
+    {
+        if (!$this->tableHealth->tableExists('biomie_sync_runs')) {
+            return [
+                'available' => false,
+                'runs' => 0,
+                'failures' => 0,
+                'avg_duration_ms' => null,
+                'last_success_at' => null,
+                'last_failure_at' => null,
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->query(<<<'SQL'
+                SELECT
+                    COUNT(*) AS runs_total,
+                    SUM(CASE WHEN status IN ('failed_retryable','failed_terminal') THEN 1 ELSE 0 END) AS failures_total,
+                    AVG(CASE
+                        WHEN finished_at IS NOT NULL THEN TIMESTAMPDIFF(MICROSECOND, started_at, finished_at) / 1000
+                        ELSE NULL
+                    END) AS avg_duration_ms,
+                    MAX(CASE WHEN status IN ('completed','completed_with_warnings') THEN finished_at ELSE NULL END) AS last_success_at,
+                    MAX(CASE WHEN status IN ('failed_retryable','failed_terminal') THEN finished_at ELSE NULL END) AS last_failure_at
+                FROM biomie_sync_runs
+                WHERE started_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            SQL);
+            $row = $stmt !== false ? $stmt->fetch(PDO::FETCH_ASSOC) : [];
+        } catch (Throwable) {
+            $row = [];
+        }
+
+        return [
+            'available' => true,
+            'runs' => (int) ($row['runs_total'] ?? 0),
+            'failures' => (int) ($row['failures_total'] ?? 0),
+            'avg_duration_ms' => isset($row['avg_duration_ms']) ? (int) round((float) $row['avg_duration_ms']) : null,
+            'last_success_at' => ($row['last_success_at'] ?? null) ?: null,
+            'last_failure_at' => ($row['last_failure_at'] ?? null) ?: null,
         ];
     }
 
@@ -516,6 +1141,235 @@ final class OmieStatusService
 
     // ── Private ──────────────────────────────────────────────────────────────
 
+    private function countRows(string $table): ?int
+    {
+        if (!$this->tableHealth->tableExists($table)) {
+            return null;
+        }
+
+        return $this->tableHealth->safeCount($table, true);
+    }
+
+    private function latestSyncSuccessAt(): ?string
+    {
+        if (!$this->tableHealth->tableExists('biomie_sync_runs')) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->pdo->query(
+                "SELECT MAX(finished_at) FROM biomie_sync_runs
+                 WHERE status IN ('completed','completed_with_warnings')"
+            );
+            $value = $stmt !== false ? $stmt->fetchColumn() : false;
+            return $value !== false && $value !== null && (string) $value !== '' ? (string) $value : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function latestSyncSuccessAtForDomain(string $domain): ?string
+    {
+        if (!$this->tableHealth->tableExists('biomie_sync_runs')) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT MAX(finished_at) FROM biomie_sync_runs
+                 WHERE status IN ('completed','completed_with_warnings')
+                   AND domain_name = :domain"
+            );
+            $stmt->execute(['domain' => $domain]);
+            $value = $stmt->fetchColumn();
+            return $value !== false && $value !== null && (string) $value !== '' ? (string) $value : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function recordsProcessedLast24h(): int
+    {
+        if (!$this->tableHealth->tableExists('biomie_sync_runs')) {
+            return 0;
+        }
+
+        try {
+            $stmt = $this->pdo->query(
+                "SELECT COALESCE(SUM(items_processed), 0) FROM biomie_sync_runs
+                 WHERE started_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+            );
+            $value = $stmt !== false ? $stmt->fetchColumn() : false;
+            return $value !== false && $value !== null ? (int) $value : 0;
+        } catch (Throwable) {
+            return 0;
+        }
+    }
+
+    private function lastWebhookReceivedAt(): ?string
+    {
+        if (!$this->tableHealth->tableExists('biomie_webhook_inbox')) {
+            return null;
+        }
+        try {
+            $stmt = $this->pdo->query('SELECT MAX(received_at) FROM biomie_webhook_inbox');
+            $value = $stmt !== false ? $stmt->fetchColumn() : false;
+            return $value !== false && $value !== null && (string) $value !== '' ? (string) $value : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function latestSyncRun(): ?array
+    {
+        if (!$this->tableHealth->tableExists('biomie_sync_runs')) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->pdo->query(
+                "SELECT id, run_type, domain_name, endpoint_group, status, items_processed, items_failed, started_at, finished_at, error_summary
+                 FROM biomie_sync_runs
+                 ORDER BY started_at DESC, id DESC
+                 LIMIT 1"
+            );
+            $row = $stmt !== false ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
+            if (!is_array($row)) {
+                return null;
+            }
+            if (isset($row['error_summary'])) {
+                $row['error_summary'] = SecretMask::sanitizeErrorMessage((string) $row['error_summary'], 160);
+            }
+            return $row;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param list<string> $statuses
+     * @return array<string,mixed>|null
+     */
+    private function latestFileQueueJob(array $statuses): ?array
+    {
+        $jobsDir = Bootstrap::rootPath('storage/cache/jobs');
+        if (!is_dir($jobsDir)) {
+            return null;
+        }
+
+        $latest = null;
+        $latestTs = 0;
+        foreach ($statuses as $status) {
+            foreach (glob($jobsDir . '/' . $status . '_job_*.json') ?: [] as $path) {
+                $raw = @file_get_contents($path);
+                $row = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
+                if (!is_array($row)) {
+                    continue;
+                }
+                $date = (string) ($row['finished_at'] ?? $row['failed_at'] ?? $row['started_at'] ?? $row['updated_at'] ?? $row['created_at'] ?? '');
+                $ts = $date !== '' ? (strtotime($date) ?: 0) : 0;
+                if ($ts < $latestTs) {
+                    continue;
+                }
+                $latestTs = $ts;
+                $latest = [
+                    'job_id' => (string) ($row['job_id'] ?? ''),
+                    'type' => (string) ($row['type'] ?? $row['job_type'] ?? ''),
+                    'queue' => (string) ($row['queue'] ?? ''),
+                    'status' => (string) ($row['status'] ?? $status),
+                    'created_at' => $row['created_at'] ?? null,
+                    'updated_at' => $row['updated_at'] ?? null,
+                    'started_at' => $row['started_at'] ?? null,
+                    'finished_at' => $row['finished_at'] ?? ($row['failed_at'] ?? null),
+                    'error_summary' => !empty($row['error_summary'])
+                        ? SecretMask::sanitizeErrorMessage((string) $row['error_summary'], 160)
+                        : null,
+                ];
+            }
+        }
+
+        return $latest;
+    }
+
+    private function ageHours(string $dateTime): ?float
+    {
+        $ts = strtotime($dateTime);
+        if ($ts === false) {
+            return null;
+        }
+
+        return max(0.0, (time() - $ts) / 3600);
+    }
+
+    /**
+     * @return array<string,int>
+     */
+    private function deadLetterCounts(): array
+    {
+        try {
+            return (new DeadLetterRepository($this->pdo))->counts();
+        } catch (Throwable) {
+            return ['total' => 0, 'unresolved' => 0, 'retryable' => 0, 'last_24h' => 0];
+        }
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function workerHeartbeatSummary(): array
+    {
+        try {
+            return (new WorkerHeartbeatRepository($this->pdo))->summary();
+        } catch (Throwable) {
+            return [
+                'status' => 'unknown',
+                'message' => 'Heartbeat do worker indisponivel.',
+                'latest' => null,
+                'age_seconds' => null,
+            ];
+        }
+    }
+
+    private function freshnessStatus(?string $dateTime): string
+    {
+        if ($dateTime === null || $dateTime === '') {
+            return 'pending';
+        }
+
+        $ageHours = $this->ageHours($dateTime);
+        if ($ageHours === null) {
+            return 'unknown';
+        }
+
+        if ($ageHours <= self::FRESH_OK_HOURS) {
+            return 'ok';
+        }
+        if ($ageHours <= self::FRESH_WARNING_HOURS) {
+            return 'warning';
+        }
+
+        return 'danger';
+    }
+
+    /**
+     * @param list<string> $statuses
+     */
+    private function worstStatus(array $statuses): string
+    {
+        $rank = ['unknown' => 0, 'ok' => 1, 'pending' => 2, 'warning' => 3, 'danger' => 4];
+        $worst = 'unknown';
+        foreach ($statuses as $status) {
+            if (($rank[$status] ?? 0) > ($rank[$worst] ?? 0)) {
+                $worst = $status;
+            }
+        }
+
+        return $worst;
+    }
+
     private function lastTestResult(): string
     {
         $row = $this->getLastTestRow();
@@ -589,17 +1443,20 @@ final class OmieStatusService
     private function domainDataStatus(string $table, string $label): array
     {
         if (!$this->tableHealth->tableExists($table)) {
-            return ['label' => $label, 'count' => null, 'last_sync' => null, 'status' => 'danger', 'message' => 'Tabela ausente.'];
+            return ['label' => $label, 'count' => null, 'last_sync' => null, 'status' => 'danger', 'empty_class' => 'empty_error', 'message' => 'Tabela ausente.'];
         }
 
         $count = $this->tableHealth->safeCount($table);
         $lastSync = $this->tableHealth->lastUpdatedAt($table);
 
         if ($count === 0 || $count === null) {
-            return ['label' => $label, 'count' => $count, 'last_sync' => $lastSync, 'status' => 'warning', 'message' => 'Aguardando sincronizacao.'];
+            $message = $table === 'biomie_titulos_financeiros_canonicos'
+                ? 'Financeiro ainda nao sincronizado.'
+                : 'Aguardando sincronizacao.';
+            return ['label' => $label, 'count' => $count, 'last_sync' => $lastSync, 'status' => 'warning', 'empty_class' => 'empty_not_synced', 'message' => $message];
         }
 
-        return ['label' => $label, 'count' => $count, 'last_sync' => $lastSync, 'status' => 'ok', 'message' => number_format($count, 0, ',', '.') . ' registros.'];
+        return ['label' => $label, 'count' => $count, 'last_sync' => $lastSync, 'status' => 'ok', 'empty_class' => null, 'message' => number_format($count, 0, ',', '.') . ' registros.'];
     }
 
     /**

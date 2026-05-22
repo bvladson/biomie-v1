@@ -34,7 +34,8 @@ try {
     $useCanonical = false;
     $targetsRepository = null;
 
-    if ($config->isCanonicalEnabled('orders') && (bool) $config->get('features.canonical_fiscal_ready', false)) {
+    $enforceScope = (bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false);
+    if (($config->isCanonicalEnabled('orders') && (bool) $config->get('features.canonical_fiscal_ready', false)) || $enforceScope) {
         $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
         if (Database::isConfigured($config, $connection)) {
             try {
@@ -56,7 +57,9 @@ try {
     }
 
     if ($useCanonical) {
+        $scopeTabsAvailable = $repo->operationScopeAvailable();
         $orders = $repo->listInvoicesForDisplayCommercial($start, $end);
+        $ordersRemittance = $scopeTabsAvailable ? $repo->listInvoicesForDisplayRemittance($start, $end) : [];
         $pendingOrders = $repo->listPendingOrdersForDisplayCommercial($start, $end);
         $cancelledOrders = $repo->listCancelledInvoicesForDisplayCommercial($start, $end);
         $invoiceSummary = $repo->summarizeInvoicesCommercial($start, $end);
@@ -68,37 +71,61 @@ try {
         $planning = CommercialPlanning::build($repo->aggregateByVendorCommercial($start, $end), $targetsMap, $start, $end, (float) $config->get('flight_plan.saturday_weight', 0.33));
 
         $grossRevenue = (float) ($invoiceSummary['billed_value'] ?? 0);
+        $grossMerchandise = (float) ($invoiceSummary['merchandise_total'] ?? 0);
+        $grossDiscounts = (float) ($invoiceSummary['discounts_total'] ?? 0);
         $ordersCount = (int) ($invoiceSummary['billed_orders'] ?? 0);
         $pendingCount = (int) ($pendingSummary['authorized_orders'] ?? 0) + (int) ($pendingSummary['quote_orders'] ?? 0);
         $activeVendors = (int) ($invoiceSummary['active_vendors'] ?? 0);
+
+        $remittanceCount = count($ordersRemittance);
+        $remittanceRevenue = (float) array_sum(array_column($ordersRemittance, 'gross_total'));
+        $remittanceMerchandise = (float) array_sum(array_column($ordersRemittance, 'merchandise_total'));
 
         $canonicalPayload = [
             'ok' => true,
             'mode' => 'canonical',
             'source' => 'canonical',
+            'scope_tabs_available' => $scopeTabsAvailable,
             'period' => [
                 'start' => $start,
                 'end' => $end,
                 'label' => date('d/m/Y', strtotime($start)) . ' até ' . date('d/m/Y', strtotime($end)),
             ],
             'summary' => [
-                'revenue' => Support::money($grossRevenue),
-                'gross_revenue' => Support::money($grossRevenue),
-                'merchandise_total' => Support::money((float) ($invoiceSummary['merchandise_total'] ?? 0)),
-                'discounts_total' => Support::money((float) ($invoiceSummary['discounts_total'] ?? 0)),
+                'revenue' => $grossRevenue,
+                'gross_revenue' => $grossRevenue,
+                'merchandise_total' => $grossMerchandise,
+                'discounts_total' => $grossDiscounts,
                 'orders' => $ordersCount,
-                'avg_ticket' => $ordersCount > 0 ? Support::money($grossRevenue / $ordersCount) : 0,
+                'avg_ticket' => $ordersCount > 0 ? round($grossRevenue / $ordersCount, 2) : 0.0,
                 'active_vendors' => $activeVendors,
+                'active_clients' => (int) ($invoiceSummary['active_clients'] ?? 0),
                 'target' => Support::toFloat($planning['team']['target_period'] ?? 0),
                 'forecast' => Support::toFloat($planning['team']['forecast_period'] ?? 0),
                 'goal_progress' => Support::toFloat($planning['team']['goal_progress'] ?? 0),
                 'pending_orders' => $pendingCount,
-                'pending_value' => Support::money((float) ($pendingSummary['authorized_value'] ?? 0) + (float) ($pendingSummary['quote_value'] ?? 0)),
+                'pending_value' => (float) ($pendingSummary['authorized_value'] ?? 0) + (float) ($pendingSummary['quote_value'] ?? 0),
                 'quote_orders' => (int) ($pendingSummary['quote_orders'] ?? 0),
                 'cancelled_orders' => (int) ($pendingSummary['cancelled_orders'] ?? 0),
-                'cancelled_value' => Support::money((float) ($pendingSummary['cancelled_value'] ?? 0)),
+                'cancelled_value' => (float) ($pendingSummary['cancelled_value'] ?? 0),
+                'commercial' => [
+                    'nf_count'    => $ordersCount,
+                    'revenue'     => $grossRevenue,
+                    'merchandise' => $grossMerchandise,
+                ],
+                'remittance' => [
+                    'nf_count'    => $remittanceCount,
+                    'revenue'     => $remittanceRevenue,
+                    'merchandise' => $remittanceMerchandise,
+                ],
+                'gross' => [
+                    'nf_count'    => $ordersCount + $remittanceCount,
+                    'revenue'     => round($grossRevenue + $remittanceRevenue, 2),
+                    'merchandise' => round($grossMerchandise + $remittanceMerchandise, 2),
+                ],
             ],
             'orders' => $orders,
+            'orders_remittance' => $ordersRemittance,
             'pending_orders' => $pendingOrders,
             'cancelled_orders' => $cancelledOrders,
             'meta' => [

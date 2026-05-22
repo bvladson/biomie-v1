@@ -1104,7 +1104,7 @@
     resetSelection(true);
   }
 
-  function showEnrichCard(count) {
+  function showEnrichCard(count, revenue) {
     const node = $('geoEnrichCard');
     if (!node) return;
     if (!count || count <= 0) {
@@ -1112,8 +1112,45 @@
       return;
     }
     node.className = 'module-alert module-alert--warning';
-    const msg = $('geoEnrichMessage');
-    if (msg) msg.textContent = `${count} registro(s) com bairro ausente nao aparecem no mapa. Enriqueca os dados de endereco dos clientes para aumentar a cobertura geografica.`;
+    const revStr = revenue > 0 ? ` — ${formatters.money(revenue)} sem bairro` : '';
+    node.innerHTML = `
+      <span class="material-symbols-rounded" style="vertical-align:middle;font-size:16px;margin-right:6px;">location_off</span>
+      <strong>Sem bairro:</strong> ${count} cliente(s)${revStr} sem bairro cadastrado no Omie.
+      <div style="font-size:12px;color:var(--mag-muted,#6b7280);margin-top:4px;">
+        Atualize o endereco/cadastro do cliente no Omie para que aparecam no mapa.
+        <button type="button" id="semBairroCardBtn" style="margin-left:8px;font-size:12px;text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--mag-link,#2563eb);padding:0;">Ver clientes</button>
+      </div>
+    `;
+    const btn = $('semBairroCardBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const semBairroRow = {
+          bairro_key: '__sem_bairro__',
+          neighborhood: 'Sem bairro',
+          city: $('cityFilter')?.value || 'Fortaleza',
+          city_key: 'fortaleza',
+          revenue: revenue || 0,
+          customers: count || 0,
+          invoices: 0,
+          average_ticket: 0,
+        };
+        state.selectedKey = '__sem_bairro__';
+        loadSemBairroPanel(semBairroRow);
+      });
+    }
+  }
+
+  async function loadSemBairroPanel(row) {
+    const token = ++state.panelToken;
+    window.BIomieMapPanel?.renderNoNeighborhood(formatters, row.customers || 0, row.revenue || 0);
+    const params = currentFilters({ bairro_key: '__sem_bairro__', limit: 10 });
+    const buyers = await Promise.allSettled([apiFetch('api/top_buyers_by_geo.php', params, 'buyers')]);
+    if (state.panelToken !== token) return;
+    if (buyers[0].status === 'fulfilled') {
+      const bd = buyers[0].value;
+      const ctx = bd.no_neighborhood_context || {};
+      window.BIomieMapPanel?.renderNoNeighborhood(formatters, row.customers || 0, row.revenue || 0, bd.data || [], ctx);
+    }
   }
 
   function computeMatchRate() {
@@ -1269,7 +1306,8 @@
       safeRender('geo_layer', () => renderGeoLayer(geoJson));
       safeRender('legend', renderLegend);
       safeRender('selection', () => resetSelection(false));
-      safeRender('enrichment', () => showEnrichCard(noNeighborhood));
+      const semBairroRevenue = summaryPayload.no_neighborhood?.faturamento || summaryPayload.data_quality?.missing_neighborhood_revenue || 0;
+      safeRender('enrichment', () => showEnrichCard(noNeighborhood, semBairroRevenue));
       safeRender('coverage', () => renderCoverageBar(summaryPayload));
 
       // Populate side panel with global top buyers and CNAEs (no neighborhood selected)

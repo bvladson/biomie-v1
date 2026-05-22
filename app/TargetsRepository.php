@@ -118,6 +118,114 @@ final class TargetsRepository
     }
 
     /**
+     * Returns all rows with target_amount > 0 for the given month (Phase F).
+     *
+     * @return list<array{vendor_id:string,vendor_name:string,year_month:string,target_amount:float,currency:string,updated_at:?string}>
+     */
+    public function findActiveTargetsByMonth(string $yearMonth): array
+    {
+        if (!$this->isAvailable()) {
+            return [];
+        }
+
+        $sql  = sprintf(
+            'SELECT vendor_id, vendor_name, `year_month`, target_amount, currency, updated_at
+             FROM %s
+             WHERE `year_month` = :year_month AND target_amount > 0
+             ORDER BY vendor_name ASC',
+            $this->targetsTable
+        );
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['year_month' => $yearMonth]);
+        $rows = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $vendor = trim((string) ($row['vendor_id'] ?? ''));
+            if ($vendor === '') {
+                continue;
+            }
+            $rows[] = [
+                'vendor_id'     => $vendor,
+                'vendor_name'   => (string) ($row['vendor_name'] ?? ''),
+                'year_month'    => (string) ($row['year_month'] ?? ''),
+                'target_amount' => Support::money((float) ($row['target_amount'] ?? 0)),
+                'currency'      => (string) ($row['currency'] ?? 'BRL'),
+                'updated_at'    => isset($row['updated_at']) ? (string) $row['updated_at'] : null,
+            ];
+        }
+        return $rows;
+    }
+
+    /**
+     * Returns diagnostic info about targets for a given month (Phase F).
+     *
+     * @return array{targets_count:int,active_count:int,inactive_count:int,duplicate_targets:list<array<string,mixed>>,invalid_targets:list<array<string,mixed>>,team_total:float,last_updated_at:?string}
+     */
+    public function listTargetDiagnostics(string $yearMonth): array
+    {
+        if (!$this->isAvailable()) {
+            return [
+                'targets_count'    => 0,
+                'active_count'     => 0,
+                'inactive_count'   => 0,
+                'duplicate_targets'=> [],
+                'invalid_targets'  => [],
+                'team_total'       => 0.0,
+                'last_updated_at'  => null,
+                'reason_code'      => 'targets_table_not_found',
+            ];
+        }
+
+        $sql  = sprintf(
+            'SELECT vendor_id, vendor_name, target_amount, updated_at
+             FROM %s
+             WHERE `year_month` = :year_month
+             ORDER BY vendor_name ASC',
+            $this->targetsTable
+        );
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['year_month' => $yearMonth]);
+        $allRows = $stmt->fetchAll();
+
+        $seen            = [];
+        $duplicates      = [];
+        $invalid         = [];
+        $activeCount     = 0;
+        $inactiveCount   = 0;
+        $teamTotal       = 0.0;
+
+        foreach ($allRows as $row) {
+            $vid    = trim((string) ($row['vendor_id'] ?? ''));
+            $amount = (float) ($row['target_amount'] ?? 0);
+
+            if ($amount <= 0.0) {
+                $invalid[] = ['vendor_id' => $vid, 'vendor_name' => $row['vendor_name'] ?? '', 'target_amount' => $amount];
+                $inactiveCount++;
+                continue;
+            }
+
+            if (isset($seen[$vid])) {
+                $duplicates[] = ['vendor_id' => $vid, 'vendor_name' => $row['vendor_name'] ?? '', 'target_amount' => $amount];
+            } else {
+                $seen[$vid] = true;
+            }
+
+            $activeCount++;
+            $teamTotal += $amount;
+        }
+
+        return [
+            'targets_count'    => count($allRows),
+            'active_count'     => $activeCount,
+            'inactive_count'   => $inactiveCount,
+            'duplicate_targets'=> $duplicates,
+            'invalid_targets'  => $invalid,
+            'team_total'       => Support::money($teamTotal),
+            'last_updated_at'  => $this->getLastUpdatedAt(),
+            'reason_code'      => $activeCount === 0 ? 'no_active_targets' : null,
+        ];
+    }
+
+    /**
      * Insere ou atualiza uma meta mensal, gravando trilha de auditoria.
      *
      * @return array{vendor_id:string,year_month:string,target_amount:float,previous_amount:?float}

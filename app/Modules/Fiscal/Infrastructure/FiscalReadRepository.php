@@ -67,7 +67,7 @@ final class FiscalReadRepository
      */
     public function aggregateInvoicedByVendorCommercial(string $start, string $end): array
     {
-        $stmt = $this->pdo()->prepare(<<<'SQL'
+        $sql = <<<'SQL'
             SELECT
                 codigo_vendedor_omie, nome_vendedor,
                 COUNT(*) AS notes_count,
@@ -77,9 +77,12 @@ final class FiscalReadRepository
             FROM biomie_notas_fiscais_canonicas
             WHERE status_fiscal = 'autorizada'
               AND data_competencia BETWEEN :start AND :end
+        SQL . $this->readSupport()->commercialScopeFilter() . <<<'SQL'
+
             GROUP BY codigo_vendedor_omie, nome_vendedor
             ORDER BY nome_vendedor ASC
-        SQL);
+        SQL;
+        $stmt = $this->pdo()->prepare($sql);
         $stmt->execute(['start' => $start, 'end' => $end]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -112,7 +115,7 @@ final class FiscalReadRepository
      */
     public function aggregateInvoicesByVendorCommercial(string $start, string $end): array
     {
-        $stmt = $this->pdo()->prepare(<<<'SQL'
+        $sql = <<<'SQL'
             SELECT
                 codigo_vendedor_omie, nome_vendedor,
                 'faturado' AS status_comercial,
@@ -123,9 +126,12 @@ final class FiscalReadRepository
             FROM biomie_notas_fiscais_canonicas
             WHERE status_fiscal = 'autorizada'
               AND data_competencia BETWEEN :start AND :end
+        SQL . $this->readSupport()->commercialScopeFilter() . <<<'SQL'
+
             GROUP BY codigo_vendedor_omie, nome_vendedor
             ORDER BY nome_vendedor
-        SQL);
+        SQL;
+        $stmt = $this->pdo()->prepare($sql);
         $stmt->execute(['start' => $start, 'end' => $end]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -192,7 +198,7 @@ final class FiscalReadRepository
      */
     public function listInvoicedOrdersForDisplayCommercial(string $start, string $end, ?string $vendorId = null): array
     {
-        $rows = $this->fetchInvoiceRows($start, $end, 'autorizada', $vendorId);
+        $rows = $this->fetchInvoiceRows($start, $end, 'autorizada', $vendorId, $this->readSupport()->commercialScopeFilter('nf.'));
 
         return $this->mapInvoiceDisplayRows($this->enrichCustomerSellerIdentityRows($rows));
     }
@@ -202,7 +208,7 @@ final class FiscalReadRepository
      */
     public function listInvoicesCommercial(string $start, string $end): array
     {
-        return $this->fetchInvoiceRows($start, $end, 'autorizada');
+        return $this->fetchInvoiceRows($start, $end, 'autorizada', null, $this->readSupport()->commercialScopeFilter('nf.'));
     }
 
     /**
@@ -210,7 +216,7 @@ final class FiscalReadRepository
      */
     public function listCancelledInvoicesCommercial(string $start, string $end): array
     {
-        return $this->fetchInvoiceRows($start, $end, 'cancelada');
+        return $this->fetchInvoiceRows($start, $end, 'cancelada', null, $this->readSupport()->commercialScopeFilter('nf.'));
     }
 
     /**
@@ -257,6 +263,42 @@ final class FiscalReadRepository
     }
 
     /**
+     * Fase H — NFs com operation_scope = 'remittance'.
+     * Retorna lista vazia se o campo ainda não existir (pré-migration H3).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function listInvoicesForDisplayRemittance(string $start, string $end): array
+    {
+        $scopeFilter = $this->readSupport()->scopeFilter('nf.', 'remittance');
+        if ($scopeFilter === '') {
+            return [];
+        }
+
+        $sql = $this->readSupport()->invoiceSelectSql() . <<<'SQL'
+            FROM biomie_notas_fiscais_canonicas nf
+            LEFT JOIN biomie_vendedores_omie v
+                ON v.codigo_omie = nf.codigo_vendedor_omie
+               AND v.ativo = 1
+            WHERE nf.status_fiscal = 'autorizada'
+              AND nf.data_competencia BETWEEN :start AND :end
+        SQL . $scopeFilter . <<<'SQL'
+
+            ORDER BY nf.data_competencia DESC, nf.numero_nf DESC, nf.serie_nf DESC
+        SQL;
+
+        $stmt = $this->pdo()->prepare($sql);
+        $stmt->execute(['start' => $start, 'end' => $end]);
+
+        return $this->mapInvoiceDisplayRows($this->enrichCustomerSellerIdentityRows($stmt->fetchAll(\PDO::FETCH_ASSOC)));
+    }
+
+    public function operationScopeAvailable(): bool
+    {
+        return $this->readSupport()->operationScopeAvailable();
+    }
+
+    /**
      * @return list<array<string,mixed>>
      */
     public function listTopInvoicesForDisplayCommercial(string $start, string $end, int $limit = 8): array
@@ -268,6 +310,8 @@ final class FiscalReadRepository
                AND v.ativo = 1
             WHERE nf.status_fiscal = 'autorizada'
               AND nf.data_competencia BETWEEN :start AND :end
+        SQL . $this->readSupport()->commercialScopeFilter('nf.') . <<<'SQL'
+
             ORDER BY nf.valor_total DESC, nf.data_competencia DESC, nf.numero_nf DESC
             LIMIT :limit
         SQL;
@@ -293,10 +337,13 @@ final class FiscalReadRepository
      */
     public function summarizeInvoicesCommercial(string $start, string $end): array
     {
-        $stmt = $this->pdo()->prepare(<<<'SQL'
+        // Fase O: usar valor_base_comercial (valor_total - frete - outras - seguro) como receita comercial.
+        $baseSql = $this->readSupport()->commercialBaseSql();
+        $sql = "
             SELECT
                 COUNT(*) AS pedidos,
-                COALESCE(SUM(valor_total), 0) AS total,
+                COALESCE(SUM({$baseSql}), 0) AS total,
+                COALESCE(SUM(valor_total), 0) AS total_nf_bruto,
                 COALESCE(SUM(valor_mercadorias), 0) AS mercadorias,
                 COALESCE(SUM(valor_descontos), 0) AS descontos,
                 COUNT(DISTINCT NULLIF(TRIM(COALESCE(nome_vendedor, '')), '')) AS vendedores,
@@ -308,12 +355,14 @@ final class FiscalReadRepository
             FROM biomie_notas_fiscais_canonicas
             WHERE status_fiscal = 'autorizada'
               AND data_competencia BETWEEN :start AND :end
-        SQL);
+        " . $this->readSupport()->commercialScopeFilter();
+        $stmt = $this->pdo()->prepare($sql);
         $stmt->execute(['start' => $start, 'end' => $end]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return [
-            'billed_value'      => (float) ($row['total'] ?? 0),
+            'billed_value'      => (float) ($row['total'] ?? 0),          // Fase O: valor_base_comercial
+            'billed_value_nf'   => (float) ($row['total_nf_bruto'] ?? 0), // valor_total bruto (diagnóstico)
             'billed_orders'     => (int) ($row['pedidos'] ?? 0),
             'authorized_value'  => 0.0,
             'authorized_orders' => 0,
@@ -329,7 +378,7 @@ final class FiscalReadRepository
     /**
      * @return list<array<string,mixed>>
      */
-    private function fetchInvoiceRows(string $start, string $end, string $status, ?string $vendorId = null): array
+    private function fetchInvoiceRows(string $start, string $end, string $status, ?string $vendorId = null, string $extraWhere = ''): array
     {
         $sql = $this->readSupport()->invoiceSelectSql() . <<<'SQL'
             FROM biomie_notas_fiscais_canonicas nf
@@ -339,6 +388,10 @@ final class FiscalReadRepository
             WHERE nf.status_fiscal = :status
               AND nf.data_competencia BETWEEN :start AND :end
         SQL;
+
+        if ($extraWhere !== '') {
+            $sql .= $extraWhere;
+        }
 
         $params = ['status' => $status, 'start' => $start, 'end' => $end];
         if ($vendorId !== null && $vendorId !== '') {

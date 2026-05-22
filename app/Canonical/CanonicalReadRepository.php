@@ -347,6 +347,22 @@ final class CanonicalReadRepository
     }
 
     /**
+     * Fase H — NFs de remessa para exibição na aba secundária de NF do Período.
+     * Retorna [] pré-migration H3.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function listInvoicesForDisplayRemittance(string $start, string $end): array
+    {
+        return $this->fiscalReadRepository()->listInvoicesForDisplayRemittance($start, $end);
+    }
+
+    public function operationScopeAvailable(): bool
+    {
+        return $this->fiscalReadRepository()->operationScopeAvailable();
+    }
+
+    /**
      * @return list<array<string,mixed>>
      */
     public function listPendingOrdersForDisplayCommercial(string $start, string $end): array

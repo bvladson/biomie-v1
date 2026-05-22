@@ -62,11 +62,16 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var crosshairPlugin = {
       id: 'biomie-crosshair',
       afterDraw: function (chart) {
-        var active = chart.tooltip && chart.tooltip._active;
+        // Use public getActiveElements() (Chart.js 4.x) with fallback to private _active
+        var active = typeof chart.getActiveElements === 'function'
+          ? chart.getActiveElements()
+          : (chart.tooltip && chart.tooltip._active) || [];
         if (!active || !active.length) return;
+        var firstEl = active[0] && active[0].element;
+        if (!firstEl) return;
         var c  = chart.ctx;
         var ca = chart.chartArea;
-        var x  = active[0].element.x;
+        var x  = firstEl.x;
         c.save();
         c.beginPath();
         c.moveTo(x, ca.top);
@@ -80,6 +85,7 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     };
 
     B._renderChart(canvasId, {
+      type: 'bar',
       plugins: [crosshairPlugin],
       data: {
         labels: labels,
@@ -95,7 +101,16 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
         plugins: {
           legend: { display: true, position: 'top', align: 'end', labels: { color: theme.subtle, font: { size: 11 }, boxWidth: 22, boxHeight: 2, padding: 14, usePointStyle: true, pointStyle: 'line' } },
           tooltip: {
-            backgroundColor: theme.tooltipBg, borderColor: theme.tooltipBorder, borderWidth: 1, titleColor: theme.title, bodyColor: theme.text, padding: 12, boxPadding: 5,
+            enabled: true,
+            backgroundColor: theme.tooltipBg,
+            borderColor: theme.tooltipBorder,
+            borderWidth: 1,
+            titleColor: theme.title,
+            bodyColor: theme.text,
+            padding: 12,
+            boxPadding: 5,
+            caretPadding: 8,
+            displayColors: true,
             callbacks: {
               title: function (items) { return items[0] && items[0].label ? items[0].label : ''; },
               label: function (context) {
@@ -412,49 +427,44 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
   // ── Phase 10G: Generic horizontal bar chart ──────────────────────────────
   B.createHorizontalBarChart = function (canvasId, labels, data, opts) {
     opts = opts || {};
-    var canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    window.BIomieCharts.destroyChart(canvasId);
     var total = data.reduce(function (s, v) { return s + Number(v || 0); }, 0);
     var barColor = opts.barColor || 'rgba(150, 20, 10, 0.7)';
 
-    BIOMIE_CHARTS.renderChartSafe(canvasId, function () {
-      B.storeChart(canvasId, new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: barColor,
-            borderRadius: 6,
-            barThickness: 'flex',
-            maxBarThickness: 22
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          resizeDelay: 120,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function (ctx) {
-                  var value = ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : 0;
-                  var share = total > 0 ? (Number(value || 0) / total * 100).toFixed(1) : '0.0';
-                  return B.formatCurrency(value) + ' | ' + share + '%';
-                }
+    B._renderChart(canvasId, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: barColor,
+          borderRadius: 6,
+          barThickness: 'flex',
+          maxBarThickness: 22
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        resizeDelay: 120,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var value = ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : 0;
+                var share = total > 0 ? (Number(value || 0) / total * 100).toFixed(1) : '0.0';
+                return B.formatCurrency(value) + ' | ' + share + '%';
               }
             }
-          },
-          scales: {
-            x: B.chartAxisOptions('money', { beginAtZero: true }),
-            y: B.chartAxisOptions('label', { grid: { display: false } })
           }
+        },
+        scales: {
+          x: B.chartAxisOptions('money', { beginAtZero: true }),
+          y: B.chartAxisOptions('label', { grid: { display: false } })
         }
-      }));
-    });
+      }
+    }, { message: opts.emptyMessage || 'Nenhum dado para exibir.' });
   };
 
 })(window.BIomie || (window.BIomie = {}));

@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f6f3f2" />
-  <meta name="description" content="Mix de produtos faturados com receita, volume e participacao por item." />
+  <meta name="description" content="Mix de produtos Orcamento-PD: receita, volume e participacao por item, com remessas excluidas." />
   <meta name="application-name" content="BIomie" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="BIomie" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Mix de Produtos Faturados | BIomie MAG</title>
+  <title>Mix de Produtos Orcamento-PD | BIomie MAG</title>
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
   <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
@@ -88,7 +88,7 @@
           <span class="material-symbols-rounded">menu</span>
         </button>
         <div class="topbar-badge">
-          <span class="material-symbols-rounded">inventory_2</span>Mix de Produtos
+          <span class="material-symbols-rounded">inventory_2</span>Mix Orçamento-PD
         </div>
         <div class="topbar-meta mag-data-diagnostics mag-diagnostics-collapsed">
           <span>Periodo: <strong data-bind="period-label">-</strong></span>
@@ -109,24 +109,24 @@
     <main class="page">
       <section class="hero module-hero mag-page-header mag-clean-header anim">
         <div class="module-hero__content">
-          <div class="hero-tag"><span class="material-symbols-rounded">chair</span>Mix de produtos faturados</div>
-          <h1>Entenda quais produtos mais contribuem para a receita.</h1>
-          <p>Veja o peso de cada item, o volume faturado e a participacao no mix com leitura simples para a gestao.</p>
+          <div class="hero-tag"><span class="material-symbols-rounded">chair</span>Mix de Produtos Orçamento-PD <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:6px;vertical-align:middle;">remessas excluídas</span></div>
+          <h1>Quais produtos mais contribuem para o faturamento comercial.</h1>
+          <p>Receita, volume e participação de cada item — somente NFs Orçamento-PD. Remessas de produto não entram nesta visão.</p>
           <div class="hero-insights">
-            <div class="hero-chip"><span class="hero-chip-label">Mercadoria</span><span class="hero-chip-value" data-bind="summary-merchandise">-</span><span class="hero-chip-sub">Valor do mix</span></div>
-            <div class="hero-chip"><span class="hero-chip-label">Receita</span><span class="hero-chip-value" data-bind="summary-revenue">-</span><span class="hero-chip-sub">Faturado no periodo</span></div>
-            <div class="hero-chip"><span class="hero-chip-label">NF</span><span class="hero-chip-value" data-bind="summary-orders">-</span><span class="hero-chip-sub">Notas que formam o mix</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Mercadoria Orç-PD</span><span class="hero-chip-value" data-bind="summary-merchandise">-</span><span class="hero-chip-sub">Valor do mix</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Faturamento Orç-PD</span><span class="hero-chip-value" data-bind="summary-revenue">-</span><span class="hero-chip-sub">Base comercial da NF</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Produtos</span><span class="hero-chip-value" data-bind="summary-products-count">-</span><span class="hero-chip-sub">Itens distintos</span></div>
           </div>
         </div>
         <div class="forecast-box module-hero__meta">
-          <div class="forecast-label">Contexto do mix</div>
+          <div class="forecast-label">Ticket médio Orç-PD</div>
           <div class="forecast-value" data-bind="summary-ticket">-</div>
-          <div class="forecast-target"><span>Ticket medio por NF</span></div>
+          <div class="forecast-target"><span>Valor médio por NF comercial</span></div>
           <a href="plano_voo.php" class="forecast-link">Ver metas e ritmo <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">arrow_forward</span></a>
         </div>
       </section>
 
-      <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1">
+      <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" data-mobile-filter-sheet>
         <div class="filter-group"><label class="filter-label">Periodo inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
         <div class="filter-group"><label class="filter-label">Periodo final</label><input id="dateEnd" type="date" class="filter-input" /></div>
         <div class="filter-actions">
@@ -160,32 +160,32 @@
         </div>
       </div>
 
-      <div class="section-label anim d2" id="cards">Indicadores</div>
+      <div class="section-label anim d2" id="cards">Indicadores Orçamento-PD</div>
       <section class="kpi-grid mag-kpi-grid">
-        <div class="kpi-card anim d2"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">payments</span></div><div class="kpi-label">Receita</div></div><div class="kpi-value" data-bind="summary-revenue">-</div><div class="kpi-sub">Faturado no periodo</div><div class="kpi-footer"><span>Base fiscal</span><span class="kpi-pulse">Receita</span></div></div>
-        <div class="kpi-card anim d2" data-accent="blue"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">inventory_2</span></div><div class="kpi-label">Mercadoria</div></div><div class="kpi-value" data-bind="summary-merchandise">-</div><div class="kpi-sub">Valor do mix</div><div class="kpi-footer"><span>Top itens</span><span class="kpi-pulse">Mix</span></div></div>
-        <div class="kpi-card anim d3" data-accent="yellow"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">money_off</span></div><div class="kpi-label">Descontos</div></div><div class="kpi-value" data-bind="summary-discounts">-</div><div class="kpi-sub">Desconto do periodo</div><div class="kpi-footer"><span>Margem</span><span class="kpi-pulse">Desconto</span></div></div>
-        <div class="kpi-card anim d3" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">shopping_cart</span></div><div class="kpi-label">NF</div></div><div class="kpi-value" data-bind="summary-orders">-</div><div class="kpi-sub">Notas do mix</div><div class="kpi-footer"><span>Base fiscal</span><span class="kpi-pulse">NF</span></div></div>
-        <div class="kpi-card anim d4" data-accent="purple"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">sell</span></div><div class="kpi-label">Ticket medio</div></div><div class="kpi-value" data-bind="summary-ticket">-</div><div class="kpi-sub">Valor medio por NF</div><div class="kpi-footer"><span>Qualidade</span><span class="kpi-pulse">Ticket</span></div></div>
-        <div class="kpi-card anim d4" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">person_play</span></div><div class="kpi-label">Vendedores</div></div><div class="kpi-value" data-bind="summary-vendors">-</div><div class="kpi-sub">Com faturamento</div><div class="kpi-footer"><span>Time ativo</span><span class="kpi-pulse">Time</span></div></div>
+        <div class="kpi-card anim d2" data-accent="blue"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">inventory_2</span></div><div class="kpi-label">Mercadoria Orç-PD</div></div><div class="kpi-value" data-bind="summary-merchandise">-</div><div class="kpi-sub">Valor do mix de itens</div><div class="kpi-footer"><span>Orçamento-PD</span><span class="kpi-pulse">Mix</span></div></div>
+        <div class="kpi-card anim d2"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">payments</span></div><div class="kpi-label">Faturamento Orç-PD</div></div><div class="kpi-value" data-bind="summary-revenue">-</div><div class="kpi-sub">Base comercial da NF</div><div class="kpi-footer"><span>Remessas excluídas</span><span class="kpi-pulse">Receita</span></div></div>
+        <div class="kpi-card anim d3" data-accent="purple"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">category</span></div><div class="kpi-label">Produtos no Mix</div></div><div class="kpi-value" data-bind="summary-products-count">-</div><div class="kpi-sub">Itens distintos faturados</div><div class="kpi-footer"><span>Variedade</span><span class="kpi-pulse">Produtos</span></div></div>
+        <div class="kpi-card anim d3" data-accent="yellow"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">money_off</span></div><div class="kpi-label">Descontos</div></div><div class="kpi-value" data-bind="summary-discounts">-</div><div class="kpi-sub">Desconto concedido</div><div class="kpi-footer"><span>Margem</span><span class="kpi-pulse">Desconto</span></div></div>
+        <div class="kpi-card anim d4" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">sell</span></div><div class="kpi-label">Ticket médio Orç-PD</div></div><div class="kpi-value" data-bind="summary-ticket">-</div><div class="kpi-sub">Valor médio por NF</div><div class="kpi-footer"><span>Qualidade</span><span class="kpi-pulse">Ticket</span></div></div>
+        <div class="kpi-card anim d4" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">receipt_long</span></div><div class="kpi-label">NFs Orç-PD</div></div><div class="kpi-value" data-bind="summary-orders">-</div><div class="kpi-sub">Notas que formam o mix</div><div class="kpi-footer"><span>Base fiscal</span><span class="kpi-pulse">NF</span></div></div>
       </section>
 
-      <div class="section-label anim d3" id="graficos">Analises</div>
+      <div class="section-label anim d3" id="graficos">Análises Orçamento-PD</div>
       <section class="charts-grid">
         <div class="chart-card anim d4">
-          <div class="chart-card-header"><div><h3>Produtos que mais geram receita</h3><small>Receita e volume dos itens em destaque</small></div></div>
+          <div class="chart-card-header"><div><h3>Produtos que mais geram receita <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;vertical-align:middle;">Orç-PD</span></h3><small>Receita e volume dos itens em destaque — remessas excluídas</small></div></div>
           <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsRevenueChart"></canvas></div>
         </div>
       </section>
-      <div class="section-label anim d4" id="tabelas">Detalhamento dos produtos</div>
+      <div class="section-label anim d4" id="tabelas">Mix de produtos faturados — Orçamento-PD</div>
       <section class="table-card anim d5">
-        <div class="table-card-header"><h3>Produtos faturados</h3><small>Descricao, quantidade, notas fiscais e receita por item.</small></div>
-        <div style="overflow-x:auto"><table class="mag-table mag-table-clean"><thead><tr><th>Produto</th><th>Qtd</th><th>NF</th><th>Receita</th></tr></thead><tbody id="productsTable" data-empty-title="Sem produtos" data-empty-message="Nenhum produto faturado no periodo." data-empty-icon="inventory_2"></tbody></table></div>
+        <div class="table-card-header"><h3>Produtos faturados <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Orç-PD</span></h3><small>Descrição, quantidade, clientes, notas fiscais e participação no mix — remessas de produto excluídas.</small></div>
+        <div style="overflow-x:auto"><table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr><th>Produto</th><th>Qtd</th><th>Clientes</th><th>NFs</th><th>Receita</th><th>% Mix</th></tr></thead><tbody id="productsTable" data-empty-title="Sem produtos Orç-PD" data-empty-message="Nenhum produto faturado Orçamento-PD no periodo. Remessas são exibidas somente em NF do Período." data-empty-icon="inventory_2"></tbody></table></div>
       </section>
 
       <section class="charts-grid mag-chart-below-table">
         <div class="chart-card anim d5">
-          <div class="chart-card-header"><div><h3>Participacao do mix</h3><small>Top itens por participacao na receita</small></div></div>
+          <div class="chart-card-header"><div><h3>Participação no mix Orç-PD</h3><small>Top itens por participação na receita comercial</small></div></div>
           <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsShareChart"></canvas></div>
         </div>
       </section>

@@ -17,6 +17,7 @@ use BIomie\OmieFinanceCanonicalSyncService;
 use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieRepository;
 use BIomie\RefreshQueue;
+use BIomie\Support\SecretMask;
 use BIomie\Telemetry;
 
 require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
@@ -84,11 +85,12 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL);
     exit(0);
 } catch (Throwable $exception) {
+    $message = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
     $logger->error('Falha no cron financeiro', [
-        'message' => $exception->getMessage(),
+        'message' => $message,
         'trace' => $exception->getTraceAsString(),
     ]);
-    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+    fwrite(STDERR, $message . PHP_EOL);
     exit(1);
 } finally {
     $lock?->release();

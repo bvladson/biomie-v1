@@ -712,6 +712,21 @@ final class CanonicalRepository
     }
 
     /**
+     * Fase H — NFs de remessa. Retorna [] pré-migration H3.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function listInvoicesForDisplayRemittance(string $start, string $end): array
+    {
+        return $this->readRepository()->listInvoicesForDisplayRemittance($start, $end);
+    }
+
+    public function operationScopeAvailable(): bool
+    {
+        return $this->readRepository()->operationScopeAvailable();
+    }
+
+    /**
      * @return list<array<string,mixed>>
      */
     public function listPendingOrdersForDisplayCommercial(string $start, string $end): array

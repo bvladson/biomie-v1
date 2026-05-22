@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f6f3f2" />
   <meta name="description" content="Painel de saude da integracao Omie — credenciais, API, sincronizacoes, tabelas, jobs e diagnostico." />
@@ -41,6 +41,16 @@
     .omie-data-label{font-size:11.5px;color:#78909c;text-transform:uppercase;letter-spacing:.3px;font-weight:600}
     .omie-data-count{font-size:20px;font-weight:700;margin:4px 0 2px}
     .omie-data-sync{font-size:11px;color:#90a4ae}
+    .omie-ops-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-bottom:10px}
+    .omie-ops-card{background:#fff;border:1px solid #eceff1;border-radius:8px;padding:12px 14px}
+    .omie-ops-title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:13px;color:#263238;margin-bottom:8px}
+    .omie-ops-row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:#607d8b;padding:3px 0}
+    .omie-ops-row strong{color:#263238;font-weight:700;text-align:right}
+    .omie-ops-warn{margin-top:8px;padding:6px 8px;border-radius:6px;background:#fff8e1;color:#8a5b00;font-size:11.5px}
+    .omie-rate-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+    .omie-rate-summary div{background:#f8fafc;border:1px solid #e5e9ef;border-radius:8px;padding:10px 12px}
+    .omie-rate-summary span{display:block;font-size:11px;color:#78909c;text-transform:uppercase;font-weight:700;letter-spacing:.2px}
+    .omie-rate-summary strong{display:block;margin-top:3px;font-size:18px;color:#263238}
     .omie-table-group{margin-bottom:20px}
     .omie-table-group-title{font-size:12px;font-weight:700;text-transform:uppercase;color:#546e7a;letter-spacing:.5px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #eceff1}
     .omie-table-compact{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -83,13 +93,13 @@
       .omie-table-compact th,.omie-table-compact td{padding:5px 6px}
     }
   </style>
-  <script src="assets/js/shell.js?v=20260501-omie1"></script>
+  <script src="assets/js/shell.js?v=20260515-omie-sync1"></script>
   <script src="assets/js/core/utils.js"></script>
 <script src="assets/js/core/render-helpers.js"></script>
 <script src="assets/js/core/chart-factory.js"></script>
-<script src="assets/js/app.js?v=20260501-omie1" defer></script>
-  <script src="assets/js/omie-status.js?v=20260501-omie1" defer></script>
-  <script src="assets/js/pwa.js?v=20260501-omie1" defer></script>
+<script src="assets/js/app.js?v=20260515-omie-sync1" defer></script>
+  <script src="assets/js/omie-status.js?v=20260515-omie-sync1" defer></script>
+  <script src="assets/js/pwa.js?v=20260515-omie-sync1" defer></script>
 </head>
 <body class="mag-page mag-clean-page" data-page="integrations">
 <div class="shell">
@@ -104,6 +114,12 @@
         </button>
         <button id="btnUpdateCommercial" type="button" class="omie-btn" title="Atualiza a visao comercial usando os dados ja gravados.">
           <span class="material-symbols-rounded">refresh</span>Atualizar visao comercial
+        </button>
+        <button id="btnDeltaSync" type="button" class="omie-btn" title="Agenda sync delta em background, respeitando rate limit e cursores.">
+          <span class="material-symbols-rounded">sync_alt</span>Sincronizar delta
+        </button>
+        <button id="btnReprocessQueue" type="button" class="omie-btn" title="Agenda reprocessamento da fila operacional Omie.">
+          <span class="material-symbols-rounded">playlist_add_check</span>Reprocessar fila
         </button>
         <button id="btnMaterializeClients" type="button" class="omie-btn" title="Popula biomie_clientes_dim a partir de pedidos e NFs canonicos. Nao chama API Omie.">
           <span class="material-symbols-rounded">people</span>Materializar clientes
@@ -160,6 +176,23 @@
           </div>
           <div class="omie-data-grid" id="geoDataStatus"></div>
           <div id="geoStatusMessage" style="margin-top:10px;font-size:13px;color:#546e7a"></div>
+        </div>
+
+        <!-- 2c. Operational sync status -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">hub</span>Operacao Omie por dominio
+          </div>
+          <div class="omie-ops-grid" id="syncDomainStatus"></div>
+        </div>
+
+        <!-- 2d. Rate limit and queues -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">speed</span>Rate limit, cache e fila
+          </div>
+          <div id="rateLimitStatus"></div>
+          <div id="operationalStatus" style="margin-top:16px"></div>
         </div>
 
         <!-- 3. Recommended actions -->

@@ -46,6 +46,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrf = Auth::csrfToken();
+
+// CSP for login page.
+// - img-src allows Unsplash CDN (images served hot-linked from the browser).
+// - connect-src 'self' only — browser never calls api.unsplash.com directly (PHP proxy handles it).
+// - font-src allows Google Fonts glyphs.
+header(
+    "Content-Security-Policy: " .
+    "default-src 'self'; " .
+    "img-src 'self' data: https://images.unsplash.com https://plus.unsplash.com; " .
+    "connect-src 'self'; " .
+    "script-src 'self'; " .
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+    "font-src 'self' https://fonts.gstatic.com data:; " .
+    "base-uri 'self'; " .
+    "frame-ancestors 'none'; " .
+    "form-action 'self'"
+);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -65,20 +82,74 @@ $csrf = Auth::csrfToken();
     input,select{width:100%;padding:14px 16px;border-radius:16px;border:1px solid var(--border);background:#fff;font:inherit}input:focus,select:focus{outline:2px solid rgba(150,20,10,.16);border-color:var(--brand)}
     .btn{width:100%;border:0;border-radius:16px;padding:15px 18px;background:var(--brand);color:#fff;font:inherit;font-weight:800;cursor:pointer}.btn:hover{background:var(--brand-dark)}
     .msg{margin-bottom:18px;padding:14px 16px;border-radius:16px;font-size:.95rem}.msg.success{background:#ecfdf3;color:var(--ok)}.msg.error{background:#fef3f2;color:var(--error)}
-    .meta{margin-top:18px;padding-top:18px;border-top:1px solid var(--border);font-size:.88rem;color:var(--muted)}
+    .meta{margin-top:18px;padding-top:18px;border-top:1px solid var(--border);font-size:.82rem;color:var(--muted);text-align:center}
     .small{font-size:.88rem;color:var(--muted)}
     @media (max-width:500px){.card{padding:24px 20px;border-radius:20px}h1{font-size:1.4rem}}
   </style>
+  <link rel="stylesheet" href="assets/css/login-wallpaper.css" />
+  <link rel="preload" href="assets/img/login-fallback.svg" as="image" type="image/svg+xml" />
 </head>
 <body>
+  <div id="lw-backdrop" class="lw-backdrop" aria-hidden="true"></div>
+  <div class="lw-orb lw-orb-1" aria-hidden="true"></div>
+  <div class="lw-orb lw-orb-2" aria-hidden="true"></div>
+  <div class="lw-orb lw-orb-3" aria-hidden="true"></div>
+
   <div class="page">
+    <aside class="lw-panel-left" aria-hidden="true">
+      <div class="lw-brand-tag">BIOMIE MAG</div>
+      <h2 class="lw-headline">Gestão comercial<br>em uma só visão.</h2>
+      <p class="lw-sub">Acompanhe vendas, metas, clientes e resultados com clareza.</p>
+
+      <div class="lw-floating-cards">
+        <div class="lw-floating-card lw-fc-sales">
+          <div class="lw-fc-icon">↗</div>
+          <div>
+            <strong>Vendas</strong>
+            <small>Visão clara do mês</small>
+          </div>
+        </div>
+        <div class="lw-floating-card lw-fc-targets">
+          <div class="lw-fc-icon">◎</div>
+          <div>
+            <strong>Metas</strong>
+            <small>Progresso por vendedor</small>
+          </div>
+        </div>
+        <div class="lw-floating-card lw-fc-clients">
+          <div class="lw-fc-icon">♦</div>
+          <div>
+            <strong>Clientes</strong>
+            <small>Carteira e histórico</small>
+          </div>
+        </div>
+        <div class="lw-floating-card lw-fc-products">
+          <div class="lw-fc-icon">▤</div>
+          <div>
+            <strong>Produtos</strong>
+            <small>Mix e performance</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="lw-flow-line" aria-hidden="true">
+        <span class="lw-flow-node">Omie</span>
+        <span class="lw-flow-arrow">→</span>
+        <span class="lw-flow-node">BIomie</span>
+        <span class="lw-flow-arrow">→</span>
+        <span class="lw-flow-node">Decisão</span>
+      </div>
+    </aside>
+
     <div class="card">
       <div class="logo">
-        <img src="images/logo-mag-wide.png" alt="MAG" onerror="this.style.display='none'" />
+        <img src="images/logo-mag-wide.png" alt="MAG" id="lw-logo" />
       </div>
       <div class="eyebrow"><?php echo $hasUsers ? 'Acesso protegido' : 'Configuração inicial'; ?></div>
       <h1><?php echo $hasUsers ? 'Entrar no BIomie' : 'Criar o primeiro administrador'; ?></h1>
-      <p><?php echo $hasUsers ? 'Agora o cockpit exige autenticação por sessão, registra acessos no banco e separa usuários comuns de administradores.' : 'Na primeira execução, crie um usuário administrador para liberar o acesso ao painel e ao cadastro de usuários.'; ?></p>
+      <p><?php echo $hasUsers
+          ? 'Acesse o painel da MAG e acompanhe sua operação com segurança.'
+          : 'Na primeira execução, crie um usuário administrador para liberar o acesso ao painel.'; ?></p>
 
       <?php if ($message !== null): ?>
         <div class="msg <?php echo htmlspecialchars($messageType, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -97,7 +168,7 @@ $csrf = Auth::csrfToken();
             <label for="password">Senha</label>
             <input id="password" name="password" type="password" autocomplete="current-password" required />
           </div>
-          <button class="btn" type="submit">Entrar</button>
+          <button class="btn" type="submit">Entrar no painel</button>
         </form>
       <?php else: ?>
         <form method="post">
@@ -124,11 +195,16 @@ $csrf = Auth::csrfToken();
         </form>
       <?php endif; ?>
 
-      <div class="meta">
-        URL do painel: <strong>index.php</strong><br />
-        Administração de usuários: <strong>admin.php</strong>
-      </div>
+      <div class="meta">Painel comercial &bull; MAG Móveis Corporativos</div>
     </div>
   </div>
+
+  <!-- Unsplash attribution — built via DOM in login-wallpaper.js (no innerHTML with external data) -->
+  <div id="lw-credit" class="lw-credit" aria-label="Crédito da imagem"></div>
+
+  <!-- Remove [hidden] temporarily to inspect source: unsplash | cache | session | fallback | fetch_error | … -->
+  <div id="lw-debug" hidden class="lw-debug"></div>
+
+  <script defer src="assets/js/login-wallpaper.js"></script>
 </body>
 </html>

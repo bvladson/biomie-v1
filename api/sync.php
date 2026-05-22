@@ -6,13 +6,14 @@ use BIomie\Http;
 use BIomie\Queue\FileJobQueue;
 use BIomie\RequestContext;
 use BIomie\SalesAnalyticsService;
+use BIomie\Support\SecretMask;
 
 require __DIR__ . '/bootstrap.php';
 \BIomie\Auth::requireCapability('sales.sync', true);
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        Http::json(['ok' => false, 'message' => 'Use POST para sincronizar.'], 405);
+        Http::json(['ok' => false, 'message' => 'Use POST para atualizar a visao local.'], 405);
     }
 
     Http::enforceCsrf($logger);
@@ -28,7 +29,8 @@ try {
         $snapshot = $analytics->getSnapshot($range['start'], $range['end'], true);
         Http::json([
             'ok' => true,
-            'message' => 'Sincronização concluída.',
+            'message' => 'Visao local atualizada com os dados disponiveis.',
+            'source_action' => 'local_refresh',
             'mode' => $snapshot['mode'],
             'period' => $snapshot['period'],
             'summary' => $snapshot['summary'],
@@ -51,8 +53,9 @@ try {
     Http::accepted([
         'ok' => true,
         'message' => $queueResult['queued']
-            ? 'Atualização agendada. A página será recarregada quando o snapshot ficar pronto.'
-            : 'Atualização já está em andamento para esse período.',
+            ? 'Atualizacao da visao local agendada. Requer worker ativo para executar.'
+            : 'Atualizacao da visao local ja esta em andamento para esse periodo.',
+        'source_action' => 'local_refresh',
         'mode' => 'queued',
         'job_id' => $queueResult['job_id'],
         'status_url' => $statusUrl,
@@ -64,10 +67,13 @@ try {
 } catch (\InvalidArgumentException $exception) {
     Http::json(['ok' => false, 'message' => $exception->getMessage()], 400);
 } catch (Throwable $exception) {
-    $logger->error('Falha ao sincronizar comercial', ['message' => $exception->getMessage(), 'trace' => $exception->getTraceAsString()]);
+    $logger->error('Falha ao atualizar visao local comercial', [
+        'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 200),
+        'trace' => $exception->getTraceAsString(),
+    ]);
     Http::json([
         'ok' => false,
-        'message' => 'Não foi possível iniciar a atualização comercial agora.',
+        'message' => 'Nao foi possivel iniciar a atualizacao da visao local agora.',
         'request_id' => RequestContext::id(),
     ], 500);
 }

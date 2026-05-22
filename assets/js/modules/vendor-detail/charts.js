@@ -9,11 +9,17 @@
     if (!T) return '<div class="biomie-drawer__empty">Erro: Modulo tabs.js nao carregado.</div>';
     
     // We will render placeholders and then mount the charts using Chart.js
-    var html = '<div class="biomie-drawer__section">' +
+    var html = '<div class="biomie-drawer__section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">' +
+      '<div>' +
       '<div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px">Evolucao diaria do realizado</div>' +
       '<div style="position:relative;height:220px;width:100%;"><canvas id="vd-chart-daily"></canvas></div>' +
+      '</div>' +
+      '<div>' +
+      '<div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px">Comparativo com meta</div>' +
+      '<div style="position:relative;height:220px;width:100%;"><canvas id="vd-chart-target"></canvas></div>' +
+      '</div>' +
     '</div>' +
-    '<div class="biomie-drawer__section" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div class="biomie-drawer__section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">' +
       '<div>' +
         '<div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px">Top Clientes</div>' +
         '<div style="position:relative;height:220px;width:100%;"><canvas id="vd-chart-customers"></canvas></div>' +
@@ -43,6 +49,7 @@
     };
 
     mountDailyChart(data, theme, T);
+    mountTargetChart(data, theme, T);
     mountTopChart(data.customers || [], 'vd-chart-customers', 'value|total', 'label|cliente', theme, T);
     mountTopChart(data.products || [], 'vd-chart-products', 'value|revenue', 'description|label', theme, T);
   }
@@ -98,6 +105,61 @@
           },
           x: {
             ticks: { color: theme.text, maxTicksLimit: 10 },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  function mountTargetChart(data, theme, T) {
+    var canvas = document.getElementById('vd-chart-target');
+    if (!canvas) return;
+
+    var existing = window.Chart.getChart(canvas);
+    if (existing) existing.destroy();
+
+    var vendor = data.vendor || {};
+    var target = T.toNumber(vendor.target_period || vendor.goal || 0);
+    var realized = T.toNumber(vendor.realizado_vendedor || vendor.realized_period || vendor.realized || 0);
+    var forecast = T.toNumber(vendor.forecast_period || realized);
+    var gap = Math.max(target - realized, 0);
+    var colors = theme.colors || [];
+
+    if (!target && !realized && !forecast) return;
+
+    new window.Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: ['Meta', 'Realizado', 'Projecao', 'Gap'],
+        datasets: [{
+          data: [target, realized, forecast, gap],
+          backgroundColor: [colors[2] || '#6f42c1', colors[0] || '#0d6efd', colors[7] || '#198754', colors[5] || '#fd7e14'],
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return T.money(ctx.raw); }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: theme.text,
+              callback: function(value) { return T.money(value); }
+            },
+            grid: { color: theme.grid }
+          },
+          x: {
+            ticks: { color: theme.text },
             grid: { display: false }
           }
         }

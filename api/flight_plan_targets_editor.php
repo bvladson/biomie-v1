@@ -277,7 +277,8 @@ function buildCanonicalTargetsEditorResponse(
             'total' => $total,
             'year_month' => $yearMonth,
             'source' => 'canonical_targets_merge',
-            'period_basis' => 'issue_date',
+            'period_basis'        => 'year_month',   // metas — competencia mensal
+            'target_period_basis' => 'year_month',
             'request_id' => RequestContext::id(),
             'team_target' => Support::toFloat($planning['team']['target_period'] ?? 0),
             'team_realized' => Support::toFloat($planning['team']['realized_period'] ?? 0),

@@ -8,7 +8,9 @@ use BIomie\Http;
 use BIomie\RequestContext;
 use BIomie\Support\DocumentMask;
 use BIomie\Support\GeoMapSupport;
+use BIomie\Support\GeoTraceDiagnostics;
 use BIomie\Support\MapFilterSupport;
+use BIomie\Support\NeighborhoodNormalizer;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -123,6 +125,14 @@ try {
     }
     $stmt->execute();
     $segments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($segments as &$segment) {
+        $segmentName = NeighborhoodNormalizer::displayName((string) ($segment['name'] ?? ''));
+        $segment['name'] = $segmentName;
+        $segment['bairro_nome'] = $segmentName;
+        $segment['bairro_key'] = NeighborhoodNormalizer::normalizeKey($segmentName);
+        $segment['normalizacao_origem'] = 'NeighborhoodNormalizer';
+    }
+    unset($segment);
 
     // ── Top buyers ─────────────────────────────────────────────────────────────
     $topBuyers = [];
@@ -151,6 +161,10 @@ try {
         }
         $stmt->execute();
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $buyerBairro = NeighborhoodNormalizer::displayName((string) ($r['bairro'] ?? ''));
+            $buyerCidade = NeighborhoodNormalizer::displayName((string) ($r['cidade'] ?? ''));
+            $buyerBairroKey = NeighborhoodNormalizer::normalizeKey($buyerBairro);
+            $buyerCidadeKey = NeighborhoodNormalizer::normalizeCity($buyerCidade);
             $topBuyers[] = [
                 'nome'          => (string) ($r['cliente_nome'] ?? ''),
                 'documento'     => (string) ($r['documento']    ?? ''),
@@ -160,10 +174,12 @@ try {
                     : (DocumentMask::maskDocument((string) ($r['documento'] ?? ''), 'Nao informado') ?? 'Nao informado'),
                 'documento_norm' => $canViewFullDocuments ? (preg_replace('/\D+/', '', (string) ($r['documento'] ?? '')) ?? '') : '',
                 'codigo_cliente_omie' => (string) ($r['codigo_cliente_omie'] ?? ''),
-                'bairro'        => (string) ($r['bairro']       ?? ''),
-                'bairro_norm'   => (string) ($r['bairro']       ?? ''),
-                'cidade'        => (string) ($r['cidade']       ?? ''),
-                'cidade_norm'   => (string) ($r['cidade']       ?? ''),
+                'bairro'        => $buyerBairro,
+                'bairro_norm'   => $buyerBairroKey,
+                'bairro_key'    => $buyerBairroKey,
+                'cidade'        => $buyerCidade,
+                'cidade_norm'   => $buyerCidadeKey,
+                'cidade_key'    => $buyerCidadeKey,
                 'cnae_codigo'   => ($r['cnae_codigo'] ?? null) ?: null,
                 'notas'         => (int)   ($r['notas']         ?? 0),
                 'faturamento'   => (float) ($r['faturamento']   ?? 0),
@@ -354,6 +370,17 @@ try {
             'pct_faturamento' => $summary['revenue'] > 0
                 ? round($noBairroFaturamento / $summary['revenue'] * 100, 1)
                 : 0.0,
+            'reason' => 'Endereço fora da malha de Fortaleza, bairro não propagado para o mart ou cache geo local incompleto',
+            'action' => 'Rodar geo_holistic_audit para classificar a causa: fora da malha, bug de propagação ou dado ausente no Omie',
+        ],
+        'data_quality' => [
+            'missing_neighborhood_count'   => $noBairroClientes,
+            'missing_neighborhood_revenue' => round($noBairroFaturamento, 2),
+            'pct_revenue' => $summary['revenue'] > 0
+                ? round($noBairroFaturamento / $summary['revenue'] * 100, 1)
+                : 0.0,
+            'reason'  => 'Endereço fora da malha de Fortaleza, bairro não propagado para o mart ou cache geo local incompleto',
+            'action'  => 'Rodar geo_holistic_audit para classificar a causa: fora da malha, bug de propagação ou dado ausente no Omie',
         ],
         'cnae_status' => [
             'status'         => $cnaeStatus,
@@ -423,11 +450,11 @@ try {
 
             $motivoZero = 'desconhecido';
             if ($martTotalRows === 0) {
-                $motivoZero = 'mart_vazio';
+                $motivoZero = 'mart_compradores_geo_nao_materializado';
             } elseif ($martTotalRev <= 0.0) {
                 $motivoZero = 'periodo_sem_vendas';
             } elseif ($summary['last_materialized_at'] === null) {
-                $motivoZero = 'mart_vazio';
+                $motivoZero = 'mart_compradores_geo_nao_materializado';
             } else {
                 $motivoZero = 'filtros_nao_reconhecidos';
             }
@@ -436,7 +463,7 @@ try {
             // for this specific competencia, the geo mart needs to be rebuilt for the period.
             $canonicalNfsInPeriod = 0;
             $geoMartPeriodRows    = 0;
-            if (in_array($motivoZero, ['mart_vazio', 'filtros_nao_reconhecidos'], true)) {
+            if (in_array($motivoZero, ['mart_compradores_geo_nao_materializado', 'filtros_nao_reconhecidos'], true)) {
                 try {
                     if (Http::tableExists($pdo, 'biomie_notas_fiscais_canonicas')) {
                         $cnfStmt = $pdo->prepare(
@@ -457,7 +484,7 @@ try {
                 } catch (\Throwable) {}
 
                 if ($canonicalNfsInPeriod > 0 && $geoMartPeriodRows === 0) {
-                    $motivoZero = 'mart_nao_materializado';
+                    $motivoZero = 'mart_cliente_periodo_nao_materializado';
                 }
             }
 
@@ -543,8 +570,31 @@ try {
             $payload['diagnostics']['missing_months_in_geo_mart'] = $missingMonths;
             
             if ($canonicalTotalNfs > 0 && $rowsBeforeCityFilter === 0) {
-                $payload['diagnostics']['motivo_zero'] = 'mart_geo_nao_materializado';
+                $payload['diagnostics']['motivo_zero'] = 'mart_compradores_geo_nao_materializado';
             }
+        }
+    } catch (\Throwable) {}
+
+    try {
+        $layerDiagnostics = GeoTraceDiagnostics::build($pdo, $range['date_from'], $range['date_to'], $city ?? 'Fortaleza');
+        $payload['diagnostics']['omie'] = $layerDiagnostics['omie'] ?? [];
+        $payload['diagnostics']['bronze'] = $layerDiagnostics['bronze'] ?? [];
+        $payload['diagnostics']['canonical'] = $layerDiagnostics['canonical'] ?? [];
+        $payload['diagnostics']['mart_cliente_periodo'] = $layerDiagnostics['mart_cliente_periodo'] ?? [];
+        $payload['diagnostics']['mart_compradores_por_geo'] = $layerDiagnostics['mart_compradores_por_geo'] ?? [];
+        $payload['diagnostics']['api'] = $layerDiagnostics['api'] ?? [];
+        $payload['diagnostics']['map'] = $layerDiagnostics['map'] ?? [];
+        $payload['diagnostics']['materialization'] = $layerDiagnostics['materialization'] ?? [];
+        $payload['diagnostics']['freshness'] = $layerDiagnostics['freshness'] ?? [];
+        $payload['diagnostics']['next_action'] = $layerDiagnostics['next_action'] ?? null;
+        $payload['diagnostics']['map_status'] = $layerDiagnostics['map_status'] ?? null;
+        $payload['map_status'] = $layerDiagnostics['map_status'] ?? null;
+        $payload['freshness_status'] = $layerDiagnostics['freshness'] ?? [];
+
+        $currentMotivoZero = (string) ($payload['diagnostics']['motivo_zero'] ?? '');
+        $layerMotivoZero = $layerDiagnostics['motivo_zero'] ?? null;
+        if ($layerMotivoZero !== null && ($currentMotivoZero === '' || in_array($currentMotivoZero, ['desconhecido', 'mart_vazio', 'mart_compradores_geo_nao_materializado', 'periodo_sem_vendas'], true))) {
+            $payload['diagnostics']['motivo_zero'] = $layerMotivoZero;
         }
     } catch (\Throwable) {}
 

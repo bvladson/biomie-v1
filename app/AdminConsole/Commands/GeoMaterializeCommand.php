@@ -40,6 +40,15 @@ final class GeoMaterializeCommand implements AdminCommandInterface
                 return "Parametro {$param} invalido. Use: 0 ou 1.";
             }
         }
+        foreach (['start', 'end'] as $param) {
+            $v = trim($args[$param] ?? '');
+            if ($v !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
+                return "Parametro {$param} invalido. Use YYYY-MM-DD.";
+            }
+        }
+        if (trim($args['start'] ?? '') !== '' xor trim($args['end'] ?? '') !== '') {
+            return 'Informe start e end juntos para materializar compradores_geo por periodo.';
+        }
         return null;
     }
 
@@ -60,7 +69,13 @@ final class GeoMaterializeCommand implements AdminCommandInterface
                 return $this->runDryRun($service);
             }
 
-            $report  = $service->run(['dry_run' => false, 'rebuild' => $rebuild], $context->userId);
+            $options = ['dry_run' => false, 'rebuild' => $rebuild];
+            if (trim($args['start'] ?? '') !== '' && trim($args['end'] ?? '') !== '') {
+                $options['start'] = trim($args['start']);
+                $options['end'] = trim($args['end']);
+            }
+
+            $report  = $service->run($options, $context->userId);
 
             $ok          = (bool)   ($report['ok']                       ?? false);
             $status      = (string) ($report['status']                   ?? 'unknown');

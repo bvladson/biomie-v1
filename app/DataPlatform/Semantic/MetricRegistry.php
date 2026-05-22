@@ -129,10 +129,10 @@ final class MetricRegistry
         $defs = [
             ['id' => 'company',           'name' => 'Empresa',              'description' => 'Empresa emissora (MAG Moveis Corporativos)',    'primary_key' => 'empresa_id',           'source_table' => 'omie_config'],
             ['id' => 'order',             'name' => 'Pedido',               'description' => 'Pedido comercial sincronizado do Omie',         'primary_key' => 'pedido_id_omie',       'source_table' => 'biomie_pedidos_canonicos'],
-            ['id' => 'invoice',           'name' => 'Nota Fiscal',          'description' => 'NF-e emitida e sincronizada do Omie',           'primary_key' => 'nota_key',             'source_table' => 'mart_fiscal_nfe'],
+            ['id' => 'invoice',           'name' => 'Nota Fiscal',          'description' => 'NF-e emitida e sincronizada do Omie',           'primary_key' => 'nota_key',             'source_table' => 'biomie_notas_fiscais_canonicas'],
             ['id' => 'financial_title',   'name' => 'Titulo Financeiro',    'description' => 'Titulo a receber/pagar sincronizado do Omie',   'primary_key' => 'titulo_key',           'source_table' => 'biomie_titulos_financeiros_canonicos'],
             ['id' => 'customer',          'name' => 'Cliente',              'description' => 'Cliente cadastrado no Omie',                   'primary_key' => 'codigo_cliente_omie',  'source_table' => 'biomie_clientes_dim'],
-            ['id' => 'vendor',            'name' => 'Vendedor',             'description' => 'Vendedor responsavel pelo pedido/NF',          'primary_key' => 'codigo_vendedor_omie', 'source_table' => 'mart_vendedor_dia'],
+            ['id' => 'vendor',            'name' => 'Vendedor',             'description' => 'Vendedor responsavel pelo pedido/NF',          'primary_key' => 'codigo_vendedor_omie', 'source_table' => 'biomie_vendedores_omie'],
             ['id' => 'product',           'name' => 'Produto',              'description' => 'Produto ou item de pedido/NF',                 'primary_key' => 'produto_id_omie',      'source_table' => 'mart_produto_periodo'],
             ['id' => 'neighborhood',      'name' => 'Bairro',               'description' => 'Bairro oficial de Fortaleza',                  'primary_key' => 'geojson_feature_id',   'source_table' => 'biomie_bairros_fortaleza_dim'],
             ['id' => 'city',              'name' => 'Cidade',               'description' => 'Cidade do cliente',                            'primary_key' => 'cidade_norm',          'source_table' => 'biomie_clientes_geo_dim'],
@@ -182,16 +182,16 @@ final class MetricRegistry
     {
         $defs = [
             ['id' => 'sum_order_value',      'name' => 'Soma Valor Pedido',       'aggregation' => 'sum',            'source_column' => 'valor_total',     'source_table' => 'biomie_pedidos_canonicos',          'filter_rule' => "status_comercial = 'faturado'"],
-            ['id' => 'sum_invoice_value',    'name' => 'Soma Valor NF',           'aggregation' => 'sum',            'source_column' => 'valor_total',     'source_table' => 'mart_fiscal_nfe',                   'filter_rule' => "status_fiscal = 'autorizada'"],
+            ['id' => 'sum_invoice_value',    'name' => 'Soma Valor NF',           'aggregation' => 'sum',            'source_column' => 'valor_total',     'source_table' => 'biomie_notas_fiscais_canonicas',    'filter_rule' => "status_fiscal = 'autorizada'"],
             ['id' => 'sum_financial_paid',   'name' => 'Soma Recebido',           'aggregation' => 'sum',            'source_column' => 'valor_recebido',  'source_table' => 'mart_cliente_periodo',              'filter_rule' => ''],
             ['id' => 'sum_financial_open',   'name' => 'Soma Em Aberto',          'aggregation' => 'sum',            'source_column' => 'valor_aberto',    'source_table' => 'mart_cliente_periodo',              'filter_rule' => ''],
             ['id' => 'count_orders',         'name' => 'Qtd Pedidos',             'aggregation' => 'count',          'source_column' => 'pedido_id_omie',  'source_table' => 'biomie_pedidos_canonicos',          'filter_rule' => ''],
-            ['id' => 'count_invoices',       'name' => 'Qtd NFs',                 'aggregation' => 'count',          'source_column' => 'nota_key',        'source_table' => 'mart_fiscal_nfe',                   'filter_rule' => "status_fiscal = 'autorizada'"],
+            ['id' => 'count_invoices',       'name' => 'Qtd NFs',                 'aggregation' => 'count',          'source_column' => 'nota_key',        'source_table' => 'biomie_notas_fiscais_canonicas',    'filter_rule' => "status_fiscal = 'autorizada'"],
             ['id' => 'count_customers',      'name' => 'Qtd Clientes',            'aggregation' => 'count_distinct', 'source_column' => 'codigo_cliente_omie', 'source_table' => 'mart_cliente_periodo',          'filter_rule' => ''],
             ['id' => 'count_titles',         'name' => 'Qtd Titulos',             'aggregation' => 'count',          'source_column' => 'titulo_key',      'source_table' => 'biomie_titulos_financeiros_canonicos','filter_rule' => ''],
             ['id' => 'count_jobs',           'name' => 'Qtd Jobs',                'aggregation' => 'count',          'source_column' => 'id',              'source_table' => 'biomie_pipeline_jobs',              'filter_rule' => ''],
             ['id' => 'count_webhooks',       'name' => 'Qtd Webhooks',            'aggregation' => 'count',          'source_column' => 'id',              'source_table' => 'biomie_omie_webhooks',              'filter_rule' => ''],
-            ['id' => 'avg_ticket',           'name' => 'Ticket Medio',            'aggregation' => 'avg',            'source_column' => 'valor_total',     'source_table' => 'mart_fiscal_nfe',                   'filter_rule' => "status_fiscal = 'autorizada'"],
+            ['id' => 'avg_ticket',           'name' => 'Ticket Medio',            'aggregation' => 'avg',            'source_column' => 'valor_total',     'source_table' => 'biomie_notas_fiscais_canonicas',    'filter_rule' => "status_fiscal = 'autorizada'"],
         ];
         foreach ($defs as $d) {
             $r->registerMeasure(MetricMeasure::fromArray(array_merge(['description' => ''], $d)));
@@ -214,8 +214,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'vendas_comerciais', 'name' => 'Vendas Comerciais', 'domain' => 'sales',
             'description' => 'Valor total de NFs autorizadas por periodo (dominio comercial).',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_fiscal_nfe', 'value_column' => 'valor_total',
-            'official_date' => 'COALESCE(data_competencia, data_emissao)', 'status' => 'active',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'valor_total',
+            'official_date' => 'data_competencia', 'status' => 'active',
             'include_rule' => "status_fiscal = 'autorizada'",
             'exclude_rule' => "status_fiscal IN ('cancelada', 'denegada', 'inutilizada')",
             'permission' => 'sales.view', 'freshness_domain' => 'sales',
@@ -249,8 +249,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'ranking_vendedor', 'name' => 'Ranking de Vendedores', 'domain' => 'sales',
             'description' => 'Faturamento acumulado por vendedor no periodo.',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_vendedor_dia', 'value_column' => 'valor_total',
-            'official_date' => 'data_referencia', 'status' => 'active',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'valor_total',
+            'official_date' => 'data_competencia', 'status' => 'active',
             'include_rule' => "status_fiscal = 'autorizada'",
             'permission' => 'sales.view', 'freshness_domain' => 'sales',
             'entities' => ['vendor', 'invoice'],
@@ -261,8 +261,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'ticket_medio_pedido', 'name' => 'Ticket Medio por Pedido', 'domain' => 'sales',
             'description' => 'Valor medio por pedido faturado. Denominador (contagem de pedidos) precisa de definicao unica.',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_fiscal_nfe', 'value_column' => 'valor_total',
-            'official_date' => 'COALESCE(data_competencia, data_emissao)', 'status' => 'draft',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'valor_total',
+            'official_date' => 'data_competencia', 'status' => 'draft',
             'notes' => 'Calcular avg(valor_total) ou sum(valor_total)/count(pedidos_faturados)? Pendente decisao.',
             'permission' => 'sales.view', 'freshness_domain' => 'sales',
             'measures' => ['avg_ticket'],
@@ -297,8 +297,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'receita_fiscal', 'name' => 'Receita Fiscal', 'domain' => 'fiscal',
             'description' => 'Valor total de NFs autorizadas, excluindo canceladas, denegadas e devolvidas.',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_fiscal_nfe', 'value_column' => 'valor_total',
-            'official_date' => 'COALESCE(data_competencia, data_emissao)', 'status' => 'active',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'valor_total',
+            'official_date' => 'data_competencia', 'status' => 'active',
             'include_rule' => "status_fiscal = 'autorizada'",
             'exclude_rule' => "status_fiscal IN ('cancelada', 'denegada', 'inutilizada')",
             'cancel_rule'  => "status_fiscal IN ('cancelada', 'denegada')",
@@ -310,8 +310,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'notas_autorizadas', 'name' => 'Notas Autorizadas', 'domain' => 'fiscal',
             'description' => 'Contagem de NFs com status autorizada no periodo.',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_fiscal_nfe', 'value_column' => 'nota_key',
-            'official_date' => 'COALESCE(data_competencia, data_emissao)', 'status' => 'active',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'nota_key',
+            'official_date' => 'data_competencia', 'status' => 'active',
             'include_rule' => "status_fiscal = 'autorizada'",
             'permission' => 'fiscal.view', 'freshness_domain' => 'fiscal',
             'entities' => ['invoice'], 'dimensions' => ['period'],
@@ -321,8 +321,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'notas_canceladas', 'name' => 'Notas Canceladas', 'domain' => 'fiscal',
             'description' => 'Contagem de NFs canceladas ou denegadas no periodo.',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_fiscal_nfe', 'value_column' => 'nota_key',
-            'official_date' => 'COALESCE(data_competencia, data_emissao)', 'status' => 'active',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'nota_key',
+            'official_date' => 'data_competencia', 'status' => 'active',
             'include_rule' => "status_fiscal IN ('cancelada', 'denegada')",
             'permission' => 'fiscal.view', 'freshness_domain' => 'fiscal',
             'entities' => ['invoice'], 'dimensions' => ['period', 'invoice_status'],
@@ -332,8 +332,8 @@ final class MetricRegistry
         $r->registerKpi(self::kpi([
             'id' => 'valor_cancelado', 'name' => 'Valor Cancelado', 'domain' => 'fiscal',
             'description' => 'Soma do valor_total de NFs canceladas ou denegadas no periodo.',
-            'source_of_truth' => 'gold', 'source_table' => 'mart_fiscal_nfe', 'value_column' => 'valor_total',
-            'official_date' => 'COALESCE(data_competencia, data_emissao)', 'status' => 'active',
+            'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'valor_total',
+            'official_date' => 'data_competencia', 'status' => 'active',
             'include_rule' => "status_fiscal IN ('cancelada', 'denegada')",
             'permission' => 'fiscal.view', 'freshness_domain' => 'fiscal',
             'entities' => ['invoice'], 'dimensions' => ['period'],
@@ -344,7 +344,7 @@ final class MetricRegistry
             'id' => 'devolucoes', 'name' => 'Devoluções', 'domain' => 'fiscal',
             'description' => 'Notas de devolucao emitidas. Regra de identificacao ainda nao formalizada.',
             'source_of_truth' => 'canonical', 'source_table' => 'biomie_notas_fiscais_canonicas', 'value_column' => 'valor_total',
-            'official_date' => 'data_emissao', 'status' => 'draft',
+            'official_date' => 'data_competencia', 'status' => 'draft',
             'notes' => 'Identificar NFs de devolucao requer criterio adicional (CFOP, tipo_nf). Pendente.',
             'permission' => 'fiscal.view', 'freshness_domain' => 'fiscal',
         ]));

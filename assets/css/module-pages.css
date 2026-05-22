@@ -1354,3 +1354,252 @@
   .orders-search-bar__filter-input { width: 100%; }
   .orders-search-bar__filters { width: 100%; }
 }
+
+/* ── mag-orders-panel (Fase N.1) ──────────────────────────────────────────── */
+
+.mag-orders-searchbar {
+  padding: 0 16px;
+  border-top: 1px solid var(--border);
+}
+
+.mag-orders-searchbar__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.mag-orders-searchbar__icon {
+  font-size: 18px;
+  color: var(--text-3);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.mag-orders-searchbar__input {
+  flex: 1;
+  height: 36px;
+  padding: 0 4px;
+  border: none;
+  border-bottom: 1.5px solid var(--border-strong);
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-1);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.mag-orders-searchbar__input:focus { border-bottom-color: var(--page-accent, #3b82f6); }
+.mag-orders-searchbar__input::placeholder { color: var(--text-3); }
+
+.mag-orders-searchbar__btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+.mag-orders-searchbar__btn-icon:hover { background: var(--bg-muted); color: var(--text-1); }
+.mag-orders-searchbar__btn-icon[aria-expanded="true"] { background: var(--bg-muted); color: var(--text-1); }
+
+.mag-orders-searchbar__btn-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.mag-orders-searchbar__btn-clear:hover { background: var(--border); }
+
+.mag-orders-searchbar__extras {
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+}
+
+.mag-orders-searchbar__filter-input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--bg-card);
+  color: var(--text-1);
+  font-family: inherit;
+  min-width: 120px;
+}
+
+/* Active filter chips */
+.mag-orders-active-filters {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mag-orders-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 10px;
+  background: var(--info-soft, #eff6ff);
+  color: var(--info-strong, #1d4ed8);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.mag-orders-filter-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.65;
+}
+.mag-orders-filter-chip__remove:hover { opacity: 1; }
+
+/* Search results summary bar */
+.mag-orders-results-summary {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--bg-muted);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.mag-orders-results-summary__value { font-weight: 600; color: var(--text-1); }
+.mag-orders-results-summary__sep   { color: var(--text-3); }
+
+/* Error/info feedback (never clears the table) */
+.mag-orders-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.mag-orders-feedback--error {
+  color: var(--state-cancel, #dc2626);
+  background: var(--state-cancel-bg, #fee2e2);
+  border-left: 3px solid var(--state-cancel, #dc2626);
+}
+
+/* Scope badge pills used in search results */
+.nf-scope-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.nf-scope-pill--commercial { color: #1a7f64; background: #d1fae5; }
+.nf-scope-pill--remittance { color: #856000; background: #fef3c7; }
+
+/* Sortable column headers */
+.nf-th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+.nf-th-sortable:hover { background: var(--bg-muted); }
+.nf-th-sorted         { color: var(--page-accent, #3b82f6); }
+.nf-sort-icon         { font-size: 10px; vertical-align: middle; margin-left: 2px; }
+
+/* Search result table cells */
+.mag-table-cell {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+/* Pagination bar */
+.mag-orders-pagination {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.mag-orders-page-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.mag-orders-page-btn:hover { background: var(--bg-muted); }
+.mag-orders-page-info { color: var(--text-3); }
+
+@media (max-width: 600px) {
+  .mag-orders-searchbar__input { min-width: 0; }
+  .mag-orders-searchbar__filter-input { width: 100%; }
+  .mag-orders-searchbar__extras { gap: 6px; }
+}
+
+/* Fase O — indicadores de componentes não-comissionáveis na célula de Base Comercial */
+.nf-freight-indicator,
+.nf-outros-indicator,
+.nf-seguro-indicator {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 1px 3px;
+  vertical-align: middle;
+  cursor: default;
+}
+.nf-freight-indicator {
+  color: var(--text-3);
+  background: var(--bg-muted);
+}
+.nf-outros-indicator {
+  color: var(--yellow-700, #b45309);
+  background: var(--yellow-50, #fffbeb);
+}
+.nf-seguro-indicator {
+  color: var(--blue-600, #2563eb);
+  background: var(--blue-50, #eff6ff);
+}

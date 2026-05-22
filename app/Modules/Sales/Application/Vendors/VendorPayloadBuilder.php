@@ -45,7 +45,8 @@ final class VendorPayloadBuilder
         $canonicalFallbackReason = null;
         $canonicalCoverage = null;
 
-        if ($this->config->isCanonicalEnabled('vendors') && (bool) $this->config->get('features.canonical_fiscal_ready', false)) {
+        $enforceScope = (bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false);
+        if (($this->config->isCanonicalEnabled('vendors') && (bool) $this->config->get('features.canonical_fiscal_ready', false)) || $enforceScope) {
             try {
                 $connection = Database::isConfigured($this->config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
 

@@ -29,6 +29,7 @@ use BIomie\OmieOrderEventSyncService;
 use BIomie\OmieFiscalSyncService;
 use BIomie\OmieMethodPolicyRegistry;
 use BIomie\OmieRepository;
+use BIomie\Support\SecretMask;
 use BIomie\Telemetry;
 
 require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
@@ -115,11 +116,12 @@ try {
                 'status' => 'ok',
             ];
         } catch (Throwable $e) {
+            $message = SecretMask::sanitizeErrorMessage($e->getMessage(), 500);
             $hasErrors = true;
             $results[] = [
                 'period' => ['start' => $start, 'end' => $end],
                 'status' => 'error',
-                'message' => $e->getMessage(),
+                'message' => $message,
             ];
             throw $e;
         }
@@ -140,11 +142,12 @@ try {
 
     exit(0);
 } catch (Throwable $e) {
+    $message = SecretMask::sanitizeErrorMessage($e->getMessage(), 500);
     $logger->error('Falha no sync canonico', [
-        'message' => $e->getMessage(),
+        'message' => $message,
         'trace' => $e->getTraceAsString(),
     ]);
-    fwrite(STDERR, $e->getMessage() . PHP_EOL);
+    fwrite(STDERR, $message . PHP_EOL);
     exit(1);
 } finally {
     $lock?->release();

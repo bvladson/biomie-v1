@@ -78,20 +78,26 @@
 
 .fp-kpi-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
     padding: 24px;
 }
 
 .fp-kpi-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    height: 86px;
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 100px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.15s;
+}
+
+.fp-kpi-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
 }
 
 .fp-kpi-label {
@@ -99,19 +105,21 @@
     font-weight: 600;
     color: var(--text-3);
     text-transform: uppercase;
-    margin-bottom: 4px;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
 }
 
 .fp-kpi-value {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 800;
     color: var(--text-1);
+    line-height: 1.1;
 }
 
 .fp-kpi-sub {
     font-size: 0.75rem;
     color: var(--text-2);
-    margin-top: 2px;
+    margin-top: 4px;
 }
 
 .fp-grid-layout {
@@ -284,6 +292,9 @@
         align-items: flex-start;
         gap: 16px;
     }
+    .fp-header-actions {
+        display: none;
+    }
     .fp-filters-clean {
         flex-direction: column;
         align-items: stretch;
@@ -292,5 +303,39 @@
         width: 100%;
         display: flex;
         justify-content: flex-end;
+    }
+}
+
+/* ── Mobile FAB — Editar metas (oculto no desktop, visível no mobile) ── */
+.fp-mobile-metas-fab {
+    display: none;
+    position: fixed;
+    bottom: 76px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--page-accent, #2563eb);
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+    z-index: 200;
+    text-decoration: none;
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+.fp-mobile-metas-fab .material-symbols-rounded {
+    font-size: 22px;
+}
+
+.fp-mobile-metas-fab:active {
+    opacity: 0.85;
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .fp-mobile-metas-fab {
+        display: flex;
     }
 }

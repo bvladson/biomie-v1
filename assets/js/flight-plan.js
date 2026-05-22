@@ -1,3 +1,7 @@
+/* ARQUIVO LEGADO -- NAO CARREGADO.
+ * plano_voo.html usa assets/js/modules/flight-plan/ (index.js, vendor-table.js, etc.)
+ * Substituido na Fase F+G (2026-05). Pode ser deletado apos validacao em producao.
+ */
 /*
  * Plano de Voo – v2.5
  * - Carga rápida de metas (MySQL) + carga completa (Omie) em paralelo

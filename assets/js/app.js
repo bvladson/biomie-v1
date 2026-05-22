@@ -101,6 +101,7 @@
 
   function currentSearchParams() { return new URLSearchParams(window.location.search || ''); }
   function currentPageKey()      { return String((document.body && document.body.dataset && document.body.dataset.page) || ''); }
+  function isVendorsPageKey()    { return ['vendors', 'time-comercial'].includes(currentPageKey()); }
 
   function getVendorDrilldownHref(vendorId) {
     const normalized = String(vendorId || '').trim();
@@ -123,7 +124,7 @@
   function renderInvoiceDetailTrigger(type, row, options) {
     options   = options || {};
     const entryId     = registerInvoiceDetailRow(type, row);
-    const code        = String((row && (row.codigo || row.nf_code)) || 'Documento');
+    const code        = String((row && (row.codigo || row.nf_code || row.numero_nf)) || 'Documento');
     const integration = String((row && (row.codigo_integracao || row.origin_order_code || row.document_key)) || '');
 
     const strongClass = options.compact ? 'row-inline-link__strong row-inline-link__strong--compact' : 'row-inline-link__strong';
@@ -142,11 +143,15 @@
     }
 
     const biomieAction = (type === 'pending-order') ? 'open-order' : 'open-invoice';
-    const notaKey      = escapeHtml(String((row && (row.nota_key || row.document_key)) || ''));
+    const rawNotaKey   = String((row && row.nota_key) || '');
+    const rawChaveNfe  = String((row && (row.chave_nfe || row.document_key)) || '');
+    const notaKey      = escapeHtml(rawNotaKey);
+    const chaveNfe     = /^\d{44}$/.test(rawChaveNfe.replace(/\D/g, '')) ? escapeHtml(rawChaveNfe.replace(/\D/g, '')) : '';
+    const numeroNf     = type === 'pending-order' ? '' : escapeHtml(String((row && (row.numero_nf || row.nf_code || row.codigo)) || ''));
     const vendorId     = escapeHtml(String((row && (row.vendor_id || row.vendor_ref || row.codigo_vendedor_omie)) || ''));
     const vendorName   = escapeHtml(String((row && row.vendor_name) || ''));
     const originOrder  = escapeHtml(String((row && (row.codigo_integracao || row.origin_order_code)) || ''));
-    return `<button type="button" class="row-inline-link row-inline-link--document" data-invoice-detail-trigger="1" data-invoice-entry-id="${entryId}" data-biomie-action="${biomieAction}" data-row-type="${escapeHtml(type)}" data-codigo="${escapeHtml(code)}" data-nota-key="${notaKey}" data-vendor-id="${vendorId}" data-vendor-name="${vendorName}" data-origin-order="${originOrder}" aria-label="Abrir detalhes de ${escapeHtml(code)}">${contentHtml}</button>`;
+    return `<button type="button" class="row-inline-link row-inline-link--document" data-invoice-detail-trigger="1" data-invoice-entry-id="${entryId}" data-biomie-action="${biomieAction}" data-row-type="${escapeHtml(type)}" data-codigo="${escapeHtml(code)}" data-numero-nf="${numeroNf}" data-chave-nfe="${chaveNfe}" data-nota-key="${notaKey}" data-vendor-id="${vendorId}" data-vendor-name="${vendorName}" data-origin-order="${originOrder}" aria-label="Abrir detalhes de ${escapeHtml(code)}">${contentHtml}</button>`;
   }
 
   function ensureInvoiceDetailModal() {
@@ -225,7 +230,7 @@
   }
 
   function maybeHandleVendorDeepLink() {
-    if (vendorDeepLinkHandled || currentPageKey() !== 'vendors') return;
+    if (vendorDeepLinkHandled || !isVendorsPageKey()) return;
     const vendorId = String(currentSearchParams().get('vendor_id') || '').trim();
     if (!vendorId) return;
     vendorDeepLinkHandled = true;
@@ -301,45 +306,195 @@
     const vendorChartRows = B.vendorsMatrixForHome(vendors, overview);
     function normalizeOverviewPayload(payload) {
       if (!payload) return {};
+      function firstArray() {
+        const values = Array.prototype.slice.call(arguments);
+        return values.find((value) => Array.isArray(value) && value.length > 0)
+          || values.find((value) => Array.isArray(value))
+          || [];
+      }
       return {
         kpis: payload.kpis || payload.cards || {},
         revenue_evolution: payload.revenue_evolution || payload.revenueEvolution || payload.series || [],
         vendor_ranking: payload.vendor_ranking || payload.vendorRanking || payload.vendors || [],
         top_products: payload.top_products || payload.topProducts || [],
-        top_customers: payload.top_customers || payload.topCustomers || payload.top_clients || [],
+        top_customers: firstArray(payload.top_clients, payload.top_customers, payload.topCustomers),
         top_invoices: payload.top_invoices || payload.topInvoices || payload.top_orders || payload.maiores_notas || [],
         geo_compact: payload.geo_compact || payload.geoCompact || payload.geo || null,
         pipeline_period: payload.pipeline_period || payload.pipelinePeriod || payload.pipeline || null,
-        monthly_comparison: payload.monthly_comparison || payload.monthlyComparison || payload.month_comparison || null,
+        monthly_comparison: (function () {
+          // Handle rich object (Phase D) — extract rows for chart; keep full object for renderMonthlyComparison
+          var mc = payload.month_comparison || payload.monthly_comparison || payload.monthlyComparison || payload.monthComparison;
+          if (mc && typeof mc === 'object' && !Array.isArray(mc) && Array.isArray(mc.rows)) return mc.rows;
+          return firstArray(payload.month_comparison, payload.monthly_comparison, payload.monthlyComparison, payload.monthComparison);
+        })(),
+        month_comparison_full: (function () {
+          var mc = payload.month_comparison || payload.monthly_comparison || payload.monthlyComparison || payload.monthComparison;
+          if (mc && typeof mc === 'object' && !Array.isArray(mc) && mc.current) return mc;
+          return null;
+        })(),
+        finance_summary: payload.finance_summary || payload.financeSummary || payload.financial_summary || null,
         finance_risk: payload.finance_risk || payload.financeRisk || payload.health || null,
-        attention_points: payload.attention_points || payload.attentionPoints || payload.alerts || []
+        attention_points: payload.attention_points || payload.attentionPoints || payload.alerts || [],
+        attention_signals: firstArray(payload.attention_signals, payload.attentionSignals, payload.data && payload.data.attention_signals),
+        attention_summary: payload.attention_summary || (payload.data && payload.data.attention_summary) || null
       };
     }
     const normalized = normalizeOverviewPayload(overview);
     const topOrders     = Array.isArray(normalized.top_invoices) ? normalized.top_invoices : [];
     const topProducts   = Array.isArray(normalized.top_products) ? normalized.top_products : [];
-    const topClients    = Array.isArray(normalized.top_customers) ? normalized.top_customers : [];
+    const topClientsRaw = Array.isArray(normalized.top_customers) ? normalized.top_customers : [];
+    const topClients    = normalizeTopClientRows(topClientsRaw);
+    const monthComparison = Array.isArray(normalized.monthly_comparison)
+      ? normalized.monthly_comparison
+      : (Array.isArray(overview && overview.month_comparison) ? overview.month_comparison : []);
+
+    function firstFilled(row, keys) {
+      for (const key of keys) {
+        if (row && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+          return row[key];
+        }
+      }
+      return '';
+    }
+
+    function toFiniteNumber(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      const raw = String(value || '').trim();
+      if (!raw) return 0;
+      const normalizedValue = raw
+        .replace(/[^\d,.-]/g, '')
+        .replace(/\.(?=\d{3}(\D|$))/g, '')
+        .replace(',', '.');
+      const parsed = Number(normalizedValue);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function normalizeTopClientRows(rows) {
+      return (rows || []).map((row) => {
+        const invoiceTotal = toFiniteNumber(firstFilled(row, ['invoice_total', 'gross_revenue', 'revenue', 'total', 'value']));
+        const notesCount = Math.max(0, Math.round(toFiniteNumber(firstFilled(row, ['notes_count', 'orders', 'count', 'notas', 'notas_count', 'quantity']))));
+        const avgTicket = toFiniteNumber(firstFilled(row, ['avg_ticket', 'ticket_avg', 'average_ticket', 'ticket_medio', 'ticket']));
+        return {
+          client_id: String(firstFilled(row, ['client_id', 'codigo_cliente_omie', 'customer_id', 'id'])),
+          client_name: String(firstFilled(row, ['client_name', 'customer_name', 'cliente', 'name', 'label']) || 'Cliente nao informado'),
+          client_document: String(firstFilled(row, ['client_document', 'documento_cliente', 'document', 'cpf_cnpj'])),
+          invoice_total: invoiceTotal,
+          notes_count: notesCount,
+          avg_ticket: avgTicket > 0 ? avgTicket : (notesCount > 0 ? invoiceTotal / notesCount : 0),
+          last_purchase: String(firstFilled(row, ['last_purchase', 'ultima_compra', 'last_order_date', 'last_invoice_date', 'issue_date', 'competencia_date', 'date'])),
+          share_pct: toFiniteNumber(firstFilled(row, ['share_pct', 'share', 'concentration_pct']))
+        };
+      }).filter((row) => row.invoice_total > 0 || row.notes_count > 0 || row.client_name.trim() !== '');
+    }
+
+    function getChartPanel(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      return canvas ? canvas.closest('.dashboard-panel') : null;
+    }
+
+    function getPanelBody(container) {
+      return container.querySelector('.dashboard-panel__body') || container.querySelector('.panel-body') || container;
+    }
+
+    function clearPanelState(container) {
+      if (!container) return;
+      const target = getPanelBody(container);
+      Array.from(target.children).forEach((child) => {
+        if (child.classList && child.classList.contains('dashboard-empty-state')) child.remove();
+        else child.hidden = false;
+      });
+    }
 
     function renderPanelState(container, state) {
       if (!container) return;
       state = state || {};
-      const target = container.querySelector('.dashboard-panel__body') || container.querySelector('.panel-body') || container;
+      const target = getPanelBody(container);
+      Array.from(target.children).forEach((child) => {
+        if (!(child.classList && child.classList.contains('dashboard-empty-state'))) child.hidden = true;
+      });
+      const facts = Array.isArray(state.facts) && state.facts.length
+        ? `<dl class="dashboard-empty-state__facts">${state.facts.map((item) => `<div><dt>${escapeHtml(item[0])}</dt><dd>${escapeHtml(String(item[1]))}</dd></div>`).join('')}</dl>`
+        : '';
       const diagnostics = state.diagnostics || {};
       const diagnosticRows = Object.keys(diagnostics).length
         ? `<details style="margin-top:12px;"><summary style="font-size:11px; cursor:pointer; color:var(--text-3);">Diagnostico tecnico</summary><div class="small text-muted" style="margin-top:8px; font-family:monospace; font-size:10px;">${Object.entries(diagnostics).map(([k, v]) => `${escapeHtml(k)}=${escapeHtml(String(v))}`).join('<br>')}</div></details>`
         : '';
-      target.innerHTML = `<div class="dashboard-empty-state">
+      let empty = Array.from(target.children).find((child) => child.classList && child.classList.contains('dashboard-empty-state'));
+      if (!empty) {
+        empty = document.createElement('div');
+        empty.className = 'dashboard-empty-state';
+        target.appendChild(empty);
+      }
+      empty.hidden = false;
+      empty.innerHTML = `
         <span class="material-symbols-rounded">${escapeHtml(state.icon || (state.state === 'error' ? 'error' : 'info'))}</span>
         <strong>${escapeHtml(state.title || 'Dados indisponiveis')}</strong>
         <p>${escapeHtml(state.message || 'Dados nao enviados pela API para este painel.')}</p>
+        ${facts}
         ${diagnosticRows}
-      </div>`;
+      `;
     }
     B.renderPanelState = renderPanelState;
+    // Alias global — compatibilidade com chamadas legado fora do namespace.
+    window.renderPanelState = window.renderPanelState || renderPanelState;
 
-    function renderPanelFallback(containerId, expectedKey, availableKeys) {
-      const container = document.getElementById(containerId) || document.querySelector(`[data-chart-id="${expectedKey}"]`);
+    function sourceBadge(source) {
+      if (B.sourceBadge) return B.sourceBadge(source);
+      const src = String(source || 'empty');
+      return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:var(--text-3,#adb5bd);color:#fff;margin-right:4px;">${escapeHtml(src)}</span>`;
+    }
+
+    function freshnessBadge(status) {
+      if (B.freshnessBadge) return B.freshnessBadge(status);
+      const key = String(status || 'unknown').toLowerCase();
+      return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:var(--text-3,#adb5bd);color:#fff;">${escapeHtml(key)}</span>`;
+    }
+
+    function renderDashboardEmptyState(container, opts) {
       if (!container) return;
+      opts = opts || {};
+      // Destroy any active Chart.js instances inside this panel before replacing with empty state
+      container.querySelectorAll('canvas[id]').forEach((canvas) => {
+        try { if (typeof B._destroyChart === 'function') B._destroyChart(canvas.id); } catch (e) { /* ignore */ }
+        if (window.BIOMIE_CHARTS && typeof window.BIOMIE_CHARTS.destroyChart === 'function') {
+          try { window.BIOMIE_CHARTS.destroyChart(canvas.id); } catch (e) { /* ignore */ }
+        }
+      });
+      const target = getPanelBody(container);
+      Array.from(target.children).forEach((child) => {
+        if (!(child.classList && child.classList.contains('dashboard-empty-state'))) child.hidden = true;
+      });
+      const icon = opts.state === 'error' ? 'error' : (opts.reasonCode === 'sync_stale' ? 'sync_problem' : (opts.reasonCode === 'mart_not_materialized' ? 'manufacturing' : 'search_off'));
+      const actionHtml = opts.action ? `<p style="font-size:11px;margin-top:8px;color:var(--text-3)"><strong>Acao:</strong> ${escapeHtml(opts.action)}</p>` : '';
+      const badgesHtml = `<div style="margin-top:10px;">${sourceBadge(opts.source)}${freshnessBadge(opts.freshnessStatus)}</div>`;
+      const diagLink = opts.requestId ? `<details style="margin-top:10px;"><summary style="font-size:11px;cursor:pointer;color:var(--text-3);">Ver diagnostico</summary><div style="font-size:10px;font-family:monospace;margin-top:4px;color:var(--text-3);">request_id: ${escapeHtml(String(opts.requestId))}<br>reason_code: ${escapeHtml(String(opts.reasonCode || '-'))}</div></details>` : '';
+      let empty = Array.from(target.children).find((child) => child.classList && child.classList.contains('dashboard-empty-state'));
+      if (!empty) { empty = document.createElement('div'); empty.className = 'dashboard-empty-state'; target.appendChild(empty); }
+      empty.hidden = false;
+      empty.innerHTML = `
+        <span class="material-symbols-rounded">${escapeHtml(icon)}</span>
+        <strong>${escapeHtml(opts.title || 'Dados indisponiveis')}</strong>
+        <p>${escapeHtml(opts.message || 'Dados nao disponiveis para este painel no periodo selecionado.')}</p>
+        ${actionHtml}
+        ${badgesHtml}
+        ${diagLink}
+      `;
+    }
+    B.renderDashboardEmptyState = renderDashboardEmptyState;
+
+    function resolvePanelContainer(containerOrId, expectedKey) {
+      if (containerOrId && containerOrId.nodeType === 1) return containerOrId;
+      if (typeof containerOrId === 'string' && containerOrId) {
+        const byId = document.getElementById(containerOrId);
+        if (byId) return byId;
+      }
+      return document.querySelector(`[data-chart-id="${expectedKey}"]`);
+    }
+
+    function renderPanelFallback(containerOrId, expectedKey, availableKeys, options) {
+      const container = resolvePanelContainer(containerOrId, expectedKey);
+      if (!container) return;
+      options = options || {};
       const meta = (overview && overview.meta) || {};
       const diag = {
         expected_key: expectedKey,
@@ -347,17 +502,67 @@
         period: `${meta.period_start || getDateRange().start || '-'}..${meta.period_end || getDateRange().end || '-'}`,
         source: meta.source_of_truth || '-',
         cache: meta.cache_status || '-',
-        duration: meta.duration_ms ? `${meta.duration_ms}ms` : '-'
+        duration: meta.duration_ms ? `${meta.duration_ms}ms` : '-',
+        available_keys: (availableKeys || []).join(',') || '-'
       };
       if (meta.datasets_present && !meta.datasets_present.includes(expectedKey)) {
         diag.reason = 'dataset ausente no payload';
       }
+      Object.assign(diag, options.diagnostics || {});
       renderPanelState(container, {
         state: 'empty',
-        title: 'Dados indisponiveis',
-        message: 'Nenhum dado retornado para este painel no periodo selecionado.',
+        title: options.title || 'Dados indisponiveis',
+        message: options.message || 'Nenhum dado retornado para este painel no periodo selecionado.',
+        facts: options.facts || [],
         diagnostics: diag
       });
+    }
+
+    function topClientsEmptyDiagnostics() {
+      const meta = (overview && overview.meta) || {};
+      const coverage = meta.coverage_actual || {};
+      const possibleKeys = ['top_clients', 'top_customers', 'topCustomers'];
+      const receivedKey = possibleKeys.find((key) => overview && Object.prototype.hasOwnProperty.call(overview, key)) || '';
+      const rawValue = receivedKey ? overview[receivedKey] : null;
+      const invoiceCount = Number(
+        summary.orders ||
+        statusSummary.billed_orders ||
+        coverage.invoice_notes_count ||
+        coverage.authorized_notes_count ||
+        0
+      );
+      const rawHasItems = Array.isArray(rawValue) && rawValue.length > 0;
+      let reason = 'dataset vazio no payload';
+      if (!overview) reason = 'payload overview ausente';
+      else if (!receivedKey) reason = 'chaves top_clients/top_customers/topCustomers ausentes';
+      else if (!Array.isArray(rawValue)) reason = `chave ${receivedKey} veio em formato invalido`;
+      else if (rawHasItems) reason = 'contract_mismatch';
+      else if (rawValue.length === 0 && invoiceCount <= 0) reason = 'sem NFs no periodo';
+      else if (rawValue.length === 0) reason = `chave ${receivedKey} veio vazia`;
+
+      return {
+        invoiceCount,
+        reason,
+        receivedKey: receivedKey || '-',
+        facts: [
+          ['Periodo', `${meta.period_start || getDateRange().start || '-'} ate ${meta.period_end || getDateRange().end || '-'}`],
+          ['Fonte', meta.served_from || overview?.source || '-'],
+          ['Modo', meta.source_of_truth || overview?.mode || '-'],
+          ['NFs no periodo', formatNumber(invoiceCount)],
+          ['Motivo', reason]
+        ]
+      };
+    }
+
+    function renderTopClientsTable(rows) {
+      if (!document.getElementById('topClientsTable')) return;
+      B.renderTable('topClientsTable', [
+        { render: (row) => `<strong>${escapeHtml(row.client_name || 'Cliente nao informado')}</strong>${row.client_document ? `<div class="small text-muted">${escapeHtml(row.client_document)}</div>` : ''}` },
+        { render: (row) => `<strong>${formatCurrency(row.invoice_total || 0)}</strong>` },
+        { render: (row) => formatNumber(row.notes_count || 0) },
+        { render: (row) => formatCurrency(row.avg_ticket || 0) },
+        { render: (row) => row.last_purchase ? formatMetaDate(row.last_purchase) : '<span class="text-muted">-</span>' }
+      ], rows.slice(0, 5), 'Sem clientes para o periodo.');
     }
 
     const availableKeys = overview ? Object.keys(overview) : [];
@@ -375,6 +580,8 @@
         ? vendors.alerts_operational.slice(0, 3).map((a) => ({ level: a.level || 'warning', title: a.title || 'Sinal operacional', message: a.message || 'Atencao operacional no time.', metric: 'Operacao', value: '-' }))
         : []
     );
+
+    document.querySelectorAll('.dashboard-panel').forEach(clearPanelState);
 
     B.updateGlobalMeta(metaCarrier);
     B.renderSummaryCards(summary, metaCarrier.mode || 'demo');
@@ -404,18 +611,47 @@
 
     // Row 2: Top Products chart + Top Clients chart + Pipeline (lazy)
     if (topProducts.length > 0) {
+      clearPanelState(getChartPanel('topProductsChart'));
       if (typeof B.createHorizontalBarChart === 'function') B.createHorizontalBarChart('topProductsChart', topProducts.slice(0, 8).map((r) => escapeHtml(String(r.description || r.label || '').substring(0, 28))), topProducts.slice(0, 8).map((r) => Number(r.revenue || r.value || 0)), { barColor: 'rgba(37,99,235,0.7)' });
     } else {
-      renderPanelFallback(document.getElementById('topProductsChart') ? document.getElementById('topProductsChart').closest('.dashboard-panel').id : '', 'top_products', availableKeys);
+      renderPanelFallback(getChartPanel('topProductsChart'), 'top_products', availableKeys);
     }
 
     if (topClients.length > 0) {
-      if (typeof B.createHorizontalBarChart === 'function') B.createHorizontalBarChart('topClientsChart', topClients.slice(0, 8).map((r) => escapeHtml(String(r.client_name || r.label || '').substring(0, 28))), topClients.slice(0, 8).map((r) => Number(r.invoice_total || r.value || 0)), { barColor: 'rgba(22,163,74,0.7)' });
+      clearPanelState(getChartPanel('topClientsChart'));
+      if (typeof B.createHorizontalBarChart === 'function') B.createHorizontalBarChart('topClientsChart', topClients.slice(0, 8).map((r) => escapeHtml(String(r.client_name || '').substring(0, 28))), topClients.slice(0, 8).map((r) => Number(r.invoice_total || 0)), { barColor: 'rgba(22,163,74,0.7)' });
+      renderTopClientsTable(topClients);
     } else {
-      renderPanelFallback(document.getElementById('topClientsChart') ? document.getElementById('topClientsChart').closest('.dashboard-panel').id : '', 'top_customers', availableKeys);
+      const emptyInfo = topClientsEmptyDiagnostics();
+      const topClientsEmptyState = (overview && overview.empty_states && overview.empty_states.top_clients) || null;
+      const tcMeta = (overview && overview.meta) || {};
+      renderDashboardEmptyState(getChartPanel('topClientsChart'), {
+        title: (topClientsEmptyState && topClientsEmptyState.title) || 'Clientes em destaque indisponiveis',
+        message: (topClientsEmptyState && topClientsEmptyState.message) || 'O endpoint respondeu, mas nao trouxe clientes para compor o ranking do periodo.',
+        action: (topClientsEmptyState && topClientsEmptyState.action) || null,
+        reasonCode: (topClientsEmptyState && topClientsEmptyState.reason_code) || emptyInfo.reason,
+        source: tcMeta.served_from || (overview && overview.source) || 'canonical',
+        freshnessStatus: (overview && overview.freshness && overview.freshness.canonical_status) || 'unknown',
+        requestId: tcMeta.request_id || null
+      });
     }
     lazyChart('dailyMixedChart', () => B.createMixedDailyChart('dailyMixedChart', Array.isArray(vendors && vendors.daily_status) && vendors.daily_status.length ? vendors.daily_status : B.overviewSalesAsStatus(dailySales)));
-    lazyChart('monthComparisonChart', () => B.createMonthlyComparisonChart('monthComparisonChart', (overview && overview.month_comparison) || []));
+    if (monthComparison.length > 0) {
+      clearPanelState(getChartPanel('monthComparisonChart'));
+      lazyChart('monthComparisonChart', () => B.createMonthlyComparisonChart('monthComparisonChart', monthComparison));
+    } else {
+      const monthCompEmptyState = (overview && overview.empty_states && overview.empty_states.month_comparison) || null;
+      const mcMeta = (overview && overview.meta) || {};
+      renderDashboardEmptyState(getChartPanel('monthComparisonChart'), {
+        title: (monthCompEmptyState && monthCompEmptyState.title) || 'Comparativo mensal indisponivel',
+        message: (monthCompEmptyState && monthCompEmptyState.message) || 'O endpoint respondeu, mas nao trouxe linhas para o comparativo mensal.',
+        action: (monthCompEmptyState && monthCompEmptyState.action) || null,
+        reasonCode: (monthCompEmptyState && monthCompEmptyState.reason_code) || 'not_enough_months',
+        source: mcMeta.served_from || (overview && overview.source) || 'canonical',
+        freshnessStatus: (overview && overview.freshness && overview.freshness.canonical_status) || 'unknown',
+        requestId: mcMeta.request_id || null
+      });
+    }
 
     // Row 3: Maiores NFs (table with Emissao + Acao columns)
     if (topOrders.length > 0) {
@@ -426,15 +662,58 @@
         { render: (row) => B.renderSellerIdentityCell(row, 'index.html') },
         { render: (row) => formatNumber(row.items_qty || row.items || 0) },
         { render: (row) => `<strong>${formatCurrency(row.gross_total != null ? row.gross_total : (row.total || row.value || 0))}</strong>` },
-        { render: (row) => `<button type="button" class="btn-detail" data-biomie-action="open-invoice" data-nota-key="${escapeHtml(row.document_key || row.nota_key || '')}" data-numero-nf="${escapeHtml(String(row.codigo || row.nf_code || ''))}" data-pedido-codigo="${escapeHtml(row.origin_order_code || row.codigo_integracao || '')}"><span class="material-symbols-rounded">open_in_new</span></button>` }
+        { render: (row) => `<button type="button" class="btn-detail" data-biomie-action="open-invoice" data-nota-key="${escapeHtml(row.nota_key || '')}" data-chave-nfe="${escapeHtml(row.chave_nfe || row.document_key || '')}" data-numero-nf="${escapeHtml(String(row.numero_nf || row.nf_code || row.codigo || ''))}" data-pedido-codigo="${escapeHtml(row.origin_order_code || row.codigo_integracao || '')}"><span class="material-symbols-rounded">open_in_new</span></button>` }
       ], topOrders.slice(0, 5));
     } else {
       renderPanelFallback('tabelas', 'top_invoices', availableKeys);
     }
     B.renderTopOrdersIdentityDiagnostics((overview && overview.diagnostics && overview.diagnostics.top_orders_identity) || null);
 
-    B.renderAlerts(alerts);
+    var attSignals = Array.isArray(normalized.attention_signals) && normalized.attention_signals.length
+      ? normalized.attention_signals
+      : alerts.map(function (a) {
+          if (typeof a === 'string') return { severity: 'info', category: 'operacao', title: a, description: '', source: 'legacy', period_basis: null, reason_code: null };
+          return {
+            severity: a.level === 'danger' ? 'danger' : (a.level || 'info'),
+            category: 'operacao',
+            title: a.title || 'Sinal',
+            description: a.message || '',
+            value: a.value != null ? String(a.value) : null,
+            source: 'legacy',
+            period_basis: 'data_competencia',
+            reason_code: null
+          };
+        });
+    B.renderAttentionSignals(
+      document.getElementById('alertsList'),
+      attSignals,
+      normalized.attention_summary,
+      (overview && overview.diagnostics && overview.diagnostics.attention) || null
+    );
     if (health !== undefined) B.renderCommercialHealth(health || { available: false, message: 'Modulo financeiro indisponivel para este carregamento.' });
+    (function renderRemittanceSummary(h) {
+      var card = document.getElementById('remittanceSummaryCard');
+      var txt  = document.getElementById('remittanceSummaryText');
+      var lnk  = document.getElementById('remittanceSummaryLink');
+      if (!card || !txt) return;
+      var rem = h && h.remittance_summary;
+      if (rem && rem.nf_count > 0) {
+        txt.textContent = rem.nf_count + ' NF' + (rem.nf_count > 1 ? 's' : '') + ' · ' + rem.total_value;
+        if (lnk) {
+          var r = getDateRange();
+          lnk.href = 'pedidos.php?start=' + encodeURIComponent(r.start) + '&end=' + encodeURIComponent(r.end) + '&scope=remittance';
+        }
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    }(health || null));
+    if (normalized.finance_summary && typeof B.renderFinanceOverview === 'function') {
+      B.renderFinanceOverview(document.getElementById('financeOverviewPanel'), normalized.finance_summary);
+    }
+    if (normalized.month_comparison_full && typeof B.renderMonthlyComparison === 'function') {
+      B.renderMonthlyComparison(document.getElementById('monthComparisonInsights'), normalized.month_comparison_full);
+    }
     if (weather !== undefined) B.renderWeather(weather || { ok: false, message: 'Clima indisponivel no momento.' });
     bindInvoiceDetailTriggers();
   }
@@ -505,7 +784,21 @@
       });
       throw overviewResult.status === 'rejected' ? overviewResult.reason : vendorsResult.reason;
     }
-    renderDashboardPayloads(overview, vendors, health, weather, prevOverview);
+    try {
+      renderDashboardPayloads(overview, vendors, health, weather, prevOverview);
+    } catch (renderErr) {
+      console.error('[BIomie] dashboard render error', renderErr);
+      document.querySelectorAll('.dashboard-panel').forEach(function (panel) {
+        try {
+          renderPanelState(panel, {
+            state: 'error',
+            title: 'Erro de renderização',
+            message: 'Falha ao renderizar este painel. Tente recarregar a página.',
+            diagnostics: { error: String(renderErr && renderErr.message || renderErr).substring(0, 120) }
+          });
+        } catch (_) {}
+      });
+    }
   }
 
   async function loadVendors(force, options) {
@@ -552,14 +845,103 @@
     B.createOrdersStatusChart('ordersStatusChart', data.orders || [], data.pending_orders || [], data.cancelled_orders || []);
     B.createOrdersVendorChart('ordersVendorChart', data.orders || []);
 
-    B.renderTable('ordersTable', [
+    // H5 — scope tabs (shown only when migration H3 applied and remittance data available)
+    const scopeTabsAvailable = !!data.scope_tabs_available;
+    const ordersCommercial   = data.orders || [];
+    const ordersRemittance   = data.orders_remittance || [];
+    const nfScopeTabs        = document.getElementById('nfScopeTabs');
+    const nfRemittanceAlert  = document.getElementById('nfRemittanceAlert');
+    const nfRemittanceBadge  = document.getElementById('nfRemittanceBadge');
+    let   activeNfScope      = 'commercial';
+
+    const NF_SCOPE_PILL = {
+      commercial: '<span style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.3px;color:#1a7f64;background:#d1fae5;text-transform:uppercase">Orç-PD</span>',
+      remittance: '<span style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.3px;color:#856000;background:#fef3c7;text-transform:uppercase">Remessa</span>',
+    };
+
+    const NF_COL_DEFS = [
+      // NF — invoice trigger (without scope pill; Tipo column handles that separately)
       { render: (row) => renderInvoiceDetailTrigger('order', row, { horizontal: true }) },
+      // Tipo — scope badge (always shown; distinguishes Orç-PD from Remessa in "all" tab)
+      { render: (row) => {
+          const scope = row._display_scope || row.operation_scope || 'commercial';
+          return NF_SCOPE_PILL[scope] || NF_SCOPE_PILL.commercial;
+        }
+      },
       { render: (row) => B.renderCustomerIdentityCell(row) },
       { render: (row) => B.renderSellerIdentityCell(row, 'pedidos.html') },
       { render: (row) => formatOrderDate(row, true) },
-      { render: (row) => formatNumber(row.items_qty) },
-      { render: (row) => `<div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;"><strong>${formatCurrency(row.gross_total != null ? row.gross_total : row.total)}</strong>${(row.merchandise_total || row.discount_total) ? `<span style="font-size:11px; color:var(--text-3); padding-top:2px;">(Merc: ${formatCurrency(row.merchandise_total || 0)}${row.discount_total ? ` | Desc: ${formatCurrency(row.discount_total)}` : ''})</span>` : ''}</div>` }
-    ], data.orders || [], 'Sem NF autorizada no periodo.');
+      { render: (row) => formatCurrency(row.merchandise_total || 0) },
+      { render: (row) => row.discount_total ? formatCurrency(row.discount_total) : '<span style="color:var(--text-3)">—</span>' },
+      { render: (row) => `<strong>${formatCurrency(row.gross_total != null ? row.gross_total : row.total)}</strong>` },
+      // Pedido — origin order code with drawer link when available
+      { render: (row) => {
+          const code = String(row.origin_order_code || row.codigo_pedido || '').trim();
+          return code
+            ? `<button type="button" class="row-inline-link" data-biomie-action="open-order" data-pedido-codigo="${B.escapeHtml(code)}">${B.escapeHtml(code)}</button>`
+            : '<span style="color:var(--text-3)">—</span>';
+        }
+      },
+    ];
+
+    const NF_SCOPE_META = {
+      commercial: { title: 'Faturamento Orçamento-PD', sub: 'Somente NFs Orçamento-PD faturadas. Remessas excluídas.' },
+      remittance: { title: 'Remessa de Produto', sub: 'Movimentação fiscal/logística — não compõe faturamento comercial.' },
+      all:        { title: 'Todas as NFs (conferência)', sub: 'Visão fiscal completa: Orçamento-PD + Remessa. Use as abas para filtrar.' },
+    };
+
+    function renderNfTable(scope) {
+      let rows;
+      let emptyMsg;
+      if (scope === 'remittance') {
+        rows = ordersRemittance;
+        emptyMsg = 'Nenhuma NF de remessa no periodo.';
+      } else if (scope === 'all') {
+        rows = [
+          ...ordersCommercial.map(r => Object.assign({}, r, { _display_scope: 'commercial' })),
+          ...ordersRemittance.map(r => Object.assign({}, r, { _display_scope: 'remittance' })),
+        ].sort((a, b) => {
+          const da = a.data_emissao || a.emissao || '';
+          const db = b.data_emissao || b.emissao || '';
+          return da < db ? 1 : da > db ? -1 : 0;
+        });
+        emptyMsg = 'Nenhuma NF autorizada no periodo.';
+      } else {
+        rows = ordersCommercial;
+        emptyMsg = 'Sem NF Orçamento-PD faturada no periodo.';
+      }
+      B.renderTable('ordersTable', NF_COL_DEFS, rows, emptyMsg);
+      if (nfRemittanceAlert) nfRemittanceAlert.style.display = scope === 'remittance' ? 'flex' : 'none';
+      var meta = NF_SCOPE_META[scope] || NF_SCOPE_META.commercial;
+      var titleEl = document.getElementById('nfScopeTitle');
+      var subEl   = document.getElementById('nfScopeSubtitle');
+      if (titleEl) titleEl.textContent = meta.title;
+      if (subEl)   subEl.textContent   = meta.sub;
+      document.querySelectorAll('[data-nf-scope]').forEach((btn) => {
+        const isActive = btn.dataset.nfScope === scope;
+        btn.classList.toggle('mag-tab--active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
+
+    if (scopeTabsAvailable && nfScopeTabs) {
+      nfScopeTabs.style.display = '';
+      if (nfRemittanceBadge && ordersRemittance.length > 0) {
+        nfRemittanceBadge.textContent = ordersRemittance.length;
+        nfRemittanceBadge.style.display = '';
+      }
+      nfScopeTabs.querySelectorAll('[data-nf-scope]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          activeNfScope = btn.dataset.nfScope;
+          renderNfTable(activeNfScope);
+        });
+      });
+    }
+
+    if (typeof window._clearBiomieSearch === 'function') window._clearBiomieSearch();
+    renderNfTable(activeNfScope);
+    window._nfPageRestore    = function (s) { renderNfTable(s !== undefined ? s : activeNfScope); };
+    window._getActiveNfScope = function ()  { return activeNfScope; };
 
     B.renderTable('pendingOrdersTable', [
       { render: (row) => renderInvoiceDetailTrigger('pending-order', row, { compact: true }) },
@@ -582,16 +964,50 @@
     options = options || {};
     const data           = await fetchJson(buildApiUrl('api/products.php', force), options);
     const breakdownState = B.resolveProductBreakdownState(data);
+    const products       = Array.isArray(data.products) ? data.products
+      : (Array.isArray(data.top_products) ? data.top_products
+      : (Array.isArray(data.topProducts) ? data.topProducts
+      : (Array.isArray(data.product_mix) ? data.product_mix
+      : (Array.isArray(data.productMix) ? data.productMix : []))));
+    const productMix     = Array.isArray(data.product_mix) ? data.product_mix
+      : (Array.isArray(data.productMix) ? data.productMix
+      : (Array.isArray(data.mix_share) ? data.mix_share : products));
+    const emptyState     = data.empty_states && (data.empty_states.products || data.empty_states.products_table || data.empty_states.product_mix);
     B.updateGlobalMeta(data);
     B.renderSummaryCards(data.summary, data.mode);
-    B.createProductMixChart('productsRevenueChart', data.products || []);
-    B.createProductShareChart('productsShareChart', data.products || []);
+    // Bind products_count — not in the shared renderSummaryCards but needed by mercadorias.html
+    const productsCount = data.summary && data.summary.products_count != null
+      ? data.summary.products_count
+      : (data.diagnostics && data.diagnostics.distinct_product_count != null ? data.diagnostics.distinct_product_count : null);
+    B.setText('[data-bind="summary-products-count"]', productsCount != null ? formatNumber(productsCount) : '-');
+    if (products.length) {
+      B.createProductMixChart('productsRevenueChart', products);
+      B.createProductShareChart('productsShareChart', productMix);
+    } else if (typeof B.renderDashboardEmptyState === 'function') {
+      B.renderDashboardEmptyState(getChartPanel('productsRevenueChart'), Object.assign({
+        title: 'Mix Orç-PD sem detalhes',
+        message: 'Os KPIs existem, mas os produtos não foram retornados no contrato da API.',
+        action: 'Verifique api/products.php, itens canônicos e materialização do mix.',
+        source: data.source || 'empty',
+        freshnessStatus: data.freshness && data.freshness.freshness_status,
+        requestId: data.diagnostics && data.diagnostics.request_id
+      }, emptyState || {}));
+      B.renderDashboardEmptyState(getChartPanel('productsShareChart'), Object.assign({
+        title: 'Participação do mix indisponível',
+        message: 'Sem produtos agrupados para montar a participação do mix Orç-PD.',
+        action: 'Validar biomie_notas_fiscais_itens_canonicos no período.',
+        source: data.source || 'empty',
+        requestId: data.diagnostics && data.diagnostics.request_id
+      }, emptyState || {}));
+    }
     B.renderTable('productsTable', [
       { render: (row) => B.renderProductBreakdownTrigger(row, breakdownState) },
       { render: (row) => formatNumber(row.quantity) },
-      { render: (row) => formatNumber(row.orders) },
-      { render: (row) => formatCurrency(row.revenue) }
-    ], data.products || [], 'Sem item fiscal no periodo.');
+      { render: (row) => formatNumber(row.customers_count || 0) },
+      { render: (row) => formatNumber(row.orders || row.invoices_count) },
+      { render: (row) => formatCurrency(row.revenue) },
+      { render: (row) => row.share_pct != null ? Number(row.share_pct).toFixed(1) + '%' : '-' }
+    ], products, (emptyState && (emptyState.message || emptyState.title)) || 'Sem item fiscal Orç-PD no periodo.');
     bindProductBreakdownTriggers();
   }
 
@@ -660,7 +1076,12 @@
     if (end)   params.set('end', end);
 
     try {
-      const data = await fetchJson('api/flight_plan_vendor_detail.php?' + params.toString());
+      let data;
+      try {
+        data = await fetchJson('api/vendor_detail.php?' + params.toString());
+      } catch (primaryError) {
+        data = await fetchJson('api/flight_plan_vendor_detail.php?' + params.toString());
+      }
       const v    = data.vendor || {};
       if (nameEl)   nameEl.textContent   = v.vendor_name || 'Desconhecido';
       if (statusEl) statusEl.textContent = B.vendorRiskLabel(v.risk_status || '');
@@ -703,9 +1124,9 @@
         const renderList = (items, title, empty, kind) => {
           if (!items.length) return `<div style="font-size:12px;color:var(--text-3);padding:10px 0">${empty}</div>`;
           return `<h4 style="font-size:13px;margin:12px 0 8px">${title}</h4>` + items.map((x) => {
-            const refDate   = x.status_date || x.issue_date || '';
+            const refDate   = x.competencia_date || x.data_competencia || x.status_date || x.issue_date || '';
             const dateLabel = refDate ? refDate.slice(8, 10) + '/' + refDate.slice(5, 7) : '--/--';
-            return `<div class="detail-drawer-list-item"><div style="display:flex;flex-direction:column;gap:4px"><strong>${escapeHtml(x.cliente || '')}</strong><span style="font-size:11px;color:var(--text-3)">${dateLabel} | ${kind} ${x.codigo || '-'}</span></div><div style="text-align:right"><div style="font-size:13px;font-weight:700">${formatCurrency(x.merchandise_total || x.total)}</div><small style="color:var(--text-3)">merc.</small></div></div>`;
+            return `<div class="detail-drawer-list-item"><div style="display:flex;flex-direction:column;gap:4px"><strong>${escapeHtml(x.cliente || '')}</strong><span style="font-size:11px;color:var(--text-3)">${dateLabel} | ${kind} ${x.codigo || '-'}</span></div><div style="text-align:right"><div style="font-size:13px;font-weight:700">${formatCurrency(x.gross_total || x.invoice_total || x.total || x.merchandise_total)}</div><small style="color:var(--text-3)">NF</small></div></div>`;
           }).join('');
         };
         ow.innerHTML = renderList(invoices, 'NF autorizadas', 'Nenhuma NF no periodo.', 'NF')

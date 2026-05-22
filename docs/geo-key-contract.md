@@ -243,6 +243,75 @@ php bin/system_health_check.php --check geo_detail_consistency
 
 ---
 
+## Registros sem bairro — qualidade de cadastro Omie
+
+### O que é
+
+Clientes sem bairro (`bairro_norm IS NULL OR bairro_norm = ''`) são um **gap de qualidade de cadastro Omie**, não um bug técnico do mapa.
+
+Esses registros:
+- **Têm faturamento real** registrado no mart
+- **Não aparecem no mapa** pois não há polígono sem bairro
+- **Não são backfilláveis** — não existe `bairro_norm` para gerar o `bairro_key`
+- A **única correção** é atualizar o endereço/cadastro do cliente no Omie
+
+### Campos de identificação
+
+| Campo | Valor | Significado |
+|---|---|---|
+| `bairro_norm` | `NULL` ou `''` | Omie não tem bairro para este cliente |
+| `bairro_key` | `NULL` ou `''` | Sem chave — não pode ser drilldown |
+| `bairro_nome` | `NULL` | Sem exibição |
+
+### Como o sistema trata
+
+**Health Check (`geo_detail_consistency`):**
+- `technical_consistency = ok` — não é um problema técnico
+- `data_quality.missing_neighborhood_count` — quantidade de registros afetados
+- Status geral: `warning` com mensagem "Arquitetura Geo consistente. Há N registros sem bairro informado na fonte Omie (qualidade de cadastro, nao bug tecnico)."
+
+**Mapa (`geo_summary.php`):**
+- `no_neighborhood.faturamento` — receita total sem bairro
+- `no_neighborhood.clientes` — quantidade de clientes afetados
+- `no_neighborhood.reason` — explicação textual
+- `data_quality.*` — bloco consolidado para o frontend
+
+**Card "Sem bairro" (`biomie-map.js`):**
+- Aparece como alerta informativo (não crítico) no mapa
+- Mostra count + faturamento
+- Botão "Ver clientes" abre painel com lista de clientes para enriquecimento
+- Mensagem: "Clientes sem bairro cadastrado no Omie. Atualize o endereço/cadastro do cliente para melhorar o mapa."
+
+**Endpoint de drilldown sem bairro:**
+```
+GET api/top_buyers_by_geo.php?bairro_key=__sem_bairro__&date_from=...&date_to=...
+```
+- Retorna clientes com `bairro_norm` vazio
+- `meta.source_mode = no_neighborhood`
+- `no_neighborhood_context.type = omie_data_quality`
+- **Não é erro** — é uma fila de enriquecimento
+
+**Debug tool:**
+```bash
+php tools/dev/geo_sales_debug.php --start=2026-05-01 --end=2026-05-31 --json
+# Secao missing_neighborhoods: count, faturamento, sample de clientes, acao
+```
+
+### O que NÃO fazer
+
+- **Não tentar inferir bairro** sem fonte confiável (CEP, API de geolocalização)
+- **Não tratar como CRITICAL** no health check
+- **Não bloquear o mapa** por causa desses registros
+
+### Ação recomendada
+
+1. Exportar a lista via `api/top_buyers_by_geo.php?bairro_key=__sem_bairro__`
+2. Atualizar endereço/cadastro de cada cliente no Omie
+3. Re-executar sync (`php bin/omie_sync.php`) e rematerialização (`php bin/materialize_marts.php`)
+4. Verificar no health check que `data_quality.missing_neighborhood_count` diminuiu
+
+---
+
 ## 10 bairros de validação obrigatória
 
 | Bairro (display) | `bairro_key` esperado |

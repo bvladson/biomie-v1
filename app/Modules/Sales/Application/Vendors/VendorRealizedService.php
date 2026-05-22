@@ -15,14 +15,14 @@ class VendorRealizedService
 
     public function summarizeByVendor(string $start, string $end): array
     {
-        // Fonte: fallback biomie_notas_fiscais_canonicas + bridge
+        // Fonte oficial: NFs canonicas autorizadas por data_competencia.
         $invoices = $this->canonical->listInvoicedOrdersForDisplayCommercial($start, $end, null);
         $summary = [];
 
         foreach ($invoices as $row) {
-            $status = mb_strtolower(trim((string)($row['status_comercial'] ?? 'faturado')));
-            // Exclude cancelled/denied if not already handled
-            if ($status === 'cancelado' || $status === 'denegado' || $status === 'inutilizado') {
+            $statusFiscal = mb_strtolower(trim((string)($row['status_fiscal'] ?? 'autorizada')));
+            $statusGroup = mb_strtolower(trim((string)($row['status_group'] ?? 'faturado')));
+            if ($statusFiscal !== 'autorizada' || in_array($statusGroup, ['cancelado', 'denegado', 'inutilizado'], true)) {
                 continue;
             }
 
@@ -44,8 +44,9 @@ class VendorRealizedService
                     'orders_count' => 0,
                     'customers_count' => 0,
                     'ticket' => 0.0,
-                    'source' => 'canonical_fallback',
-                    'date_field' => 'data_competencia|data_emissao',
+                    'source' => 'canonical_authorized_invoices',
+                    'source_table' => 'biomie_notas_fiscais_canonicas',
+                    'date_field' => 'data_competencia',
                     'value_field' => 'total',
                     'cancelled_excluded' => true,
                     'diagnostics' => ['identity' => $identity],
@@ -55,12 +56,12 @@ class VendorRealizedService
 
             $total = Support::toFloat($row['total'] ?? 0);
             $merchandise = Support::toFloat($row['merchandise_total'] ?? $row['mercadorias'] ?? 0);
-            
+
             $summary[$key]['realized'] += $total;
             $summary[$key]['merchandise_total'] += $merchandise;
             $summary[$key]['invoices_count']++;
             $summary[$key]['orders_count'] += (int)($row['pedidos'] ?? 1);
-            
+
             $cid = trim((string)($row['customer_id'] ?? $row['codigo_cliente_omie'] ?? $row['cliente'] ?? ''));
             if ($cid !== '') {
                 $summary[$key]['_customer_set'][$cid] = true;
@@ -96,8 +97,9 @@ class VendorRealizedService
             'orders_count' => 0,
             'customers_count' => 0,
             'ticket' => 0.0,
-            'source' => 'canonical_fallback',
-            'date_field' => 'data_competencia|data_emissao',
+            'source' => 'canonical_authorized_invoices',
+            'source_table' => 'biomie_notas_fiscais_canonicas',
+            'date_field' => 'data_competencia',
             'value_field' => 'total',
             'cancelled_excluded' => true,
             'diagnostics' => ['identity' => $vendorIdentity],
@@ -112,8 +114,9 @@ class VendorRealizedService
         $totalMerc = 0.0;
 
         foreach ($invoices as $row) {
-            $status = mb_strtolower(trim((string)($row['status_comercial'] ?? 'faturado')));
-            if ($status === 'cancelado' || $status === 'denegado' || $status === 'inutilizado') {
+            $statusFiscal = mb_strtolower(trim((string)($row['status_fiscal'] ?? 'autorizada')));
+            $statusGroup = mb_strtolower(trim((string)($row['status_group'] ?? 'faturado')));
+            if ($statusFiscal !== 'autorizada' || in_array($statusGroup, ['cancelado', 'denegado', 'inutilizado'], true)) {
                 continue;
             }
 
@@ -125,20 +128,25 @@ class VendorRealizedService
             if ($identity['vendor_id'] === $vendorIdentity['vendor_id']) {
                 $val = Support::toFloat($row['total'] ?? 0);
                 $merc = Support::toFloat($row['merchandise_total'] ?? $row['mercadorias'] ?? 0);
-                
+
                 $composition[] = [
-                    'nf' => $row['numero_nfe'] ?? $row['numero_documento'] ?? '',
-                    'emissao' => $row['data_emissao'] ?? $row['issue_date'] ?? '',
-                    'competencia' => $row['data_competencia'] ?? $row['issue_date'] ?? '',
-                    'cliente' => $row['cliente'] ?? $row['customer_name'] ?? '',
-                    'pedido' => $row['numero_pedido'] ?? '',
-                    'valor_usado' => $val,
-                    'valor_mercadoria' => $merc,
-                    'desconto' => Support::toFloat($row['desconto'] ?? $row['discount_total'] ?? 0),
-                    'status' => $status,
-                    'fonte' => 'canonical_fallback',
-                    'incluida' => 'sim',
-                    'motivo' => 'nf_autorizada'
+                    'nota_key'          => (string) ($row['nota_key'] ?? ''),
+                    'chave_nfe'         => (string) ($row['chave_nfe'] ?? $row['document_key'] ?? ''),
+                    'numero_nf'         => (string) ($row['numero_nf'] ?? ''),
+                    'serie_nf'          => (string) ($row['serie_nf'] ?? ''),
+                    'nf'                => (string) ($row['numero_nf'] ?? $row['codigo'] ?? ''),
+                    'emissao'           => (string) ($row['data_emissao'] ?? $row['issue_date'] ?? ''),
+                    'competencia'       => (string) ($row['data_competencia'] ?? $row['competencia_date'] ?? ''),
+                    'cliente'           => (string) ($row['cliente'] ?? $row['customer_name'] ?? ''),
+                    'pedido'            => (string) ($row['origin_order_code'] ?? $row['codigo_integracao'] ?? ''),
+                    'pedido_id_omie'    => (string) ($row['pedido_id_omie'] ?? ''),
+                    'valor_usado'       => $val,
+                    'valor_mercadoria'  => $merc,
+                    'desconto'          => Support::toFloat($row['discount_total'] ?? $row['desconto'] ?? 0),
+                    'status'            => $statusFiscal,
+                    'fonte'             => 'canonical_authorized_invoices',
+                    'incluida'          => 'sim',
+                    'motivo'            => 'status_fiscal_autorizada'
                 ];
                 $total += $val;
                 $totalMerc += $merc;

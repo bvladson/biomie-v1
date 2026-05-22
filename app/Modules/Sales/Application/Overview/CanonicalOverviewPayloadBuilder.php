@@ -6,19 +6,24 @@ namespace BIomie\Modules\Sales\Application\Overview;
 
 use BIomie\CanonicalRepository;
 use BIomie\CommercialPlanning;
+use BIomie\GoldMartRepository;
 use BIomie\Logger;
+use BIomie\Modules\Finance\Application\FinanceOverviewBuilder;
+use BIomie\Modules\Finance\Infrastructure\FinanceReadRepository;
 use BIomie\RequestContext;
 use BIomie\Shared\Support\PerfMarker;
 use BIomie\Support;
 use BIomie\Support\DocumentMask;
 use BIomie\TargetsRepository;
 use PDO;
+use Throwable;
 
 final class CanonicalOverviewPayloadBuilder
 {
     public function __construct(
         private readonly OverviewDiagnosticsBuilder $diagnostics = new OverviewDiagnosticsBuilder(),
         private readonly OverviewMonthComparisonBuilder $monthComparison = new OverviewMonthComparisonBuilder(),
+        private readonly AttentionSignalsBuilder $attentionSignals = new AttentionSignalsBuilder(),
         private readonly PerfMarker $perf = new PerfMarker(),
     ) {
     }
@@ -49,7 +54,17 @@ final class CanonicalOverviewPayloadBuilder
         $pendingSummary = $canonical->summarizePendingCommercial($start, $end);
         $divergences = $canonical->openDivergences(10);
         $canonicalProducts = $canonical->topProductsCommercial($start, $end, 12);
-        $canonicalClients = $canonical->topClientsCommercial($start, $end, 8);
+        $canonicalAuthorizedNfsCount = (int) ($summaryRow['billed_orders'] ?? 0);
+        $gold = new GoldMartRepository($pdo, $logger);
+        $goldClients = $gold->topClientsCommercial($start, $end, 8);
+        $martClienteCount = count($goldClients);
+        if ($goldClients !== []) {
+            $canonicalClients = $goldClients;
+            $topClientsSource = 'mart_cliente_periodo';
+        } else {
+            $canonicalClients = $canonical->topClientsCommercial($start, $end, 8);
+            $topClientsSource = $canonicalClients !== [] ? 'biomie_notas_fiscais_canonicas' : 'none';
+        }
         $this->perf->measure('overview.canonical_core', 'canonical_core_start');
 
         $targetsMap = ($targetsRepository !== null && $targetsRepository->isAvailable())
@@ -73,7 +88,7 @@ final class CanonicalOverviewPayloadBuilder
 
         $billedValue = Support::toFloat($summaryRow['billed_value'] ?? 0);
         $ordersCount = (int) ($summaryRow['billed_orders'] ?? 0);
-        $grossRevenue = Support::money($billedValue);
+        $grossRevenue = $billedValue;
 
         $merchandiseTotal = 0.0;
         $discountsTotal = 0.0;
@@ -183,23 +198,10 @@ final class CanonicalOverviewPayloadBuilder
                 'orders' => (int) ($row['orders'] ?? 0),
             ], $canonicalProducts)
             : (is_array($snapshot['top_products'] ?? null) ? $snapshot['top_products'] : []);
-        $topClients = array_map(static fn (array $row): array => [
-            'client_id' => (string) ($row['codigo_cliente_omie'] ?? ''),
-            'client_name' => (string) ($row['client_name'] ?? 'Cliente nao informado'),
-            'client_document' => (string) (DocumentMask::maskDocument((string) ($row['client_document'] ?? '')) ?? ''),
-            'notes_count' => (int) ($row['notes_count'] ?? 0),
-            'invoice_total' => Support::money((float) ($row['invoice_total'] ?? 0)),
-            'merchandise_total' => Support::money((float) ($row['merchandise_total'] ?? 0)),
-            'discount_total' => Support::money((float) ($row['discount_total'] ?? 0)),
-            'share_pct' => $grossRevenue > 0 ? round(((float) ($row['invoice_total'] ?? 0) / $grossRevenue) * 100, 2) : 0.0,
-        ], $canonicalClients);
-        $top5ClientConcentration = $grossRevenue > 0
-            ? round(array_sum(array_map(static fn (array $row): float => (float) ($row['invoice_total'] ?? 0), array_slice($canonicalClients, 0, 5))) / $grossRevenue * 100, 2)
-            : 0.0;
         $alerts = is_array($snapshot['alerts'] ?? null) ? $snapshot['alerts'] : [];
-        if ($topClients !== []) {
-            $firstClient = $topClients[0] ?? null;
-            $topShare = (float) ($firstClient['share_pct'] ?? 0);
+        if ($canonicalClients !== []) {
+            $topClientRevenue = (float) (($canonicalClients[0] ?? [])['invoice_total'] ?? 0);
+            $topShare = $grossRevenue > 0 ? round($topClientRevenue / $grossRevenue * 100, 2) : 0.0;
             if ($topShare >= 35) {
                 $alerts[] = [
                     'level' => 'warning',
@@ -225,8 +227,145 @@ final class CanonicalOverviewPayloadBuilder
         $mode = $snapshot !== null ? 'hybrid' : 'canonical';
         $source = $snapshot !== null ? 'canonical+legacy' : 'canonical';
         $this->perf->mark('month_comparison_start');
-        $monthComparison = $this->monthComparison->build($pdo, $logger, $canonical, $targetsRepository, $start, $saturdayWeight);
+        $monthComparisonError = null;
+        try {
+            $monthComparison = $this->monthComparison->build($pdo, $logger, $canonical, $targetsRepository, $start, $saturdayWeight);
+        } catch (\Throwable $mcEx) {
+            $monthComparison = ['available' => false, 'source' => 'error', 'rows' => [], 'reason_code' => 'builder_exception'];
+            $monthComparisonError = $mcEx->getMessage();
+            $logger->warning('CanonicalOverviewPayloadBuilder: month_comparison falhou.', [
+                'message' => $mcEx->getMessage(),
+                'request_id' => RequestContext::id(),
+            ]);
+        }
         $this->perf->measure('overview.month_comparison', 'month_comparison_start');
+        $monthComparisonRows = is_array($monthComparison['rows'] ?? null) ? $monthComparison['rows'] : [];
+
+        $this->perf->mark('attention_signals_start');
+        $attentionResult = $this->attentionSignals->build($pdo, $logger, $start, $end, RequestContext::id(), [
+            'vendor_ranking'     => $vendorRanking,
+            'planning_rows'      => $planningRows,
+            'gross_revenue'      => $grossRevenue,
+            'pending_summary'    => $pendingSummary,
+            'planning'           => $planning,
+            'top_clients_source' => $topClientsSource,
+        ]);
+        $this->perf->measure('overview.attention_signals', 'attention_signals_start');
+
+        $this->perf->mark('finance_summary_start');
+        $financeSummary = ['available' => false, 'reason_code' => 'not_attempted', 'source' => 'empty'];
+        try {
+            $financeRepo    = new FinanceReadRepository(static fn (): PDO => $pdo);
+            $financeBuilder = new FinanceOverviewBuilder($financeRepo);
+            $financeSummary = $financeBuilder->build($start, $end, null, $grossRevenue, RequestContext::id(), $logger);
+        } catch (Throwable $finEx) {
+            $financeSummary = ['available' => false, 'reason_code' => 'builder_failed', 'source' => 'error'];
+            $logger->warning('CanonicalOverviewPayloadBuilder: finance_summary failed.', [
+                'message'    => $finEx->getMessage(),
+                'request_id' => RequestContext::id(),
+            ]);
+        }
+        $this->perf->measure('overview.finance_summary', 'finance_summary_start');
+
+        $topClients = array_map(function (array $row) use ($grossRevenue, $topClientsSource): array {
+            $invoiceTotal = (float) ($row['invoice_total'] ?? 0);
+            $invoicesCount = (int) ($row['notes_count'] ?? 0);
+            return [
+                'client_id'        => (string) ($row['codigo_cliente_omie'] ?? ''),
+                'customer_id'      => (string) ($row['codigo_cliente_omie'] ?? ''),
+                'client_name'      => (string) ($row['client_name'] ?? 'Cliente nao informado'),
+                'customer_name'    => (string) ($row['client_name'] ?? 'Cliente nao informado'),
+                'client_document'  => (string) (DocumentMask::maskDocument((string) ($row['client_document'] ?? '')) ?? ''),
+                'customer_document' => (string) (DocumentMask::maskDocument((string) ($row['client_document'] ?? '')) ?? ''),
+                'notes_count'      => $invoicesCount,
+                'invoices_count'   => $invoicesCount,
+                'invoice_total'    => Support::money($invoiceTotal),
+                'revenue'          => Support::money($invoiceTotal),
+                'merchandise_total' => Support::money((float) ($row['merchandise_total'] ?? 0)),
+                'discount_total'   => Support::money((float) ($row['discount_total'] ?? 0)),
+                'ticket_avg'       => Support::money($invoicesCount > 0 ? $invoiceTotal / $invoicesCount : 0.0),
+                'last_purchase'    => (string) ($row['last_purchase'] ?? ($row['last_purchase_at'] ?? '')),
+                'last_purchase_at' => (string) ($row['last_purchase'] ?? ($row['last_purchase_at'] ?? '')),
+                'share_pct'        => $grossRevenue > 0 ? round($invoiceTotal / $grossRevenue * 100, 2) : 0.0,
+                'source'           => $topClientsSource,
+            ];
+        }, $canonicalClients);
+
+        $top5ClientConcentration = $grossRevenue > 0
+            ? round(array_sum(array_map(static fn (array $row): float => (float) ($row['invoice_total'] ?? 0), array_slice($canonicalClients, 0, 5))) / $grossRevenue * 100, 2)
+            : 0.0;
+
+        $freshnessStatus = static function (?string $at): string {
+            if ($at === null || $at === '') {
+                return 'unknown';
+            }
+            $age = time() - (int) strtotime($at);
+            if ($age <= 86400) return 'ok';
+            if ($age <= 259200) return 'warning';
+            return 'critical';
+        };
+        $freshnessIsStale = $freshnessStatus($lastSync) === 'critical';
+
+        $topClientsIsEmpty = ($topClients === []);
+        if ($topClientsIsEmpty) {
+            if ($canonicalAuthorizedNfsCount === 0 && $freshnessIsStale) {
+                $topClientsReasonCode = 'sync_stale';
+                $topClientsTitle = 'Dados Omie desatualizados';
+                $topClientsMessage = sprintf('A ultima sincronizacao (%s) esta atrasada. Nao e possivel confirmar se ha clientes no periodo.', $lastSync ?: '-');
+                $topClientsAction = 'Execute o sync Omie e depois a materializacao Gold.';
+            } elseif ($canonicalAuthorizedNfsCount === 0) {
+                $topClientsReasonCode = 'no_authorized_nfs';
+                $topClientsTitle = 'Sem clientes no periodo';
+                $topClientsMessage = 'Nenhuma NF autorizada foi encontrada por data_competencia no periodo selecionado.';
+                $topClientsAction = 'Verifique o periodo ou a sincronizacao fiscal Omie.';
+            } elseif ($martClienteCount === 0) {
+                $topClientsReasonCode = 'mart_not_materialized';
+                $topClientsTitle = 'Ranking de clientes ainda nao materializado';
+                $topClientsMessage = sprintf('Existem %d NF(s) autorizada(s) no canonico, mas o mart cliente/periodo ainda nao foi materializado.', $canonicalAuthorizedNfsCount);
+                $topClientsAction = 'Execute a materializacao comercial ou verifique o job de Gold (GoldMartRefreshCommand).';
+            } else {
+                $topClientsReasonCode = 'no_clients_in_period';
+                $topClientsTitle = 'Nenhum cliente com venda no periodo';
+                $topClientsMessage = 'O periodo selecionado nao possui clientes com NFs autorizadas identificadas.';
+                $topClientsAction = 'Amplie o periodo ou revise os filtros e o mapeamento de codigo_cliente_omie.';
+            }
+        } else {
+            $topClientsReasonCode = null;
+            $topClientsTitle = null;
+            $topClientsMessage = null;
+            $topClientsAction = null;
+        }
+
+        $monthComparisonIsEmpty = ($monthComparisonRows === []);
+        if ($monthComparisonIsEmpty) {
+            if ($monthComparisonError !== null) {
+                $monthCompReasonCode = 'query_error';
+                $monthCompTitle = 'Erro ao calcular comparativo';
+                $monthCompMessage = 'O sistema nao conseguiu calcular o comparativo mensal.';
+                $monthCompAction = 'Verificar logs pelo request_id: ' . RequestContext::id();
+            } elseif ($freshnessIsStale) {
+                $monthCompReasonCode = 'sync_stale';
+                $monthCompTitle = 'Comparativo pode estar desatualizado';
+                $monthCompMessage = 'A origem Omie/canonica esta atrasada em relacao a ultima atualizacao esperada.';
+                $monthCompAction = 'Executar sync Omie e materializacao.';
+            } elseif ($canonicalAuthorizedNfsCount === 0) {
+                $monthCompReasonCode = 'no_authorized_nfs';
+                $monthCompTitle = 'Sem faturamento no periodo';
+                $monthCompMessage = 'Nenhuma NF autorizada foi encontrada por data_competencia no periodo.';
+                $monthCompAction = 'Verifique o filtro de datas ou a sincronizacao fiscal Omie.';
+            } else {
+                $monthCompReasonCode = 'not_enough_months';
+                $monthCompTitle = 'Comparativo mensal insuficiente';
+                $monthCompMessage = 'Nao ha meses suficientes com NFs autorizadas para montar comparacao.';
+                $monthCompAction = 'Amplie o periodo para incluir pelo menos dois meses.';
+            }
+            $monthCompTitle = $monthCompTitle ?? 'Comparativo mensal indisponivel';
+        } else {
+            $monthCompReasonCode = null;
+            $monthCompTitle = null;
+            $monthCompMessage = null;
+            $monthCompAction = null;
+        }
 
         return [
             'ok' => true,
@@ -236,14 +375,25 @@ final class CanonicalOverviewPayloadBuilder
                 'start' => $start,
                 'end' => $end,
                 'label' => $range['label'],
+                'realized_period_basis' => 'data_competencia',
+            ],
+            'freshness' => [
+                'omie_sync_status' => $freshnessStatus($lastSync),
+                'canonical_status' => $freshnessStatus($lastSync),
+                'gold_status' => $martClienteCount > 0 ? $freshnessStatus($lastSync) : 'unknown',
+                'last_omie_sync_at' => $lastSync,
+                'last_canonical_nf_at' => $lastSync,
+                'last_gold_materialized_at' => null,
+                'is_stale' => $freshnessIsStale,
+                'stale_reason' => $freshnessIsStale ? 'Ultima sincronizacao ha mais de 72h' : null,
             ],
             'summary' => [
                 'revenue' => $grossRevenue,
                 'gross_revenue' => $grossRevenue,
-                'merchandise_total' => Support::money((float) ($summaryRow['merchandise_total'] ?? $merchandiseTotal)),
-                'discounts_total' => Support::money((float) ($summaryRow['discounts_total'] ?? $discountsTotal)),
+                'merchandise_total' => (float) ($summaryRow['merchandise_total'] ?? $merchandiseTotal),
+                'discounts_total' => (float) ($summaryRow['discounts_total'] ?? $discountsTotal),
                 'orders' => $ordersCount,
-                'avg_ticket' => $ordersCount > 0 ? Support::money($grossRevenue / $ordersCount) : 0.0,
+                'avg_ticket' => $ordersCount > 0 ? round($grossRevenue / $ordersCount, 2) : 0.0,
                 'active_vendors' => count(array_filter(
                     $vendorRanking,
                     static fn (array $row): bool => trim((string) ($row['vendor_name'] ?? '')) !== ''
@@ -255,9 +405,9 @@ final class CanonicalOverviewPayloadBuilder
                 'forecast' => Support::toFloat($planning['team']['forecast_period'] ?? 0),
                 'goal_progress' => Support::toFloat($planning['team']['goal_progress'] ?? 0),
                 'pending_orders' => (int) ($pendingSummary['authorized_orders'] ?? 0) + (int) ($pendingSummary['quote_orders'] ?? 0),
-                'pending_value' => Support::money((float) ($pendingSummary['authorized_value'] ?? 0) + (float) ($pendingSummary['quote_value'] ?? 0)),
+                'pending_value' => (float) ($pendingSummary['authorized_value'] ?? 0) + (float) ($pendingSummary['quote_value'] ?? 0),
                 'cancelled_orders' => (int) ($pendingSummary['cancelled_orders'] ?? 0),
-                'cancelled_value' => Support::money((float) ($pendingSummary['cancelled_value'] ?? 0)),
+                'cancelled_value' => (float) ($pendingSummary['cancelled_value'] ?? 0),
             ],
             'daily_sales' => $dailySales,
             'vendor_ranking' => $vendorRanking,
@@ -266,14 +416,56 @@ final class CanonicalOverviewPayloadBuilder
             'top_clients' => $topClients,
             'month_comparison' => $monthComparison,
             'alerts' => $alerts,
+            'attention_signals'  => $attentionResult['attention_signals'],
+            'attentionSignals'   => $attentionResult['attentionSignals'],
+            'attention_summary'  => $attentionResult['attention_summary'],
+            'finance_summary'    => $financeSummary,
+            'financeSummary'     => $financeSummary,
             'diagnostics' => [
                 'top_orders_identity' => $topOrdersIdentityDiagnostics,
+                'canonical_authorized_nfs_count' => $canonicalAuthorizedNfsCount,
+                'mart_cliente_periodo_count' => $martClienteCount,
+                'top_clients_count' => count($topClients),
+                'month_comparison_count' => count($monthComparisonRows),
+                'used_fallback' => $topClientsSource === 'biomie_notas_fiscais_canonicas',
+                'top_clients' => [
+                    'source_table' => $topClientsSource,
+                    'primary_source' => 'mart_cliente_periodo',
+                    'fallback_source' => 'biomie_notas_fiscais_canonicas',
+                    'fallback_used' => $topClientsSource === 'biomie_notas_fiscais_canonicas',
+                    'rows_count' => count($topClients),
+                    'accepted_keys' => ['top_clients', 'top_customers', 'topCustomers'],
+                ],
+                'month_comparison_error'  => $monthComparisonError,
+                'month_comparison_source' => $monthComparison['source'] ?? null,
+                'attention' => $attentionResult['attention_diagnostics'],
+                'finance' => $financeSummary['diagnostics'] ?? ['available' => (bool) ($financeSummary['available'] ?? false), 'reason_code' => $financeSummary['reason_code'] ?? null],
+                'request_id' => RequestContext::id(),
+            ],
+            'empty_states' => [
+                'top_clients' => [
+                    'is_empty' => $topClientsIsEmpty,
+                    'reason_code' => $topClientsReasonCode,
+                    'title' => $topClientsTitle,
+                    'message' => $topClientsMessage,
+                    'action' => $topClientsAction,
+                ],
+                'month_comparison' => [
+                    'is_empty' => $monthComparisonIsEmpty,
+                    'reason_code' => $monthCompReasonCode,
+                    'title' => $monthCompTitle,
+                    'message' => $monthCompMessage,
+                    'action' => $monthCompAction,
+                ],
             ],
             'meta' => [
                 'generated_at' => $lastSync,
                 'served_from' => $source === 'canonical' ? 'canonical-db' : 'canonical-db+legacy-snapshot',
                 'last_sync' => $lastSync,
-                'period_basis' => 'issue_date',
+                'period_basis' => 'data_competencia',
+                'realized_period_basis' => 'data_competencia',
+                'wallet_period_basis' => 'data_emissao',
+                'target_period_basis' => 'year_month',
                 'request_id' => RequestContext::id(),
                 'snapshot_fallback_error' => $snapshotError,
                 'targets_source' => ($targetsRepository !== null && $targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',

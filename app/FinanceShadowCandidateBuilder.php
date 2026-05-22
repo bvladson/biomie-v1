@@ -38,6 +38,7 @@ final class FinanceShadowCandidateBuilder
             'status_breakdown' => $dataset['status_breakdown'],
             'document_types' => $dataset['document_types'],
             'payment_methods' => $dataset['payment_methods'],
+            'aging' => $dataset['aging'],
             'meta' => [
                 'generated_at' => date(DATE_ATOM),
                 'served_from' => 'canonical-shadow',
@@ -95,6 +96,12 @@ final class FinanceShadowCandidateBuilder
         $receivedTotal = 0.0;
         $openTotal = 0.0;
         $overdueTotal = 0.0;
+        $agingBuckets = [
+            'Ate 30 dias'     => ['bucket' => 'Ate 30 dias',     'amount' => 0.0, 'titles' => 0],
+            '31-60 dias'      => ['bucket' => '31-60 dias',       'amount' => 0.0, 'titles' => 0],
+            '61-90 dias'      => ['bucket' => '61-90 dias',       'amount' => 0.0, 'titles' => 0],
+            'Mais de 90 dias' => ['bucket' => 'Mais de 90 dias',  'amount' => 0.0, 'titles' => 0],
+        ];
 
         foreach ($titles as $title) {
             if (!is_array($title)) {
@@ -136,6 +143,16 @@ final class FinanceShadowCandidateBuilder
                 if ($isOverdue) {
                     $overdueTitles[] = $normalized;
                     $overdueTotal += $amountOpen;
+
+                    $daysLate = (int) ($normalized['days_late'] ?? 0);
+                    $agingKey = match (true) {
+                        $daysLate <= 30 => 'Ate 30 dias',
+                        $daysLate <= 60 => '31-60 dias',
+                        $daysLate <= 90 => '61-90 dias',
+                        default         => 'Mais de 90 dias',
+                    };
+                    $agingBuckets[$agingKey]['amount'] += $amountOpen;
+                    $agingBuckets[$agingKey]['titles']++;
 
                     if (!isset($clientMap[$clientName])) {
                         $clientMap[$clientName] = [
@@ -206,6 +223,11 @@ final class FinanceShadowCandidateBuilder
         usort($openTitles, static fn (array $left, array $right): int => strcmp((string) ($left['due_date'] ?? ''), (string) ($right['due_date'] ?? '')));
         usort($overdueTitles, static fn (array $left, array $right): int => ((int) ($right['days_late'] ?? 0)) <=> ((int) ($left['days_late'] ?? 0)));
 
+        $agingRows = array_values(array_filter(
+            $agingBuckets,
+            static fn (array $row): bool => $row['titles'] > 0
+        ));
+
         return [
             'summary' => [
                 'received' => Support::money($receivedTotal),
@@ -228,6 +250,7 @@ final class FinanceShadowCandidateBuilder
             ],
             'document_types' => array_slice($documentTypesRows, 0, 12),
             'payment_methods' => array_slice($paymentMethodRows, 0, 12),
+            'aging' => $agingRows,
         ];
     }
 

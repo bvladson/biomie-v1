@@ -383,7 +383,6 @@
       },
       options: {
         indexAxis: 'y',
-        parsing: false,
         plugins: {
           legend: { display: false },
           tooltip: {

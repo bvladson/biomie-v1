@@ -153,6 +153,9 @@ final class CanonicalVendorPayloadBuilder
                 'mercadoria_faturada_vendedor' => Support::money($vendorBilledMerc),
                 'billed_value'         => Support::money($vendorBilledValue),
                 'billed_orders'        => $vendorBilledOrders,
+                // Campos semânticos explícitos (Phase 2)
+                'invoices_count'       => $vendorBilledOrders,    // NFs autorizadas do vendedor
+                'wallet_orders_count'  => $vendorAuthorizedOrders, // carteira (sem NF)
                 'billed_merchandise'   => Support::money($vendorBilledMerc),
                 'authorized_value'     => Support::money($vendorAuthorizedValue),
                 'authorized_orders'    => $vendorAuthorizedOrders,
@@ -286,17 +289,21 @@ final class CanonicalVendorPayloadBuilder
                 'label' => VendorSupport::formatPeriodLabel($start, $end),
             ],
             'summary' => [
-                'revenue' => Support::money($grossRevenue),
-                'gross_revenue' => Support::money($grossRevenue),
-                'merchandise_total' => Support::money((float) ($invoiceSummary['merchandise_total'] ?? 0)),
-                'discounts_total' => Support::money((float) ($invoiceSummary['discounts_total'] ?? 0)),
+                'revenue' => $grossRevenue,
+                'gross_revenue' => $grossRevenue,
+                'merchandise_total' => (float) ($invoiceSummary['merchandise_total'] ?? 0),
+                'discounts_total' => (float) ($invoiceSummary['discounts_total'] ?? 0),
                 'orders' => $revenueOrders,
+                // Campos semânticos explícitos (Phase 2)
+                'invoices_count'      => $revenueOrders,  // NFs autorizadas
+                'wallet_orders_count' => $authQty,        // pedidos autorizados sem NF (carteira)
+                'linked_orders_count' => 0,               // bridge indisponível nesta visão agregada
                 'pending_orders' => $authQty,
-                'pending_value' => Support::money($authVal),
+                'pending_value' => $authVal,
                 'cancelled_orders' => $cancelQty,
-                'cancelled_value' => Support::money($cancelVal),
-                'avg_ticket' => $revenueOrders > 0 ? Support::money($grossRevenue / $revenueOrders) : 0.0,
-                'avg_ticket_billed' => $billedQty > 0 ? Support::money($billedVal / $billedQty) : 0.0,
+                'cancelled_value' => $cancelVal,
+                'avg_ticket' => $revenueOrders > 0 ? round($grossRevenue / $revenueOrders, 2) : 0.0,
+                'avg_ticket_billed' => $billedQty > 0 ? round($billedVal / $billedQty, 2) : 0.0,
                 'active_vendors' => count(array_filter(
                     $vendorMatrix,
                     static fn (array $vendor): bool => trim((string) ($vendor['vendor_name'] ?? '')) !== ''
@@ -326,11 +333,14 @@ final class CanonicalVendorPayloadBuilder
             ],
             'alerts_operational' => $alertsOperational,
             'meta' => [
-                'generated_at' => date(DATE_ATOM),
-                'served_from' => 'canonical-db',
-                'last_sync' => $lastSync,
-                'period_basis' => 'issue_date',
-                'targets_source' => ($targetsRepository !== null && $targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',
+                'generated_at'          => date(DATE_ATOM),
+                'served_from'           => 'canonical-db',
+                'last_sync'             => $lastSync,
+                'period_basis'          => 'data_competencia',   // realizado via NFs (data_competencia)
+                'realized_period_basis' => 'data_competencia',   // NFs autorizadas — data_competencia
+                'wallet_period_basis'   => 'data_emissao',       // carteira — data_emissao do pedido
+                'target_period_basis'   => 'year_month',         // metas — competencia mensal
+                'targets_source'        => ($targetsRepository !== null && $targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',
             ],
         ];
     }

@@ -8,7 +8,10 @@ use BIomie\PageRenderer;
 require __DIR__ . '/app/page_bootstrap.php';
 Auth::requireCapability('sales.view', false);
 echo PageRenderer::render('vendedores.html', [
-    'page_key' => 'time-comercial',
-    'user' => Auth::currentUser(),
-    'is_admin' => Auth::isAdmin(),
+    'page_key'      => 'time-comercial',
+    'user'          => Auth::currentUser(),
+    'is_admin'      => Auth::isAdmin(),
+    'topbarActions' => [
+        ['label' => 'Rota Comercial', 'href' => 'plano_voo.php', 'class' => 'btn-secondary btn-sm', 'icon' => 'flight'],
+    ],
 ]);

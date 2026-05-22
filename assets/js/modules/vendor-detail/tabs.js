@@ -4,6 +4,8 @@
   var B = window.BIomie || {};
   B.VendorDetail = B.VendorDetail || {};
 
+  // ── Utilitários ─────────────────────────────────────────────────────────────
+
   function esc(value) {
     if (B.escapeHtml) return B.escapeHtml(value);
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
@@ -46,7 +48,7 @@
     var parts = String(keys || '').split('|');
     for (var i = 0; i < parts.length; i += 1) {
       var key = parts[i];
-      var v = row && row[key];
+      var v   = row && row[key];
       if (v != null && String(v).trim() !== '') return v;
     }
     return '';
@@ -66,105 +68,233 @@
     if (!id && !doc && !orderCode) return '<span>' + esc(name || 'Cliente nao informado') + '</span>';
     return actionButton(name || 'Cliente nao informado', 'open-customer', {
       'data-codigo-cliente-omie': id || '',
-      'data-cliente-documento': doc,
-      'data-cliente-nome': name || '',
-      'data-pedido-codigo': orderCode || ''
+      'data-cliente-documento':   doc,
+      'data-cliente-nome':        name || '',
+      'data-pedido-codigo':       orderCode || ''
     });
   }
 
   function stat(label, value) {
-    return '<div class="biomie-drawer__stat"><div class="biomie-drawer__stat-label">' + esc(label) + '</div><div class="biomie-drawer__stat-value">' + esc(String(value == null || value === '' ? '-' : value)) + '</div></div>';
+    return '<div class="biomie-drawer__stat"><div class="biomie-drawer__stat-label">' +
+      esc(label) + '</div><div class="biomie-drawer__stat-value">' +
+      esc(String(value == null || value === '' ? '-' : value)) + '</div></div>';
   }
 
   function sectionTitle(label) {
     return '<div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px">' + esc(label) + '</div>';
   }
 
-  function empty(message) {
-    return '<div class="biomie-drawer__empty">' + esc(message) + '</div>';
+  function empty(message, icon) {
+    return '<div class="mag-empty mag-empty--compact">' +
+      '<div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">' + esc(icon || 'inbox') + '</span></div>' +
+      '<p class="mag-empty-text">' + esc(message || 'Sem dados disponiveis.') + '</p>' +
+      '</div>';
   }
 
+  function emptyWithHint(message, hint, icon) {
+    return '<div class="mag-empty mag-empty--compact">' +
+      '<div class="mag-empty-icon"><span class="material-symbols-rounded" aria-hidden="true">' + esc(icon || 'info') + '</span></div>' +
+      '<strong class="mag-empty-title">' + esc(message) + '</strong>' +
+      (hint ? '<p class="mag-empty-text">' + esc(hint) + '</p>' : '') +
+      '</div>';
+  }
+
+  function bridgeStatusBadge(status) {
+    var label = ({
+      'completo':       'Completo',
+      'nf_sem_titulo':  'Sem titulo',
+      'nf_cancelada':   'NF cancelada',
+      'pedido_sem_nf':  'Sem NF',
+      'cancelado':      'Cancelado'
+    })[status] || status || '-';
+    var color = status === 'completo' ? 'var(--success)' : status === 'cancelado' || status === 'nf_cancelada' ? 'var(--danger)' : 'var(--warning)';
+    return '<span class="biomie-drawer__badge" style="color:' + color + '">' + esc(label) + '</span>';
+  }
+
+  // ── Renderizadores de aba ────────────────────────────────────────────────────
+
   function renderResumo(data) {
-    var v = data.vendor || {};
+    var v = data.vendor  || {};
     var s = data.summary || {};
-    var hasTarget = (v.target_period || 0) > 0;
-    
-    var html = '<div class="biomie-drawer__section">' +
+    var hasTarget = toNumber(v.target_period || 0) > 0;
+
+    var html =
+      '<div class="biomie-drawer__section">' +
       '<div style="font-size:0.8rem;color:var(--text-2);margin-bottom:12px;background:var(--bg-muted);padding:8px;border-radius:4px;border-left:3px solid var(--page-accent);">' +
       'Realizado calculado por Receita Fiscal Autorizada, sem notas canceladas.' +
       '</div>' +
       '<div class="biomie-drawer__stats">' +
-      stat('Realizado oficial', money(v.realizado_vendedor || v.realized_period)) +
-      stat('Meta', hasTarget ? money(v.target_period) : 'Sem meta cadastrada') +
-      stat('Gap', money(v.gap_to_target || 0)) +
-      stat('Atingimento', number(v.attainment_pct || 0) + '%') +
-      stat('Projecao', money(v.forecast_period || 0)) +
-      stat('Carteira', money(s.open_total || 0)) +
-      stat('NFs autorizadas', number(s.invoices_count || 0)) +
-      stat('Pedidos vinculados', number(s.orders_count || 0)) +
-      stat('Clientes atendidos', number(s.customers_count || 0)) +
-      stat('Ticket medio', money(s.ticket_avg || 0)) +
+      stat('Realizado oficial',    money(v.realizado_vendedor || v.realized_period || v.realized)) +
+      stat('Meta',                 hasTarget ? money(v.target_period) : 'Sem meta cadastrada') +
+      stat('Gap',                  money(v.gap_to_target || v.gap || 0)) +
+      stat('Atingimento',          number(v.attainment_pct || v.attainment || 0) + '%') +
+      stat('Projecao',             money(v.forecast_period || 0)) +
+      stat('Carteira',             money(s.open_total || 0)) +
+      stat('NFs autorizadas',      number(s.invoices_count || 0)) +
+      stat('Pedidos vinculados',   number(s.linked_orders_count || 0)) +
+      stat('Carteira (s/ NF)',     number(s.wallet_orders_count || 0)) +
+      stat('Clientes atendidos',   number(s.customers_count || 0)) +
+      stat('Produtos distintos',   number(s.products_count || 0)) +
+      stat('Ticket medio',         money(s.ticket_avg || 0)) +
       '</div>';
-      
+
     if (!hasTarget) {
       html += '<div style="margin-top:12px"><a href="plano_voo_metas.php" class="biomie-btn biomie-btn--sm">Editar metas</a></div>';
     }
-    
+
     html += '</div>' +
-      '<div class="biomie-drawer__section">' + sectionTitle('Clientes em destaque') + renderCustomers((data.customers || []).slice(0, 5), true) + '</div>';
-      
+      '<div class="biomie-drawer__section">' +
+      sectionTitle('Clientes em destaque') +
+      renderCustomers((data.customers || []).slice(0, 5), true) +
+      '</div>';
+
+    // Bloco diagnóstico recolhível
+    var meta = data.meta || {};
+    html += '<details style="margin-top:16px;font-size:.75rem;color:var(--text-3)">' +
+      '<summary style="cursor:pointer;padding:6px 0">Diagnostico tecnico</summary>' +
+      '<div style="padding:8px;background:var(--bg-muted);border-radius:4px;margin-top:4px;line-height:1.8">' +
+      'Endpoint: api/vendor_detail.php<br>' +
+      'Source: ' + esc(data.source || '-') + '<br>' +
+      'Ultima sincronizacao: ' + esc(meta.last_sync || '-') + '<br>' +
+      'NFs canonicas: ' + esc(String(meta.invoices_count != null ? meta.invoices_count : (s.invoices_count || 0))) + '<br>' +
+      'Pedidos vinculados: ' + esc(String(meta.linked_orders_count || 0)) +
+        ' <em style="color:var(--text-3)">(' + esc(meta.linked_source || 'bridge') + ')</em><br>' +
+      (meta.linked_source === 'nf_fallback'
+        ? '<span style="color:var(--warning)">&#9888; ' + esc(meta.linked_source_hint || 'Bridge nao materializada para este periodo.') + '</span><br>'
+        : '') +
+      'Carteira (bridge): ' + esc(String(meta.wallet_orders_count || 0)) + '<br>' +
+      'Produtos: ' + esc(String(meta.products_count || 0)) + '<br>' +
+      'Bridge disponivel: ' + esc(meta.bridge_available ? 'sim' : 'nao') + '<br>' +
+      'request_id: ' + esc(meta.request_id || '-') +
+      '</div></details>';
+
     return html;
   }
 
-  function renderOrders(rows) {
-    if (!Array.isArray(rows) || !rows.length) return empty('Sem pedidos de carteira no periodo.');
-    return sectionTitle('Pedidos de carteira') + rows.slice(0, 40).map(function (row) {
-      var orderCode = String(pick(row, 'codigo|codigo_pedido|codigo_integracao') || '').trim();
-      var customerName = String(pick(row, 'cliente|client_name|nome_cliente') || 'Cliente nao informado');
-      var customerId = String(pick(row, 'client_id|codigo_cliente_omie') || '');
-      var doc = String(pick(row, 'cliente_documento|client_document|customer_document') || '');
-      var status = String(pick(row, 'status_group|status_comercial|stage|etapa') || '');
-      var refDate = String(pick(row, 'issue_date|data_emissao|billing_date|data_faturamento') || '');
-      var total = pick(row, 'gross_total|total|merchandise_total|valor_total');
-      return '<div class="biomie-drawer__list-item">' +
-        actionButton(orderCode || '-', 'open-order', { 'data-pedido-codigo': orderCode }) +
-        customerButton(customerName, customerId, doc, orderCode) +
-        '<span class="biomie-drawer__badge">' + esc(status || 'Carteira') + '</span>' +
-        '<span style="font-size:.75rem;color:var(--text-3)">' + esc(date(refDate)) + '</span>' +
-        '<span style="font-weight:700">' + esc(money(total)) + '</span>' +
-      '</div>';
-    }).join('');
+  /**
+   * Aba "Pedidos vinculados" — pedidos que geraram NFs via mart_bridge_pedido_nfe_titulo.
+   * @param {Array} rows
+   * @param {Object} [summary] - summary do payload para diagnostico contextual
+   */
+  function renderLinkedOrders(rows, summary) {
+    if (!Array.isArray(rows) || !rows.length) {
+      var invoicesCount = summary ? Number(summary.invoices_count || 0) : 0;
+      var hint = invoicesCount > 0
+        ? 'Existem ' + invoicesCount + ' NF(s) autorizada(s) mas nenhum pedido vinculado via bridge. ' +
+          'O mart bridge pode nao estar materializado para este periodo. ' +
+          'Execute o gold_mart_refresh apos sincronizar os pedidos (biomie_pedidos_canonicos).'
+        : 'Nenhuma NF autorizada no periodo — nao ha pedidos vinculados a processar. ' +
+          'Se houver NFs, reprocesse mart_bridge_pedido_nfe_titulo.';
+      return emptyWithHint('Sem pedidos vinculados as NFs neste periodo.', hint);
+    }
+    return sectionTitle('Pedidos que geraram NFs (' + rows.length + ')') +
+      rows.slice(0, 50).map(function (row) {
+        var orderCode    = String(pick(row, 'order_code|codigo_pedido|codigo') || '').trim();
+        var clientName   = String(pick(row, 'client_name|nome_cliente|cliente') || 'Cliente nao informado');
+        var clientId     = String(pick(row, 'client_id|codigo_cliente_omie') || '');
+        var clientDoc    = String(pick(row, 'client_document|documento_cliente') || '');
+        var invoiceKey   = String(pick(row, 'invoice_key|nota_key') || '');
+        var invoiceValue = pick(row, 'invoice_value|valor_nfe|gross_total|total');
+        var refDate      = String(pick(row, 'invoice_date|data_competencia_nfe|billing_date|data_faturamento|issue_date|data_emissao') || '');
+        var bridgeSt     = String(pick(row, 'bridge_status') || '');
+        var statusFiscal = String(pick(row, 'status_fiscal') || '');
+
+        return '<div class="biomie-drawer__list-item">' +
+          (orderCode
+            ? actionButton(orderCode, 'open-order', { 'data-pedido-codigo': orderCode })
+            : '<span style="color:var(--text-3)">Sem codigo</span>') +
+          customerButton(clientName, clientId, clientDoc, orderCode) +
+          (invoiceKey
+            ? actionButton('NF', 'open-invoice', { 'data-nota-key': invoiceKey })
+            : '<span style="color:var(--text-3)">Sem NF</span>') +
+          bridgeStatusBadge(bridgeSt || statusFiscal) +
+          '<span style="font-size:.75rem;color:var(--text-3)">' + esc(date(refDate)) + '</span>' +
+          '<span style="font-weight:700">' + esc(money(invoiceValue)) + '</span>' +
+        '</div>';
+      }).join('');
+  }
+
+  /**
+   * Aba "Carteira" — pedidos autorizados sem NF (bridge_status = pedido_sem_nf).
+   */
+  function renderWalletOrders(rows) {
+    if (!Array.isArray(rows) || !rows.length) {
+      return emptyWithHint(
+        'Carteira vazia: nenhum pedido autorizado sem NF no periodo.',
+        'Isso pode indicar que todos os pedidos autorizados ja foram faturados, ou que o mart bridge ainda nao foi materializado.'
+      );
+    }
+    return sectionTitle('Carteira — pedidos autorizados sem NF (' + rows.length + ')') +
+      rows.slice(0, 50).map(function (row) {
+        var orderCode   = String(pick(row, 'order_code|codigo_pedido|codigo') || '').trim();
+        var clientName  = String(pick(row, 'client_name|nome_cliente|cliente') || 'Cliente nao informado');
+        var clientId    = String(pick(row, 'client_id|codigo_cliente_omie') || '');
+        var clientDoc   = String(pick(row, 'client_document|documento_cliente') || '');
+        var orderValue  = pick(row, 'order_value|valor_pedido|gross_total|total');
+        var refDate     = String(pick(row, 'issue_date|data_emissao|billing_date') || '');
+
+        return '<div class="biomie-drawer__list-item">' +
+          (orderCode
+            ? actionButton(orderCode, 'open-order', { 'data-pedido-codigo': orderCode })
+            : '<span style="color:var(--text-3)">Sem codigo</span>') +
+          customerButton(clientName, clientId, clientDoc, orderCode) +
+          '<span class="biomie-drawer__badge" style="color:var(--warning)">Carteira</span>' +
+          '<span style="font-size:.75rem;color:var(--text-3)">' + esc(date(refDate)) + '</span>' +
+          '<span style="font-weight:700">' + esc(money(orderValue)) + '</span>' +
+        '</div>';
+      }).join('');
   }
 
   function renderInvoices(rows) {
-    if (!Array.isArray(rows) || !rows.length) return empty('Sem notas fiscais autorizadas no periodo.');
-    return sectionTitle('Notas fiscais autorizadas') + rows.slice(0, 40).map(function (row) {
-      var nfCode = String(pick(row, 'codigo|nf_code|numero_nf') || '').trim();
-      var orderCode = String(pick(row, 'origin_order_code|codigo_integracao|codigo_pedido_origem') || '').trim();
-      var customerName = String(pick(row, 'cliente|client_name|nome_cliente') || 'Cliente nao informado');
-      var customerId = String(pick(row, 'client_id|codigo_cliente_omie') || '');
-      var doc = String(pick(row, 'cliente_documento|client_document|customer_document') || '');
-      var total = pick(row, 'gross_total|total|merchandise_total|valor_total');
-      var refDate = String(pick(row, 'status_date|issue_date|data_emissao|billing_date') || '');
-      return '<div class="biomie-drawer__list-item">' +
-        actionButton('NF ' + (nfCode || '-'), 'open-invoice', {
-          'data-numero-nf': nfCode,
-          'data-chave-nfe': String(pick(row, 'document_key|chave_nfe') || ''),
-          'data-nota-key': String(pick(row, 'nota_key') || '')
-        }) +
-        (orderCode ? actionButton(orderCode, 'open-order', { 'data-pedido-codigo': orderCode }) : '<span style="color:var(--text-3)">Sem pedido</span>') +
-        customerButton(customerName, customerId, doc, orderCode) +
-        '<span style="font-size:.75rem;color:var(--text-3)">' + esc(date(refDate)) + '</span>' +
-        '<span style="font-weight:700">' + esc(money(total)) + '</span>' +
-      '</div>';
-    }).join('');
+    if (!Array.isArray(rows) || !rows.length) {
+      return emptyWithHint(
+        'Sem notas fiscais autorizadas no periodo.',
+        'Verifique se biomie_notas_fiscais_canonicas tem registros com status_fiscal = autorizada para este vendedor/periodo.'
+      );
+    }
+    return sectionTitle('Notas fiscais autorizadas (' + rows.length + ')') +
+      rows.slice(0, 50).map(function (row) {
+        var nfCode    = String(pick(row, 'codigo|nf_code|numero_nf') || '').trim();
+        var orderCode = String(pick(row, 'origin_order_code|codigo_integracao|codigo_pedido_origem') || '').trim();
+        var clientName= String(pick(row, 'cliente|client_name|nome_cliente') || 'Cliente nao informado');
+        var clientId  = String(pick(row, 'customer_id|client_id|codigo_cliente_omie') || '');
+        var doc       = String(pick(row, 'cliente_documento|client_document|customer_document') || '');
+        var total     = pick(row, 'gross_total|total|merchandise_total|valor_total');
+        var refDate   = String(pick(row, 'competencia_date|data_competencia|status_date|issue_date|data_emissao') || '');
+        var notaKey   = String(pick(row, 'nota_key') || '');
+        var chaveNfe  = String(pick(row, 'document_key|chave_nfe') || '');
+        var pedidoId  = String(pick(row, 'pedido_id_omie') || '');
+
+        return '<div class="biomie-drawer__list-item">' +
+          actionButton('NF ' + (nfCode || '-'), 'open-invoice', {
+            'data-numero-nf':    nfCode,
+            'data-chave-nfe':    chaveNfe,
+            'data-nota-key':     notaKey,
+            'data-pedido-codigo':orderCode
+          }) +
+          (orderCode
+            ? actionButton(orderCode, 'open-order', {
+                'data-pedido-codigo': orderCode,
+                'data-pedido-id-omie': pedidoId
+              })
+            : '<span style="color:var(--text-3)">Sem pedido</span>') +
+          customerButton(clientName, clientId, doc, orderCode) +
+          '<span style="font-size:.75rem;color:var(--text-3)">' + esc(date(refDate)) + '</span>' +
+          '<span style="font-weight:700">' + esc(money(total)) + '</span>' +
+        '</div>';
+      }).join('');
   }
 
   function renderCustomers(items, compact) {
-    if (!Array.isArray(items) || !items.length) return empty('Sem clientes vinculados.');
+    if (!Array.isArray(items) || !items.length) {
+      return emptyWithHint(
+        'Sem clientes vinculados.',
+        'Clientes sao extraidos das NFs autorizadas do vendedor no periodo.'
+      );
+    }
     var rows = items.map(function (item) {
-      var id = String(pick(item, 'id|client_id|codigo_cliente_omie') || '').trim();
-      var name = String(pick(item, 'label|client_name|cliente') || 'Cliente nao informado');
+      var id    = String(pick(item, 'id|client_id|codigo_cliente_omie') || '').trim();
+      var name  = String(pick(item, 'label|client_name|cliente') || 'Cliente nao informado');
       var value = pick(item, 'value|invoice_total|total|revenue');
       var notes = pick(item, 'orders|notes_count|notas');
       return '<div class="biomie-drawer__list-item">' +
@@ -177,52 +307,74 @@
   }
 
   function renderProducts(items) {
-    if (!Array.isArray(items) || !items.length) return empty('Sem produtos vinculados.');
-    return sectionTitle('Produtos vendidos no periodo') + items.map(function (item) {
-      var code = String(pick(item, 'product_code|codigo_produto|id') || '').trim();
-      var description = String(pick(item, 'description|descricao|label') || 'Produto sem descricao');
-      var qty = pick(item, 'quantity|quantidade');
-      var value = pick(item, 'revenue|value|valor_total');
-      var docs = pick(item, 'orders|notes_count|notas_count');
-      return '<div class="biomie-drawer__list-item">' +
-        '<span><strong>' + esc(description) + '</strong><small style="display:block;color:var(--text-3)">' + esc(code || 'Sem SKU') + '</small></span>' +
-        '<span>' + esc(number(qty || 0)) + ' un.</span>' +
-        '<span>' + esc(number(docs || 0)) + ' NF</span>' +
-        '<span style="font-weight:700">' + esc(money(value)) + '</span>' +
-      '</div>';
-    }).join('');
+    if (!Array.isArray(items) || !items.length) {
+      return emptyWithHint(
+        'Sem produtos vinculados.',
+        'Produtos sao extraidos de biomie_notas_fiscais_itens_canonicos para NFs autorizadas. Verifique se os itens foram sincronizados.'
+      );
+    }
+    return sectionTitle('Produtos vendidos no periodo (' + items.length + ')') +
+      items.map(function (item) {
+        var code  = String(pick(item, 'product_code|codigo_produto|id') || '').trim();
+        var desc  = String(pick(item, 'description|descricao|label') || 'Produto sem descricao');
+        var qty   = pick(item, 'quantity|quantidade');
+        var value = pick(item, 'revenue|value|valor_total');
+        var docs  = pick(item, 'invoices_count|orders|notes_count|notas_count');
+        var clients = pick(item, 'customers_count');
+        return '<div class="biomie-drawer__list-item">' +
+          '<span><strong>' + esc(desc) + '</strong><small style="display:block;color:var(--text-3)">' + esc(code || 'Sem SKU') + '</small></span>' +
+          '<span>' + esc(number(qty || 0)) + ' un.</span>' +
+          '<span>' + esc(number(docs || 0)) + ' NF</span>' +
+          (clients ? '<span>' + esc(number(clients)) + ' cli.</span>' : '') +
+          '<span style="font-weight:700">' + esc(money(value)) + '</span>' +
+        '</div>';
+      }).join('');
   }
 
   function renderTimeline(data) {
     var rows = data && data.daily_sales ? data.daily_sales : [];
-    if (!Array.isArray(rows) || !rows.length) return empty('Sem movimentacao diaria no periodo.');
-    return sectionTitle('Linha do tempo fiscal') + rows.filter(function (row) {
-      return toNumber(pick(row, 'gross_revenue|revenue|value|invoice_total')) > 0 || toNumber(pick(row, 'orders|notes_count')) > 0;
-    }).slice(-40).reverse().map(function (row) {
-      var value = pick(row, 'invoice_total|gross_revenue|revenue|value');
-      var docs = pick(row, 'orders|notes_count');
-      return '<div class="biomie-drawer__list-item">' +
-        '<span>' + esc(date(row.date || row.dia || '')) + '</span>' +
-        '<span>' + esc(number(docs || 0)) + ' NF</span>' +
-        '<span style="font-weight:700">' + esc(money(value)) + '</span>' +
-      '</div>';
-    }).join('') || empty('Sem eventos com valor no periodo.');
+    if (!Array.isArray(rows) || !rows.length) {
+      return emptyWithHint('Sem movimentacao diaria no periodo.', null);
+    }
+    return sectionTitle('Linha do tempo fiscal') +
+      rows.filter(function (row) {
+        return toNumber(pick(row, 'gross_revenue|invoice_total|revenue|value')) > 0 || toNumber(pick(row, 'orders|notes_count')) > 0;
+      }).slice(-40).reverse().map(function (row) {
+        var value = pick(row, 'invoice_total|gross_revenue|revenue|value');
+        var docs  = pick(row, 'orders|notes_count');
+        return '<div class="biomie-drawer__list-item">' +
+          '<span>' + esc(date(row.date || row.dia || '')) + '</span>' +
+          '<span>' + esc(number(docs || 0)) + ' NF</span>' +
+          '<span style="font-weight:700">' + esc(money(value)) + '</span>' +
+        '</div>';
+      }).join('') || emptyWithHint('Sem eventos com valor no periodo.', null);
+  }
+
+  // Compat: renderOrders aponta para renderWalletOrders (carteira = pedidos sem NF).
+  // Nao usar orders_count — use wallet_orders_count (carteira) ou linked_orders_count (bridge).
+  function renderOrders(rows) {
+    return renderWalletOrders(rows);
   }
 
   B.VendorDetail.Tabs = {
-    renderResumo: renderResumo,
-    renderOrders: renderOrders,
-    renderInvoices: renderInvoices,
-    renderCustomers: renderCustomers,
-    renderProducts: renderProducts,
-    renderTimeline: renderTimeline,
-    empty: empty,
-    actionButton: actionButton,
-    customerButton: customerButton,
-    pick: pick,
-    esc: esc,
-    money: money,
-    number: number,
-    date: date
+    renderResumo:        renderResumo,
+    renderLinkedOrders:  renderLinkedOrders,
+    renderWalletOrders:  renderWalletOrders,
+    renderOrders:        renderOrders,
+    renderInvoices:      renderInvoices,
+    renderCustomers:     renderCustomers,
+    renderProducts:      renderProducts,
+    renderTimeline:      renderTimeline,
+    empty:               empty,
+    emptyWithHint:       emptyWithHint,
+    stat:                stat,
+    actionButton:        actionButton,
+    customerButton:      customerButton,
+    pick:                pick,
+    esc:                 esc,
+    money:               money,
+    toNumber:            toNumber,
+    number:              number,
+    date:                date
   };
 }());

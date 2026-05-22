@@ -35,10 +35,15 @@ final class WebhookInboxHealthCheck implements CheckInterface
         try {
             $row = $this->pdo->query(
                 "SELECT
-                    COUNT(*) AS pending_count,
-                    MIN(received_at) AS oldest_received_at
+                    SUM(CASE WHEN status IN ('recebido', 'persistido', 'enfileirado', 'falhou_temporariamente') THEN 1 ELSE 0 END) AS pending_count,
+                    MIN(CASE WHEN status IN ('recebido', 'persistido', 'enfileirado', 'falhou_temporariamente') THEN received_at ELSE NULL END) AS oldest_received_at,
+                    MAX(received_at) AS last_received_at,
+                    SUM(CASE WHEN status IN ('processado') THEN 1 ELSE 0 END) AS processed_count,
+                    SUM(CASE WHEN status IN ('ignorado_por_deduplicacao','duplicate') THEN 1 ELSE 0 END) AS duplicate_count,
+                    SUM(CASE WHEN status IN ('falhou_definitivamente','rejected') THEN 1 ELSE 0 END) AS rejected_count
                  FROM biomie_webhook_inbox
-                 WHERE status IN ('recebido', 'persistido', 'enfileirado', 'falhou_temporariamente')"
+                 WHERE status IN ('recebido', 'persistido', 'enfileirado', 'falhou_temporariamente')
+                    OR received_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
             )->fetch(PDO::FETCH_ASSOC);
         } catch (Throwable $e) {
             $ms = (int) round((microtime(true) - $start) * 1000);
@@ -58,6 +63,10 @@ final class WebhookInboxHealthCheck implements CheckInterface
             'pending_count'      => $pendingCount,
             'oldest_received_at' => $oldestAt,
             'oldest_age_min'     => $oldestAt ? $ageMin : null,
+            'last_received_at'   => $row['last_received_at'] ?? null,
+            'processed_count_7d'  => (int) ($row['processed_count'] ?? 0),
+            'duplicate_count_7d'  => (int) ($row['duplicate_count'] ?? 0),
+            'rejected_count_7d'   => (int) ($row['rejected_count'] ?? 0),
         ];
 
         if ($pendingCount >= self::PENDING_CRITICAL || $ageMin >= self::AGE_CRITICAL_MIN) {

@@ -60,4 +60,19 @@ final class Config
     {
         return (bool) $this->get("features.canonical_reads_{$module}", false);
     }
+
+    public function operationScopeEnforced(): bool
+    {
+        $fromConfig = $this->get('features.operation_scope_enforced');
+        if ($fromConfig !== null) {
+            return (bool) $fromConfig;
+        }
+
+        return (bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false);
+    }
+
+    public static function fromEnvironment(): static
+    {
+        return new static();
+    }
 }

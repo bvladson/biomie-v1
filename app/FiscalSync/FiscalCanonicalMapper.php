@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\FiscalSync;
 
 use BIomie\Support;
+use BIomie\Support\OmieOperationScope;
 
 final class FiscalCanonicalMapper
 {
@@ -45,6 +46,11 @@ final class FiscalCanonicalMapper
         $merchandiseTotal = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vProd', 'total.vProd'], 0));
         $discountTotal = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vDesc', 'total.vDesc'], 0));
         $grossTotal = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vNF', 'total.vNF'], 0));
+        // Fase O — componentes de base fiscal (deduções da base comercial)
+        $ipiTotal      = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vIPI'], 0));
+        $freightTotal  = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vFrete'], 0));
+        $othersTotal   = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vOutro'], 0));
+        $insuranceTotal = Support::toFloat(Support::getByPaths($raw, ['total.ICMSTot.vSeg'], 0));
 
         if ($grossTotal <= 0.0) {
             $grossTotal = max($merchandiseTotal - $discountTotal, 0.0);
@@ -71,6 +77,8 @@ final class FiscalCanonicalMapper
             ];
         }
 
+        $scopeLineage = OmieOperationScope::classifyInvoice($raw);
+
         return [
             'nota_key' => $noteKey,
             'nota_id_omie' => $noteId > 0 ? $noteId : null,
@@ -91,9 +99,20 @@ final class FiscalCanonicalMapper
             'valor_total' => $grossTotal,
             'valor_mercadorias' => $merchandiseTotal,
             'valor_descontos' => $discountTotal,
+            // Fase O — componentes fiscais (gravados condicionalmente em CanonicalWriteRepository)
+            'valor_ipi'             => $ipiTotal,
+            'valor_frete'           => $freightTotal,
+            'valor_outras_despesas' => $othersTotal,
+            'valor_seguro'          => $insuranceTotal,
             'quantidade_itens' => count($items),
             'items' => $items,
             'fonte_sync' => $source,
+            // Fase H — escopo de operação (gravado condicionalmente em CanonicalWriteRepository)
+            'omie_operation_name'        => $scopeLineage['raw_value'] !== '' ? $scopeLineage['raw_value'] : null,
+            'operation_scope'            => $scopeLineage['scope'],
+            'operation_scope_source'     => $scopeLineage['source'],
+            'operation_scope_confidence' => $scopeLineage['confidence'],
+            'operation_scope_rule'       => $scopeLineage['rule'],
         ];
     }
 
@@ -175,6 +194,8 @@ final class FiscalCanonicalMapper
             $qtdItens = count((array) ($raw['det'] ?? []));
         }
 
+        $scopeLineage = OmieOperationScope::classifyOrder($raw);
+
         return [
             'pedido_id_omie' => $orderId,
             'codigo_pedido' => $codigoPedido,
@@ -195,6 +216,12 @@ final class FiscalCanonicalMapper
             'valor_descontos' => $valorDescontos,
             'quantidade_itens' => $qtdItens,
             'fonte_sync' => $source,
+            // Fase H — escopo de operação (gravado condicionalmente em CanonicalWriteRepository)
+            'omie_operation_name'        => $scopeLineage['raw_value'] !== '' ? $scopeLineage['raw_value'] : null,
+            'operation_scope'            => $scopeLineage['scope'],
+            'operation_scope_source'     => $scopeLineage['source'],
+            'operation_scope_confidence' => $scopeLineage['confidence'],
+            'operation_scope_rule'       => $scopeLineage['rule'],
         ];
     }
 
