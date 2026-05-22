@@ -42,6 +42,7 @@ use BIomie\Auth;
 use BIomie\Database;
 use BIomie\Http;
 use BIomie\RequestContext;
+use BIomie\Support\BiVisibilityScope;
 use BIomie\Support\FiscalValueBasis;
 use BIomie\Support\Filters\FilterNormalizer;
 use BIomie\Support\Filters\Pagination;
@@ -108,6 +109,9 @@ try {
     } elseif ($state->scope === 'remittance') {
         $where[] = "nf.operation_scope = 'remittance'";
     }
+
+    // Fase L: exclude non-commercial business units (e.g. Licitação) by default.
+    $where[] = BiVisibilityScope::getCondition($pdo, 'biomie_notas_fiscais_canonicas', 'nf');
 
     // 2. Date range
     if ($state->start !== '') { $where[] = 'nf.data_emissao >= :start'; $params['start'] = $state->start; }

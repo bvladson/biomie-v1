@@ -17,7 +17,8 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
             'delete_mart_vendedor_dia_periodo',
         );
 
-        $pedidoScopeFilter = $this->commercialScopeFragment('biomie_pedidos_canonicos', '');
+        $pedidoScopeFilter      = $this->commercialScopeFragment('biomie_pedidos_canonicos', '');
+        $pedidoVisibilityFilter = $this->visibilityFragment('biomie_pedidos_canonicos', '');
         $sqlComercial = <<<SQL
             INSERT INTO mart_vendedor_dia (
                 competencia, dia,
@@ -47,7 +48,7 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
                 0, 0, 0, 0,
                 NOW()
             FROM biomie_pedidos_canonicos
-            WHERE COALESCE(data_faturamento, data_emissao) BETWEEN :start AND :end{$pedidoScopeFilter}
+            WHERE COALESCE(data_faturamento, data_emissao) BETWEEN :start AND :end{$pedidoScopeFilter}{$pedidoVisibilityFilter}
             GROUP BY DATE_FORMAT(COALESCE(data_faturamento, data_emissao), '%Y-%m'),
                      DATE(COALESCE(data_faturamento, data_emissao)),
                      codigo_vendedor_omie, nome_vendedor
@@ -66,7 +67,8 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
 
         $rows = $this->exec($sqlComercial, ['start' => $start, 'end' => $end], 'materialize_vendedor_dia', 'mart_vendedor_dia', 'insert_mart_vendedor_dia_comercial');
 
-        $nfScopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', '');
+        $nfScopeFilter      = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', '');
+        $nfVisibilityFilter = $this->visibilityFragment('biomie_notas_fiscais_canonicas', '');
         // Fase O: use fiscal basis formula when columns exist; fall back to valor_total pre-migration.
         $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
             ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('')
@@ -96,7 +98,7 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
                 0, 0, 0, 0,
                 NOW()
             FROM biomie_notas_fiscais_canonicas
-            WHERE COALESCE(data_competencia, data_emissao) BETWEEN :start AND :end{$nfScopeFilter}
+            WHERE COALESCE(data_competencia, data_emissao) BETWEEN :start AND :end{$nfScopeFilter}{$nfVisibilityFilter}
             GROUP BY DATE_FORMAT(COALESCE(data_competencia, data_emissao), '%Y-%m'),
                      DATE(COALESCE(data_competencia, data_emissao)),
                      codigo_vendedor_omie, nome_vendedor
@@ -147,6 +149,14 @@ final class VendorDayMartBuilder extends AbstractMartBuilder
                 refreshed_at      = NOW()
         SQL;
 
+        $financialVisibilityFilter = $this->visibilityFragment('biomie_titulos_financeiros_canonicos', '');
+        if ($financialVisibilityFilter !== '') {
+            $sqlFinanceiro = str_replace(
+                'WHERE COALESCE(data_competencia, data_vencimento) BETWEEN :start AND :end',
+                "WHERE COALESCE(data_competencia, data_vencimento) BETWEEN :start AND :end{$financialVisibilityFilter}",
+                $sqlFinanceiro
+            );
+        }
         $this->exec($sqlFinanceiro, ['start' => $start, 'end' => $end], 'materialize_vendedor_dia', 'mart_vendedor_dia', 'insert_mart_vendedor_dia_financeiro');
 
         return $rows;

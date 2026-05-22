@@ -81,10 +81,18 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
         $hasGeoQualityCol = $this->columnExists('mart_compradores_por_geo', 'geo_quality');
         $hasGeoScopeCol   = $this->columnExists('mart_compradores_por_geo', 'geo_scope');
 
+        // Q.6.DB: vendor grain — only active when both mart and source have the vendor columns.
+        $hasVendedorColMart = $this->columnExists('mart_compradores_por_geo', 'codigo_vendedor_omie');
+        $hasVendedorColNf   = $this->columnExists('biomie_notas_fiscais_canonicas', 'codigo_vendedor_omie');
+        $hasVendedorCols    = $hasVendedorColMart && $hasVendedorColNf;
+
         // Fase H: filter by commercial operation scope if column exists.
         $operationScopeFilter = $this->columnExists('biomie_notas_fiscais_canonicas', 'operation_scope')
             ? "\n              AND nf.operation_scope = 'commercial'"
             : '';
+
+        // Fase L: exclude non-commercial business units (e.g. Licitação).
+        $visibilityFilter = $this->visibilityFragment('biomie_notas_fiscais_canonicas', 'nf');
 
         // Fase O: use fiscal basis formula when columns exist; fall back to valor_total pre-migration.
         $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
@@ -103,6 +111,7 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
         $extraInsertCols   = '';
         $extraSelectVals   = '';
         $extraUpsertFields = '';
+        $extraGroupByCols  = '';
 
         if ($hasGeoQualityCol) {
             $extraInsertCols   .= ', geo_quality';
@@ -113,6 +122,12 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             $extraInsertCols   .= ', geo_scope';
             $extraSelectVals   .= ",\n        {$geoScopeExpr}";
             $extraUpsertFields .= ",\n            geo_scope     = " . CompradoresPorGeo::geoScopeUpsertSql();
+        }
+        if ($hasVendedorCols) {
+            $extraInsertCols   .= ', codigo_vendedor_omie, nome_vendedor';
+            $extraSelectVals   .= ",\n        COALESCE(nf.codigo_vendedor_omie, ''),\n        MAX(COALESCE(nf.nome_vendedor, 'Sem vendedor'))";
+            $extraGroupByCols  .= ",\n                COALESCE(nf.codigo_vendedor_omie, '')";
+            $extraUpsertFields .= ",\n            codigo_vendedor_omie = VALUES(codigo_vendedor_omie),\n            nome_vendedor        = VALUES(nome_vendedor)";
         }
 
         $sql = "
@@ -143,13 +158,13 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = nf.codigo_cliente_omie
             LEFT JOIN biomie_clientes_geo_dim geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
             WHERE nf.status_fiscal = 'autorizada'
-              AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$operationScopeFilter}
+              AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$operationScopeFilter}{$visibilityFilter}
             GROUP BY
                 DATE_FORMAT(COALESCE(nf.data_competencia, nf.data_emissao), '%Y-%m'),
                 nf.codigo_cliente_omie,
                 COALESCE(geo.uf, 'NA'),
                 COALESCE(geo.cidade_norm, ''),
-                {$bairroExpr}
+                {$bairroExpr}{$extraGroupByCols}
             ON DUPLICATE KEY UPDATE
                 cliente_nome   = VALUES(cliente_nome),
                 documento      = VALUES(documento),

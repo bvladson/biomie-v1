@@ -27,7 +27,8 @@ final class ProductPeriodMartBuilder extends AbstractMartBuilder
             $delStmt->execute(['competencia' => $competencia]);
             $deleted = $delStmt->rowCount();
 
-            $scopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'n');
+            $scopeFilter      = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'n');
+            $visibilityFilter = $this->visibilityFragment('biomie_notas_fiscais_canonicas', 'n');
             $insertSql = <<<SQL
                 INSERT INTO mart_produto_periodo (
                     competencia, codigo_produto, descricao_produto,
@@ -46,7 +47,7 @@ final class ProductPeriodMartBuilder extends AbstractMartBuilder
                 FROM biomie_notas_fiscais_itens_canonicos i
                 JOIN biomie_notas_fiscais_canonicas n
                   ON n.nota_key = i.nota_key AND n.status_fiscal = 'autorizada'
-                WHERE COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end{$scopeFilter}
+                WHERE COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end{$scopeFilter}{$visibilityFilter}
                 GROUP BY i.codigo_produto, i.descricao_produto
             SQL;
 

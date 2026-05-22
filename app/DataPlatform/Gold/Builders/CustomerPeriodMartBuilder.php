@@ -51,7 +51,8 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
     public function refresh(string $competencia, string $start, string $end): int
     {
         $commercialWhere    = KpiDateContract::wherePeriod('commercial', 'p');
-        $pedidoScopeFilter  = $this->commercialScopeFragment('biomie_pedidos_canonicos', 'p');
+        $pedidoScopeFilter      = $this->commercialScopeFragment('biomie_pedidos_canonicos', 'p');
+        $pedidoVisibilityFilter = $this->visibilityFragment('biomie_pedidos_canonicos', 'p');
         $sqlComercial = <<<SQL
             INSERT INTO mart_cliente_periodo (
                 competencia, codigo_cliente_omie, nome_cliente, documento_cliente,
@@ -77,7 +78,7 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
             FROM biomie_pedidos_canonicos p
             LEFT JOIN biomie_clientes_dim d ON d.codigo_cliente_omie = p.codigo_cliente_omie
             WHERE p.codigo_cliente_omie IS NOT NULL
-              AND {$commercialWhere}{$pedidoScopeFilter}
+              AND {$commercialWhere}{$pedidoScopeFilter}{$pedidoVisibilityFilter}
             GROUP BY p.codigo_cliente_omie, p.nome_cliente, p.documento_cliente
             ON DUPLICATE KEY UPDATE
                 tipo_pessoa          = VALUES(tipo_pessoa),
@@ -91,7 +92,8 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
         $rows = $this->exec($sqlComercial, ['competencia' => $competencia, 'start' => $start, 'end' => $end], 'materialize_cliente_periodo', 'mart_cliente_periodo', 'insert_mart_cliente_periodo_comercial');
 
         $fiscalWhere    = KpiDateContract::wherePeriod('fiscal', 'n');
-        $nfScopeFilter  = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'n');
+        $nfScopeFilter      = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'n');
+        $nfVisibilityFilter = $this->visibilityFragment('biomie_notas_fiscais_canonicas', 'n');
         // Fase O: use fiscal basis formula when columns exist; fall back to valor_total pre-migration.
         $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
             ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('n')
@@ -120,7 +122,7 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
             FROM biomie_notas_fiscais_canonicas n
             LEFT JOIN biomie_clientes_dim d ON d.codigo_cliente_omie = n.codigo_cliente_omie
             WHERE n.codigo_cliente_omie IS NOT NULL
-              AND {$fiscalWhere}{$nfScopeFilter}
+              AND {$fiscalWhere}{$nfScopeFilter}{$nfVisibilityFilter}
             GROUP BY n.codigo_cliente_omie, n.nome_cliente, n.documento_cliente
             ON DUPLICATE KEY UPDATE
                 tipo_pessoa   = IF(tipo_pessoa = 'desconhecido', VALUES(tipo_pessoa), tipo_pessoa),
@@ -132,8 +134,9 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
 
         $this->exec($sqlFiscal, ['competencia' => $competencia, 'start' => $start, 'end' => $end], 'materialize_cliente_periodo', 'mart_cliente_periodo', 'insert_mart_cliente_periodo_fiscal');
 
-        $financialWhere = KpiDateContract::wherePeriod('financial', 't');
-        $diasAtraso     = KpiDateContract::diasAtraso('t', 'CURDATE()');
+        $financialWhere             = KpiDateContract::wherePeriod('financial', 't');
+        $financialVisibilityFilter  = $this->visibilityFragment('biomie_titulos_financeiros_canonicos', 't');
+        $diasAtraso                 = KpiDateContract::diasAtraso('t', 'CURDATE()');
         $sqlFinanceiro = <<<SQL
             INSERT INTO mart_cliente_periodo (
                 competencia, codigo_cliente_omie, nome_cliente, documento_cliente,
@@ -160,7 +163,7 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
             FROM biomie_titulos_financeiros_canonicos t
             LEFT JOIN biomie_clientes_dim d ON d.codigo_cliente_omie = t.codigo_cliente_omie
             WHERE t.codigo_cliente_omie IS NOT NULL
-              AND {$financialWhere}
+              AND {$financialWhere}{$financialVisibilityFilter}
             GROUP BY t.codigo_cliente_omie, t.nome_cliente, t.documento_cliente
             ON DUPLICATE KEY UPDATE
                 tipo_pessoa     = IF(tipo_pessoa = 'desconhecido', VALUES(tipo_pessoa), tipo_pessoa),

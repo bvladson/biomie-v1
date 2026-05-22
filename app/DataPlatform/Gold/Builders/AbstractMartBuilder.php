@@ -73,6 +73,25 @@ abstract class AbstractMartBuilder
     }
 
     /**
+     * Fase L — retorna cláusula SQL para excluir unidades não-comerciais (ex: Licitação).
+     * Quando is_biomie_commercial_visible existe, usa a coluna; caso contrário cai para
+     * exclusão por nome (fallback pré-migration).
+     *
+     * @param string $alias Alias SQL sem ponto; '' para tabela sem alias.
+     */
+    protected function visibilityFragment(string $table, string $alias): string
+    {
+        $prefix = $alias !== '' ? $alias . '.' : '';
+        if ($this->columnExists($table, 'is_biomie_commercial_visible')) {
+            return "\n              AND COALESCE({$prefix}is_biomie_commercial_visible, 1) = 1";
+        }
+        if ($this->columnExists($table, 'nome_vendedor')) {
+            return "\n              AND NOT UPPER({$prefix}nome_vendedor) LIKE '%LICITAC%'";
+        }
+        return '';
+    }
+
+    /**
      * @param array<string,mixed> $params
      */
     protected function exec(string $sql, array $params, string $stage, string $table, string $label): int

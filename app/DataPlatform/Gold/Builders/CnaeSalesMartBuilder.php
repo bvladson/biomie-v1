@@ -27,7 +27,8 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
         // INSERT must cover from day 1, not from the potentially mid-month $start.
         $monthStart = date('Y-m-01', strtotime($start));
 
-        $scopeFilter = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'nf');
+        $scopeFilter      = $this->commercialScopeFragment('biomie_notas_fiscais_canonicas', 'nf');
+        $visibilityFilter = $this->visibilityFragment('biomie_notas_fiscais_canonicas', 'nf');
         // Fase O: use fiscal basis formula when columns exist; fall back to valor_total pre-migration.
         $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
             ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('nf')
@@ -60,7 +61,7 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = nf.codigo_cliente_omie
             LEFT JOIN biomie_clientes_geo_dim geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
             WHERE nf.status_fiscal = 'autorizada'
-              AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$scopeFilter}
+              AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$scopeFilter}{$visibilityFilter}
             GROUP BY
                 DATE_FORMAT(COALESCE(nf.data_competencia, nf.data_emissao), '%Y-%m'),
                 nf.codigo_cliente_omie,
