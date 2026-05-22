@@ -131,6 +131,16 @@ final class CanonicalDisplayMapper
                 'document_key'       => (string) ($row['chave_nfe'] ?? ''),
                 'pedido_id_omie'     => (string) ($row['pedido_id_omie'] ?? ''),
                 'origin_order_code'  => (string) ($row['codigo_pedido_origem'] ?? ''),
+                // Fase P — fiscal composition columns (passed through from invoiceSelectSql)
+                'valor_total_nf'         => (float) ($row['valor_total'] ?? 0),
+                'valor_ipi'              => (float) ($row['valor_ipi'] ?? 0),
+                'valor_frete'            => (float) ($row['valor_frete'] ?? 0),
+                'valor_outras_despesas'  => (float) ($row['valor_outras_despesas'] ?? 0),
+                'valor_seguro'           => (float) ($row['valor_seguro'] ?? 0),
+                'valor_base_comercial_nf' => isset($row['valor_base_comercial_nf']) ? (float) $row['valor_base_comercial_nf'] : null,
+                'has_frete'              => (bool) ($row['has_frete'] ?? ($row['valor_frete'] ?? 0) > 0),
+                'has_outras_despesas'    => (bool) ($row['has_outras_despesas'] ?? ($row['valor_outras_despesas'] ?? 0) > 0),
+                'has_seguro'             => (bool) ($row['has_seguro'] ?? ($row['valor_seguro'] ?? 0) > 0),
             ];
         }
 

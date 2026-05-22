@@ -1,0 +1,237 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BIomie — Fase Q: Motor Global de Filtros
+   Global filter system: chips, quick filters, column header filters,
+   sort indicators, feedback messages.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Active filter chips ──────────────────────────────────────────────────── */
+
+.biomie-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  background: var(--page-accent, #e0e7ff);
+  color: var(--page-accent-fg, #3730a3);
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background .15s;
+}
+
+.biomie-filter-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: .85rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  opacity: .7;
+  padding: 0;
+  flex-shrink: 0;
+  transition: opacity .12s, background .12s;
+}
+.biomie-filter-chip__remove:hover {
+  opacity: 1;
+  background: rgba(0,0,0,.1);
+}
+
+.biomie-filter-chip-clear {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--border, #e2e8f0);
+  color: var(--text-3, #94a3b8);
+  border-radius: 20px;
+  font-size: .72rem;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.biomie-filter-chip-clear:hover {
+  color: var(--danger, #ef4444);
+  border-color: var(--danger, #ef4444);
+}
+
+/* Container for chips */
+.mag-orders-active-filters,
+[id="nfActiveFilters"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+}
+
+/* ── Quick filter bar ─────────────────────────────────────────────────────── */
+
+.nf-quick-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 4px;
+}
+
+.nf-quick-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: .72rem;
+  font-weight: 500;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 20px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-2, #64748b);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.nf-quick-filter-btn:hover {
+  background: var(--bg-muted, #f8fafc);
+  border-color: var(--page-accent, #818cf8);
+  color: var(--text-1, #1e293b);
+}
+.nf-quick-filter-btn--active {
+  background: var(--page-accent, #e0e7ff);
+  border-color: var(--page-accent-fg, #6366f1);
+  color: var(--page-accent-fg, #3730a3);
+  font-weight: 600;
+}
+.nf-quick-filter-btn--active:hover {
+  background: var(--page-accent, #c7d2fe);
+}
+
+/* ── Column header filter row ────────────────────────────────────────────── */
+
+.nf-filter-row th {
+  padding: 4px 8px 6px;
+  vertical-align: top;
+  border-top: none;
+  background: var(--bg-muted, #f8fafc);
+}
+
+.nf-col-filter {
+  width: 100%;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: .72rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 4px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-1, #1e293b);
+  line-height: 1.4;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.nf-col-filter:focus {
+  outline: none;
+  border-color: var(--page-accent, #818cf8);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--page-accent, #818cf8) 20%, transparent);
+}
+.nf-col-filter--active {
+  border-color: var(--page-accent-fg, #6366f1);
+  background: color-mix(in srgb, var(--page-accent, #e0e7ff) 30%, var(--bg-surface, #fff));
+}
+.nf-col-filter--select {
+  cursor: pointer;
+}
+
+.nf-col-filter-range {
+  display: flex;
+  gap: 4px;
+}
+.nf-col-filter-range .nf-col-filter {
+  min-width: 0;
+  width: calc(50% - 2px);
+}
+
+/* ── Sort indicators in table headers ───────────────────────────────────── */
+
+.nf-th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.nf-th-sortable:hover {
+  background: var(--bg-muted, #f8fafc);
+}
+.nf-th-sorted {
+  color: var(--page-accent-fg, #4f46e5);
+}
+.nf-sort-icon {
+  display: inline-block;
+  font-size: .8em;
+  opacity: .6;
+  margin-left: 2px;
+}
+.nf-th-sorted .nf-sort-icon {
+  opacity: 1;
+}
+
+/* Active filter indicator badge on header */
+.nf-th-filter-active::after {
+  content: '●';
+  font-size: .6em;
+  color: var(--page-accent-fg, #6366f1);
+  vertical-align: super;
+  margin-left: 2px;
+  line-height: 1;
+}
+
+/* ── Table feedback messages ─────────────────────────────────────────────── */
+
+.biomie-table-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: .8rem;
+  margin: 6px 0;
+}
+.biomie-table-feedback--error {
+  background: var(--danger-muted, #fef2f2);
+  color: var(--danger, #dc2626);
+  border-left: 3px solid var(--danger, #dc2626);
+}
+.biomie-table-feedback--info {
+  background: var(--bg-muted, #f8fafc);
+  color: var(--text-2, #64748b);
+  border-left: 3px solid var(--border, #cbd5e1);
+}
+
+/* ── Loading state overlay inside table ─────────────────────────────────── */
+
+.nf-table-loading {
+  opacity: .5;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+/* ── Responsive tweaks ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .nf-filter-row {
+    display: none;  /* column filters hidden on small screens; use global search */
+  }
+  .nf-quick-filter-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nf-quick-filter-bar::-webkit-scrollbar { display: none; }
+}

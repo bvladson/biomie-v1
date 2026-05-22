@@ -25,6 +25,7 @@ final class PageAssetRegistry
         'assets/css/mag-clean.css',
         'assets/css/mag-adminlte-clean.css',
         'assets/css/mag-mobile.css',
+        'assets/css/filters.css',          // Fase Q — motor global de filtros
     ];
 
     /** JS utilitário core — carregado em todas as páginas antes do </body> */
@@ -33,6 +34,12 @@ final class PageAssetRegistry
         'assets/js/biomie-states.js',
         'assets/js/core/utils.js',
         'assets/js/core/render-helpers.js',
+        // Fase Q — motor global de filtros (ordem de dependência)
+        'assets/js/core/request-controller.js',
+        'assets/js/core/filter-state.js',
+        'assets/js/core/filter-url.js',
+        'assets/js/core/filter-chips.js',
+        'assets/js/core/server-table.js',
         'assets/js/pwa.js',
         'assets/js/cache-refresh.js',
         'assets/js/mobile-shell.js',

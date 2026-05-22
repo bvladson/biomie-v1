@@ -113,7 +113,26 @@
       <div style="font-size:12px;">Estas NFs registram movimentação de mercadoria <strong>sem transferência de propriedade</strong> e <strong>não compõem</strong> faturamento comercial, ticket médio, ranking, metas, Plano de Voo, Mix ou Geo.</div>
     </div>
 
-    <!-- Busca inline (Fase N.1) -->
+    <!-- Filtros rápidos (Fase Q.2) -->
+    <div class="nf-quick-filter-bar" id="nfQuickFilters">
+      <button class="nf-quick-filter-btn" data-quick-filter="has_frete"    data-quick-value="1" title="Somente NFs com frete">
+        <span class="material-symbols-rounded" style="font-size:14px">local_shipping</span> Com frete
+      </button>
+      <button class="nf-quick-filter-btn" data-quick-filter="has_outras"   data-quick-value="1" title="Somente NFs com outras despesas">
+        <span class="material-symbols-rounded" style="font-size:14px">receipt</span> Com outras
+      </button>
+      <button class="nf-quick-filter-btn" data-quick-filter="has_seguro"   data-quick-value="1" title="Somente NFs com seguro">
+        <span class="material-symbols-rounded" style="font-size:14px">shield</span> Com seguro
+      </button>
+      <button class="nf-quick-filter-btn" data-quick-filter="com_desconto" data-quick-value="1" title="Somente NFs com desconto">
+        <span class="material-symbols-rounded" style="font-size:14px">sell</span> Com desconto
+      </button>
+      <button class="nf-quick-filter-btn" data-quick-filter="sem_pedido"   data-quick-value="1" title="Somente NFs sem pedido vinculado">
+        <span class="material-symbols-rounded" style="font-size:14px">link_off</span> Sem pedido
+      </button>
+    </div>
+
+    <!-- Busca inline (Fase Q.2) -->
     <div class="mag-orders-searchbar" id="nfSearchBar">
       <div class="mag-orders-searchbar__row">
         <span class="material-symbols-rounded mag-orders-searchbar__icon">search</span>
@@ -126,9 +145,9 @@
         </button>
       </div>
       <div class="mag-orders-searchbar__extras" id="nfSearchExtras" style="display:none;">
-        <input type="text"   id="osmVendor" class="mag-orders-searchbar__filter-input" placeholder="Vendedor" />
-        <input type="number" id="osmMin"    class="mag-orders-searchbar__filter-input" placeholder="Valor mín." step="0.01" min="0" />
-        <input type="number" id="osmMax"    class="mag-orders-searchbar__filter-input" placeholder="Valor máx." step="0.01" min="0" />
+        <input type="text"   id="osmVendor" class="mag-orders-searchbar__filter-input" placeholder="Vendedor (legado)" />
+        <input type="number" id="osmMin"    class="mag-orders-searchbar__filter-input" placeholder="Base mín." step="0.01" min="0" />
+        <input type="number" id="osmMax"    class="mag-orders-searchbar__filter-input" placeholder="Base máx." step="0.01" min="0" />
       </div>
     </div>
 
@@ -142,13 +161,50 @@
     <div id="nfSearchFeedback" style="display:none;"></div>
 
     <!-- Tabela NF (compartilhada: app.js view normal + resultados de busca) -->
-    <div style="overflow-x:auto"><table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr>
-      <th>NF</th><th>Tipo</th><th>Cliente</th><th>Vendedor</th>
-      <th class="nf-th-sortable" data-sort-field="emissao">Emissão<span class="nf-sort-icon" id="nfSortIconEmissao"></span></th>
-      <th>Mercadoria</th><th>Desconto</th>
-      <th class="nf-th-sortable" data-sort-field="valor">Base Comercial<span class="nf-sort-icon" id="nfSortIconValor"></span></th>
-      <th>Pedido</th>
-    </tr></thead><tbody id="ordersTable" data-empty-title="Sem notas fiscais" data-empty-message="Nenhuma NF para o periodo ou filtro selecionado." data-empty-icon="receipt_long"></tbody></table></div>
+    <div style="overflow-x:auto"><table class="mag-table mag-table-clean" data-mobile-card-table><thead>
+      <tr>
+        <th id="th-nf"      data-filter-header>NF</th>
+        <th id="th-tipo"    data-filter-header>Tipo</th>
+        <th id="th-cliente" data-filter-header>Cliente</th>
+        <th id="th-vendedor" data-filter-header>Vendedor</th>
+        <th class="nf-th-sortable" data-sort-field="emissao">Emissão<span class="nf-sort-icon"></span></th>
+        <th class="nf-th-sortable" data-sort-field="mercadoria">Mercadoria<span class="nf-sort-icon"></span></th>
+        <th>Desconto</th>
+        <th id="th-base" data-filter-header class="nf-th-sortable" data-sort-field="base_comercial">Base Comercial<span class="nf-sort-icon"></span></th>
+        <th id="th-pedido" data-filter-header>Pedido</th>
+      </tr>
+      <!-- Filtros por coluna (Fase Q.2) — ocultos em mobile via CSS -->
+      <tr class="nf-filter-row" id="nfFilterRow">
+        <th>
+          <input type="search" id="f_col_nf" class="nf-col-filter" placeholder="Buscar NF…" autocomplete="off" />
+        </th>
+        <th>
+          <select id="f_col_tipo" class="nf-col-filter nf-col-filter--select">
+            <option value="">Todos</option>
+            <option value="commercial">Orç-PD</option>
+            <option value="remittance">Remessa</option>
+          </select>
+        </th>
+        <th>
+          <input type="search" id="f_col_cliente" class="nf-col-filter" placeholder="Cliente…" autocomplete="off" />
+        </th>
+        <th>
+          <input type="search" id="f_col_vendedor" class="nf-col-filter" placeholder="Vendedor…" autocomplete="off" />
+        </th>
+        <th></th>
+        <th></th>
+        <th></th>
+        <th>
+          <div class="nf-col-filter-range">
+            <input type="number" id="f_col_bc_min" class="nf-col-filter" placeholder="Min" step="0.01" min="0" title="Base Comercial mínima" />
+            <input type="number" id="f_col_bc_max" class="nf-col-filter" placeholder="Max" step="0.01" min="0" title="Base Comercial máxima" />
+          </div>
+        </th>
+        <th>
+          <input type="search" id="f_col_pedido" class="nf-col-filter" placeholder="Pedido…" autocomplete="off" />
+        </th>
+      </tr>
+    </thead><tbody id="ordersTable" data-empty-title="Sem notas fiscais" data-empty-message="Nenhuma NF para o periodo ou filtro selecionado." data-empty-icon="receipt_long"></tbody></table></div>
 
     <!-- Paginação da busca (oculta fora do modo busca) -->
     <div id="nfSearchPagination" class="mag-orders-pagination" style="display:none;"></div>
