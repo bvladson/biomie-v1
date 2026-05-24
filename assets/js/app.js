@@ -1436,10 +1436,71 @@
     }
 
     if (window.EventSource && ['index', 'dashboard'].includes((document.body.dataset && document.body.dataset.page) || 'dashboard')) {
-      const sse = new window.EventSource('api/live_stream.php');
-      sse.addEventListener('refresh_dashboard', (e) => {
-        try { JSON.parse(e.data); loadCurrentPage(false, true); } catch (err) {}
-      });
+      (function () {
+        var lastTs = '';
+        var backoffMs = 5000;
+        var reconnectTimer = null;
+        var visibilityTimer = null;
+
+        function openStream() {
+          if (window.BIOMIE_LIVE_STREAM) return;
+          var url = 'api/live_stream.php' + (lastTs ? '?since=' + encodeURIComponent(lastTs) : '');
+          var es = new window.EventSource(url);
+          window.BIOMIE_LIVE_STREAM = es;
+
+          es.addEventListener('refresh_dashboard', function (e) {
+            try {
+              var d = JSON.parse(e.data);
+              if (d && d.timestamp) lastTs = String(d.timestamp);
+              backoffMs = 5000;
+            } catch (err) {}
+            loadCurrentPage(false, true);
+          });
+
+          es.addEventListener('close', function () {
+            closeStream();
+            scheduleReconnect(false);
+          });
+
+          es.onerror = function () {
+            closeStream();
+            scheduleReconnect(true);
+          };
+        }
+
+        function closeStream() {
+          clearTimeout(reconnectTimer);
+          if (window.BIOMIE_LIVE_STREAM) {
+            window.BIOMIE_LIVE_STREAM.close();
+            window.BIOMIE_LIVE_STREAM = null;
+          }
+        }
+
+        function scheduleReconnect(useBackoff) {
+          clearTimeout(reconnectTimer);
+          if (document.hidden) return;
+          var delay = useBackoff ? backoffMs : 5000;
+          if (useBackoff) backoffMs = Math.min(backoffMs * 2, 120000);
+          reconnectTimer = setTimeout(function () {
+            if (!document.hidden) openStream();
+          }, delay);
+        }
+
+        document.addEventListener('visibilitychange', function () {
+          clearTimeout(visibilityTimer);
+          if (document.hidden) {
+            closeStream();
+          } else {
+            visibilityTimer = setTimeout(function () {
+              if (!window.BIOMIE_LIVE_STREAM) openStream();
+            }, 1000);
+          }
+        });
+
+        window.addEventListener('beforeunload', closeStream);
+
+        openStream();
+      })();
     }
   });
 })();

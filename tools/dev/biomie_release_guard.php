@@ -23,7 +23,8 @@ declare(strict_types=1);
  *   D5  APIs  — sintaxe PHP               (php -l api/*.php)
  *   D6  Audit — SELECT * em APIs          [informacional — não bloqueia]
  *   D7  Fase L — Filtro visibilidade no código (static audit)
- *   D8  Cache — limpeza                   [apenas com --clear-cache]
+ *   D8  STAB.R1 — SSE hardening no código  [informacional — não bloqueia]
+ *   D9  Cache — limpeza                   [apenas com --clear-cache]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -283,7 +284,50 @@ $domains[] = [
 ];
 if (!$d7pass) $allPass = false;
 
-// ── D8 — Cache clear [apenas com --clear-cache] ───────────────────────────────
+// ── D8 — STAB.R1: SSE hardening no código-fonte [informacional] ───────────────
+$d8checks = [
+    [
+        'file'    => $projectRoot . '/api/live_stream.php',
+        'pattern' => 'connection_aborted',
+        'label'   => 'live_stream.php verifica connection_aborted()',
+    ],
+    [
+        'file'    => $projectRoot . '/api/live_stream.php',
+        'pattern' => 'retry:',
+        'label'   => 'live_stream.php envia diretiva retry (controla reconexão do browser)',
+    ],
+    [
+        'file'    => $projectRoot . '/assets/js/app.js',
+        'pattern' => 'visibilitychange',
+        'label'   => 'app.js usa Page Visibility API (visibilitychange)',
+    ],
+    [
+        'file'    => $projectRoot . '/assets/js/app.js',
+        'pattern' => 'BIOMIE_LIVE_STREAM',
+        'label'   => 'app.js usa singleton BIOMIE_LIVE_STREAM',
+    ],
+];
+$d8warns = [];
+foreach ($d8checks as $chk) {
+    $src = is_file($chk['file']) ? file_get_contents($chk['file']) : false;
+    if ($src === false || !str_contains($src, $chk['pattern'])) {
+        $d8warns[] = 'Ausente: ' . $chk['label'];
+    }
+}
+$d8ok = count($d8warns) === 0;
+$domains[] = [
+    'label'   => 'D8  STAB.R1 — SSE hardening no código  [informacional]',
+    'guard'   => 'static-audit live_stream.php + app.js',
+    'pass'    => true,
+    'warn'    => !$d8ok,
+    'summary' => $d8ok
+        ? '4/4 padrões SSE hardening presentes'
+        : count($d8warns) . ' padrão(ões) ausente(s)',
+    'issues'  => $d8warns,
+];
+// D8 is informational only — does NOT flip $allPass
+
+// ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
     $deleted   = 0;
@@ -302,7 +346,7 @@ if ($clearCache) {
         $cacheNote = 'Erro ao limpar cache: ' . $e->getMessage();
     }
     $domains[] = [
-        'label'   => 'D8  Cache — limpeza',
+        'label'   => 'D9  Cache — limpeza',
         'guard'   => '--clear-cache',
         'pass'    => true,
         'summary' => $cacheNote,

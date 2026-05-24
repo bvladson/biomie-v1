@@ -8,30 +8,41 @@ require __DIR__ . '/bootstrap.php';
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
+header('X-Accel-Buffering: no');
+
+// Tell browser to wait 30s before auto-reconnect instead of the default 3s
+echo "retry: 30000\n\n";
+ob_flush();
+flush();
 
 $cacheKey = 'biomie_live_stream_last_event_time';
-$deadline = time() + 30;
+$deadline  = time() + 25;
+$lastPing  = 0;
 
 while (time() < $deadline) {
     if (connection_aborted() !== 0) {
         break;
     }
 
+    $now           = time();
     $lastEventTime = isset($cache) && $cache instanceof \BIomie\Cache ? $cache->get($cacheKey, 86400) : null;
-    $clientSince = $_GET['since'] ?? '';
-    
-    if ($lastEventTime !== null && (string)$lastEventTime !== $clientSince) {
+    $clientSince   = $_GET['since'] ?? '';
+
+    if ($lastEventTime !== null && (string) $lastEventTime !== $clientSince) {
         echo "event: refresh_dashboard\n";
         echo "data: {\"timestamp\": \"$lastEventTime\"}\n\n";
         ob_flush();
         flush();
-        break; 
+        break;
     }
-    
-    echo "event: ping\n";
-    echo "data: {\"time\": \"" . time() . "\"}\n\n";
-    ob_flush();
-    flush();
+
+    if ($now - $lastPing >= 15) {
+        echo "event: ping\n";
+        echo "data: {\"time\": \"$now\"}\n\n";
+        ob_flush();
+        flush();
+        $lastPing = $now;
+    }
 
     sleep(3);
 }
