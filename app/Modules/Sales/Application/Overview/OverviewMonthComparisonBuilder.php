@@ -225,7 +225,7 @@ final class OverviewMonthComparisonBuilder
             FROM biomie_notas_fiscais_canonicas
             WHERE data_competencia BETWEEN :start AND :end{$scopeFilter}
             GROUP BY DATE_FORMAT(data_competencia, '%Y-%m')
-            ORDER BY year_month ASC
+            ORDER BY DATE_FORMAT(data_competencia, '%Y-%m') ASC
         SQL);
         $stmt->execute(['start' => $start, 'end' => $end]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
