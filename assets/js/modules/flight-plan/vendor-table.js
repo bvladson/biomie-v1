@@ -40,7 +40,11 @@
     var fmtN = formatters.fmtN || function (v) { return v; };
 
     if (!vendors || !vendors.length) {
-      tb.innerHTML = '<tr><td colspan="12" class="empty-row" style="text-align:center;padding:24px;">Nenhum vendedor com meta ativa no periodo.</td></tr>';
+      if (window.BIOMIE_STATES) {
+        window.BIOMIE_STATES.renderTableEmptyState(tb);
+      } else {
+        tb.innerHTML = '<tr><td colspan="12" class="mag-empty-cell"><div class="mag-state mag-state-empty mag-state-compact mag-state-severity--info" role="status"><span class="material-symbols-rounded mag-state-icon">person_off</span><strong class="mag-state-title">Nenhum vendedor com meta ativa</strong><p class="mag-state-message">Nenhum vendedor com meta cadastrada para o período selecionado.</p></div></td></tr>';
+      }
       return;
     }
 

@@ -27,12 +27,9 @@ $_fmtSource = static function (string $source): string {
     };
 };
 ?>
-<html>
+<html lang="pt-BR">
 <head>
 <style>
-  .mc-header { padding: var(--space-6) var(--space-8) var(--space-4); border-bottom: 1px solid var(--color-border); }
-  .mc-header h1 { font-size: 1.25rem; font-weight: 700; margin: 0 0 var(--space-1); }
-  .mc-header p  { font-size: .875rem; color: var(--color-text-muted); margin: 0; }
   .mc-totals { display: flex; gap: var(--space-4); padding: var(--space-4) var(--space-8); flex-wrap: wrap; }
   .mc-stat { background: var(--color-surface-2); border-radius: var(--radius-md); padding: var(--space-3) var(--space-5); min-width: 100px; }
   .mc-stat__label { font-size: .75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -58,9 +55,9 @@ $_fmtSource = static function (string $source): string {
 <main class="mag-clean-page" data-page="catalogo-kpis">
 <a class="mc-back" href="admin.php"><span class="material-symbols-rounded" style="font-size:16px">arrow_back</span> Voltar ao Admin</a>
 
-<div class="mc-header">
-  <h1><span class="material-symbols-rounded" style="font-size:1.1em;vertical-align:-.15em">hub</span> Catálogo de Métricas — BIomie</h1>
-  <p>Fonte autoritativa: <code>app/DataPlatform/Semantic/MetricRegistry.php</code> &mdash; gerado em <?php echo htmlspecialchars(date('d/m/Y H:i'), ENT_QUOTES); ?></p>
+<div class="biomie-page-header biomie-page-header--admin">
+  <h1 class="biomie-page-header__title"><span class="material-symbols-rounded" style="font-size:1.1em;vertical-align:-.15em">hub</span> Catálogo de Métricas — BIomie</h1>
+  <p class="biomie-page-header__subtitle">Fonte autoritativa: <code>app/DataPlatform/Semantic/MetricRegistry.php</code> &mdash; gerado em <?php echo htmlspecialchars(date('d/m/Y H:i'), ENT_QUOTES); ?></p>
 </div>
 
 <div class="mc-totals">

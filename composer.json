@@ -39,6 +39,8 @@
         "migrate:status": "@php bin/schema_migrate.php status",
         "migrate:up": "@php bin/schema_migrate.php migrate",
         "migrate:down": "@php bin/schema_migrate.php rollback",
-        "migrate:verify": "@php bin/schema_migrate.php verify"
+        "migrate:verify": "@php bin/schema_migrate.php verify",
+        "guard": "@php tools/dev/biomie_release_guard.php --pretty",
+        "release:guard": "@php tools/dev/biomie_release_guard.php --start=2026-01-01 --end=2026-05-31 --pretty"
     }
 }

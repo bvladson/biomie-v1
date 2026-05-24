@@ -24,35 +24,35 @@
 <body class="mag-page mag-clean-page" data-page="vendors">
 <main class="page">
   <!-- Page Header (compact, minimalist) -->
-  <div class="fp-header-clean mag-page-header mag-clean-header anim" style="border-bottom:1px solid var(--border);">
-    <div>
-      <h1 style="font-size:1.15rem;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
-        <span class="material-symbols-rounded" style="font-size:20px;color:var(--page-accent);">groups</span>
+  <div class="biomie-page-header biomie-page-header--strip anim">
+    <div class="biomie-page-header__body">
+      <h1 class="biomie-page-header__title">
+        <span class="material-symbols-rounded">groups</span>
         Desempenho da Equipe Orçamento-PD
         <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:4px;vertical-align:middle;">remessas excluídas</span>
       </h1>
-      <p style="margin:0 0 10px;font-size:0.85rem;color:var(--text-2);">Faturamento Orçamento-PD, carteira e cancelamentos por vendedor. Remessas de produto não entram nesta visão.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:baseline;gap:5px;padding:4px 10px;background:var(--surface-muted);border-left:3px solid var(--state-billed,#1a7f37);border-radius:0 4px 4px 0;font-size:0.82rem;">
-          <span style="color:var(--text-3);font-size:0.72rem;font-weight:600;text-transform:uppercase;">NF Orç-PD</span>
+      <p class="biomie-page-header__subtitle">Faturamento Orçamento-PD, carteira e cancelamentos por vendedor. Remessas de produto não entram nesta visão.</p>
+      <div class="biomie-page-header__badges">
+        <span class="biomie-status-band biomie-status-band--billed">
+          <span class="biomie-status-band__label">NF Orç-PD</span>
           <strong data-bind="status-billed-value">-</strong>
-          <span style="color:var(--text-3);font-size:0.75rem;" data-bind="status-billed-orders">-</span>
+          <span class="biomie-status-band__sub" data-bind="status-billed-orders">-</span>
         </span>
-        <span style="display:inline-flex;align-items:baseline;gap:5px;padding:4px 10px;background:var(--surface-muted);border-left:3px solid var(--state-auth,#0969da);border-radius:0 4px 4px 0;font-size:0.82rem;">
-          <span style="color:var(--text-3);font-size:0.72rem;font-weight:600;text-transform:uppercase;">Carteira</span>
+        <span class="biomie-status-band biomie-status-band--auth">
+          <span class="biomie-status-band__label">Carteira</span>
           <strong data-bind="status-auth-value">-</strong>
-          <span style="color:var(--text-3);font-size:0.75rem;" data-bind="status-auth-orders">-</span>
+          <span class="biomie-status-band__sub" data-bind="status-auth-orders">-</span>
         </span>
-        <span style="display:inline-flex;align-items:baseline;gap:5px;padding:4px 10px;background:var(--surface-muted);border-left:3px solid var(--state-cancel,#cf222e);border-radius:0 4px 4px 0;font-size:0.82rem;">
-          <span style="color:var(--text-3);font-size:0.72rem;font-weight:600;text-transform:uppercase;">Canceladas</span>
+        <span class="biomie-status-band biomie-status-band--cancel">
+          <span class="biomie-status-band__label">Canceladas</span>
           <strong data-bind="status-cancel-value">-</strong>
-          <span style="color:var(--text-3);font-size:0.75rem;" data-bind="status-cancel-orders">-</span>
+          <span class="biomie-status-band__sub" data-bind="status-cancel-orders">-</span>
         </span>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;">
-      <a href="plano_voo.php" class="biomie-btn biomie-btn--secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">
-        <span class="material-symbols-rounded" style="font-size:17px">flight</span>Rota Comercial
+    <div class="biomie-page-header__actions">
+      <a href="plano_voo.php" class="biomie-btn biomie-btn--secondary">
+        <span class="material-symbols-rounded">flight</span>Rota Comercial
       </a>
     </div>
   </div>
@@ -93,13 +93,13 @@
   </div>
 
   <div class="section-label anim d2" id="pipeline">Indicadores Orçamento-PD</div>
-  <section class="status-kpi-grid mag-kpi-grid anim d2">
-    <div class="status-kpi billed"><div class="sk-label">NF Orç-PD</div><div class="sk-value" data-bind="status-billed-value">-</div><div class="sk-sub" data-bind="status-billed-orders">-</div></div>
-    <div class="status-kpi authorized"><div class="sk-label">Carteira</div><div class="sk-value" data-bind="status-auth-value">-</div><div class="sk-sub" data-bind="status-auth-orders">-</div></div>
-    <div class="status-kpi cancelled"><div class="sk-label">Canceladas</div><div class="sk-value" data-bind="status-cancel-value">-</div><div class="sk-sub" data-bind="status-cancel-orders">-</div></div>
-    <div class="status-kpi info"><div class="sk-label">Conversão</div><div class="sk-value" data-bind="status-conversion-rate">-</div><div class="sk-sub">NF / (NF + carteira)</div></div>
-    <div class="status-kpi info"><div class="sk-label">Backlog</div><div class="sk-value" data-bind="status-backlog-value">-</div><div class="sk-sub">Aguardando NF</div></div>
-    <div class="status-kpi billed"><div class="sk-label">Ticket Orç-PD</div><div class="sk-value" data-bind="summary-ticket">-</div><div class="sk-sub">Por NF Orçamento-PD</div></div>
+  <section class="biomie-kpi-grid anim d2">
+    <div class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__label">NF Orç-PD</div><div class="biomie-kpi-card__value" data-bind="status-billed-value">-</div><div class="biomie-kpi-card__sub" data-bind="status-billed-orders">-</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__label">Carteira</div><div class="biomie-kpi-card__value" data-bind="status-auth-value">-</div><div class="biomie-kpi-card__sub" data-bind="status-auth-orders">-</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__label">Canceladas</div><div class="biomie-kpi-card__value" data-bind="status-cancel-value">-</div><div class="biomie-kpi-card__sub" data-bind="status-cancel-orders">-</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__label">Conversão</div><div class="biomie-kpi-card__value" data-bind="status-conversion-rate">-</div><div class="biomie-kpi-card__sub">NF / (NF + carteira)</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--neutral"><div class="biomie-kpi-card__label">Backlog</div><div class="biomie-kpi-card__value" data-bind="status-backlog-value">-</div><div class="biomie-kpi-card__sub">Aguardando NF</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__label">Ticket Orç-PD</div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Por NF Orçamento-PD</div></div>
   </section>
 
   <section class="alerts-op anim d3" id="alertsOperational"></section>
@@ -122,23 +122,67 @@
   <div class="section-label anim d4" id="tabelas">Detalhamento da equipe — Orçamento-PD</div>
   <section class="table-card anim d5">
     <div class="table-card-header"><h3>Base por vendedor Orçamento-PD</h3><small>Faturamento Orç-PD, meta, atingimento, risco, carteira e cancelamentos. Remessas excluídas. Clique para detalhar.</small></div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-      <table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr>
-        <th>Vendedor</th><th>Merc. Orç-PD</th><th>Meta</th><th>Ating.</th><th>Risco</th><th>Carteira</th><th>Canceladas</th><th>Conversão</th><th>Ticket</th>
-      </tr></thead><tbody id="vendorsTable" data-empty-title="Sem vendedores" data-empty-message="Nenhum vendedor com faturamento Orçamento-PD no periodo." data-empty-icon="groups"></tbody></table>
+
+    <!-- Fase Q.3 — quick sort + search chips -->
+    <div class="nf-quick-filter-bar" id="vendorQuickFilters" style="padding:8px 16px 0;">
+      <span style="font-size:0.78rem;color:var(--text-3);font-weight:600;margin-right:4px;">Ordenar:</span>
+      <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-vendor-sort="base_comercial" data-vendor-dir="desc">Maiores</button>
+      <button class="nf-quick-filter-btn" data-vendor-sort="nfs" data-vendor-dir="desc">Mais NFs</button>
+      <button class="nf-quick-filter-btn" data-vendor-sort="clientes" data-vendor-dir="desc">Mais clientes</button>
+      <button class="nf-quick-filter-btn" data-vendor-sort="ticket_medio" data-vendor-dir="desc">Maior ticket</button>
     </div>
+    <div id="vendorFilterChips" style="display:none;padding:4px 16px 0;"></div>
+    <div id="vendorFilterFeedback" style="display:none;padding:6px 16px;font-size:0.82rem;"></div>
+    <div id="vendorSearchFeedback"></div>
+
+    <div class="biomie-table-wrap">
+      <table class="mag-table mag-table-clean" data-mobile-card-table>
+        <thead>
+          <tr>
+            <th id="th-vendor-vendedor" data-filter-header="vendedor">Vendedor</th>
+            <th id="th-vendor-bc" class="nf-th-sortable" data-sort-field="base_comercial">Merc. Orç-PD <span class="nf-sort-icon">↓</span></th>
+            <th>Meta</th>
+            <th>Ating.</th>
+            <th>Risco</th>
+            <th>Carteira</th>
+            <th>Canceladas</th>
+            <th>Conversão</th>
+            <th id="th-vendor-ticket" class="nf-th-sortable" data-sort-field="ticket_medio">Ticket <span class="nf-sort-icon">↕</span></th>
+          </tr>
+          <tr class="nf-filter-row" id="vendorFilterRow">
+            <th colspan="2">
+              <input type="search" id="f_vendor_q" class="nf-col-filter" placeholder="Buscar vendedor…" />
+            </th>
+            <th colspan="4"></th>
+            <th colspan="2">
+              <div class="nf-col-filter-range">
+                <input type="number" id="f_vendor_bc_min" class="nf-col-filter" placeholder="Min Base" min="0" step="100" />
+                <input type="number" id="f_vendor_bc_max" class="nf-col-filter" placeholder="Max Base" min="0" step="100" />
+              </div>
+            </th>
+            <th>
+              <input type="number" id="f_vendor_tk_min" class="nf-col-filter" placeholder="Min Ticket" min="0" step="100" />
+            </th>
+          </tr>
+        </thead>
+        <tbody id="vendorsTable" data-empty-title="Sem vendedores" data-empty-message="Nenhum vendedor com faturamento Orçamento-PD no periodo." data-empty-icon="groups"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination (shown only when filter is active) -->
+    <div id="vendorPagination" style="display:none;padding:12px 16px;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;"></div>
   </section>
 </main>
 
 <div class="flight-drawer-backdrop detail-drawer-backdrop" id="flightDrawerBackdrop"></div>
-<div class="flight-drawer detail-drawer" id="flightDrawer">
+<div class="flight-drawer detail-drawer" id="flightDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerVendorName">
   <div class="detail-drawer-head">
     <div>
       <h3 id="drawerVendorName" style="margin:0;font-size:18px">Carregando...</h3>
       <small id="drawerVendorStatus" style="color:var(--text-secondary)">-</small>
-      <span id="drawerSyncing" class="material-symbols-rounded spin-icon" style="font-size:14px;display:none;margin-left:8px;vertical-align:middle;color:var(--text-secondary)">sync</span>
+      <span id="drawerSyncing" class="material-symbols-rounded spin-icon" aria-hidden="true" style="font-size:14px;display:none;margin-left:8px;vertical-align:middle;color:var(--text-secondary)">sync</span>
     </div>
-    <button class="btn-icon detail-drawer-close" id="closeDrawerBtn"><span class="material-symbols-rounded">close</span></button>
+    <button class="btn-icon detail-drawer-close" id="closeDrawerBtn" aria-label="Fechar detalhamento"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
   </div>
   <div class="detail-drawer-content" id="drawerContent">
     <div class="detail-drawer-stats">

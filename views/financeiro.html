@@ -23,15 +23,15 @@
 </head>
 <body class="mag-page mag-clean-page finance-page" data-page="finance">
 <main class="page fin-shell">
-  <section class="mag-page-header mag-page-header-shell mag-page-title anim">
-    <div class="mag-page-title__copy">
-      <div class="mag-kicker"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</div>
-      <h1>Financeiro</h1>
-      <p>Acompanhe recebiveis, vencimentos, inadimplencia e previsao financeira.</p>
+  <section class="biomie-page-header biomie-page-header--shell anim">
+    <div class="biomie-page-header__body">
+      <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</div>
+      <h1 class="biomie-page-header__title">Financeiro</h1>
+      <p class="biomie-page-header__subtitle">Acompanhe recebíveis, vencimentos, inadimplência e previsão financeira.</p>
     </div>
-    <div class="mag-page-title__actions">
-      <a class="btn-secondary" href="#graficos"><span class="material-symbols-rounded">monitoring</span>Analises</a>
-      <a class="btn-secondary" href="#tabelas"><span class="material-symbols-rounded">table_view</span>Titulos</a>
+    <div class="biomie-page-header__actions">
+      <a class="btn-secondary" href="#graficos"><span class="material-symbols-rounded">monitoring</span>Análises</a>
+      <a class="btn-secondary" href="#tabelas"><span class="material-symbols-rounded">table_view</span>Títulos</a>
     </div>
   </section>
 
@@ -80,44 +80,44 @@
   </div>
 
   <div class="section-label anim d2" id="cards">Indicadores</div>
-  <section class="mag-page-kpis anim d2">
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">A receber</span><span class="material-symbols-rounded mag-kpi-card__icon">account_balance</span></div>
-      <strong class="mag-kpi-card__value" id="finOpen">R$ 0,00<span id="finOpenArrow"></span></strong>
-      <span class="mag-kpi-card__subtitle" id="finOpenDetail">Titulos ainda nao liquidados.</span>
+  <section class="biomie-kpi-grid anim d2">
+    <article class="biomie-kpi-card biomie-kpi-card--info">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">A receber</span><span class="material-symbols-rounded biomie-kpi-card__icon">account_balance</span></div>
+      <strong class="biomie-kpi-card__value" id="finOpen">R$ 0,00<span id="finOpenArrow"></span></strong>
+      <span class="biomie-kpi-card__sub" id="finOpenDetail">Títulos ainda não liquidados.</span>
       <span class="mag-kpi-card__meta" id="finOpenHelper"></span>
       <div class="fin-kpi-progress"><span id="finOpenProgress"></span></div>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Vencido</span><span class="material-symbols-rounded mag-kpi-card__icon">warning</span></div>
-      <strong class="mag-kpi-card__value" id="finOverdue">R$ 0,00<span id="finOverdueArrow"></span></strong>
-      <span class="mag-kpi-card__subtitle" id="finOverdueDetail">Titulos em atraso no recorte.</span>
+    <article class="biomie-kpi-card biomie-kpi-card--danger">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vencido</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning</span></div>
+      <strong class="biomie-kpi-card__value" id="finOverdue">R$ 0,00<span id="finOverdueArrow"></span></strong>
+      <span class="biomie-kpi-card__sub" id="finOverdueDetail">Títulos em atraso no recorte.</span>
       <span class="mag-kpi-card__meta" id="finOverdueHelper"></span>
       <div class="fin-kpi-progress"><span id="finOverdueProgress"></span></div>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">A vencer</span><span class="material-symbols-rounded mag-kpi-card__icon">event_available</span></div>
-      <strong class="mag-kpi-card__value" id="finDue">R$ 0,00</strong>
-      <span class="mag-kpi-card__subtitle" id="finDueDetail">Valores em aberto dentro do prazo.</span>
+    <article class="biomie-kpi-card biomie-kpi-card--warning">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">A vencer</span><span class="material-symbols-rounded biomie-kpi-card__icon">event_available</span></div>
+      <strong class="biomie-kpi-card__value" id="finDue">R$ 0,00</strong>
+      <span class="biomie-kpi-card__sub" id="finDueDetail">Valores em aberto dentro do prazo.</span>
       <span class="mag-kpi-card__meta" id="finDueHelper"></span>
       <div class="fin-kpi-progress"><span id="finDueProgress"></span></div>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Recebido no mes</span><span class="material-symbols-rounded mag-kpi-card__icon">payments</span></div>
-      <strong class="mag-kpi-card__value" id="finReceived">R$ 0,00<span id="finReceivedArrow"></span></strong>
-      <span class="mag-kpi-card__subtitle" id="finReceivedDetail">Baixas financeiras do periodo.</span>
+    <article class="biomie-kpi-card biomie-kpi-card--success">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebido no mês</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+      <strong class="biomie-kpi-card__value" id="finReceived">R$ 0,00<span id="finReceivedArrow"></span></strong>
+      <span class="biomie-kpi-card__sub" id="finReceivedDetail">Baixas financeiras do período.</span>
       <span class="mag-kpi-card__meta" id="finReceivedHelper"></span>
       <div class="fin-kpi-progress"><span id="finReceivedProgress"></span></div>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Clientes em atraso</span><span class="material-symbols-rounded mag-kpi-card__icon">groups</span></div>
-      <strong class="mag-kpi-card__value" id="finLateClients">0</strong>
-      <span class="mag-kpi-card__subtitle" id="finLateClientsDetail">Clientes com titulos vencidos.</span>
+    <article class="biomie-kpi-card biomie-kpi-card--danger">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes em atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div>
+      <strong class="biomie-kpi-card__value" id="finLateClients">0</strong>
+      <span class="biomie-kpi-card__sub" id="finLateClientsDetail">Clientes com títulos vencidos.</span>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Maior atraso</span><span class="material-symbols-rounded mag-kpi-card__icon">timer</span></div>
-      <strong class="mag-kpi-card__value" id="finMaxDelay">-</strong>
-      <span class="mag-kpi-card__subtitle" id="finMaxDelayDetail">Cliente com maior atraso no recorte.</span>
+    <article class="biomie-kpi-card biomie-kpi-card--warning">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Maior atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">timer</span></div>
+      <strong class="biomie-kpi-card__value" id="finMaxDelay">-</strong>
+      <span class="biomie-kpi-card__sub" id="finMaxDelayDetail">Cliente com maior atraso no recorte.</span>
     </article>
   </section>
 
@@ -140,14 +140,115 @@
 
   <div class="section-label anim d4" id="tabelas">Detalhamento</div>
   <div id="finDrillBar" class="d-none"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       BUSCA DE TÍTULOS — server-side, Q.5
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="section-label anim d3b" id="busca-titulos">Busca de Títulos</div>
+
+  <!-- Quick filters -->
+  <div style="padding:0 0 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;" id="financeQuickFilters">
+    <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-fin-status="" data-fin-sort="">Todos</button>
+    <button class="nf-quick-filter-btn" data-fin-status="recebido" data-fin-sort="pagamento">Recebidos</button>
+    <button class="nf-quick-filter-btn" data-fin-status="aberto" data-fin-sort="vencimento">Em aberto</button>
+    <button class="nf-quick-filter-btn" data-fin-status="vencido" data-fin-sort="atraso">Vencidos</button>
+    <button class="nf-quick-filter-btn" data-fin-status="vence_hoje" data-fin-sort="vencimento">Vence hoje</button>
+    <button class="nf-quick-filter-btn" data-fin-status="a_vencer" data-fin-sort="vencimento">Próx. 7 dias</button>
+    <button class="nf-quick-filter-btn" data-fin-status="" data-fin-sort="valor">Maior valor</button>
+    <button class="nf-quick-filter-btn" data-fin-status="vencido" data-fin-sort="atraso">Mais atrasados</button>
+  </div>
+
+  <section class="table-card anim d3b" id="financeSearchSection">
+    <div class="table-card-header">
+      <h2 class="table-card-title">Títulos financeiros</h2>
+      <span class="table-card-meta" id="financeSearchMeta"></span>
+    </div>
+
+    <!-- Summary bar -->
+    <div id="financeSearchSummary" style="display:none;padding:8px 16px 4px;flex-wrap:wrap;gap:16px;font-size:0.8rem;color:var(--text-2);border-bottom:1px solid var(--mag-border,#e2e8f0);">
+      <span>Recebido: <strong id="fss_recebido">-</strong></span>
+      <span>Em aberto: <strong id="fss_aberto">-</strong></span>
+      <span>Vencido: <strong id="fss_vencido">-</strong></span>
+      <span>Títulos: <strong id="fss_qtd">-</strong></span>
+    </div>
+
+    <!-- Chips -->
+    <div id="financeFilterChips" style="display:none;padding:4px 16px 0;"></div>
+
+    <!-- Feedback -->
+    <div id="financeFilterFeedback" style="display:none;padding:4px 16px;font-size:0.8rem;color:var(--text-2);"></div>
+    <div id="financeSearchFeedback" class="biomie-table-feedback" style="display:none;padding:8px 16px;font-size:0.82rem;"></div>
+
+    <div class="table-responsive fin-table-wrap">
+      <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+        <thead>
+          <tr>
+            <th id="th-fin-cliente" class="nf-th-sortable" data-sort-field="cliente">Cliente <span class="nf-sort-icon">↕</span></th>
+            <th>Documento</th>
+            <th>Ref. NF / Pedido</th>
+            <th id="th-fin-vendedor" class="nf-th-sortable" data-sort-field="vendedor">Vendedor <span class="nf-sort-icon">↕</span></th>
+            <th id="th-fin-vencimento" class="nf-th-sortable" data-sort-field="vencimento">Vencimento <span class="nf-sort-icon">↕</span></th>
+            <th id="th-fin-valor" class="nf-th-sortable" data-sort-field="valor">Valor <span class="nf-sort-icon">↕</span></th>
+            <th id="th-fin-aberto" class="nf-th-sortable" data-sort-field="aberto">Aberto <span class="nf-sort-icon">↕</span></th>
+            <th>Status</th>
+            <th data-mobile-skip>Atraso</th>
+          </tr>
+          <tr class="nf-filter-row" id="financeFilterRow">
+            <td><input id="f_fin_q" type="search" class="nf-col-filter" placeholder="Cliente, doc, vendedor…" /></td>
+            <td></td>
+            <td></td>
+            <td><input id="f_fin_vendedor" type="search" class="nf-col-filter" placeholder="Vendedor…" /></td>
+            <td>
+              <select id="f_fin_date_field" class="nf-col-filter" style="min-height:32px;padding:2px 6px;font-size:0.78rem;">
+                <option value="vencimento">Vencimento</option>
+                <option value="emissao">Emissão</option>
+                <option value="pagamento">Pagamento</option>
+                <option value="competencia">Competência</option>
+              </select>
+            </td>
+            <td class="nf-col-filter-range">
+              <input id="f_fin_valor_min" type="number" class="nf-col-filter" placeholder="Min" min="0" step="0.01" />
+              <input id="f_fin_valor_max" type="number" class="nf-col-filter" placeholder="Max" min="0" step="0.01" />
+            </td>
+            <td></td>
+            <td>
+              <select id="f_fin_status" class="nf-col-filter" style="min-height:32px;padding:2px 6px;font-size:0.78rem;">
+                <option value="">Todos</option>
+                <option value="recebido">Recebido</option>
+                <option value="aberto">Em aberto</option>
+                <option value="vencido">Vencido</option>
+                <option value="vence_hoje">Vence hoje</option>
+                <option value="a_vencer">A vencer</option>
+              </select>
+            </td>
+            <td data-mobile-skip>
+              <select id="f_fin_aging" class="nf-col-filter" style="min-height:32px;padding:2px 6px;font-size:0.78rem;">
+                <option value="">Todos</option>
+                <option value="sem_atraso">Sem atraso</option>
+                <option value="1_7">1–7 dias</option>
+                <option value="8_15">8–15 dias</option>
+                <option value="16_30">16–30 dias</option>
+                <option value="31_60">31–60 dias</option>
+                <option value="60_plus">60+ dias</option>
+              </select>
+            </td>
+          </tr>
+        </thead>
+        <tbody id="financeSearchTable" data-empty-title="Sem títulos" data-empty-message="Nenhum título encontrado para os filtros atuais."></tbody>
+      </table>
+    </div>
+
+    <div id="financePagination" style="display:none;padding:12px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;color:var(--text-2);"></div>
+  </section>
+
   <section class="row g-4 mb-4">
-    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Recebimentos do periodo</h2><p>Baixas e recebimentos do recorte.</p></div><div class="fin-panel-tools"><button class="fin-group-btn" data-group-toggle="financeReceivedTable" data-group-key="client_name" title="Agrupar por cliente"><span class="material-symbols-rounded" style="font-size:15px">group_work</span> Agrupar</button><div class="fin-col-picker-wrap" data-col-picker="financeReceivedTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeReceivedTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0"><thead><tr><th class="fin-select-th"></th><th>Documento</th><th>Cliente</th><th>Conta / meio</th><th>Pagamento</th><th>Valor</th></tr></thead><tbody id="financeReceivedTable" data-empty-title="Sem recebimentos" data-empty-message="Nao houve baixas financeiras para o periodo e filtros selecionados." data-empty-icon="payments"></tbody></table></div></div></div>
-    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Titulos em aberto</h2><p>Valores ainda pendentes na carteira.</p></div><div class="fin-panel-tools"><button class="fin-group-btn" data-group-toggle="financeOpenTable" data-group-key="client_name" title="Agrupar por cliente"><span class="material-symbols-rounded" style="font-size:15px">group_work</span> Agrupar</button><div class="fin-col-picker-wrap" data-col-picker="financeOpenTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeOpenTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0"><thead><tr><th class="fin-select-th"></th><th>Documento</th><th>Cliente</th><th>Vencimento</th><th>Vendedor / conta</th><th>Aberto</th></tr></thead><tbody id="financeOpenTable" data-empty-title="Sem titulos em aberto" data-empty-message="Nao ha vencimentos pendentes para o periodo e filtros selecionados." data-empty-icon="event_available"></tbody></table></div></div></div>
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Recebimentos do periodo</h2><p>Baixas e recebimentos do recorte.</p></div><div class="fin-panel-tools"><button class="fin-group-btn" data-group-toggle="financeReceivedTable" data-group-key="client_name" title="Agrupar por cliente"><span class="material-symbols-rounded" style="font-size:15px">group_work</span> Agrupar</button><div class="fin-col-picker-wrap" data-col-picker="financeReceivedTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeReceivedTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Documento</th><th>Cliente</th><th>Conta / meio</th><th>Pagamento</th><th>Valor</th></tr></thead><tbody id="financeReceivedTable" data-empty-title="Sem recebimentos" data-empty-message="Nao houve baixas financeiras para o periodo e filtros selecionados." data-empty-icon="payments"></tbody></table></div></div></div>
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Titulos em aberto</h2><p>Valores ainda pendentes na carteira.</p></div><div class="fin-panel-tools"><button class="fin-group-btn" data-group-toggle="financeOpenTable" data-group-key="client_name" title="Agrupar por cliente"><span class="material-symbols-rounded" style="font-size:15px">group_work</span> Agrupar</button><div class="fin-col-picker-wrap" data-col-picker="financeOpenTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeOpenTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Documento</th><th>Cliente</th><th>Vencimento</th><th>Vendedor / conta</th><th>Aberto</th></tr></thead><tbody id="financeOpenTable" data-empty-title="Sem titulos em aberto" data-empty-message="Nao ha vencimentos pendentes para o periodo e filtros selecionados." data-empty-icon="event_available"></tbody></table></div></div></div>
   </section>
 
   <section class="row g-4">
-    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Clientes com maior risco</h2><p>Onde o atraso esta mais concentrado.</p></div><div class="fin-panel-tools"><div class="fin-col-picker-wrap" data-col-picker="financeClientsTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeClientsTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0"><thead><tr><th class="fin-select-th"></th><th>Cliente / CNPJ</th><th>Titulos</th><th>Vencido</th><th>Maior atraso</th><th>Venc. mais antigo</th><th>Perfil / causa</th><th>Documentos</th></tr></thead><tbody id="financeClientsTable" data-empty-title="Sem inadimplencia" data-empty-message="Nenhum cliente aparece com atraso relevante para os filtros atuais." data-empty-icon="verified"></tbody></table></div></div></div>
-    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Previsto x realizado</h2><p>Fluxo planejado contra caixa real.</p></div><div class="fin-panel-tools"><div class="fin-col-picker-wrap" data-col-picker="financeBudgetTable"></div></div></div><div class="fin-chart-sm mag-chart-container mag-secondary-inline-chart"><canvas id="financeForecastChart"></canvas></div><div class="fin-table-meta" data-table-meta-for="financeBudgetTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0"><thead><tr><th class="fin-select-th"></th><th>Mes</th><th>Previsto</th><th>Realizado</th><th>Aberto</th><th>Vencido</th><th>Cobertura</th></tr></thead><tbody id="financeBudgetTable" data-empty-title="Sem previsao financeira" data-empty-message="Sincronize o financeiro ou amplie o periodo para carregar a carteira prevista." data-empty-icon="query_stats"></tbody></table></div></div></div>
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Clientes com maior risco</h2><p>Onde o atraso esta mais concentrado.</p></div><div class="fin-panel-tools"><div class="fin-col-picker-wrap" data-col-picker="financeClientsTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeClientsTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Cliente / CNPJ</th><th>Titulos</th><th>Vencido</th><th>Maior atraso</th><th>Venc. mais antigo</th><th>Perfil / causa</th><th>Documentos</th></tr></thead><tbody id="financeClientsTable" data-empty-title="Sem inadimplencia" data-empty-message="Nenhum cliente aparece com atraso relevante para os filtros atuais." data-empty-icon="verified"></tbody></table></div></div></div>
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Previsto x realizado</h2><p>Fluxo planejado contra caixa real.</p></div><div class="fin-panel-tools"><div class="fin-col-picker-wrap" data-col-picker="financeBudgetTable"></div></div></div><div class="fin-chart-sm mag-chart-container mag-secondary-inline-chart"><canvas id="financeForecastChart"></canvas></div><div class="fin-table-meta" data-table-meta-for="financeBudgetTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Mes</th><th>Previsto</th><th>Realizado</th><th>Aberto</th><th>Vencido</th><th>Cobertura</th></tr></thead><tbody id="financeBudgetTable" data-empty-title="Sem previsao financeira" data-empty-message="Sincronize o financeiro ou amplie o periodo para carregar a carteira prevista." data-empty-icon="query_stats"></tbody></table></div></div></div>
   </section>
 
   <details class="mag-technical-diagnostics mag-page-main-diagnostics">

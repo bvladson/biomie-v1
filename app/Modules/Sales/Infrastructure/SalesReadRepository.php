@@ -9,6 +9,7 @@ use BIomie\DataPlatform\Silver\Readers\CanonicalDisplayMapper;
 use BIomie\DataPlatform\Silver\Readers\CanonicalReadSupport;
 use BIomie\Modules\Fiscal\Infrastructure\FiscalReadRepository;
 use BIomie\Support;
+use BIomie\Support\BiVisibilityScope;
 use Closure;
 use PDO;
 use RuntimeException;
@@ -370,7 +371,8 @@ final class SalesReadRepository
 
     private function aggregatePendingByVendorCommercial(string $start, string $end): array
     {
-        $stmt = $this->pdo()->prepare(<<<'SQL'
+        $visibilityCond = BiVisibilityScope::getCondition($this->pdo(), 'biomie_pedidos_canonicos', '');
+        $sql = <<<SQL
             SELECT
                 codigo_vendedor_omie, nome_vendedor, status_comercial,
                 COUNT(*) AS pedidos,
@@ -380,9 +382,11 @@ final class SalesReadRepository
             FROM biomie_pedidos_canonicos
             WHERE status_comercial IN ('autorizado', 'outro')
               AND data_emissao BETWEEN :start AND :end
+              AND {$visibilityCond}
             GROUP BY codigo_vendedor_omie, nome_vendedor, status_comercial
             ORDER BY nome_vendedor, status_comercial
-        SQL);
+        SQL;
+        $stmt = $this->pdo()->prepare($sql);
         $stmt->execute(['start' => $start, 'end' => $end]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

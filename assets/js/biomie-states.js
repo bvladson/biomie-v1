@@ -6,6 +6,20 @@
 (function () {
   'use strict';
 
+  var _cbRegistry = {};
+  var _cbSeq = 0;
+
+  // Single delegated click handler for retry/action buttons
+  document.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest('[data-biomie-cb]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-biomie-cb');
+    if (_cbRegistry[id]) {
+      _cbRegistry[id]();
+      delete _cbRegistry[id];
+    }
+  });
+
   var STATE_TYPES = {
     empty: { css: 'mag-state-empty mag-state-severity--info', icon: 'search_off', role: 'status' },
     error: { css: 'mag-state-error mag-state-severity--danger', icon: 'error_outline', role: 'alert' },
@@ -64,6 +78,10 @@
     var actionHtml = '';
     if (state.action_label && state.action_href) {
       actionHtml = '<div class="mag-state-actions"><a class="btn-secondary mag-button-secondary" href="' + esc(state.action_href) + '">' + esc(state.action_label) + '</a></div>';
+    } else if (state.action_label && state.action_fn) {
+      var cbId = 'bs_' + (++_cbSeq);
+      _cbRegistry[cbId] = state.action_fn;
+      actionHtml = '<div class="mag-state-actions"><button type="button" class="btn-secondary mag-button-secondary" data-biomie-cb="' + cbId + '">' + esc(state.action_label) + '</button></div>';
     }
 
     container.innerHTML =
@@ -81,12 +99,18 @@
 
   function setEmpty(container, title, message, action) {
     var state = { type: 'empty', title: title || 'Nenhum dado encontrado', message: message || '' };
-    if (action) { state.action_label = action.label; state.action_href = action.href; }
+    if (action) {
+      state.action_label = action.label;
+      if (action.fn)   state.action_fn   = action.fn;
+      if (action.href) state.action_href = action.href;
+    }
     renderState(container, state);
   }
 
-  function setError(container, title, message) {
-    renderState(container, { type: 'error', title: title || 'Erro ao carregar', message: message || 'Nao foi possivel carregar esta informacao agora.' });
+  function setError(container, title, message, retryFn) {
+    var state = { type: 'error', title: title || 'Erro ao carregar', message: message || 'Nao foi possivel carregar esta informacao agora.' };
+    if (retryFn) { state.action_label = 'Tentar novamente'; state.action_fn = retryFn; }
+    renderState(container, state);
   }
 
   function clearState(container) {

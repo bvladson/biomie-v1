@@ -111,7 +111,7 @@ body {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .02em;
-  min-height: 52px;
+  min-height: 60px;
   -webkit-tap-highlight-color: transparent;
   transition: color .15s;
 }
@@ -157,7 +157,7 @@ body {
   body.mag-page .mag-app-main,
   body.mag-clean-page .mag-app-main,
   body.mag-app-shell-page .mag-app-main {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0));
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0));
     min-height: 0;
   }
 
@@ -505,17 +505,34 @@ body {
   .mag-mobile-filter-close  { display: none !important; }
 }
 
-/* ── Ocultar hambúrguer no mobile — bottom nav é a navegação principal ───── */
-/* Desktop (>= 768px): sem impacto — bloco abaixo já está dentro do contexto mobile. */
-@media (max-width: 767px) {
-  .mag-mobile-topbar__hamburger,
-  .mag-mobile-topbar [data-mobile-sidebar-toggle],
-  .mag-mobile-topbar .mag-mobile-menu-button {
-    display: none !important;
-  }
+/* ── "Mais" / botão na bottom nav: reset de <button> para visual de link ──── */
+.mag-bottom-nav__more {
+  border: none;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  font-weight: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
 
-  .mag-mobile-topbar__title {
-    padding-left: 8px;
+/* ── Body scroll lock: impede scroll ao abrir filter sheet ou drawer ─────── */
+body.mag-scroll-lock {
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ── Tabelas com opt-out mobile: mantém scroll horizontal ────────────────── */
+@media (max-width: 767px) {
+  table[data-mobile-scroll-only] {
+    display: block !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
   }
 }
 

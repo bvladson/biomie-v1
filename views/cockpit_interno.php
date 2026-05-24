@@ -1,10 +1,8 @@
-<html>
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
 <style>
   .ci-page   { max-width: 1200px; margin: 0 auto; padding: var(--space-6) var(--space-8); }
-  .ci-header { margin-bottom: var(--space-6); }
-  .ci-header h1 { font-size: 1.375rem; font-weight: 700; margin: 0 0 var(--space-1); }
-  .ci-header p  { font-size: .875rem; color: var(--color-text-muted); margin: 0; }
   .ci-section-title { font-size: .875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--color-text-muted); margin: var(--space-6) 0 var(--space-3); }
   .ci-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
   .ci-kpi-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
@@ -34,25 +32,26 @@
   .mc-back:hover { color: var(--color-text); }
 </style>
 </head>
+<body>
 <main class="mag-clean-page" data-page="cockpit-interno">
 <a class="mc-back" href="admin.php"><span class="material-symbols-rounded" style="font-size:16px">arrow_back</span> Voltar ao Admin</a>
 
 <div class="ci-page">
-  <div class="ci-header">
-    <h1><span class="material-symbols-rounded" style="font-size:1.1em;vertical-align:-.1em">monitoring</span> Cockpit Interno MAG</h1>
-    <p>KPIs oficiais, status de freshness e saúde semântica do BIomie &mdash; atualizado em cada acesso.</p>
+  <div class="biomie-page-header biomie-page-header--admin">
+    <h1 class="biomie-page-header__title"><span class="material-symbols-rounded" style="font-size:1.1em;vertical-align:-.1em">monitoring</span> Cockpit Interno MAG</h1>
+    <p class="biomie-page-header__subtitle">KPIs oficiais, status de freshness e saúde semântica do BIomie &mdash; atualizado em cada acesso.</p>
   </div>
 
-  <div id="ci-audit-banner" class="ci-loading">Carregando estado semântico&hellip;</div>
+  <div id="ci-audit-banner" class="ci-loading" aria-live="polite" role="status">Carregando estado semântico&hellip;</div>
 
-  <div class="ci-section-title"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-.1em">refresh</span> Freshness por Domínio</div>
-  <div id="ci-freshness-grid" class="ci-health-grid"><div class="ci-loading">Carregando freshness&hellip;</div></div>
+  <div class="ci-section-title"><span class="material-symbols-rounded biomie-icon-sm">refresh</span> Freshness por Domínio</div>
+  <div id="ci-freshness-grid" class="ci-health-grid" aria-live="polite"><div class="ci-loading">Carregando freshness&hellip;</div></div>
 
-  <div class="ci-section-title"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-.1em">sync</span> Último Gold Mart Refresh</div>
-  <div id="ci-job-status" class="ci-loading">Carregando&hellip;</div>
+  <div class="ci-section-title"><span class="material-symbols-rounded biomie-icon-sm">sync</span> Último Gold Mart Refresh</div>
+  <div id="ci-job-status" class="ci-loading" aria-live="polite">Carregando&hellip;</div>
 
-  <div class="ci-section-title"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-.1em">hub</span> KPIs Oficiais por Domínio</div>
-  <div id="ci-kpi-grid" class="ci-kpi-grid"><div class="ci-loading">Carregando catálogo&hellip;</div></div>
+  <div class="ci-section-title"><span class="material-symbols-rounded biomie-icon-sm">hub</span> KPIs Oficiais por Domínio</div>
+  <div id="ci-kpi-grid" class="ci-kpi-grid" aria-live="polite"><div class="ci-loading">Carregando catálogo&hellip;</div></div>
 </div>
 </main>
 <script>
@@ -199,3 +198,5 @@
     });
 }());
 </script>
+</body>
+</html>

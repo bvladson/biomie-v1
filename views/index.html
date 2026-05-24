@@ -27,13 +27,13 @@
 <main class="page dashboard-shell">
 
   <!-- ═══ PAGE HEADER ═══ -->
-  <section class="mag-page-header mag-page-header-shell mag-page-title anim">
-    <div class="mag-page-title__copy">
-      <div class="mag-kicker"><span class="material-symbols-rounded">space_dashboard</span>Visao geral</div>
-      <h1>Dashboard Comercial</h1>
-      <p>Visao rapida dos principais indicadores da operacao.</p>
+  <section class="biomie-page-header biomie-page-header--shell anim">
+    <div class="biomie-page-header__body">
+      <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">space_dashboard</span>Visão geral</div>
+      <h1 class="biomie-page-header__title">Dashboard Comercial</h1>
+      <p class="biomie-page-header__subtitle">Visão rápida dos principais indicadores da operação.</p>
     </div>
-    <div class="mag-page-title__actions">
+    <div class="biomie-page-header__actions">
       <a class="btn-secondary" href="mapa_vendas.php"><span class="material-symbols-rounded">map</span>Geografia</a>
       <a class="btn-secondary" href="financeiro.php"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</a>
     </div>
@@ -41,32 +41,32 @@
 
   <!-- ═══ KPI STRIP ═══ -->
   <section class="dashboard-kpi-strip anim d1" id="cards">
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Faturamento Orç-PD</span><span class="material-symbols-rounded mag-kpi-card__icon">payments</span></div>
-      <strong class="mag-kpi-card__value" data-bind="summary-revenue"><span class="skeleton-text"></span></strong>
-      <small class="mag-kpi-card__sub" style="font-size:10px;color:var(--text-3);margin-top:2px;display:block;">Somente Orçamento-PD. Remessas excluídas.</small>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-revenue"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">Somente Orçamento-PD. Remessas excluídas.</span>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">NFs Orç-PD</span><span class="material-symbols-rounded mag-kpi-card__icon">receipt_long</span></div>
-      <strong class="mag-kpi-card__value" data-bind="summary-orders"><span class="skeleton-text"></span></strong>
-      <small class="mag-kpi-card__sub" style="font-size:10px;color:var(--text-3);margin-top:2px;display:block;">Pedidos faturados Orçamento-PD.</small>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-orders"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">Pedidos faturados Orçamento-PD.</span>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Ticket Orç-PD</span><span class="material-symbols-rounded mag-kpi-card__icon">sell</span></div>
-      <strong class="mag-kpi-card__value" data-bind="summary-ticket"><span class="skeleton-text"></span></strong>
-      <small class="mag-kpi-card__sub" style="font-size:10px;color:var(--text-3);margin-top:2px;display:block;">Ticket médio Orçamento-PD faturado.</small>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ticket Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-ticket"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">Ticket médio Orçamento-PD faturado.</span>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Clientes</span><span class="material-symbols-rounded mag-kpi-card__icon">groups</span></div>
-      <strong class="mag-kpi-card__value" data-bind="summary-clients"><span class="skeleton-text"></span></strong>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-clients"><span class="skeleton-text"></span></strong>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Em aberto</span><span class="material-symbols-rounded mag-kpi-card__icon">pending_actions</span></div>
-      <strong class="mag-kpi-card__value" data-bind="summary-pending-value"><span class="skeleton-text"></span></strong>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">pending_actions</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-pending-value"><span class="skeleton-text"></span></strong>
     </article>
-    <article class="mag-kpi-card">
-      <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Canceladas</span><span class="material-symbols-rounded mag-kpi-card__icon">cancel</span></div>
-      <strong class="mag-kpi-card__value" data-bind="summary-cancelled-value"><span class="skeleton-text"></span></strong>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Canceladas</span><span class="material-symbols-rounded biomie-kpi-card__icon">cancel</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-cancelled-value"><span class="skeleton-text"></span></strong>
     </article>
   </section>
 
@@ -93,6 +93,27 @@
         </button>
       </div>
     </div>
+    <!-- Q.7 — Extra filters: vendedor / cliente / produto -->
+    <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" id="dashboardExtraFilters" style="margin-top:6px;">
+      <div class="filter-group">
+        <label class="filter-label">Vendedor</label>
+        <input id="f_dash_vendedor" type="text" class="filter-input" placeholder="Nome do vendedor..." autocomplete="off" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Cliente</label>
+        <input id="f_dash_cliente" type="text" class="filter-input" placeholder="Nome do cliente..." autocomplete="off" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Produto</label>
+        <input id="f_dash_produto" type="text" class="filter-input" placeholder="Descrição do produto..." autocomplete="off" />
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="btn-preset nf-quick-filter-btn" data-dash-quick="com_componentes">Com frete/outras</button>
+        <button type="button" class="btn-preset nf-quick-filter-btn" data-dash-quick="sem_pedido">Sem pedido</button>
+        <button type="button" class="btn-secondary" id="dashboardClearFilters" style="font-size:12px;">Limpar</button>
+      </div>
+    </div>
+    <div id="dashboardFilterChips" class="filter-chips-container" style="display:none;padding:4px 0;"></div>
     <div id="syncFeedback"></div>
     <div id="pageError" class="d-none"></div>
     <div id="pageLoading" class="module-loading-shell d-none" aria-live="polite" aria-busy="true">
@@ -179,7 +200,7 @@
       <div class="dashboard-panel__body dashboard-panel__body--top-clients">
         <div class="chart-shell chart-shell--md"><canvas id="topClientsChart"></canvas></div>
         <div class="top-clients-list">
-          <table class="mag-table mag-table-clean top-clients-table">
+          <table class="mag-table mag-table-clean top-clients-table" data-mobile-card-table>
             <thead>
               <tr>
                 <th>Cliente</th>
@@ -221,7 +242,7 @@
         </div>
       </div>
       <div class="dashboard-panel__body dashboard-panel__body--table">
-        <table class="mag-table">
+        <table class="mag-table" data-mobile-card-table>
           <thead>
             <tr>
               <th>NF</th>
@@ -230,7 +251,7 @@
               <th>Vendedor</th>
               <th>Itens</th>
               <th>Base Comercial</th>
-              <th>Acao</th>
+              <th data-mobile-skip>Acao</th>
             </tr>
           </thead>
           <tbody id="topOrdersTable"
@@ -240,6 +261,7 @@
           </tbody>
         </table>
       </div>
+      <div id="dashboardNfsPagination" class="biomie-pagination" style="display:none;gap:12px;align-items:center;justify-content:center;padding:8px 0;"></div>
       <details class="mag-technical-diagnostics mag-top-orders-diagnostics" id="topOrdersIdentityDiagnostics" hidden>
         <summary aria-expanded="false" aria-controls="topOrdersIdentityDiagnosticsBody">
           <span class="material-symbols-rounded">manage_search</span>Diagnostico de clientes e vendedores
@@ -265,7 +287,7 @@
         </div>
       </div>
       <div class="dashboard-panel__body dashboard-panel__body--table geo-compact-ranking">
-        <table class="mag-table">
+        <table class="mag-table" data-mobile-card-table>
           <thead>
             <tr>
               <th>Bairro</th>
@@ -317,8 +339,8 @@
             </a>
           </div>
         </div>
-        <div style="overflow-x:auto;margin-top:12px">
-          <table class="mag-table">
+        <div class="biomie-table-wrap" style="margin-top:12px">
+          <table class="mag-table" data-mobile-card-table>
             <thead><tr><th>Cliente em atraso</th><th>Vencido</th><th>Titulos</th><th>Max dias</th></tr></thead>
             <tbody id="commercialHealthClientsTable"
               data-empty-title="Sem inadimplencia"

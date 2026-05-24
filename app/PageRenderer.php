@@ -320,7 +320,7 @@ final class PageRenderer
      */
     private static function ensureMainHasPageHeader(string $mainHtml, array $meta, array $context): string
     {
-        if (stripos($mainHtml, 'mag-page-header') !== false || stripos($mainHtml, 'mag-clean-header') !== false) {
+        if (stripos($mainHtml, 'mag-page-header') !== false || stripos($mainHtml, 'mag-clean-header') !== false || stripos($mainHtml, 'biomie-page-header') !== false) {
             return $mainHtml;
         }
 

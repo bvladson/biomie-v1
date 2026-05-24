@@ -393,12 +393,14 @@
     const city = $('cityFilter')?.value || 'Fortaleza';
     const neighborhood = $('neighborhoodFilter')?.value || '';
     const cnae = $('cnaeFilter')?.value || '';
+    const vendedor = ($('vendedorFilter')?.value || '').trim();
 
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
     if (city) params.set('city', city);
     if (neighborhood) params.set('neighborhood', neighborhood);
     if (cnae) params.set('cnae', cnae);
+    if (vendedor) params.set('seller_id', vendedor);
 
     Object.entries(extra || {}).forEach(([key, value]) => {
       if (value !== null && value !== undefined && value !== '') {
@@ -1314,6 +1316,7 @@
       const globalBuyers = summaryPayload.top_buyers || [];
       const globalCnaes  = summaryPayload.top_cnaes  || [];
       safeRender('side_panel_global', () => window.BIomieMapPanel?.setGlobal(globalBuyers, globalCnaes, formatters));
+      safeRender('filter_chips', renderGeoFilterChips);
 
       if (!state.rows.length || state.rows.every((r) => getRowRevenue(r) <= 0)) {
         updateDiagnostics({ mapState: 'sem dados' });
@@ -1410,13 +1413,97 @@
     if ($('dateEnd')) $('dateEnd').value = `${year}-${month}-${day}`;
   }
 
+  function applyPresetThisMonth() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    if ($('dateStart')) $('dateStart').value = `${year}-${month}-01`;
+    if ($('dateEnd')) $('dateEnd').value = `${year}-${month}-${day}`;
+  }
+
+  function applyPreset3Months() {
+    const today = new Date();
+    const past = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+    const toY = today.getFullYear();
+    const toM = String(today.getMonth() + 1).padStart(2, '0');
+    const toD = String(today.getDate()).padStart(2, '0');
+    const frY = past.getFullYear();
+    const frM = String(past.getMonth() + 1).padStart(2, '0');
+    const frD = String(past.getDate()).padStart(2, '0');
+    if ($('dateStart')) $('dateStart').value = `${frY}-${frM}-${frD}`;
+    if ($('dateEnd')) $('dateEnd').value = `${toY}-${toM}-${toD}`;
+  }
+
   function clearFilters() {
     applyPresetMonth();
     if ($('cityFilter')) $('cityFilter').value = 'Fortaleza';
     if ($('neighborhoodFilter')) $('neighborhoodFilter').value = '';
     if ($('cnaeFilter')) $('cnaeFilter').value = '';
+    if ($('vendedorFilter')) $('vendedorFilter').value = '';
     state.selectedKey = '';
     loadCommercialData();
+  }
+
+  function renderGeoFilterChips() {
+    const container = $('geoFilterChips');
+    if (!container) return;
+
+    const today = new Date();
+    const yd = String(today.getDate()).padStart(2, '0');
+    const ym = String(today.getMonth() + 1).padStart(2, '0');
+    const todayStr = `${today.getFullYear()}-${ym}-${yd}`;
+    const defaultFrom = `${today.getFullYear()}-01-01`;
+
+    const dateFrom = $('dateStart')?.value || '';
+    const dateTo = $('dateEnd')?.value || '';
+    const city = ($('cityFilter')?.value || '').trim();
+    const neighborhood = ($('neighborhoodFilter')?.value || '').trim();
+    const cnae = ($('cnaeFilter')?.value || '').trim();
+    const vendedor = ($('vendedorFilter')?.value || '').trim();
+
+    const chips = [];
+
+    if (dateFrom && dateTo && !(dateFrom === defaultFrom && dateTo === todayStr)) {
+      chips.push({ key: 'date', label: `${dateFrom} – ${dateTo}` });
+    }
+    if (city && city.toLowerCase() !== 'fortaleza') {
+      chips.push({ key: 'city', label: `Cidade: ${city}` });
+    }
+    if (neighborhood) {
+      chips.push({ key: 'neighborhood', label: `Bairro: ${neighborhood}` });
+    }
+    if (cnae) {
+      chips.push({ key: 'cnae', label: `CNAE: ${cnae}` });
+    }
+    if (vendedor) {
+      chips.push({ key: 'vendedor', label: `Vendedor: ${vendedor}` });
+    }
+
+    if (!chips.length) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    container.style.display = '';
+    container.innerHTML = chips.map((chip) =>
+      `<span class="biomie-filter-chip" data-chip-key="${escapeHtml(chip.key)}">${escapeHtml(chip.label)}<button type="button" class="biomie-filter-chip__remove" title="Remover" aria-label="Remover filtro">×</button></span>`
+    ).join('') + '<button type="button" class="biomie-filter-chip-clear">Limpar filtros</button>';
+
+    container.querySelectorAll('.biomie-filter-chip').forEach((span) => {
+      span.querySelector('.biomie-filter-chip__remove')?.addEventListener('click', () => {
+        const key = span.dataset.chipKey;
+        if (key === 'date') { applyPresetMonth(); }
+        else if (key === 'city') { if ($('cityFilter')) $('cityFilter').value = 'Fortaleza'; }
+        else if (key === 'neighborhood') { if ($('neighborhoodFilter')) $('neighborhoodFilter').value = ''; state.selectedKey = ''; }
+        else if (key === 'cnae') { if ($('cnaeFilter')) $('cnaeFilter').value = ''; }
+        else if (key === 'vendedor') { if ($('vendedorFilter')) $('vendedorFilter').value = ''; }
+        loadCommercialData();
+      });
+    });
+
+    container.querySelector('.biomie-filter-chip-clear')?.addEventListener('click', clearFilters);
   }
 
   function initFiltersFromUrl() {
@@ -1432,6 +1519,8 @@
     if (cityFilter && (params.get('city') || params.get('cidade'))) cityFilter.value = params.get('city') || params.get('cidade');
     if (neighborhoodFilter && (params.get('neighborhood') || params.get('bairro'))) neighborhoodFilter.value = params.get('neighborhood') || params.get('bairro');
     if (cnaeFilter && params.get('cnae')) cnaeFilter.value = params.get('cnae');
+    const vendedorFilter = $('vendedorFilter');
+    if (vendedorFilter && params.get('seller_id')) vendedorFilter.value = params.get('seller_id');
   }
 
   function bindEvents() {
@@ -1441,6 +1530,9 @@
     });
     $('clearFilters')?.addEventListener('click', clearFilters);
     $('clearSelection')?.addEventListener('click', clearSelection);
+    $('geoPresetThisMonth')?.addEventListener('click', () => { applyPresetThisMonth(); loadCommercialData(); });
+    $('geoPresetLast3')?.addEventListener('click', () => { applyPreset3Months(); loadCommercialData(); });
+    $('geoPresetThisYear')?.addEventListener('click', () => { applyPresetMonth(); loadCommercialData(); });
     document.addEventListener('click', handleCustomerOpenClick);
     document.addEventListener('keydown', handleCustomerOpenKeydown);
   }

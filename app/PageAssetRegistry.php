@@ -25,6 +25,7 @@ final class PageAssetRegistry
         'assets/css/mag-clean.css',
         'assets/css/mag-adminlte-clean.css',
         'assets/css/mag-mobile.css',
+        'assets/css/mag-mobile-premium.css', // Fase R — visual premium mobile
         'assets/css/filters.css',          // Fase Q — motor global de filtros
     ];
 
@@ -70,6 +71,7 @@ final class PageAssetRegistry
                 'assets/js/modules/invoice-detail/index.js',
                 'assets/js/modules/order-detail/index.js',
                 'assets/js/modules/customer-detail/index.js',
+                'assets/js/modules/dashboard/page-drilldown.js', // Q.7 — extra filters
                 'assets/js/app.js',
             ],
         ],
@@ -131,6 +133,7 @@ final class PageAssetRegistry
                 'assets/js/modules/product-detail/tabs.js',
                 'assets/js/modules/product-detail/charts.js',
                 'assets/js/modules/product-detail/index.js',
+                'assets/js/modules/products/page-drilldown.js',
             ],
         ],
 
@@ -142,6 +145,7 @@ final class PageAssetRegistry
                 'assets/js/core/chart-factory.js',
                 'assets/js/modules/finance/charts.js',
                 'assets/js/finance.js',
+                'assets/js/modules/finance/page-drilldown.js',
             ],
         ],
 

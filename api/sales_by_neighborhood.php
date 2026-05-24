@@ -80,6 +80,13 @@ try {
         }
     }
 
+    // Vendor filter — only applied when the mart has the vendor grain column (Q.6.DB migration).
+    $sellerId = $f['seller_id'];
+    if ($sellerId !== null && nbColExists($pdo, 'mart_compradores_por_geo', 'codigo_vendedor_omie')) {
+        $martWhere[] = 'LOWER(m.nome_vendedor) LIKE :seller_pct';
+        $params['seller_pct'] = '%' . mb_strtolower(trim($sellerId)) . '%';
+    }
+
     $martWhereSql = implode(' AND ', $martWhere);
 
     // When the official bairros dimension exists, LEFT JOIN it so that all
@@ -245,12 +252,12 @@ try {
     $payload = [
         'ok' => true,
         'filters' => [
-            'date_from' => $range['date_from'],
-            'date_to' => $range['date_to'],
-            'city' => $city,
+            'date_from'    => $range['date_from'],
+            'date_to'      => $range['date_to'],
+            'city'         => $city,
             'neighborhood' => $neighborhood,
-            'cnae' => $cnae,
-            'seller_id' => null,
+            'cnae'         => $cnae,
+            'seller_id'    => $sellerId ?? null,
         ],
         'data' => $data,
         'scale' => GeoMapSupport::revenueScale($data),
@@ -335,10 +342,12 @@ try {
 function nbColExists(PDO $pdo, string $table, string $col): bool
 {
     try {
-        return (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$table}' AND COLUMN_NAME = '{$col}'"
-        )->fetchColumn() > 0;
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$table, $col]);
+        return (int) $stmt->fetchColumn() > 0;
     } catch (\Throwable) {
         return false;
     }

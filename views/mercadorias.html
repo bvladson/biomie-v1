@@ -43,86 +43,23 @@
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
 </head>
 <body class="mag-page mag-clean-page" data-page="products">
-<div class="overlay" id="overlay"></div>
-<div class="shell">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <img src="images/logo-mag-wide.png" alt="MAG Moveis Corporativos" onerror="this.style.display='none'" />
-      <span class="logo-pill">BIomie</span>
-    </div>
-    <div class="sidebar-profile">
-      <div class="profile-avatar">M</div>
-      <div class="profile-info">
-        <span>Bem-vindo,</span>
-        <strong>Comercial MAG</strong>
-      </div>
-    </div>
-    <nav class="sidebar-nav" id="sidebar-menu">
-      <div class="nav-section-label">BIomie</div>
-      <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Painel Comercial</a>
-      <a href="vendedores.html" class="nav-item"><span class="material-symbols-rounded menu-icon">groups</span>Time Comercial</a>
-      <a href="mapa_vendas.php" class="nav-item">
-        <span class="material-symbols-rounded menu-icon">travel_explore</span>Geografia
-      </a>
-      <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>NF do Periodo</a>
-      <a href="mercadorias.html" class="nav-item active"><span class="material-symbols-rounded menu-icon">inventory_2</span>Mix Faturado</a>
-      <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro</a>
-      <a href="plano_voo.html" class="nav-item"><span class="material-symbols-rounded menu-icon">flight</span>Rota Comercial</a>
-      <a href="integracoes.html" class="nav-item"><span class="material-symbols-rounded menu-icon">hub</span>Conexao Omie</a>
-      <div class="nav-section-label">Atalhos</div>
-      <a href="#cards" class="nav-item"><span class="material-symbols-rounded">insights</span>Indicadores</a>
-      <a href="#graficos" class="nav-item"><span class="material-symbols-rounded">monitoring</span>Analises</a>
-      <a href="#tabelas" class="nav-item"><span class="material-symbols-rounded">table_view</span>Mesa</a>
-    </nav>
-    <div class="sidebar-footer hidden-small">
-      <a href="integracoes.html" title="Conexao"><span class="material-symbols-rounded">settings</span></a>
-      <a href="index.html" title="Painel"><span class="material-symbols-rounded">dashboard</span></a>
-      <a href="pedidos.html" title="NF"><span class="material-symbols-rounded">shopping_bag</span></a>
-      <a href="mercadorias.html" title="Mix"><span class="material-symbols-rounded">chair</span></a>
-    </div>
-  </aside>
-  <div class="main">
-    <header class="topbar">
-      <div class="topbar-left">
-        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
-          <span class="material-symbols-rounded">menu</span>
-        </button>
-        <div class="topbar-badge">
-          <span class="material-symbols-rounded">inventory_2</span>Mix Orçamento-PD
-        </div>
-        <div class="topbar-meta mag-data-diagnostics mag-diagnostics-collapsed">
-          <span>Periodo: <strong data-bind="period-label">-</strong></span>
-          <span>Leitura: <strong data-bind="summary-mode">-</strong></span>
-          <span>Atualizado: <strong data-bind="last-sync">-</strong></span>
-          <span><strong data-bind="summary-period-basis">Base analisada: emissao fiscal</strong></span>
-          <span>Origem: <strong data-bind="sync-source">-</strong></span>
-          <span>Cobertura: <strong data-bind="sync-coverage">-</strong></span>
-          <span>Conferencia: <strong data-bind="sync-reconciled-until">-</strong></span>
-          <span data-bind="sync-warning"><span class="mag-status-chip mag-status-demo">Carregando</span></span>
-        </div>
-      </div>
-      <div class="topbar-actions">
-        <div class="live-dot" title="Status de sincronizacao"></div>
-        <button class="btn-icon" title="Ajuda"><span class="material-symbols-rounded">help</span></button>
-      </div>
-    </header>
-    <main class="page">
-      <section class="hero module-hero mag-page-header mag-clean-header anim">
-        <div class="module-hero__content">
-          <div class="hero-tag"><span class="material-symbols-rounded">chair</span>Mix de Produtos Orçamento-PD <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:6px;vertical-align:middle;">remessas excluídas</span></div>
-          <h1>Quais produtos mais contribuem para o faturamento comercial.</h1>
-          <p>Receita, volume e participação de cada item — somente NFs Orçamento-PD. Remessas de produto não entram nesta visão.</p>
+<main class="page">
+      <section class="biomie-page-header biomie-page-header--hero hero module-hero anim">
+        <div class="biomie-page-header__body module-hero__content">
+          <div class="biomie-page-header__eyebrow hero-tag"><span class="material-symbols-rounded">chair</span>Mix de Produtos Orçamento-PD <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:6px;vertical-align:middle;">remessas excluídas</span></div>
+          <h1 class="biomie-page-header__title">Quais produtos mais contribuem para o faturamento comercial.</h1>
+          <p class="biomie-page-header__subtitle">Receita, volume e participação de cada item — somente NFs Orçamento-PD. Remessas de produto não entram nesta visão.</p>
           <div class="hero-insights">
             <div class="hero-chip"><span class="hero-chip-label">Mercadoria Orç-PD</span><span class="hero-chip-value" data-bind="summary-merchandise">-</span><span class="hero-chip-sub">Valor do mix</span></div>
             <div class="hero-chip"><span class="hero-chip-label">Faturamento Orç-PD</span><span class="hero-chip-value" data-bind="summary-revenue">-</span><span class="hero-chip-sub">Base comercial da NF</span></div>
             <div class="hero-chip"><span class="hero-chip-label">Produtos</span><span class="hero-chip-value" data-bind="summary-products-count">-</span><span class="hero-chip-sub">Itens distintos</span></div>
           </div>
         </div>
-        <div class="forecast-box module-hero__meta">
+        <div class="biomie-page-header__meta forecast-box module-hero__meta">
           <div class="forecast-label">Ticket médio Orç-PD</div>
           <div class="forecast-value" data-bind="summary-ticket">-</div>
           <div class="forecast-target"><span>Valor médio por NF comercial</span></div>
-          <a href="plano_voo.php" class="forecast-link">Ver metas e ritmo <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">arrow_forward</span></a>
+          <a href="plano_voo.php" class="forecast-link">Ver metas e ritmo <span class="material-symbols-rounded biomie-icon-inline">arrow_forward</span></a>
         </div>
       </section>
 
@@ -161,26 +98,70 @@
       </div>
 
       <div class="section-label anim d2" id="cards">Indicadores Orçamento-PD</div>
-      <section class="kpi-grid mag-kpi-grid">
-        <div class="kpi-card anim d2" data-accent="blue"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">inventory_2</span></div><div class="kpi-label">Mercadoria Orç-PD</div></div><div class="kpi-value" data-bind="summary-merchandise">-</div><div class="kpi-sub">Valor do mix de itens</div><div class="kpi-footer"><span>Orçamento-PD</span><span class="kpi-pulse">Mix</span></div></div>
-        <div class="kpi-card anim d2"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">payments</span></div><div class="kpi-label">Faturamento Orç-PD</div></div><div class="kpi-value" data-bind="summary-revenue">-</div><div class="kpi-sub">Base comercial da NF</div><div class="kpi-footer"><span>Remessas excluídas</span><span class="kpi-pulse">Receita</span></div></div>
-        <div class="kpi-card anim d3" data-accent="purple"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">category</span></div><div class="kpi-label">Produtos no Mix</div></div><div class="kpi-value" data-bind="summary-products-count">-</div><div class="kpi-sub">Itens distintos faturados</div><div class="kpi-footer"><span>Variedade</span><span class="kpi-pulse">Produtos</span></div></div>
-        <div class="kpi-card anim d3" data-accent="yellow"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">money_off</span></div><div class="kpi-label">Descontos</div></div><div class="kpi-value" data-bind="summary-discounts">-</div><div class="kpi-sub">Desconto concedido</div><div class="kpi-footer"><span>Margem</span><span class="kpi-pulse">Desconto</span></div></div>
-        <div class="kpi-card anim d4" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">sell</span></div><div class="kpi-label">Ticket médio Orç-PD</div></div><div class="kpi-value" data-bind="summary-ticket">-</div><div class="kpi-sub">Valor médio por NF</div><div class="kpi-footer"><span>Qualidade</span><span class="kpi-pulse">Ticket</span></div></div>
-        <div class="kpi-card anim d4" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">receipt_long</span></div><div class="kpi-label">NFs Orç-PD</div></div><div class="kpi-value" data-bind="summary-orders">-</div><div class="kpi-sub">Notas que formam o mix</div><div class="kpi-footer"><span>Base fiscal</span><span class="kpi-pulse">NF</span></div></div>
+      <section class="biomie-kpi-grid">
+        <article class="biomie-kpi-card biomie-kpi-card--info anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Mercadoria Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">inventory_2</span></div><div class="biomie-kpi-card__value" data-bind="summary-merchandise">-</div><div class="biomie-kpi-card__sub">Valor do mix de itens</div></article>
+        <article class="biomie-kpi-card anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><div class="biomie-kpi-card__value" data-bind="summary-revenue">-</div><div class="biomie-kpi-card__sub">Base comercial da NF</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--neutral anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Produtos no Mix</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div><div class="biomie-kpi-card__value" data-bind="summary-products-count">-</div><div class="biomie-kpi-card__sub">Itens distintos faturados</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Descontos</span><span class="material-symbols-rounded biomie-kpi-card__icon">money_off</span></div><div class="biomie-kpi-card__value" data-bind="summary-discounts">-</div><div class="biomie-kpi-card__sub">Desconto concedido</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ticket médio Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Valor médio por NF</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div><div class="biomie-kpi-card__value" data-bind="summary-orders">-</div><div class="biomie-kpi-card__sub">Notas que formam o mix</div></article>
       </section>
 
       <div class="section-label anim d3" id="graficos">Análises Orçamento-PD</div>
       <section class="charts-grid">
         <div class="chart-card anim d4">
           <div class="chart-card-header"><div><h3>Produtos que mais geram receita <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;vertical-align:middle;">Orç-PD</span></h3><small>Receita e volume dos itens em destaque — remessas excluídas</small></div></div>
-          <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsRevenueChart"></canvas></div>
+          <div class="chart-body mag-chart-container mag-chart-md biomie-chart-h-md"><canvas id="productsRevenueChart"></canvas></div>
         </div>
       </section>
       <div class="section-label anim d4" id="tabelas">Mix de produtos faturados — Orçamento-PD</div>
       <section class="table-card anim d5">
-        <div class="table-card-header"><h3>Produtos faturados <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Orç-PD</span></h3><small>Descrição, quantidade, clientes, notas fiscais e participação no mix — remessas de produto excluídas.</small></div>
-        <div style="overflow-x:auto"><table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr><th>Produto</th><th>Qtd</th><th>Clientes</th><th>NFs</th><th>Receita</th><th>% Mix</th></tr></thead><tbody id="productsTable" data-empty-title="Sem produtos Orç-PD" data-empty-message="Nenhum produto faturado Orçamento-PD no periodo. Remessas são exibidas somente em NF do Período." data-empty-icon="inventory_2"></tbody></table></div>
+        <div class="table-card-header">
+          <div>
+            <h3>Produtos faturados <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Orç-PD</span></h3>
+            <small>Descrição, quantidade, clientes, notas fiscais e participação no mix — remessas de produto excluídas.</small>
+          </div>
+        </div>
+        <div style="padding:8px 16px 4px;gap:8px;flex-wrap:wrap;display:flex;align-items:center;">
+          <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-prod-sort="revenue" data-prod-dir="desc">Maior faturamento</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="quantidade" data-prod-dir="desc">Maior quantidade</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="clientes" data-prod-dir="desc">Mais clientes</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="ticket_medio" data-prod-dir="desc">Maior ticket</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="nfs" data-prod-dir="desc">Mais NFs</button>
+        </div>
+        <div id="productFilterChips" style="display:none;padding:4px 16px 0;"></div>
+        <div id="productFilterFeedback" style="display:none;padding:4px 16px;font-size:0.82rem;"></div>
+        <div id="productSearchFeedback" class="biomie-table-feedback" style="display:none;margin:0 16px;"></div>
+        <div class="biomie-table-wrap">
+          <table class="mag-table mag-table-clean" data-mobile-card-table>
+            <thead>
+              <tr>
+                <th id="th-prod-produto" class="nf-th-sortable" data-sort-field="produto">Produto <span class="nf-sort-icon">↕</span></th>
+                <th id="th-prod-qtd" class="nf-th-sortable" data-sort-field="quantidade">Qtd <span class="nf-sort-icon">↕</span></th>
+                <th>Clientes</th>
+                <th>NFs</th>
+                <th id="th-prod-receita" class="nf-th-sortable" data-sort-field="revenue">Receita <span class="nf-sort-icon">↕</span></th>
+                <th>% Mix</th>
+              </tr>
+              <tr class="nf-filter-row" id="productFilterRow">
+                <th><input id="f_prod_q" type="search" class="nf-col-filter" placeholder="Produto ou SKU…" /></th>
+                <th class="nf-col-filter-range">
+                  <input id="f_prod_qty_min" type="number" class="nf-col-filter" placeholder="Mín" min="0" />
+                  <input id="f_prod_qty_max" type="number" class="nf-col-filter" placeholder="Máx" min="0" />
+                </th>
+                <th><input id="f_prod_cliente" type="search" class="nf-col-filter" placeholder="Cliente…" /></th>
+                <th><input id="f_prod_vendedor" type="search" class="nf-col-filter" placeholder="Vendedor…" /></th>
+                <th class="nf-col-filter-range">
+                  <input id="f_prod_rev_min" type="number" class="nf-col-filter" placeholder="R$ mín" min="0" />
+                  <input id="f_prod_rev_max" type="number" class="nf-col-filter" placeholder="R$ máx" min="0" />
+                </th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="productsTable" data-empty-title="Sem produtos Orç-PD" data-empty-message="Nenhum produto faturado Orçamento-PD no periodo. Remessas são exibidas somente em NF do Período." data-empty-icon="inventory_2"></tbody>
+          </table>
+        </div>
+        <div id="productPagination" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;flex-wrap:wrap;"></div>
       </section>
 
       <section class="charts-grid mag-chart-below-table">
@@ -191,7 +172,7 @@
       </section>
 
       <div class="product-breakdown-backdrop" id="productBreakdownBackdrop" hidden></div>
-      <aside class="product-breakdown-modal" id="productBreakdownModal" hidden aria-hidden="true">
+      <aside class="product-breakdown-modal" id="productBreakdownModal" role="dialog" aria-modal="true" aria-labelledby="productBreakdownTitle" hidden aria-hidden="true">
         <div class="product-breakdown-head">
           <div>
             <span class="weather-card-label">Detalhamento do produto</span>
@@ -199,7 +180,7 @@
             <p id="productBreakdownSubtitle">Notas, pedido, vendedor e cliente que compoem o faturado.</p>
           </div>
           <button type="button" class="btn-icon" id="closeProductBreakdown" aria-label="Fechar detalhamento">
-            <span class="material-symbols-rounded">close</span>
+            <span class="material-symbols-rounded" aria-hidden="true">close</span>
           </button>
         </div>
         <div class="product-breakdown-toolbar">
@@ -226,8 +207,6 @@
           <div id="productBreakdownEmpty" class="product-breakdown-empty" hidden>Nenhum documento encontrado para este produto no periodo.</div>
         </div>
       </aside>
-    </main>
-  </div>
-</div>
+</main>
 </body>
 </html>

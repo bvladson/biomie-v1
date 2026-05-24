@@ -493,9 +493,26 @@
     }, { passive: true });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        if (isMobile() && sidebar.classList.contains('open')) {
-          closeSidebar();
+      if (e.key !== 'Escape') return;
+      if (isMobile() && sidebar.classList.contains('open')) {
+        closeSidebar();
+        return;
+      }
+      // Close open detail drawer (vendedores/plano_voo) — detected via backdrop
+      var drawerBackdrop = document.getElementById('flightDrawerBackdrop') || document.querySelector('.detail-drawer-backdrop');
+      if (drawerBackdrop && drawerBackdrop.style.display === 'block') {
+        var drawerClose = document.getElementById('closeDrawerBtn') || document.querySelector('.detail-drawer-close');
+        if (drawerClose) { e.preventDefault(); drawerClose.click(); }
+        return;
+      }
+      // Close any visible modal with role="dialog" (e.g. product breakdown)
+      var dialogs = document.querySelectorAll('[role="dialog"]:not(.sidebar):not(.flight-drawer)');
+      for (var i = 0; i < dialogs.length; i++) {
+        var dlg = dialogs[i];
+        if (!dlg.hidden) {
+          var closeBtn = dlg.querySelector('[aria-label^="Fechar"], .detail-drawer-close');
+          if (closeBtn) { e.preventDefault(); closeBtn.click(); }
+          break;
         }
       }
     });

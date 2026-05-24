@@ -21,7 +21,8 @@ const PRECACHE_URLS = [
   appPath('/images/favicon.svg'),
   appPath('/images/favicon.ico'),
   appPath('/images/pwa/icon-192.png'),
-  appPath('/images/pwa/icon-512.png')
+  appPath('/images/pwa/icon-512.png'),
+  appPath('/offline.html'),
 ];
 
 self.addEventListener('install', (event) => {
@@ -55,8 +56,12 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Nunca cachear HTML autenticado, rotas PHP ou APIs dinâmicas.
+  // Em falha de rede em modo navigate, servir offline.html seguro.
   if (request.mode === 'navigate' || url.pathname.endsWith('.php') || url.pathname.startsWith(appPath('/api/'))) {
-    event.respondWith(fetch(request, { cache: 'no-store', credentials: 'same-origin' }));
+    event.respondWith(
+      fetch(request, { cache: 'no-store', credentials: 'same-origin' })
+        .catch(() => caches.match(appPath('/offline.html')))
+    );
     return;
   }
 

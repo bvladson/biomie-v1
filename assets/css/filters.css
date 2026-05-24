@@ -235,3 +235,64 @@
   }
   .nf-quick-filter-bar::-webkit-scrollbar { display: none; }
 }
+
+/* ── Conciliação — rec-* components ──────────────────────────────────────── */
+
+.rec-table-wrap { overflow-x: auto; }
+
+.rec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.rec-table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+.rec-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.rec-row:hover td { background: var(--surface-hover, #f7f5f4); }
+.rec-actions      { white-space: nowrap; }
+
+.rec-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rec-status-ok    { background: var(--state-success-bg, #e6f4ea); color: var(--state-success, #1e7e34); }
+.rec-status-error { background: var(--state-danger-bg, #fde8e8);  color: var(--danger, #c0392b); }
+.rec-status-warn  { background: var(--state-warn-bg, #fff3cd);    color: var(--state-warn, #856404); }
+.rec-status-info  { background: var(--state-info-bg, #e3f2fd);    color: var(--state-info, #1565c0); }
+.rec-status-muted { background: var(--surface-2, #f0eeec);        color: var(--text-2, #666); }
+
+.rec-kpi-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+.rec-kpi-card {
+  flex: 1 1 120px;
+  min-width: 100px;
+  padding: 10px 14px;
+  background: var(--surface-0, #fff);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.rec-kpi-label { font-size: 11px; color: var(--text-2); font-weight: 500; margin-bottom: 4px; }
+.rec-kpi-value { font-size: 1.25rem; font-weight: 700; color: var(--text-1); }
+.rec-kpi-sub   { font-size: 11px; color: var(--text-2); margin-top: 2px; }

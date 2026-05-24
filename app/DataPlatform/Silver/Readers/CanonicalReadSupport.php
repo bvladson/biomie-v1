@@ -315,18 +315,26 @@ final class CanonicalReadSupport
      */
     public function commercialScopeFilter(string $tableAlias = ''): string
     {
-        if (!$this->operationScopeColumnExists()) {
-            if ((bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false)) {
-                throw new OperationScopeEnforcedException(
-                    'Enforce mode ativo: coluna operation_scope ausente em biomie_notas_fiscais_canonicas. ' .
-                    'Execute: php tools/dev/backfill_operation_scope.php --migrate'
-                );
-            }
+        $clauses = '';
 
-            return '';
+        if ($this->operationScopeColumnExists()) {
+            $clauses .= " AND {$tableAlias}operation_scope = 'commercial'";
+        } elseif ((bool) (getenv('BIOMIE_OPERATION_SCOPE_ENFORCED') ?: false)) {
+            throw new OperationScopeEnforcedException(
+                'Enforce mode ativo: coluna operation_scope ausente em biomie_notas_fiscais_canonicas. ' .
+                'Execute: php tools/dev/backfill_operation_scope.php --migrate'
+            );
         }
 
-        return " AND {$tableAlias}operation_scope = 'commercial'";
+        // Fase L — Licitação visibility filter
+        if ($this->nfVisibilityColumnExists()) {
+            $clauses .= " AND COALESCE({$tableAlias}is_biomie_commercial_visible, 1) = 1";
+        } elseif ($clauses !== '') {
+            // Column not yet migrated: name-based fallback (only when scope column is present)
+            $clauses .= " AND NOT UPPER({$tableAlias}nome_vendedor) LIKE '%LICITAC%'";
+        }
+
+        return $clauses;
     }
 
     /**
@@ -386,6 +394,7 @@ final class CanonicalReadSupport
     private ?bool $scopeColumnExists            = null;
     private ?bool $fiscalBasisColumnExists      = null;
     private ?bool $fiscalBaseComercialExists    = null;
+    private ?bool $nfVisibilityColumnExists     = null;
 
     private function fiscalBasisColumnsAvailable(): bool
     {
@@ -451,6 +460,28 @@ final class CanonicalReadSupport
         }
 
         return $this->scopeColumnExists;
+    }
+
+    private function nfVisibilityColumnExists(): bool
+    {
+        if ($this->nfVisibilityColumnExists !== null) {
+            return $this->nfVisibilityColumnExists;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'biomie_notas_fiscais_canonicas'
+                   AND COLUMN_NAME = 'is_biomie_commercial_visible'"
+            );
+            $stmt->execute();
+            $this->nfVisibilityColumnExists = (int) $stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            $this->nfVisibilityColumnExists = false;
+        }
+
+        return $this->nfVisibilityColumnExists;
     }
 
     private function pdo(): PDO

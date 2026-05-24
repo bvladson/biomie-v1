@@ -1,0 +1,325 @@
+/*
+ * BIomie Mobile Premium — Fase 2
+ * Camada visual premium para mobile: tokens, topbar, bottom nav, cards,
+ * filtros, drawers e gráficos. Sem impacto no desktop (todos os blocos
+ * são @media max-width: 767px ou tokens globais neutros).
+ */
+
+/* ── Tokens mobile (globais, não afetam nada no desktop) ─────────────────── */
+:root {
+  --mag-mobile-topbar-h:    52px;
+  --mag-mobile-bottom-nav-h: 60px;
+  --mag-mobile-card-radius:  14px;
+  --mag-mobile-sheet-radius: 20px;
+}
+
+/* ── Fundo da página no mobile ──────────────────────────────────────────────*/
+@media (max-width: 767px) {
+  body.mag-page,
+  body.mag-clean-page,
+  body.mag-app-shell-page {
+    background-color: #f6f7fb;
+  }
+}
+
+/* ── Topbar mobile premium ───────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .mag-mobile-topbar {
+    height: var(--mag-mobile-topbar-h);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.055);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .mag-mobile-topbar__title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .mag-mobile-topbar__user {
+    background: var(--brand-primary, #96140a);
+    border: none;
+  }
+
+  /* Botão instalar PWA na topbar mobile */
+  .mag-mobile-topbar__install-btn {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(150, 20, 10, 0.25);
+    background: rgba(150, 20, 10, 0.08);
+    border-radius: 10px;
+    cursor: pointer;
+    color: #96140a;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mag-mobile-topbar__install-btn .material-symbols-rounded {
+    font-size: 20px;
+  }
+}
+
+/* ── Bottom nav premium ──────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .mag-bottom-nav {
+    height: calc(var(--mag-mobile-bottom-nav-h) + env(safe-area-inset-bottom, 0));
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .mag-bottom-nav__link,
+  .mag-bottom-nav__more {
+    border-radius: 10px;
+    margin: 4px 2px;
+    transition: background 0.12s, color 0.15s;
+  }
+
+  .mag-bottom-nav__link.is-active,
+  .mag-bottom-nav__link[aria-current="page"] {
+    color: #96140a;
+    background: rgba(150, 20, 10, 0.07);
+  }
+
+  .mag-bottom-nav__more.is-active {
+    color: #96140a;
+    background: rgba(150, 20, 10, 0.08);
+  }
+}
+
+/* ── KPI cards premium ───────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .kpi-card,
+  .mag-kpi-card,
+  .sh-card {
+    border-radius: var(--mag-mobile-card-radius);
+    border: 1px solid rgba(0, 0, 0, 0.055);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+    background: #ffffff;
+  }
+
+  .kpi-card .kpi-value,
+  .mag-kpi-card .kpi-value {
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
+    word-break: break-all;
+  }
+
+  .kpi-card .kpi-sub,
+  .mag-kpi-card .kpi-sub {
+    font-size: 0.72rem;
+  }
+}
+
+/* ── Cards de tabela premium ─────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  table[data-mobile-card-table] tbody tr {
+    border-radius: var(--mag-mobile-card-radius) !important;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.055) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    margin-bottom: 10px !important;
+    overflow: hidden;
+  }
+
+  table[data-mobile-card-table] tbody td:first-child {
+    padding-top: 10px !important;
+    font-weight: 700;
+    color: var(--mag-text, #0f172a);
+  }
+
+  table[data-mobile-card-table] tbody td:last-child {
+    padding-bottom: 10px !important;
+    border-bottom: none !important;
+  }
+
+  table[data-mobile-card-table] tbody td:not(:last-child) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+  }
+}
+
+/* ── Inputs e botões: min-height 44px para toque confortável ─────────────── */
+@media (max-width: 767px) {
+  button,
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  .btn-primary,
+  .btn-secondary,
+  .biomie-btn,
+  .mag-button-primary,
+  .mag-button-secondary {
+    min-height: 44px;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  input[type="number"],
+  input[type="search"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  .filter-input,
+  .nf-col-filter {
+    min-height: 44px;
+    border-radius: 10px;
+  }
+
+  .filter-bar.mag-report-toolbar,
+  .filter-bar.mag-clean-toolbar {
+    background: #ffffff;
+    border-radius: var(--mag-mobile-card-radius);
+    border: 1px solid rgba(0, 0, 0, 0.055);
+    padding: 12px 14px;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+}
+
+/* ── Filter bottom sheet premium ─────────────────────────────────────────── */
+@media (max-width: 767px) {
+  [data-mobile-filter-sheet][data-mobile-active] {
+    border-radius: var(--mag-mobile-sheet-radius) var(--mag-mobile-sheet-radius) 0 0 !important;
+    box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.14) !important;
+  }
+
+  .mag-mobile-filter-button {
+    min-height: 44px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--mag-text, #0f172a);
+    margin-bottom: 10px;
+  }
+
+  .mag-mobile-filter-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0));
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    position: sticky;
+    bottom: 0;
+    background: #ffffff;
+    z-index: 1;
+    margin-top: 8px;
+  }
+
+  .mag-mobile-filter-apply-btn {
+    flex: 1;
+    min-height: 46px;
+    background: #96140a;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mag-mobile-filter-apply-btn:active {
+    background: #7a1008;
+  }
+
+  .mag-mobile-filter-clear-btn {
+    min-height: 46px;
+    padding: 0 18px;
+    background: #f1f2f4;
+    color: #374151;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ── Drawers / bottom sheets premium ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  .biomie-drawer,
+  .mag-drawer {
+    border-radius: var(--mag-mobile-sheet-radius) var(--mag-mobile-sheet-radius) 0 0 !important;
+    box-shadow: 0 -6px 40px rgba(0, 0, 0, 0.14) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Handle mais visível */
+  .biomie-drawer__header::before,
+  .mag-drawer-header::before {
+    background: rgba(0, 0, 0, 0.15);
+    width: 40px;
+    height: 5px;
+    border-radius: 3px;
+    top: 10px;
+  }
+}
+
+/* ── Sidebar mobile aberta ───────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .sidebar.open,
+  body:is(.mag-page, .mag-clean-page, .mag-app-shell-page) .mag-sidebar.open {
+    box-shadow: 4px 0 40px rgba(0, 0, 0, 0.22) !important;
+  }
+}
+
+/* ── Gráficos: altura controlada no mobile ───────────────────────────────── */
+@media (max-width: 767px) {
+  .chart-shell,
+  .chart-body,
+  .mag-chart-container:not(.mag-secondary-inline-chart) {
+    height: clamp(200px, 52dvh, 300px);
+    max-height: 300px;
+  }
+
+  .chart-shell--md,
+  .mag-chart-container.mag-chart-md {
+    height: clamp(180px, 46dvh, 260px);
+    max-height: 260px;
+  }
+
+  .fin-chart-sm,
+  .mag-chart-container.mag-secondary-inline-chart {
+    height: clamp(140px, 36dvh, 200px);
+    max-height: 200px;
+  }
+}
+
+/* ── Dashboard panels: 1 coluna no mobile ───────────────────────────────── */
+@media (max-width: 767px) {
+  .dashboard-grid,
+  .dashboard-kpi-strip {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-panel.span-4,
+  .dashboard-panel.span-8,
+  .dashboard-panel.span-12 {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* ── Mapa de vendas: altura mínima para topbar + bottom nav ─────────────── */
+@media (max-width: 767px) {
+  #map-container,
+  .biomie-map-canvas-wrap {
+    min-height: 420px;
+    height: 58dvh;
+  }
+}

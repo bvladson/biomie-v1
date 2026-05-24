@@ -58,6 +58,13 @@ try {
         }
     }
 
+    // Vendor filter — only applied when the mart has the vendor grain column (Q.6.DB migration).
+    $sellerId = $f['seller_id'];
+    if ($sellerId !== null && geoColExists($pdo, 'mart_compradores_por_geo', 'codigo_vendedor_omie')) {
+        $where[] = 'LOWER(nome_vendedor) LIKE :seller_pct';
+        $params['seller_pct'] = '%' . mb_strtolower(trim($sellerId)) . '%';
+    }
+
     $whereSql = implode(' AND ', $where);
 
     // Count rows before vs. after city filter to detect when city filter removes all results
@@ -352,12 +359,12 @@ try {
     $payload = [
         'ok' => true,
         'filters' => [
-            'date_from' => $range['date_from'],
-            'date_to' => $range['date_to'],
-            'city' => $city,
+            'date_from'   => $range['date_from'],
+            'date_to'     => $range['date_to'],
+            'city'        => $city,
             'neighborhood' => $neighborhood,
-            'cnae' => $cnae,
-            'seller_id' => null,
+            'cnae'        => $cnae,
+            'seller_id'   => $sellerId ?? null,
         ],
         'summary' => $summary,
         'segments' => array_values($segments),
@@ -609,4 +616,18 @@ try {
         'message' => 'Nao foi possivel carregar o resumo geografico agora.',
         'request_id' => RequestContext::id(),
     ], 500);
+}
+
+function geoColExists(PDO $pdo, string $table, string $col): bool
+{
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$table, $col]);
+        return (int) $stmt->fetchColumn() > 0;
+    } catch (\Throwable) {
+        return false;
+    }
 }

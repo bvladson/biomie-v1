@@ -2,42 +2,36 @@
 
 declare(strict_types=1);
 
-// 5 atalhos mais usados no mobile. Exibido apenas em mobile via CSS.
+// 4 atalhos principais + botão "Mais" para abrir o menu completo (sidebar).
+// Trocar a lista de 5 itens fixos que excluía NFs, Mapa, Omie e Admin.
 $mobileNavItems = [
     [
-        'href'    => 'index.php',
-        'page'    => 'dashboard',
-        'icon'    => 'space_dashboard',
-        'label'   => 'Painel',
-        'aria'    => 'Painel Comercial',
+        'href'  => 'index.php',
+        'page'  => 'dashboard',
+        'icon'  => 'space_dashboard',
+        'label' => 'Painel',
+        'aria'  => 'Painel Comercial',
     ],
     [
-        'href'    => 'vendedores.php',
-        'page'    => 'time-comercial',
-        'icon'    => 'groups',
-        'label'   => 'Time',
-        'aria'    => 'Time Comercial',
+        'href'  => 'pedidos.php',
+        'page'  => 'nf-periodo',
+        'icon'  => 'receipt_long',
+        'label' => 'NFs',
+        'aria'  => 'NF do Período',
     ],
     [
-        'href'    => 'mercadorias.php',
-        'page'    => 'mix-faturado',
-        'icon'    => 'inventory_2',
-        'label'   => 'Mix',
-        'aria'    => 'Mix Faturado',
+        'href'  => 'vendedores.php',
+        'page'  => 'time-comercial',
+        'icon'  => 'groups',
+        'label' => 'Time',
+        'aria'  => 'Time Comercial',
     ],
     [
-        'href'    => 'financeiro.php',
-        'page'    => 'financeiro',
-        'icon'    => 'account_balance_wallet',
-        'label'   => 'Finan.',
-        'aria'    => 'Financeiro',
-    ],
-    [
-        'href'    => 'plano_voo.php',
-        'page'    => 'rota-comercial',
-        'icon'    => 'flight',
-        'label'   => 'Rota',
-        'aria'    => 'Rota Comercial',
+        'href'  => 'mercadorias.php',
+        'page'  => 'mix-faturado',
+        'icon'  => 'inventory_2',
+        'label' => 'Mix',
+        'aria'  => 'Mix Faturado',
     ],
 ];
 ?>
@@ -56,5 +50,19 @@ $mobileNavItems = [
       </a>
     </li>
     <?php endforeach; ?>
+    <li class="mag-bottom-nav__item">
+      <button
+        type="button"
+        class="mag-bottom-nav__link mag-bottom-nav__more"
+        id="mobileMoreButton"
+        data-mobile-sidebar-toggle
+        aria-label="Abrir menu completo"
+        aria-controls="sidebar"
+        aria-expanded="false"
+      >
+        <span class="material-symbols-rounded" aria-hidden="true">grid_view</span>
+        <span>Mais</span>
+      </button>
+    </li>
   </ul>
 </nav>

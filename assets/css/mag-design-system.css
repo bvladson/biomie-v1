@@ -3043,3 +3043,439 @@ body:is(.mag-page, .mag-clean-page) .kpi-card .sk-sub {
   .mag-finance-table td      { padding: 3px 4px; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   UX.R3 — P1.1: Componente unificado .biomie-kpi-card
+   Substitui: mag-kpi-card, kpi-card, status-kpi, fp-kpi-card, rec-kpi-card
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.biomie-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.biomie-kpi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px 20px;
+  background: var(--surface-0, var(--bg-card, var(--mag-surface, #fff)));
+  border: 1px solid var(--border, var(--mag-border, #e2e8f0));
+  border-radius: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.biomie-kpi-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.biomie-kpi-card__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-2, var(--mag-muted, #64748b));
+  line-height: 1.3;
+}
+
+.biomie-kpi-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 18px;
+  flex-shrink: 0;
+  color: var(--page-accent, #6366f1);
+  background: var(--page-accent-soft, #e0e7ff);
+}
+
+.biomie-kpi-card__value {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 800;
+  color: var(--text-1, var(--mag-text, #1e293b));
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  display: block;
+}
+
+.biomie-kpi-card__sub {
+  font-size: 0.72rem;
+  color: var(--text-2, var(--mag-muted, #64748b));
+  line-height: 1.4;
+  margin-top: 2px;
+  display: block;
+}
+
+/* ── Variantes ──────────────────────────────────────────────────────────── */
+
+.biomie-kpi-card--success {
+  border-left: 3px solid var(--state-billed, var(--state-success, #16a34a));
+  background: var(--state-billed-bg, var(--state-success-bg, #f0fdf4));
+}
+.biomie-kpi-card--success .biomie-kpi-card__label { color: var(--state-billed, var(--state-success, #16a34a)); }
+.biomie-kpi-card--success .biomie-kpi-card__icon  { color: var(--state-billed, #16a34a); background: color-mix(in srgb, var(--state-billed, #16a34a) 12%, transparent); }
+
+.biomie-kpi-card--warning {
+  border-left: 3px solid var(--state-auth, #d97706);
+  background: var(--state-auth-bg, #fffbeb);
+}
+.biomie-kpi-card--warning .biomie-kpi-card__label { color: var(--state-auth, #d97706); }
+.biomie-kpi-card--warning .biomie-kpi-card__icon  { color: var(--state-auth, #d97706); background: var(--state-auth-bg, #fffbeb); }
+
+.biomie-kpi-card--danger {
+  border-left: 3px solid var(--state-cancel, var(--danger, #dc2626));
+  background: var(--state-cancel-bg, #fef2f2);
+}
+.biomie-kpi-card--danger .biomie-kpi-card__label { color: var(--state-cancel, var(--danger, #dc2626)); }
+.biomie-kpi-card--danger .biomie-kpi-card__icon  { color: var(--state-cancel, var(--danger, #dc2626)); background: var(--state-cancel-bg, #fef2f2); }
+
+.biomie-kpi-card--info {
+  border-left: 3px solid var(--state-info, #1565c0);
+  background: var(--state-info-bg, #e3f2fd);
+}
+.biomie-kpi-card--info .biomie-kpi-card__label { color: var(--state-info, #1565c0); }
+.biomie-kpi-card--info .biomie-kpi-card__icon  { color: var(--state-info, #1565c0); background: var(--state-info-bg, #e3f2fd); }
+
+.biomie-kpi-card--neutral { border-left: 3px solid var(--border, #e2e8f0); }
+
+.biomie-kpi-card--accent  { border-left: 3px solid var(--page-accent, #6366f1); }
+.biomie-kpi-card--accent .biomie-kpi-card__label { color: var(--page-accent, #6366f1); }
+
+/* ── Contexto: fp-kpi-strip (plano de voo) ──────────────────────────────── */
+
+.fp-kpi-strip .biomie-kpi-card {
+  padding: 12px 16px;
+  height: auto;
+}
+.fp-kpi-strip .biomie-kpi-card .biomie-kpi-card__value { font-size: 1.1rem; }
+
+/* ── Contexto: rec-kpi-strip (conciliação) ───────────────────────────────── */
+
+.rec-kpi-strip .biomie-kpi-card {
+  flex: 1 1 120px;
+  min-width: 100px;
+}
+
+/* ── Contexto: dashboard-kpi-strip (index) ───────────────────────────────── */
+
+.dashboard-kpi-strip .biomie-kpi-card {
+  min-height: var(--biomie-dashboard-card-h, 100px);
+  max-height: 122px;
+  padding: 16px 20px;
+}
+.dashboard-kpi-strip .biomie-kpi-card .biomie-kpi-card__value {
+  font-size: clamp(1.15rem, 1.9vw, 1.5rem);
+  line-height: 1.1;
+}
+.dashboard-kpi-strip .biomie-kpi-card .biomie-kpi-card__icon {
+  width: 30px;
+  height: 30px;
+  font-size: 17px;
+  border-radius: 9px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .biomie-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .biomie-kpi-card {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+  .biomie-kpi-card__value { font-size: clamp(1rem, 3.5vw, 1.35rem); }
+}
+
+@media (max-width: 420px) {
+  .biomie-kpi-grid { gap: 6px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UX.R4 — P1.2: .biomie-page-header
+   Unifica: mag-page-header-shell/title (--shell),
+            fp-header-clean (--strip),
+            hero+module-hero (--hero),
+            ci-header/mc-header (--admin)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.biomie-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.biomie-page-header__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.biomie-page-header__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-2, var(--mag-muted, #64748b));
+  margin-bottom: 6px;
+}
+
+.biomie-page-header__eyebrow .material-symbols-rounded {
+  font-size: 16px;
+  color: var(--page-accent, #6366f1);
+}
+
+.biomie-page-header__title {
+  margin: 0;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-1, var(--mag-text, #1e293b));
+}
+
+.biomie-page-header__subtitle {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  color: var(--text-2, var(--mag-muted, #64748b));
+  line-height: 1.5;
+}
+
+.biomie-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.biomie-page-header__actions .biomie-btn,
+.biomie-page-header__actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.biomie-page-header__actions .biomie-btn .material-symbols-rounded,
+.biomie-page-header__actions .btn-secondary .material-symbols-rounded {
+  font-size: 17px;
+}
+
+.biomie-page-header__meta { flex-shrink: 0; }
+
+.biomie-page-header__badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* -- shell: card-style header (index, financeiro, mapa_vendas) */
+.biomie-page-header--shell {
+  background: var(--mag-surface, var(--surface-card, #fff));
+  border: 1px solid var(--mag-border, var(--border-soft, #e2e8f0));
+  border-radius: var(--mag-radius, 12px);
+  padding: 20px 22px;
+  box-shadow: var(--mag-shadow-soft, 0 1px 3px rgba(0,0,0,.06));
+}
+
+.biomie-page-header--shell .biomie-page-header__title {
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+}
+
+/* -- strip: compact border-bottom header (plano_voo, conciliacao, vendedores) */
+.biomie-page-header--strip {
+  padding: 16px 24px;
+  background: var(--surface, var(--mag-surface, #fff));
+  border-bottom: 1px solid var(--border, var(--mag-border, #e2e8f0));
+}
+
+.biomie-page-header--strip .biomie-page-header__title {
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.biomie-page-header--strip .biomie-page-header__title .material-symbols-rounded {
+  font-size: 20px;
+  color: var(--page-accent, #6366f1);
+}
+
+/* -- hero: visual handled by .hero.module-hero companion classes */
+
+/* -- admin: internal tools (cockpit_interno, metric_catalog) */
+.biomie-page-header--admin {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: var(--space-4, 16px) var(--space-8, 32px);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  margin-bottom: var(--space-6, 24px);
+}
+
+.biomie-page-header--admin .biomie-page-header__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.biomie-page-header--admin .biomie-page-header__subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .biomie-page-header--shell,
+  .biomie-page-header--strip {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .biomie-page-header--shell {
+    padding: 14px 16px;
+    border-radius: 10px;
+  }
+  .biomie-page-header--strip { padding: 12px 16px; }
+  .biomie-page-header--shell .biomie-page-header__title,
+  .biomie-page-header--strip .biomie-page-header__title {
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
+  }
+}
+
+/* UX.R5 — Utilities */
+.biomie-scroll-x   { overflow-x: auto; }
+.biomie-table-wrap { overflow-x: auto; }
+.biomie-flex-spacer { flex-grow: 1; }
+.biomie-icon-inline { font-size: 14px; vertical-align: middle; }
+.biomie-icon-sm     { font-size: 14px; vertical-align: -.1em; }
+.biomie-chart-h-md  { height: 320px; }
+.biomie-shell-bg    { background: var(--surface-muted, #f8fafc); min-height: 60vh; }
+.biomie-text-right  { text-align: right; }
+.biomie-muted       { color: var(--text-2, var(--mag-muted, #64748b)); }
+.biomie-cluster     { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.biomie-stack       { display: flex; flex-direction: column; gap: 8px; }
+
+.biomie-status-band { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; background: var(--surface-muted, #f8fafc); border-left: 3px solid var(--border, #e2e8f0); border-radius: 0 4px 4px 0; font-size: 0.82rem; }
+.biomie-status-band--billed { border-left-color: var(--state-billed, #1a7f37); }
+.biomie-status-band--auth   { border-left-color: var(--state-auth, #0969da); }
+.biomie-status-band--cancel { border-left-color: var(--state-cancel, #cf222e); }
+.biomie-status-band__label  { color: var(--text-3, #94a3b8); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; }
+.biomie-status-band__sub    { color: var(--text-3, #94a3b8); font-size: 0.75rem; }
+
+/* UX.R8 — State BEM family (biomie-state__* / biomie-state--*) */
+.biomie-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.biomie-state--empty {
+  border: 1px dashed var(--mag-border, #e2e8f0);
+  border-radius: var(--mag-radius, 16px);
+}
+.biomie-state--error {
+  border: 1px dashed color-mix(in srgb, var(--danger-strong, #96140a) 24%, transparent);
+  border-radius: var(--mag-radius, 16px);
+}
+.biomie-state--loading { gap: 14px; }
+.biomie-state__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 22px;
+  background: var(--page-accent-soft, #edf5ff);
+  color: var(--page-accent, #4b7cf3);
+}
+.biomie-state--error .biomie-state__icon {
+  background: var(--danger-soft, #fde8e6);
+  color: var(--danger-strong, #96140a);
+}
+.biomie-state__title {
+  color: var(--mag-text, #1e293b);
+  font-size: 15px;
+  font-weight: 600;
+}
+.biomie-state__message {
+  max-width: 440px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--mag-muted, #64748b);
+  line-height: 1.5;
+}
+.biomie-state__actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* UX.R8 — Skeleton family (aliases for module-loading-* + skeleton-*) */
+.biomie-skeleton {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 16px);
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+}
+.biomie-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.biomie-skeleton-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--skeleton-edge, rgba(17,19,24,.05));
+  background: var(--surface-1, #f8fafc);
+}
+
+/* Empty cell inside table */
+.mag-empty-cell { padding: 0 !important; }
+
+/* UX.R9 — Focus-visible for interactive UI elements */
+.biomie-filter-chip__remove:focus-visible,
+.filter-chip-remove:focus-visible {
+  outline: 2px solid var(--focus-ring, rgba(150,20,10,.34));
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+[data-biomie-cb]:focus-visible {
+  outline: 2px solid var(--focus-ring, rgba(150,20,10,.34));
+  outline-offset: 2px;
+}
+
+.nf-quick-filter-btn:focus-visible,
+.pend-class-btn:focus-visible,
+.fp-mobile-metas-fab:focus-visible {
+  outline: 2px solid var(--focus-ring, rgba(150,20,10,.34));
+  outline-offset: 3px;
+}
+
+/* Ensure decorative spinner icons are hidden from AT */
+.mag-loading-spinner { pointer-events: none; }
+

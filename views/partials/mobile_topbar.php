@@ -24,6 +24,17 @@ $mobileInitial = strtoupper(mb_substr($mobileName, 0, 1, 'UTF-8'));
 
   <div class="mag-mobile-topbar__title" aria-live="polite">BIomie</div>
 
+  <button
+    type="button"
+    class="mag-mobile-topbar__install-btn"
+    id="mobileInstallButton"
+    hidden
+    aria-label="Instalar BIomie no dispositivo"
+    title="Instalar app BIomie"
+  >
+    <span class="material-symbols-rounded" aria-hidden="true">download</span>
+  </button>
+
   <div
     class="mag-mobile-topbar__user"
     aria-hidden="true"

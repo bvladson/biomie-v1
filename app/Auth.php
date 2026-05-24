@@ -8,6 +8,8 @@ final class Auth
 {
     private const SESSION_KEY = 'biomie_auth';
     private const CSRF_KEY = 'biomie_csrf';
+    private const SESSION_USER_CACHE = 'biomie_user_cache';
+    private const USER_CACHE_TTL = 600;
 
     private static ?Config $config = null;
     private static ?Logger $logger = null;
@@ -151,12 +153,24 @@ final class Auth
             return null;
         }
 
+        // Session cache — avoids a DB connection on every request; refreshed after USER_CACHE_TTL seconds
+        $cached = $_SESSION[self::SESSION_USER_CACHE] ?? null;
+        if (is_array($cached)
+            && isset($cached['data'], $cached['ts'])
+            && is_array($cached['data'])
+            && (int) ($cached['data']['id'] ?? 0) === $userId
+            && (time() - (int) $cached['ts']) < self::USER_CACHE_TTL) {
+            self::$currentUser = $cached['data'];
+            return self::$currentUser;
+        }
+
         $user = self::repository()->findActiveUserById($userId);
         if ($user === null) {
             self::logout('user_missing_or_inactive');
             return null;
         }
 
+        $_SESSION[self::SESSION_USER_CACHE] = ['data' => $user, 'ts' => time()];
         self::$currentUser = $user;
         return self::$currentUser;
     }
@@ -576,6 +590,7 @@ final class Auth
 
         if ($current !== null && (int) $current['id'] === $userId) {
             self::$currentUser = null;
+            unset($_SESSION[self::SESSION_USER_CACHE]);
         }
 
         return ['ok' => true, 'message' => 'Usuário atualizado com sucesso.'];

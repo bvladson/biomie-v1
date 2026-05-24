@@ -3,6 +3,9 @@
   window.BIomieFlightPlan = window.BIomieFlightPlan || {};
 
   async function boot(force = false) {
+    if (window.BFlightPlanSearch && typeof window.BFlightPlanSearch.hasExtraFilters === 'function' && window.BFlightPlanSearch.hasExtraFilters()) {
+      window.BFlightPlanSearch.loadFiltered(1); return;
+    }
     var modules = window.BIomieFlightPlan;
     if (!modules.Api || !modules.State || !modules.Dom || !modules.Kpis || !modules.Charts || !modules.Alerts) {
       console.error('[flight-plan] Modulos ausentes. Boot cancelado.');

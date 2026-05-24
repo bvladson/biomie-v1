@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Conciliação interna Pedido × NF × Título financeiro." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <title>Conciliação | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css" />
+  <link rel="stylesheet" href="assets/css/shell-index.css" />
+  <link rel="stylesheet" href="assets/css/module-pages.css" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css" />
+  <link rel="stylesheet" href="assets/css/mag-clean.css" />
+  <link rel="stylesheet" href="assets/css/filters.css" />
+  <link rel="stylesheet" href="assets/css/flight-plan-clean.css" />
+  <script src="assets/js/shell.js" defer></script>
+  <script src="assets/js/biomie-formatters.js" defer></script>
+  <script src="assets/js/biomie-states.js" defer></script>
+  <!-- Fase Q motor de filtros -->
+  <script src="assets/js/core/utils.js" defer></script>
+  <script src="assets/js/core/render-helpers.js" defer></script>
+  <script src="assets/js/core/request-controller.js" defer></script>
+  <script src="assets/js/core/filter-state.js" defer></script>
+  <script src="assets/js/core/filter-url.js" defer></script>
+  <script src="assets/js/core/filter-chips.js" defer></script>
+  <script src="assets/js/core/server-table.js" defer></script>
+  <!-- Reconciliação -->
+  <script src="assets/js/modules/reconciliation/search-drilldown.js" defer></script>
+  <script src="assets/js/pwa.js" defer></script>
+</head>
+<body class="mag-page" data-page="conciliacao">
+<main class="page biomie-shell-bg" style="padding:0;">
+
+      <!-- Page Header -->
+      <div class="biomie-page-header biomie-page-header--strip anim">
+        <div class="biomie-page-header__body">
+          <h1 class="biomie-page-header__title">
+            <span class="material-symbols-rounded">balance</span>
+            Conciliação Pedido × NF × Título
+          </h1>
+          <p class="biomie-page-header__subtitle">Cruzamento entre pedidos, notas fiscais e títulos financeiros. Licitação excluída. Base Comercial NF.</p>
+          <div class="biomie-page-header__badges">
+            <span class="fp-status-badge fp-status-none">NF Autorizada · Comercial</span>
+            <span class="fp-status-badge fp-status-none">Licitação excluída</span>
+          </div>
+        </div>
+        <div class="biomie-page-header__actions">
+          <span id="recLoadingIndicator" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--text-2)">
+            <span class="material-symbols-rounded" style="font-size:16px">progress_activity</span>
+            Carregando...
+          </span>
+          <button id="recApplyFilters" type="button" class="biomie-btn biomie-btn--primary">
+            <span class="material-symbols-rounded">filter_alt</span>Aplicar
+          </button>
+        </div>
+      </div>
+
+      <!-- Date Filters -->
+      <div class="fp-filters-clean anim d1" data-mobile-filter-sheet>
+        <div class="filter-group"><label class="filter-label">Data Inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Data Final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+        <div class="filter-actions" style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="row-inline-link btn-preset" data-rec-preset="month"   >Mês</button>
+          <button type="button" class="row-inline-link btn-preset" data-rec-preset="year"    >Ano</button>
+          <button type="button" class="row-inline-link btn-preset" data-rec-preset="rolling12">12M</button>
+        </div>
+      </div>
+
+      <!-- Extra Filters (Q.9 motor) -->
+      <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" id="recExtraFilters" style="margin-top:6px;flex-wrap:wrap;">
+        <div class="filter-group">
+          <label class="filter-label">Busca global</label>
+          <input id="f_rec_q" type="text" class="filter-input" placeholder="NF, pedido, cliente, vendedor..." autocomplete="off" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Vendedor</label>
+          <input id="f_rec_vendedor" type="text" class="filter-input" placeholder="Nome do vendedor..." autocomplete="off" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Cliente</label>
+          <input id="f_rec_cliente" type="text" class="filter-input" placeholder="Nome do cliente..." autocomplete="off" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Pedido</label>
+          <input id="f_rec_pedido" type="text" class="filter-input" placeholder="Código do pedido..." autocomplete="off" style="width:130px;" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">NF</label>
+          <input id="f_rec_nf" type="text" class="filter-input" placeholder="Número da NF..." autocomplete="off" style="width:110px;" />
+        </div>
+        <div class="filter-actions" style="flex-wrap:wrap;gap:6px;">
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-rec-status="pedido_sem_nf">Pedido s/ NF</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-rec-status="nf_sem_pedido">NF s/ Pedido</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-rec-status="nf_sem_titulo">NF s/ Título</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-rec-status="valor_divergente">Valor ✗</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-rec-status="ok">Conciliado</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" id="recSoDiverg">Só divergências</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" id="recPendencias">Pendências reais</button>
+          <button type="button" class="btn-secondary" id="recClearFilters" style="font-size:12px;">Limpar</button>
+        </div>
+      </div>
+      <div id="recFilterChips" class="filter-chips-container" style="display:none;padding:4px 16px;"></div>
+
+      <!-- KPI Strip -->
+      <div class="rec-kpi-strip anim d2">
+        <div class="biomie-kpi-card biomie-kpi-card--success">
+          <div class="biomie-kpi-card__label">Conciliados</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-ok"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">Status OK</div>
+        </div>
+        <div class="biomie-kpi-card biomie-kpi-card--danger">
+          <div class="biomie-kpi-card__label">Divergentes</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-divergentes"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">Todos os tipos</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Pedido s/ NF</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-pedido-sem-nf"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">Faturar pendente</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">NF s/ Pedido</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-nf-sem-pedido"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">Sem origem</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">NF s/ Título</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-nf-sem-titulo"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">Título pendente</div>
+        </div>
+        <div class="biomie-kpi-card biomie-kpi-card--danger">
+          <div class="biomie-kpi-card__label">Valor divergente</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-valor-div"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub" data-bind="rec-valor-div-total">R$ 0,00 total</div>
+        </div>
+        <div class="biomie-kpi-card biomie-kpi-card--info">
+          <div class="biomie-kpi-card__label">Parcelados</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-parcelado"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">NFs c/ múlt. títulos</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Total</div>
+          <div class="biomie-kpi-card__value" data-bind="rec-total"><span class="skeleton-text"></span></div>
+          <div class="biomie-kpi-card__sub">Registros no período</div>
+        </div>
+      </div>
+
+      <!-- Pending KPI strip — shown only in pendingMode (Q.10.4) -->
+      <div class="rec-kpi-strip anim d2" id="pendingKpiStrip" style="display:none">
+        <div class="biomie-kpi-card biomie-kpi-card--danger">
+          <div class="biomie-kpi-card__label">Pendências reais</div>
+          <div class="biomie-kpi-card__value" data-bind="pend-total">—</div>
+          <div class="biomie-kpi-card__sub">NFs sem título vinculado</div>
+        </div>
+        <div class="biomie-kpi-card biomie-kpi-card--warning">
+          <div class="biomie-kpi-card__label">Título não lançado</div>
+          <div class="biomie-kpi-card__value" data-bind="pend-titulo">—</div>
+          <div class="biomie-kpi-card__sub">Lançar título no Omie</div>
+        </div>
+        <div class="biomie-kpi-card biomie-kpi-card--info">
+          <div class="biomie-kpi-card__label">Pagamento à vista</div>
+          <div class="biomie-kpi-card__value" data-bind="pend-avista">—</div>
+          <div class="biomie-kpi-card__sub">Confirmar pagamento</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Base comercial</div>
+          <div class="biomie-kpi-card__value" data-bind="pend-base" style="font-size:1rem">—</div>
+          <div class="biomie-kpi-card__sub">Total NFs pendentes</div>
+        </div>
+      </div>
+      <!-- Classification sub-filter — shown only in pendingMode -->
+      <div id="pendingClassFilter" style="display:none;padding:6px 16px;background:var(--surface-1);border-bottom:1px solid var(--border);gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--text-2);font-weight:600;">Classificação:</span>
+        <button type="button" class="btn-preset pend-class-btn active" data-pend-class="all">Todas</button>
+        <button type="button" class="btn-preset pend-class-btn" data-pend-class="titulo_nao_lancado">Título não lançado</button>
+        <button type="button" class="btn-preset pend-class-btn" data-pend-class="possivel_pagamento_avista">Pagamento à vista</button>
+      </div>
+
+      <!-- Table -->
+      <div class="fp-grid-layout anim d3" id="mainRecSection" style="display:block;padding:16px;">
+        <div class="fp-card">
+          <div class="fp-card-header">
+            <h3>Conciliação Detalhada</h3>
+            <small>Base Comercial NF × Título financeiro. Licitação e remessas excluídas.</small>
+          </div>
+          <div class="rec-table-wrap">
+            <table class="rec-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Pedido</th>
+                  <th>NF</th>
+                  <th>Títulos</th>
+                  <th>Cliente</th>
+                  <th>Vendedor</th>
+                  <th class="biomie-text-right">Base Comercial</th>
+                  <th class="biomie-text-right">Total Fin.</th>
+                  <th class="biomie-text-right">Recebido</th>
+                  <th class="biomie-text-right">Aberto</th>
+                  <th class="biomie-text-right">Diferença</th>
+                  <th>Próx. Vto</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="reconciliationTableBody"
+                  data-empty-title="Nenhum registro encontrado"
+                  data-empty-message="Nenhum registro encontrado para os filtros selecionados."
+                  data-empty-icon="search_off">
+                <tr class="rec-row"><td><span class="skeleton-line md" style="width:56px"></span></td><td><span class="skeleton-line md" style="width:44px"></span></td><td><span class="skeleton-line md" style="width:52px"></span></td><td><span class="skeleton-line md" style="width:34px"></span></td><td><span class="skeleton-line md" style="width:118px"></span></td><td><span class="skeleton-line md" style="width:78px"></span></td><td><span class="skeleton-line md" style="width:64px"></span></td><td><span class="skeleton-line md" style="width:64px"></span></td><td><span class="skeleton-line md" style="width:58px"></span></td><td><span class="skeleton-line md" style="width:58px"></span></td><td><span class="skeleton-line md" style="width:52px"></span></td><td><span class="skeleton-line md" style="width:48px"></span></td><td><span class="skeleton-line md" style="width:28px"></span></td></tr>
+                <tr class="rec-row"><td><span class="skeleton-line md" style="width:60px"></span></td><td><span class="skeleton-line md" style="width:40px"></span></td><td><span class="skeleton-line md" style="width:48px"></span></td><td><span class="skeleton-line md" style="width:38px"></span></td><td><span class="skeleton-line md" style="width:100px"></span></td><td><span class="skeleton-line md" style="width:68px"></span></td><td><span class="skeleton-line md" style="width:70px"></span></td><td><span class="skeleton-line md" style="width:70px"></span></td><td><span class="skeleton-line md" style="width:62px"></span></td><td><span class="skeleton-line md" style="width:62px"></span></td><td><span class="skeleton-line md" style="width:56px"></span></td><td><span class="skeleton-line md" style="width:44px"></span></td><td><span class="skeleton-line md" style="width:28px"></span></td></tr>
+                <tr class="rec-row"><td><span class="skeleton-line md" style="width:50px"></span></td><td><span class="skeleton-line md" style="width:46px"></span></td><td><span class="skeleton-line md" style="width:54px"></span></td><td><span class="skeleton-line md" style="width:36px"></span></td><td><span class="skeleton-line md" style="width:112px"></span></td><td><span class="skeleton-line md" style="width:84px"></span></td><td><span class="skeleton-line md" style="width:66px"></span></td><td><span class="skeleton-line md" style="width:66px"></span></td><td><span class="skeleton-line md" style="width:60px"></span></td><td><span class="skeleton-line md" style="width:60px"></span></td><td><span class="skeleton-line md" style="width:54px"></span></td><td><span class="skeleton-line md" style="width:46px"></span></td><td><span class="skeleton-line md" style="width:28px"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="recPagination" style="display:none;padding:12px 0;"></div>
+        </div>
+      </div>
+
+      <!-- Pending Section — Q.10.4, hidden until pendingMode active -->
+      <div class="fp-grid-layout anim d3" id="pendenciasSection" style="display:none;padding:16px;">
+        <div class="fp-card">
+          <div class="fp-card-header">
+            <h3>Pendências reais — NFs sem título</h3>
+            <small>NFs comerciais autorizadas sem título financeiro vinculado. Read-only — nenhum dado alterado.</small>
+          </div>
+          <div class="rec-table-wrap">
+            <table class="rec-table">
+              <thead>
+                <tr>
+                  <th>Classificação</th>
+                  <th>NF</th>
+                  <th>Emissão</th>
+                  <th>Pedido Omie</th>
+                  <th>Cliente</th>
+                  <th>Vendedor</th>
+                  <th class="biomie-text-right">Base Comercial</th>
+                  <th>Ação recomendada</th>
+                </tr>
+              </thead>
+              <tbody id="pendenciasTableBody">
+                <tr>
+                  <td colspan="8" style="text-align:center;padding:32px;color:var(--text-2)">
+                    <span class="material-symbols-rounded" style="font-size:32px;opacity:0.4;display:block;margin-bottom:8px">hourglass_empty</span>
+                    Ative "Pendências reais" para carregar.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="pendPagination" style="display:none;padding:12px 0;"></div>
+        </div>
+      </div>
+
+</main>
+
+<script>
+// Date range presets
+(function () {
+  document.addEventListener('DOMContentLoaded', function () {
+    var ds = document.getElementById('dateStart');
+    var de = document.getElementById('dateEnd');
+    if (!ds || !de) return;
+    // Default: current month
+    var today = new Date();
+    var y = today.getFullYear(), m = today.getMonth();
+    ds.value = new Date(y, m, 1).toISOString().slice(0, 10);
+    de.value = today.toISOString().slice(0, 10);
+
+    document.querySelectorAll('[data-rec-preset]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var now = new Date();
+        var preset = btn.getAttribute('data-rec-preset');
+        if (preset === 'month') {
+          ds.value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+          de.value = now.toISOString().slice(0, 10);
+        } else if (preset === 'year') {
+          ds.value = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
+          de.value = now.toISOString().slice(0, 10);
+        } else if (preset === 'rolling12') {
+          var d12 = new Date(now); d12.setFullYear(d12.getFullYear() - 1);
+          ds.value = d12.toISOString().slice(0, 10);
+          de.value = now.toISOString().slice(0, 10);
+        }
+        if (window.BReconciliation) window.BReconciliation.loadFiltered(1);
+      });
+    });
+
+    ds.addEventListener('change', function () { if (window.BReconciliation) window.BReconciliation.loadFiltered(1); });
+    de.addEventListener('change', function () { if (window.BReconciliation) window.BReconciliation.loadFiltered(1); });
+  });
+})();
+</script>
+</body>
+</html>

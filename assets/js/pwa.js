@@ -19,14 +19,20 @@
   }
 
   function ensureInstallButton() {
-    if (installButton || isStandalone()) {
-      return;
+    if (isStandalone()) return;
+
+    // Botão mobile pré-existente no mobile_topbar.php
+    const mobileBtn = document.getElementById('mobileInstallButton');
+    if (mobileBtn && !mobileBtn.__pwaWired) {
+      mobileBtn.__pwaWired = true;
+      mobileBtn.addEventListener('click', promptInstall);
     }
 
+    if (installButton) return;
+
+    // Botão desktop no .topbar-actions
     const host = document.querySelector('.topbar-actions');
-    if (!host) {
-      return;
-    }
+    if (!host) return;
 
     installButton = document.createElement('button');
     installButton.type = 'button';
@@ -39,11 +45,11 @@
   }
 
   function updateInstallButton() {
-    if (!installButton) {
-      return;
-    }
-
-    installButton.hidden = deferredInstallPrompt === null || isStandalone();
+    const shouldHide = deferredInstallPrompt === null || isStandalone();
+    if (installButton) installButton.hidden = shouldHide;
+    // Sincroniza botão mobile
+    const mobileBtn = document.getElementById('mobileInstallButton');
+    if (mobileBtn) mobileBtn.hidden = shouldHide;
   }
 
   async function promptInstall() {

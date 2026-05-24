@@ -142,7 +142,7 @@ final class FiscalReadRepository
      */
     public function aggregateCancelledVendorStatusCommercial(string $start, string $end): array
     {
-        $stmt = $this->pdo()->prepare(<<<'SQL'
+        $sql = <<<'SQL'
             SELECT
                 codigo_vendedor_omie, nome_vendedor,
                 'cancelado' AS status_comercial,
@@ -153,9 +153,12 @@ final class FiscalReadRepository
             FROM biomie_notas_fiscais_canonicas
             WHERE status_fiscal = 'cancelada'
               AND data_competencia BETWEEN :start AND :end
+        SQL . $this->readSupport()->commercialScopeFilter() . <<<'SQL'
+
             GROUP BY codigo_vendedor_omie, nome_vendedor
             ORDER BY nome_vendedor
-        SQL);
+        SQL;
+        $stmt = $this->pdo()->prepare($sql);
         $stmt->execute(['start' => $start, 'end' => $end]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

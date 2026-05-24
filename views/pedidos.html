@@ -23,22 +23,22 @@
 </head>
 <body class="mag-page mag-clean-page" data-page="orders">
 <main class="page">
-  <section class="hero module-hero mag-page-header mag-clean-header anim">
-    <div class="module-hero__content">
-      <div class="hero-tag"><span class="material-symbols-rounded">receipt_long</span>NF do Período — Orçamento-PD <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:6px;vertical-align:middle;">remessas excluídas</span></div>
-      <h1>Notas fiscais Orçamento-PD: faturado, carteira e cancelamentos.</h1>
-      <p>Visão separada por tipo: use as abas para ver Orçamento-PD, Remessas de Produto ou todas as NFs. Os KPIs refletem somente faturamento comercial.</p>
+  <section class="biomie-page-header biomie-page-header--hero hero module-hero anim">
+    <div class="biomie-page-header__body module-hero__content">
+      <div class="biomie-page-header__eyebrow hero-tag"><span class="material-symbols-rounded">receipt_long</span>NF do Período — Orçamento-PD <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:6px;vertical-align:middle;">remessas excluídas</span></div>
+      <h1 class="biomie-page-header__title">Notas fiscais Orçamento-PD: faturado, carteira e cancelamentos.</h1>
+      <p class="biomie-page-header__subtitle">Visão separada por tipo: use as abas para ver Orçamento-PD, Remessas de Produto ou todas as NFs. Os KPIs refletem somente faturamento comercial.</p>
       <div class="hero-insights">
         <div class="hero-chip"><span class="hero-chip-label">NFs Orç-PD</span><span class="hero-chip-value" data-bind="summary-orders">-</span><span class="hero-chip-sub">Qtd. faturada</span></div>
         <div class="hero-chip"><span class="hero-chip-label">Ticket Orç-PD</span><span class="hero-chip-value" data-bind="summary-ticket">-</span><span class="hero-chip-sub">Médio por NF</span></div>
         <div class="hero-chip"><span class="hero-chip-label">Receita Orç-PD</span><span class="hero-chip-value" data-bind="summary-revenue">-</span><span class="hero-chip-sub">Faturado no período</span></div>
       </div>
     </div>
-    <div class="forecast-box module-hero__meta">
+    <div class="biomie-page-header__meta forecast-box module-hero__meta">
       <div class="forecast-label">Carteira fiscal</div>
       <div class="forecast-value" data-bind="summary-pending-orders">-</div>
       <div class="forecast-target"><span>Cancelado:</span><strong data-bind="summary-cancelled-value">-</strong></div>
-      <a href="plano_voo.php" class="forecast-link">Ver metas e ritmo <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">arrow_forward</span></a>
+      <a href="plano_voo.php" class="forecast-link">Ver metas e ritmo <span class="material-symbols-rounded biomie-icon-inline">arrow_forward</span></a>
     </div>
   </section>
 
@@ -77,22 +77,22 @@
   </div>
 
   <div class="section-label anim d2" id="cards">Indicadores Orçamento-PD</div>
-  <section class="kpi-grid mag-kpi-grid">
-    <div class="kpi-card anim d2"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">payments</span></div><div class="kpi-label">Faturamento Orç-PD</div></div><div class="kpi-value" data-bind="summary-revenue">-</div><div class="kpi-sub">Base comercial da NF, com remessas excluídas</div><div class="kpi-footer"><span>Commercial</span><span class="kpi-pulse">Receita</span></div></div>
-    <div class="kpi-card anim d2" data-accent="blue"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">inventory_2</span></div><div class="kpi-label">Mercadoria Orç-PD</div></div><div class="kpi-value" data-bind="summary-merchandise">-</div><div class="kpi-sub">Valor das mercadorias</div><div class="kpi-footer"><span>Mix comercial</span><span class="kpi-pulse">Mix</span></div></div>
-    <div class="kpi-card anim d3" data-accent="yellow"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">money_off</span></div><div class="kpi-label">Descontos</div></div><div class="kpi-value" data-bind="summary-discounts">-</div><div class="kpi-sub">Desconto concedido</div><div class="kpi-footer"><span>Margem</span><span class="kpi-pulse">Desconto</span></div></div>
-    <div class="kpi-card anim d3" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">receipt_long</span></div><div class="kpi-label">NFs Orç-PD</div></div><div class="kpi-value" data-bind="summary-orders">-</div><div class="kpi-sub">Notas autorizadas</div><div class="kpi-footer"><span>Commercial</span><span class="kpi-pulse">NF</span></div></div>
-    <div class="kpi-card anim d4" data-accent="yellow"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">request_quote</span></div><div class="kpi-label">Carteira</div></div><div class="kpi-value" data-bind="summary-pending-orders">-</div><div class="kpi-sub">Fora do realizado</div><div class="kpi-footer"><span>Backlog</span><span class="kpi-pulse">Carteira</span></div></div>
-    <div class="kpi-card anim d4" data-accent="red"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">cancel</span></div><div class="kpi-label">Canceladas</div></div><div class="kpi-value" data-bind="summary-cancelled-value">-</div><div class="kpi-sub">Valor cancelado</div><div class="kpi-footer"><span>Risco</span><span class="kpi-pulse">Cancelado</span></div></div>
-    <div class="kpi-card anim d4" data-accent="purple"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">sell</span></div><div class="kpi-label">Ticket médio Orç-PD</div></div><div class="kpi-value" data-bind="summary-ticket">-</div><div class="kpi-sub">Valor médio por NF</div><div class="kpi-footer"><span>Qualidade</span><span class="kpi-pulse">Ticket</span></div></div>
-    <div class="kpi-card anim d4" data-accent="green"><div class="kpi-header"><div class="kpi-icon"><span class="material-symbols-rounded">person_play</span></div><div class="kpi-label">Vendedores</div></div><div class="kpi-value" data-bind="summary-vendors">-</div><div class="kpi-sub">Com faturamento</div><div class="kpi-footer"><span>Time ativo</span><span class="kpi-pulse">Time</span></div></div>
+  <section class="biomie-kpi-grid">
+    <article class="biomie-kpi-card anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><div class="biomie-kpi-card__value" data-bind="summary-revenue">-</div><div class="biomie-kpi-card__sub">Base comercial da NF, com remessas excluídas</div></article>
+    <article class="biomie-kpi-card biomie-kpi-card--info anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Mercadoria Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">inventory_2</span></div><div class="biomie-kpi-card__value" data-bind="summary-merchandise">-</div><div class="biomie-kpi-card__sub">Valor das mercadorias</div></article>
+    <article class="biomie-kpi-card biomie-kpi-card--warning anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Descontos</span><span class="material-symbols-rounded biomie-kpi-card__icon">money_off</span></div><div class="biomie-kpi-card__value" data-bind="summary-discounts">-</div><div class="biomie-kpi-card__sub">Desconto concedido</div></article>
+    <article class="biomie-kpi-card biomie-kpi-card--success anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div><div class="biomie-kpi-card__value" data-bind="summary-orders">-</div><div class="biomie-kpi-card__sub">Notas autorizadas</div></article>
+    <article class="biomie-kpi-card biomie-kpi-card--warning anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Carteira</span><span class="material-symbols-rounded biomie-kpi-card__icon">request_quote</span></div><div class="biomie-kpi-card__value" data-bind="summary-pending-orders">-</div><div class="biomie-kpi-card__sub">Fora do realizado</div></article>
+    <article class="biomie-kpi-card biomie-kpi-card--danger anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Canceladas</span><span class="material-symbols-rounded biomie-kpi-card__icon">cancel</span></div><div class="biomie-kpi-card__value" data-bind="summary-cancelled-value">-</div><div class="biomie-kpi-card__sub">Valor cancelado</div></article>
+    <article class="biomie-kpi-card anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ticket médio Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Valor médio por NF</div></article>
+    <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vendedores</span><span class="material-symbols-rounded biomie-kpi-card__icon">person_play</span></div><div class="biomie-kpi-card__value" data-bind="summary-vendors">-</div><div class="biomie-kpi-card__sub">Com faturamento</div></article>
   </section>
 
   <div class="section-label anim d3" id="graficos">Analises</div>
   <section class="charts-grid">
     <div class="chart-card anim d4">
       <div class="chart-card-header"><div><h3>Faturamento no periodo</h3><small>Notas, carteira e cancelamentos por dia</small></div></div>
-      <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="ordersStatusChart"></canvas></div>
+      <div class="chart-body mag-chart-container mag-chart-md biomie-chart-h-md"><canvas id="ordersStatusChart"></canvas></div>
     </div>
   </section>
 
@@ -100,9 +100,9 @@
     <div class="table-card-header" style="flex-wrap:wrap;gap:8px;">
       <div><h3 id="nfScopeTitle">Faturamento Orçamento-PD</h3><small id="nfScopeSubtitle">Somente NFs Orçamento-PD faturadas. Remessas excluídas.</small></div>
       <div id="nfScopeTabs" class="mag-tab-bar" style="display:none;" role="tablist" aria-label="Tipo de operacao fiscal">
-        <button class="mag-tab mag-tab--active" role="tab" aria-selected="true"  data-nf-scope="commercial" id="nfTab-commercial"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">shopping_bag</span> Orcamento-PD</button>
-        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="remittance" id="nfTab-remittance"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">local_shipping</span> Remessa <span id="nfRemittanceBadge" class="mag-badge mag-badge--yellow" style="display:none;"></span></button>
-        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="all"        id="nfTab-all"       ><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">list_alt</span> Todas</button>
+        <button class="mag-tab mag-tab--active" role="tab" aria-selected="true"  data-nf-scope="commercial" id="nfTab-commercial"><span class="material-symbols-rounded biomie-icon-inline">shopping_bag</span> Orcamento-PD</button>
+        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="remittance" id="nfTab-remittance"><span class="material-symbols-rounded biomie-icon-inline">local_shipping</span> Remessa <span id="nfRemittanceBadge" class="mag-badge mag-badge--yellow" style="display:none;"></span></button>
+        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="all"        id="nfTab-all"       ><span class="material-symbols-rounded biomie-icon-inline">list_alt</span> Todas</button>
       </div>
     </div>
     <div id="nfRemittanceAlert" style="display:none;flex-direction:column;gap:4px;" class="mag-alert mag-alert--yellow" role="alert">
@@ -161,7 +161,7 @@
     <div id="nfSearchFeedback" style="display:none;"></div>
 
     <!-- Tabela NF (compartilhada: app.js view normal + resultados de busca) -->
-    <div style="overflow-x:auto"><table class="mag-table mag-table-clean" data-mobile-card-table><thead>
+    <div class="biomie-table-wrap"><table class="mag-table mag-table-clean" data-mobile-card-table><thead>
       <tr>
         <th id="th-nf"      data-filter-header>NF</th>
         <th id="th-tipo"    data-filter-header>Tipo</th>
@@ -213,18 +213,18 @@
   <section class="charts-grid mag-chart-below-table">
     <div class="chart-card anim d5">
       <div class="chart-card-header"><div><h3>Ranking comercial — Orç-PD</h3><small>Top vendedores por receita das NFs Orçamento-PD (remessas excluídas)</small></div></div>
-      <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="ordersVendorChart"></canvas></div>
+      <div class="chart-body mag-chart-container mag-chart-md biomie-chart-h-md"><canvas id="ordersVendorChart"></canvas></div>
     </div>
   </section>
 
   <section class="module-grid-2">
     <div class="table-card anim d5">
       <div class="table-card-header"><h3>Pedidos em carteira</h3><small>Pedidos ainda fora do faturado.</small></div>
-      <div style="overflow-x:auto"><table class="mag-table mag-table-clean"><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Emissao</th><th>Total</th></tr></thead><tbody id="pendingOrdersTable" data-empty-title="Sem pedidos" data-empty-message="Nenhum pedido em carteira para o periodo." data-empty-icon="pending_actions"></tbody></table></div>
+      <div class="biomie-table-wrap"><table class="mag-table mag-table-clean"><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Emissao</th><th>Total</th></tr></thead><tbody id="pendingOrdersTable" data-empty-title="Sem pedidos" data-empty-message="Nenhum pedido em carteira para o periodo." data-empty-icon="pending_actions"></tbody></table></div>
     </div>
     <div class="table-card anim d5">
       <div class="table-card-header"><h3>Notas canceladas</h3><small>Documentos cancelados no periodo.</small></div>
-      <div style="overflow-x:auto"><table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr><th>NF</th><th>Cliente</th><th>Vendedor</th><th>Data</th><th>Total</th></tr></thead><tbody id="cancelledOrdersTable" data-empty-title="Sem cancelamentos" data-empty-message="Nenhuma nota cancelada no periodo." data-empty-icon="check_circle"></tbody></table></div>
+      <div class="biomie-table-wrap"><table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr><th>NF</th><th>Cliente</th><th>Vendedor</th><th>Data</th><th>Total</th></tr></thead><tbody id="cancelledOrdersTable" data-empty-title="Sem cancelamentos" data-empty-message="Nenhuma nota cancelada no periodo." data-empty-icon="check_circle"></tbody></table></div>
     </div>
   </section>
 </main>

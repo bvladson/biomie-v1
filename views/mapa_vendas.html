@@ -25,27 +25,12 @@
 </head>
 
 <body class="mag-page mag-clean-page" data-page="geografia">
-<div class="overlay" id="overlay"></div>
-
-<div class="shell">
-  <div class="main">
-    <header class="topbar">
-      <div class="topbar-left">
-        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
-          <span class="material-symbols-rounded">menu</span>
-        </button>
-        <div class="topbar-badge">
-          <span class="material-symbols-rounded">travel_explore</span>Geografia
-        </div>
-      </div>
-    </header>
-
-    <main class="page dashboard-shell">
-      <section class="mag-page-header mag-page-header-shell mag-page-title anim">
-        <div class="mag-page-title__copy">
-          <div class="mag-kicker"><span class="material-symbols-rounded">map</span>Mapa comercial</div>
-          <h1>Vendas por bairro em Fortaleza</h1>
-          <p>Leitura geografica dos bairros, com faturamento, clientes, notas, ticket medio, compradores e CNAEs.</p>
+<main class="page dashboard-shell">
+      <section class="biomie-page-header biomie-page-header--shell anim">
+        <div class="biomie-page-header__body">
+          <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">map</span>Mapa comercial</div>
+          <h1 class="biomie-page-header__title">Vendas por bairro em Fortaleza</h1>
+          <p class="biomie-page-header__subtitle">Leitura geográfica dos bairros, com faturamento, clientes, notas, ticket médio, compradores e CNAEs.</p>
         </div>
       </section>
 
@@ -71,6 +56,10 @@
             <label class="filter-label" for="cnaeFilter">CNAE</label>
             <input id="cnaeFilter" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
           </div>
+          <div class="filter-group">
+            <label class="filter-label" for="vendedorFilter">Vendedor</label>
+            <input id="vendedorFilter" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
+          </div>
           <div class="filter-actions">
             <button id="applyFilters" type="button" class="btn-primary">
               <span class="material-symbols-rounded">filter_alt</span>Aplicar filtros
@@ -80,39 +69,45 @@
             </button>
           </div>
         </div>
+        <div class="nf-quick-filter-bar" id="geoQuickPresets">
+          <button type="button" class="nf-quick-filter-btn" id="geoPresetThisMonth">Mês atual</button>
+          <button type="button" class="nf-quick-filter-btn" id="geoPresetLast3">Últ. 3 meses</button>
+          <button type="button" class="nf-quick-filter-btn" id="geoPresetThisYear">Este ano</button>
+        </div>
+        <div id="geoFilterChips" class="mag-orders-active-filters" style="display:none;"></div>
         <div id="geoFeedback" class="module-alert module-alert--info d-none"></div>
       </section>
 
-      <section class="mag-page-kpis anim d2">
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Total vendido</span><span class="material-symbols-rounded mag-kpi-card__icon">payments</span></div>
-          <strong id="geoKpiRevenue" class="mag-kpi-card__value">-</strong>
-          <span class="mag-kpi-card__subtitle">Faturamento materializado no filtro.</span>
+      <section class="biomie-kpi-grid anim d2">
+        <article class="biomie-kpi-card">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Total vendido</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+          <strong id="geoKpiRevenue" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Faturamento materializado no filtro.</span>
         </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Bairros com venda</span><span class="material-symbols-rounded mag-kpi-card__icon">pin_drop</span></div>
-          <strong id="geoKpiAreas" class="mag-kpi-card__value">-</strong>
-          <span class="mag-kpi-card__subtitle">Bairros com movimentacao no periodo.</span>
+        <article class="biomie-kpi-card">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Bairros com venda</span><span class="material-symbols-rounded biomie-kpi-card__icon">pin_drop</span></div>
+          <strong id="geoKpiAreas" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Bairros com movimentação no período.</span>
         </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Melhor bairro</span><span class="material-symbols-rounded mag-kpi-card__icon">workspace_premium</span></div>
-          <strong id="geoKpiTopArea" class="mag-kpi-card__value">-</strong>
-          <span class="mag-kpi-card__subtitle">Maior faturamento do recorte.</span>
+        <article class="biomie-kpi-card">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Melhor bairro</span><span class="material-symbols-rounded biomie-kpi-card__icon">workspace_premium</span></div>
+          <strong id="geoKpiTopArea" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Maior faturamento do recorte.</span>
         </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Clientes</span><span class="material-symbols-rounded mag-kpi-card__icon">groups</span></div>
-          <strong id="geoKpiClients" class="mag-kpi-card__value">-</strong>
-          <span class="mag-kpi-card__subtitle">Compradores vinculados a bairro.</span>
+        <article class="biomie-kpi-card">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div>
+          <strong id="geoKpiClients" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Compradores vinculados a bairro.</span>
         </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Notas</span><span class="material-symbols-rounded mag-kpi-card__icon">receipt_long</span></div>
-          <strong id="geoKpiNotes" class="mag-kpi-card__value">-</strong>
-          <span class="mag-kpi-card__subtitle">Notas analisadas no mart.</span>
+        <article class="biomie-kpi-card">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Notas</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
+          <strong id="geoKpiNotes" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Notas analisadas no mart.</span>
         </article>
-        <article class="mag-kpi-card">
-          <div class="mag-kpi-card__head"><span class="mag-kpi-card__title">Sem bairro</span><span class="material-symbols-rounded mag-kpi-card__icon">location_off</span></div>
-          <strong id="geoKpiNoArea" class="mag-kpi-card__value">-</strong>
-          <span class="mag-kpi-card__subtitle">Registros a enriquecer.</span>
+        <article class="biomie-kpi-card">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem bairro</span><span class="material-symbols-rounded biomie-kpi-card__icon">location_off</span></div>
+          <strong id="geoKpiNoArea" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Registros a enriquecer.</span>
         </article>
       </section>
 
@@ -177,8 +172,8 @@
             </div>
             <div class="biomie-panel-section">
               <div id="buyersSourceBadge" style="display:none;margin-bottom:6px;"></div>
-              <table class="mag-table mag-table-clean">
-                <thead><tr><th>Cliente</th><th style="text-align:right">Notas</th><th style="text-align:right">Faturamento</th></tr></thead>
+              <table class="mag-table mag-table-clean" data-mobile-card-table>
+                <thead><tr><th>Cliente</th><th>Notas</th><th>Faturamento</th></tr></thead>
                 <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um bairro para ver os compradores." data-empty-icon="group_off"></tbody>
               </table>
               <div id="buyerChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
@@ -195,8 +190,8 @@
               </div>
             </div>
             <div class="biomie-panel-section">
-              <table class="mag-table mag-table-clean">
-                <thead><tr><th>CNAE</th><th style="text-align:right">Clientes</th><th style="text-align:right">Faturamento</th></tr></thead>
+              <table class="mag-table mag-table-clean" data-mobile-card-table>
+                <thead><tr><th>CNAE</th><th>Clientes</th><th>Faturamento</th></tr></thead>
                 <tbody id="cnaeRevenueTable" data-empty-title="Sem CNAEs" data-empty-message="Nenhum CNAE encontrado para este recorte." data-empty-icon="category"></tbody>
               </table>
               <div id="cnaeChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
@@ -219,8 +214,8 @@
               </div>
             </div>
             <div class="wallboard-card-body compact">
-              <table class="mag-table mag-table-clean">
-                <thead><tr><th style="width:28px;padding-right:4px;">#</th><th>Bairro</th><th style="text-align:right">Faturamento</th></tr></thead>
+              <table class="mag-table mag-table-clean" data-mobile-card-table>
+                <thead><tr><th>#</th><th>Bairro</th><th>Faturamento</th></tr></thead>
                 <tbody id="scopeRankingTable" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></tbody>
               </table>
             </div>
@@ -234,16 +229,16 @@
                 <small>Clique em uma linha para filtrar o mapa pelo bairro.</small>
               </div>
             </div>
-            <div class="wallboard-card-body compact" style="overflow-x:auto;">
-              <table class="mag-table mag-table-clean">
+            <div class="wallboard-card-body compact biomie-table-wrap">
+              <table class="mag-table mag-table-clean" data-mobile-card-table>
                 <thead>
                   <tr>
                     <th>Bairro</th>
-                    <th style="text-align:right">Clientes</th>
-                    <th style="text-align:right">Notas</th>
-                    <th style="text-align:right">Faturamento</th>
-                    <th style="text-align:right">Ticket</th>
-                    <th style="min-width:80px;">Share</th>
+                    <th>Clientes</th>
+                    <th>Notas</th>
+                    <th>Faturamento</th>
+                    <th>Ticket</th>
+                    <th>Share</th>
                   </tr>
                 </thead>
                 <tbody id="drillDownTable" data-empty-title="Sem detalhamento" data-empty-message="Nenhum dado agregado para o filtro atual." data-empty-icon="table_view"></tbody>
@@ -290,9 +285,7 @@
           </div>
         </div>
       </details>
-    </main>
-  </div>
-</div>
+</main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="assets/js/shell.js?v=20260425-ui1"></script>

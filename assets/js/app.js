@@ -742,6 +742,9 @@
 
   async function loadDashboard(force, options) {
     options = options || {};
+    if (window.BDashboard && typeof window.BDashboard.hasExtraFilters === 'function' && window.BDashboard.hasExtraFilters()) {
+      window.BDashboard.loadFiltered(force); return;
+    }
     const compareActive = window.CompareMode && window.CompareMode.isActive ? window.CompareMode.isActive() : false;
     const prevPeriod = compareActive && window.CompareMode
       ? window.CompareMode.getPrevPeriod(getDateRange().start, getDateRange().end)
