@@ -793,6 +793,7 @@ final class Auth
                 'required_any_permission' => $requiredAny,
                 'route' => self::currentPath(),
             ]);
+            exit;
         } catch (\Throwable) {
             http_response_code(403);
             header('Content-Type: text/html; charset=utf-8');

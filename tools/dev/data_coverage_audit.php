@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../../app/bootstrap.php';
-
+use BIomie\Bootstrap;
+use BIomie\Config;
 use BIomie\Database;
 use BIomie\DataPlatform\Monitoring\DataCoverageRepository;
 use BIomie\DataPlatform\Monitoring\DataCoverageService;
+use BIomie\Logger;
+
+require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
+\BIomie\Support\CliGuard::requireCli();
+require_once dirname(__DIR__, 2) . '/app/Bootstrap.php';
+Bootstrap::init();
 
 $opts = getopt('', ['start:', 'end:', 'month:', 'json', 'markdown']);
 
@@ -16,6 +22,9 @@ $isMarkdown = isset($opts['markdown']);
 
 $start = $opts['start'] ?? date('Y-m-01', strtotime('-1 month'));
 $end = $opts['end'] ?? date('Y-m-t');
+$root = dirname(__DIR__, 2);
+$config = new Config();
+$logger = new Logger($root . '/storage/logs/data_coverage_audit.log');
 
 $months = [];
 if ($targetMonth !== '') {

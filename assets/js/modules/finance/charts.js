@@ -178,6 +178,29 @@
     });
     if (!allRows.length) { renderEmptyChart(targetId, 'Sem ritmo de carteira para o periodo selecionado.'); return; }
 
+    if (allRows.length === 1) {
+      destroyChart(targetId + 'Canvas');
+      var tgt = document.getElementById(targetId);
+      if (!tgt) return;
+      var r = allRows[0];
+      var kpis = [
+        { label: 'Recebido no período', value: r.received, color: chartPalette.emerald || '#0f9f6e' },
+        { label: 'A vencer',            value: r.open,     color: chartPalette.gold    || '#c99a2e' },
+        { label: 'Vencido em aberto',   value: r.overdue,  color: chartPalette.red     || '#d04d4d' }
+      ].filter(function (k) { return Number(k.value || 0) > 0; });
+      tgt.innerHTML =
+        '<div style="display:flex;gap:14px;align-items:stretch;height:100%;padding:16px 4px;box-sizing:border-box;flex-wrap:wrap;">' +
+          kpis.map(function (k) {
+            return '<div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:6px;padding:18px 20px;' +
+              'border-radius:12px;background:' + k.color + '15;border:1px solid ' + k.color + '38;">' +
+              '<span style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:' + k.color + ';">' + escapeHtml(k.label) + '</span>' +
+              '<strong style="font-size:1.5rem;font-weight:800;color:' + k.color + ';line-height:1.15;">' + formatCurrency(k.value) + '</strong>' +
+              '</div>';
+          }).join('') +
+        '</div>';
+      return;
+    }
+
     var ctx = injectCanvasHost(targetId, targetId + 'Canvas');
     if (!ctx) return;
 
@@ -359,30 +382,41 @@
     var target = document.getElementById(targetId);
     if (!target) return;
     var normalizedRows = safeArray(rows).map(function (row) {
-      return { bucket: row.bucket, amount: Number(row.amount || 0), titles: Number(row.titles || 0), share: Number(row.share || 0), min_days: row.min_days != null ? row.min_days : null, max_days: row.max_days != null ? row.max_days : null };
+      return { bucket: row.bucket, amount: Number(row.amount || 0), titles: Number(row.titles || 0), share: Number(row.share || 0), max_days: Number(row.max_days || 0) };
     });
     var total = normalizedRows.reduce(function (sum, row) { return sum + row.amount; }, 0);
     if (total <= 0) { renderEmptyChart(targetId, 'Sem inadimplencia vencida suficiente para montar faixas.'); return; }
 
-    var colors = { '1-30 dias': '#fcd277', '31-60 dias': '#f39c12', '61-90 dias': '#d04d4d', '91+ dias': '#9f2727' };
+    var colors = { '1-30 dias': '#d97706', '31-60 dias': '#ea580c', '61-90 dias': '#dc2626', '91+ dias': '#7f1d1d' };
     var visibleRows = normalizedRows.filter(function (r) { return r.amount > 0; });
 
     target.innerHTML =
-      '<div class="fin-aging-wrap">' +
-        '<div class="fin-aging-track">' +
+      '<div style="display:flex;flex-direction:column;gap:14px;">' +
+        '<div style="display:flex;height:20px;border-radius:999px;overflow:hidden;gap:2px;">' +
           visibleRows.map(function (row) {
             var pct = (row.amount / total) * 100;
-            return '<div class="fin-aging-segment" style="width:' + pct + '%; background:' + (colors[row.bucket] || '#ccc') + '" title="' + row.bucket + ': ' + formatCurrency(row.amount) + '">' +
-              (pct > 8 ? formatPercent(pct) : '') +
-            '</div>';
+            var c   = colors[row.bucket] || '#ccc';
+            return '<div style="width:' + pct + '%;background:' + c + ';display:flex;align-items:center;justify-content:center;' +
+              'font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);" title="' + escapeHtml(row.bucket) + ': ' + formatCurrency(row.amount) + '">' +
+              (pct > 14 ? formatPercent(pct) : '') + '</div>';
           }).join('') +
         '</div>' +
-        '<div class="fin-aging-legend">' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
           visibleRows.map(function (row) {
-            return '<div class="fin-aging-card">' +
-              '<div class="fin-aging-card-head"><i class="fin-aging-dot" style="background:' + (colors[row.bucket] || '#ccc') + '"></i>' + escapeHtml(row.bucket) + '</div>' +
-              '<div class="fin-aging-value">' + formatCurrency(row.amount) + '</div>' +
-              '<div class="fin-aging-meta"><span>' + formatNumber(row.titles) + ' doc(s)</span><strong>' + formatPercent((row.amount / total) * 100) + '</strong></div>' +
+            var c   = colors[row.bucket] || '#ccc';
+            var pct = (row.amount / total) * 100;
+            return '<div style="flex:1;min-width:130px;padding:12px 14px;border-radius:10px;' +
+              'background:' + c + '18;border-left:3px solid ' + c + ';border:1px solid ' + c + '30;border-left:4px solid ' + c + ';">' +
+              '<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">' +
+                '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + c + ';flex-shrink:0;"></span>' +
+                '<span style="font-size:11px;font-weight:700;color:' + c + ';text-transform:uppercase;letter-spacing:.04em;">' + escapeHtml(row.bucket) + '</span>' +
+              '</div>' +
+              '<div style="font-size:1.1rem;font-weight:800;color:' + c + ';margin-bottom:5px;">' + formatCurrency(row.amount) + '</div>' +
+              '<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:#666;flex-wrap:wrap;">' +
+                '<span>' + formatNumber(row.titles) + ' título(s)</span>' +
+                '<strong style="color:' + c + ';">' + formatPercent(pct) + '</strong>' +
+                (row.max_days > 0 ? '<span style="opacity:.65">· até ' + row.max_days + ' dias</span>' : '') +
+              '</div>' +
             '</div>';
           }).join('') +
         '</div>' +

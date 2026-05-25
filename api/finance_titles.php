@@ -14,8 +14,29 @@ require __DIR__ . '/bootstrap_finance.php';
 \BIomie\Auth::requireCapability('finance.view', true);
 
 try {
+    // ── FIN.R2: canonical emergency fallback quando Omie não configurado ───
     if ($finance === null) {
-        Http::json(['ok' => false, 'message' => 'Credenciais Omie nao configuradas para o modulo financeiro.'], 500);
+        $conn2 = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+        if (Database::isConfigured($config, $conn2)) {
+            try {
+                $fresh2   = DatasetFreshnessService::boot($config, $logger);
+                $range2   = Http::resolveDateRange();
+                Http::validateDateRange($range2['start'], $range2['end']);
+                $pdo2     = Database::connect($config, $conn2);
+                $can2     = new CanonicalRepository($pdo2, $logger);
+                if ($can2->isAvailable()) {
+                    $bld2     = new FinanceShadowCandidateBuilder($can2);
+                    $bucket   = strtolower(trim((string) ($_GET['bucket'] ?? 'open')));
+                    $fallback = $bld2->buildTitles($range2['start'], $range2['end'], $bucket);
+                    $fallback['source']            = 'canonical_local';
+                    $fallback['local_data_notice'] = 'Dados locais — última sincronização disponível';
+                    Http::json($fresh2->attach('finance_titles', $fallback));
+                }
+            } catch (Throwable $e2) {
+                $logger->warning('finance_titles: canonical emergency fallback falhou.', ['message' => $e2->getMessage()]);
+            }
+        }
+        Http::json(['ok' => false, 'message' => 'Módulo financeiro indisponível. Dados locais não encontrados.'], 503);
     }
 
     $freshness = DatasetFreshnessService::boot($config, $logger);

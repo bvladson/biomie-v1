@@ -25,6 +25,7 @@ declare(strict_types=1);
  *   D7  Fase L — Filtro visibilidade no código (static audit)
  *   D8  STAB.R1 — SSE hardening no código  [informacional — não bloqueia]
  *   D9  Cache — limpeza                   [apenas com --clear-cache]
+ *   D10 FIN.R1 — Enriquecimento financeiro  [informacional — não bloqueia]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -326,6 +327,49 @@ $domains[] = [
     'issues'  => $d8warns,
 ];
 // D8 is informational only — does NOT flip $allPass
+
+// ── D10 — FIN.R1: enriquecimento financeiro [informacional] ──────────────────
+$d10checks = [
+    [
+        'file'    => $projectRoot . '/tools/dev/finance_enrichment_diagnosis.php',
+        'pattern' => 'path1',
+        'label'   => 'finance_enrichment_diagnosis.php existe',
+    ],
+    [
+        'file'    => $projectRoot . '/tools/dev/enrich_finance_titles.php',
+        'pattern' => 'pass1',
+        'label'   => 'enrich_finance_titles.php existe',
+    ],
+    [
+        'file'    => $projectRoot . '/app/DataPlatform/Gold/Builders/FinanceTitleMartBuilder.php',
+        'pattern' => 'COALESCE(NULLIF(t.codigo_vendedor_omie',
+        'label'   => 'FinanceTitleMartBuilder usa COALESCE para vendedor',
+    ],
+    [
+        'file'    => $projectRoot . '/api/finance_overview.php',
+        'pattern' => 'canonical-local-fallback',
+        'label'   => 'finance_overview.php tem fallback canônico (FIN.R2)',
+    ],
+];
+$d10warns = [];
+foreach ($d10checks as $chk) {
+    $src = is_file($chk['file']) ? file_get_contents($chk['file']) : false;
+    if ($src === false || !str_contains($src, $chk['pattern'])) {
+        $d10warns[] = 'Ausente: ' . $chk['label'];
+    }
+}
+$d10ok = count($d10warns) === 0;
+$domains[] = [
+    'label'   => 'D10 FIN.R1 — Enriquecimento financeiro  [informacional]',
+    'guard'   => 'static-audit finance tools + FinanceTitleMartBuilder',
+    'pass'    => true,
+    'warn'    => !$d10ok,
+    'summary' => $d10ok
+        ? '4/4 padrões FIN.R1 presentes'
+        : count($d10warns) . ' padrão(ões) ausente(s)',
+    'issues'  => $d10warns,
+];
+// D10 is informational only — does NOT flip $allPass
 
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {

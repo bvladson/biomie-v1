@@ -111,6 +111,7 @@ return [
         'canonical_reads_orders' => (bool) env('CANONICAL_READS_ORDERS', '1', $secrets),
         'canonical_reads_overview' => (bool) env('CANONICAL_READS_OVERVIEW', '1', $secrets),
         'canonical_fiscal_ready' => (bool) env('CANONICAL_FISCAL_READY', '1', $secrets),
+        'canonical_reads_finance_overview' => true,
         'operation_scope_enforced' => true,
     ],
     'flight_plan' => [

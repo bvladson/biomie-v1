@@ -23,7 +23,8 @@ final class FinanceReadRepository
             'SELECT titulo_key, titulo_id_omie, numero_documento, status_titulo, especie_documento,
                     forma_pagamento, codigo_cliente_omie, nome_cliente, documento_cliente,
                     codigo_vendedor_omie, nome_vendedor, data_emissao, data_vencimento,
-                    data_liquidacao, data_competencia, valor_pago, valor_liquido, valor_aberto
+                    data_liquidacao, data_competencia, valor_pago, valor_liquido, valor_aberto,
+                    codigo_conta_corrente_omie, documento_origem_tipo, documento_origem_ref
              FROM biomie_titulos_financeiros_canonicos
              WHERE data_competencia BETWEEN :start AND :end
              ORDER BY data_competencia DESC, data_liquidacao DESC, data_vencimento DESC, titulo_key DESC'

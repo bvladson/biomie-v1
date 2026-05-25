@@ -188,7 +188,7 @@ final class HomeBootstrapService
             }
 
             $pdo = Database::connect($this->config, $connection);
-            $reconnect = static fn (): \PDO => Database::connect($this->config, $connection);
+            $reconnect = fn (): \PDO => Database::connect($this->config, $connection);
             $canonical = new CanonicalRepository($pdo, $this->logger, $reconnect);
             if (!$canonical->isAvailable()) {
                 return [null, null];

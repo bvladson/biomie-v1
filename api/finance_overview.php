@@ -20,16 +20,35 @@ Auth::requireCapability('finance.view', true);
 set_time_limit(300);
 
 try {
-    if ($finance === null) {
-        Http::json(['ok' => false, 'message' => 'Credenciais Omie nao configuradas para o modulo financeiro.'], 500);
-    }
-
     $freshness = DatasetFreshnessService::boot($config, $logger);
-    $shadow = ShadowValidationService::boot($config, $logger);
-    $range = Http::resolveDateRange();
+    $shadow    = ShadowValidationService::boot($config, $logger);
+    $range     = Http::resolveDateRange();
     Http::validateDateRange($range['start'], $range['end']);
     $start = $range['start'];
-    $end = $range['end'];
+    $end   = $range['end'];
+
+    // ── FIN.R2: canonical emergency fallback quando Omie não configurado ───
+    if ($finance === null) {
+        $conn2 = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+        if (Database::isConfigured($config, $conn2)) {
+            try {
+                $pdo2 = Database::connect($config, $conn2);
+                $can2 = new CanonicalRepository($pdo2, $logger);
+                if ($can2->isAvailable()) {
+                    $bld2     = new FinanceShadowCandidateBuilder($can2);
+                    $fallback = $bld2->buildOverview($start, $end);
+                    $fallback['mode']                = 'canonical_local';
+                    $fallback['source']              = 'canonical_local';
+                    $fallback['local_data_notice']   = 'Dados locais — última sincronização disponível';
+                    $fallback['meta']['served_from'] = 'canonical-local-fallback';
+                    Http::json($freshness->attach('finance_overview', $fallback, ['observe_request' => true]));
+                }
+            } catch (Throwable $e2) {
+                $logger->warning('finance_overview: canonical emergency fallback falhou.', ['message' => $e2->getMessage()]);
+            }
+        }
+        Http::json(['ok' => false, 'message' => 'Módulo financeiro indisponível. Dados locais não encontrados.'], 503);
+    }
 
     // ── Canonical: serve quando flag ativa e camada disponível ─────────────
     if ($config->isCanonicalEnabled('finance_overview') && (bool) $config->get('features.canonical_fiscal_ready', false)) {

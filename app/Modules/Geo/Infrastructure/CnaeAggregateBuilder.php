@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie\Modules\Geo\Infrastructure;
 
+use BIomie\Support\Geo\GeoKeyNormalizer;
 use BIomie\TableHealthService;
 use PDO;
 use Throwable;
@@ -161,7 +162,66 @@ final class CnaeAggregateBuilder
                AND {$cnaeCoalesce} != ''"
         );
         $stmt->execute();
-        return $stmt->rowCount();
+        $rows = $stmt->rowCount();
+        $this->backfillGeoKeys();
+
+        return $rows;
+    }
+
+    private function backfillGeoKeys(): void
+    {
+        if (!$this->columnExists('mart_vendas_por_cnae_cnpj', 'bairro_key')) {
+            return;
+        }
+
+        $stmt = $this->pdo->query(
+            "SELECT DISTINCT cidade_norm, bairro_norm
+             FROM mart_vendas_por_cnae_cnpj
+             WHERE bairro_key IS NULL OR bairro_key = ''"
+        );
+        $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($pairs === []) {
+            return;
+        }
+
+        $hasCidadeKey = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cidade_key');
+        $upFields = ['bairro_key = :bk', 'bairro_norm = :bn'];
+        if ($hasCidadeKey) {
+            $upFields[] = 'cidade_key = :ck';
+        }
+
+        $up = $this->pdo->prepare(
+            "UPDATE mart_vendas_por_cnae_cnpj
+             SET " . implode(', ', $upFields) . "
+             WHERE cidade_norm <=> :city_raw
+               AND bairro_norm <=> :bairro_raw
+               AND (bairro_key IS NULL OR bairro_key = '')"
+        );
+
+        foreach ($pairs as $pair) {
+            $cityRaw = $pair['cidade_norm'];
+            $bairroRaw = $pair['bairro_norm'];
+            $cityText = $cityRaw === null ? '' : (string) $cityRaw;
+            $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
+            $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
+
+            if ($bairroKey === '') {
+                continue;
+            }
+
+            $params = [
+                ':bk' => $bairroKey,
+                ':bn' => GeoKeyNormalizer::normalizeNeighborhood($bairroText),
+                ':city_raw' => $cityRaw,
+                ':bairro_raw' => $bairroRaw,
+            ];
+            if ($hasCidadeKey) {
+                $params[':ck'] = GeoKeyNormalizer::makeCityKey($cityText);
+            }
+
+            $up->execute($params);
+        }
     }
 
     /** @param list<string> $candidates */

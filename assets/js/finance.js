@@ -431,13 +431,23 @@
     setText('[data-bind="sync-reconciled-until"]',formatMetaDate(meta.reconciled_until || data.reconciled_until || ''));
     setHtml('[data-bind="sync-warning"]',         renderSyncStateBadges(data) || '<span class="mag-status-chip mag-status-live">Leitura principal</span>');
   }
-  function renderWarnings(warnings, notes) {
+  function renderWarnings(warnings, notes, localDataNotice) {
     var target = document.getElementById('financeWarnings');
     if (!target) return;
+    var html = '';
+    if (localDataNotice) {
+      html += '<div class="alert alert-info mb-2 fin-alert" style="display:flex;align-items:center;gap:8px;">'
+            + '<span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0">cloud_off</span>'
+            + escapeHtml(String(localDataNotice))
+            + '</div>';
+    }
     var items = [];
     (warnings || []).forEach(function (w) { items.push('<li>' + escapeHtml(w) + '</li>'); });
     (notes    || []).forEach(function (n) { items.push('<li>' + escapeHtml(n) + '</li>'); });
-    target.innerHTML = items.length ? '<div class="alert alert-warning mb-0 fin-alert"><strong>Notas do financeiro:</strong><ul class="mb-0 mt-2">' + items.join('') + '</ul></div>' : '';
+    if (items.length) {
+      html += '<div class="alert alert-warning mb-0 fin-alert"><strong>Notas do financeiro:</strong><ul class="mb-0 mt-2">' + items.join('') + '</ul></div>';
+    }
+    target.innerHTML = html;
   }
   function renderKpiCard(meta) {
     var progressEl = document.querySelector(meta.progressSelector);
@@ -528,7 +538,7 @@
       renderSummary(data.summary || {}, data.mode);
       renderHero(data.summary || {}, data.status_breakdown || []);
       renderInsights(data);
-      renderWarnings((data.meta && data.meta.warnings) || [], (data.meta && data.meta.notes) || []);
+      renderWarnings((data.meta && data.meta.warnings) || [], (data.meta && data.meta.notes) || [], data.local_data_notice || '');
       if (window.BIomieFinance && window.BIomieFinance.renderCharts) window.BIomieFinance.renderCharts(data);
       renderTables(data);
     } catch (error) {

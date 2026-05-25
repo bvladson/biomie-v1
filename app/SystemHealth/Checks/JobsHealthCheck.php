@@ -73,7 +73,7 @@ final class JobsHealthCheck implements CheckInterface
             );
         }
 
-        $ageMin = (int) round((time() - (int) strtotime($lastSuccess)) / 60);
+        $ageMin = max(0, (int) round((time() - (int) strtotime($lastSuccess)) / 60));
         $metrics['last_success_age_min'] = $ageMin;
 
         if ($ageMin > self::SLA_WARN_MIN) {

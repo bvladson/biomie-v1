@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BIomie\DataPlatform\Gold\Builders;
 
+use BIomie\Support\Geo\GeoKeyNormalizer;
+use PDO;
+
 final class GeoBuyerMartBuilder extends AbstractMartBuilder
 {
     /**
@@ -179,7 +182,86 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
                 refreshed_at   = NOW(){$extraUpsertFields}
         ";
 
-        return $this->exec($sql, ['start' => $start, 'end' => $end], 'materialize_compradores_geo', 'mart_compradores_por_geo', 'insert_mart_compradores_por_geo');
+        $inserted = $this->exec($sql, ['start' => $start, 'end' => $end], 'materialize_compradores_geo', 'mart_compradores_por_geo', 'insert_mart_compradores_por_geo');
+        $this->backfillGeoKeys(substr($start, 0, 7), substr($end, 0, 7));
+
+        return $inserted;
+    }
+
+    private function backfillGeoKeys(string $startComp, string $endComp): void
+    {
+        if (!$this->columnExists('mart_compradores_por_geo', 'bairro_key')) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT DISTINCT cidade_norm, bairro_norm
+             FROM mart_compradores_por_geo
+             WHERE competencia BETWEEN :start_comp AND :end_comp
+               AND (bairro_key IS NULL OR bairro_key = '')"
+        );
+        $stmt->execute(['start_comp' => $startComp, 'end_comp' => $endComp]);
+        $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($pairs === []) {
+            return;
+        }
+
+        $hasCidadeKey = $this->columnExists('mart_compradores_por_geo', 'cidade_key');
+        $hasBairroNome = $this->columnExists('mart_compradores_por_geo', 'bairro_nome');
+        $hasCidadeNome = $this->columnExists('mart_compradores_por_geo', 'cidade_nome');
+
+        $setFields = ['bairro_key = :bairro_key', 'bairro_norm = :bairro_norm'];
+        if ($hasCidadeKey) {
+            $setFields[] = 'cidade_key = :cidade_key';
+        }
+        if ($hasBairroNome) {
+            $setFields[] = 'bairro_nome = :bairro_nome';
+        }
+        if ($hasCidadeNome) {
+            $setFields[] = 'cidade_nome = :cidade_nome';
+        }
+
+        $update = $this->pdo->prepare(
+            "UPDATE mart_compradores_por_geo
+             SET " . implode(', ', $setFields) . "
+             WHERE competencia BETWEEN :start_comp AND :end_comp
+               AND cidade_norm <=> :city_raw
+               AND bairro_norm <=> :bairro_raw
+               AND (bairro_key IS NULL OR bairro_key = '')"
+        );
+
+        foreach ($pairs as $pair) {
+            $cityRaw = $pair['cidade_norm'];
+            $bairroRaw = $pair['bairro_norm'];
+            $cityText = $cityRaw === null ? '' : (string) $cityRaw;
+            $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
+            $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
+
+            if ($bairroKey === '') {
+                continue;
+            }
+
+            $params = [
+                'bairro_key' => $bairroKey,
+                'bairro_norm' => GeoKeyNormalizer::normalizeNeighborhood($bairroText),
+                'start_comp' => $startComp,
+                'end_comp' => $endComp,
+                'city_raw' => $cityRaw,
+                'bairro_raw' => $bairroRaw,
+            ];
+            if ($hasCidadeKey) {
+                $params['cidade_key'] = GeoKeyNormalizer::makeCityKey($cityText);
+            }
+            if ($hasBairroNome) {
+                $params['bairro_nome'] = GeoKeyNormalizer::displayName($bairroText);
+            }
+            if ($hasCidadeNome) {
+                $params['cidade_nome'] = GeoKeyNormalizer::displayName($cityText);
+            }
+
+            $update->execute($params);
+        }
     }
 
     /** @return array<string,mixed> */

@@ -25,6 +25,7 @@
 
 /storage/releases/*
 !/storage/releases/.gitkeep
+/storage/backups/
 
 # Backups, dumps and exports
 /backups/

@@ -110,7 +110,7 @@ final class WorkerQueueHealthCheck implements CheckInterface
                 $this->label(),
                 'Ha jobs em falha final/dead-letter aguardando tratamento.',
                 $metrics,
-                ['Use php tools/dev/worker_queue_debug.php --failed --json para investigar.'],
+                ['Use php tools/dev/dead_letter_report.php --pretty para classificar e php tools/dev/dead_letter_redrive.php em dry-run antes de qualquer acao.'],
                 $ms
             );
         }
@@ -122,6 +122,17 @@ final class WorkerQueueHealthCheck implements CheckInterface
                 "{$pending} job(s) aguardando processamento.",
                 $metrics,
                 ['Confirme heartbeat do worker e processamento da fila.'],
+                $ms
+            );
+        }
+
+        if ($heartbeatStatus === 'critical' && $hasSyncRuns) {
+            return SystemHealthCheck::warning(
+                $this->id(),
+                $this->label(),
+                'Worker sem heartbeat recente; fila vazia, mas o cron pode estar parado.',
+                $metrics,
+                ['Confirmar cron do worker no Hostinger e rodar php tools/dev/dead_letter_report.php --pretty.'],
                 $ms
             );
         }

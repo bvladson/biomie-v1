@@ -153,67 +153,73 @@ final class GeoAggregateBuilder
             return;
         }
 
-        try {
-            $stmt = $this->pdo->prepare(
-                "SELECT DISTINCT cidade_norm, bairro_norm
-                 FROM mart_compradores_por_geo
-                 WHERE competencia BETWEEN :s AND :e
-                   AND (bairro_key IS NULL OR bairro_key = '')"
-            );
-            $stmt->execute([':s' => $startComp, ':e' => $endComp]);
-            $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare(
+            "SELECT DISTINCT cidade_norm, bairro_norm
+             FROM mart_compradores_por_geo
+             WHERE competencia BETWEEN :s AND :e
+               AND (bairro_key IS NULL OR bairro_key = '')"
+        );
+        $stmt->execute([':s' => $startComp, ':e' => $endComp]);
+        $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($pairs === []) {
-                return;
+        if ($pairs === []) {
+            return;
+        }
+
+        $hasCidadeKey   = $this->columnExists('mart_compradores_por_geo', 'cidade_key');
+        $hasBairroNome  = $this->columnExists('mart_compradores_por_geo', 'bairro_nome');
+        $hasCidadeNome  = $this->columnExists('mart_compradores_por_geo', 'cidade_nome');
+
+        $upFields = ['bairro_key = :bk', 'bairro_norm = :bn'];
+        if ($hasCidadeKey) {
+            $upFields[] = 'cidade_key = :ck';
+        }
+        if ($hasBairroNome) {
+            $upFields[] = 'bairro_nome = :nome';
+        }
+        if ($hasCidadeNome) {
+            $upFields[] = 'cidade_nome = :cnome';
+        }
+
+        $up = $this->pdo->prepare(
+            "UPDATE mart_compradores_por_geo
+             SET " . implode(', ', $upFields) . "
+             WHERE competencia BETWEEN :s AND :e
+               AND cidade_norm <=> :city_raw
+               AND bairro_norm <=> :bairro_raw
+               AND (bairro_key IS NULL OR bairro_key = '')"
+        );
+
+        foreach ($pairs as $pair) {
+            $cityRaw = $pair['cidade_norm'];
+            $bairroRaw = $pair['bairro_norm'];
+            $cityText = $cityRaw === null ? '' : (string) $cityRaw;
+            $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
+            $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
+
+            if ($bairroKey === '') {
+                continue;
             }
 
-            $hasBairroNome  = $this->columnExists('mart_compradores_por_geo', 'bairro_nome');
-            $hasCidadeNome  = $this->columnExists('mart_compradores_por_geo', 'cidade_nome');
-
-            $upFields = ['bairro_key = :bk', 'cidade_key = :ck', 'bairro_norm = :bn'];
+            $params = [
+                ':bk' => $bairroKey,
+                ':bn' => GeoKeyNormalizer::normalizeNeighborhood($bairroText),
+                ':s' => $startComp,
+                ':e' => $endComp,
+                ':city_raw' => $cityRaw,
+                ':bairro_raw' => $bairroRaw,
+            ];
+            if ($hasCidadeKey) {
+                $params[':ck'] = GeoKeyNormalizer::makeCityKey($cityText);
+            }
             if ($hasBairroNome) {
-                $upFields[] = 'bairro_nome = :nome';
+                $params[':nome'] = GeoKeyNormalizer::displayName($bairroText);
             }
             if ($hasCidadeNome) {
-                $upFields[] = 'cidade_nome = :cnome';
+                $params[':cnome'] = GeoKeyNormalizer::displayName($cityText);
             }
 
-            $up = $this->pdo->prepare(
-                "UPDATE mart_compradores_por_geo
-                 SET " . implode(', ', $upFields) . "
-                 WHERE competencia BETWEEN :s AND :e
-                   AND (cidade_norm <=> :city OR (cidade_norm IS NULL AND :city IS NULL))
-                   AND (bairro_norm <=> :bairro OR (bairro_norm IS NULL AND :bairro IS NULL))
-                   AND (bairro_key IS NULL OR bairro_key = '')"
-            );
-
-            foreach ($pairs as $pair) {
-                $cityRaw   = (string) ($pair['cidade_norm'] ?? '');
-                $bairroRaw = (string) ($pair['bairro_norm'] ?? '');
-                $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroRaw);
-                $cidadeKey = GeoKeyNormalizer::makeCityKey($cityRaw);
-                $bairroNorm = GeoKeyNormalizer::normalizeNeighborhood($bairroRaw);
-
-                $params = [
-                    ':bk'     => $bairroKey,
-                    ':ck'     => $cidadeKey,
-                    ':bn'     => $bairroNorm,
-                    ':s'      => $startComp,
-                    ':e'      => $endComp,
-                    ':city'   => $cityRaw !== '' ? $cityRaw : null,
-                    ':bairro' => $bairroRaw !== '' ? $bairroRaw : null,
-                ];
-                if ($hasBairroNome) {
-                    $params[':nome'] = GeoKeyNormalizer::displayName($bairroRaw);
-                }
-                if ($hasCidadeNome) {
-                    $params[':cnome'] = GeoKeyNormalizer::displayName($cityRaw);
-                }
-
-                $up->execute($params);
-            }
-        } catch (Throwable) {
-            // Backfill is best-effort; do not fail the main materialization.
+            $up->execute($params);
         }
     }
 

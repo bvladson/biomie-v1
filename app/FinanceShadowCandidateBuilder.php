@@ -39,6 +39,7 @@ final class FinanceShadowCandidateBuilder
             'document_types' => $dataset['document_types'],
             'payment_methods' => $dataset['payment_methods'],
             'aging' => $dataset['aging'],
+            'trend' => $dataset['trend'],
             'meta' => [
                 'generated_at' => date(DATE_ATOM),
                 'served_from' => 'canonical-shadow',
@@ -97,10 +98,10 @@ final class FinanceShadowCandidateBuilder
         $openTotal = 0.0;
         $overdueTotal = 0.0;
         $agingBuckets = [
-            'Ate 30 dias'     => ['bucket' => 'Ate 30 dias',     'amount' => 0.0, 'titles' => 0],
-            '31-60 dias'      => ['bucket' => '31-60 dias',       'amount' => 0.0, 'titles' => 0],
-            '61-90 dias'      => ['bucket' => '61-90 dias',       'amount' => 0.0, 'titles' => 0],
-            'Mais de 90 dias' => ['bucket' => 'Mais de 90 dias',  'amount' => 0.0, 'titles' => 0],
+            '1-30 dias'  => ['bucket' => '1-30 dias',  'amount' => 0.0, 'titles' => 0, 'max_days' => 0],
+            '31-60 dias' => ['bucket' => '31-60 dias', 'amount' => 0.0, 'titles' => 0, 'max_days' => 0],
+            '61-90 dias' => ['bucket' => '61-90 dias', 'amount' => 0.0, 'titles' => 0, 'max_days' => 0],
+            '91+ dias'   => ['bucket' => '91+ dias',   'amount' => 0.0, 'titles' => 0, 'max_days' => 0],
         ];
 
         foreach ($titles as $title) {
@@ -146,13 +147,14 @@ final class FinanceShadowCandidateBuilder
 
                     $daysLate = (int) ($normalized['days_late'] ?? 0);
                     $agingKey = match (true) {
-                        $daysLate <= 30 => 'Ate 30 dias',
+                        $daysLate <= 30 => '1-30 dias',
                         $daysLate <= 60 => '31-60 dias',
                         $daysLate <= 90 => '61-90 dias',
-                        default         => 'Mais de 90 dias',
+                        default         => '91+ dias',
                     };
                     $agingBuckets[$agingKey]['amount'] += $amountOpen;
                     $agingBuckets[$agingKey]['titles']++;
+                    $agingBuckets[$agingKey]['max_days'] = max($agingBuckets[$agingKey]['max_days'], $daysLate);
 
                     if (!isset($clientMap[$clientName])) {
                         $clientMap[$clientName] = [
@@ -223,10 +225,17 @@ final class FinanceShadowCandidateBuilder
         usort($openTitles, static fn (array $left, array $right): int => strcmp((string) ($left['due_date'] ?? ''), (string) ($right['due_date'] ?? '')));
         usort($overdueTitles, static fn (array $left, array $right): int => ((int) ($right['days_late'] ?? 0)) <=> ((int) ($left['days_late'] ?? 0)));
 
-        $agingRows = array_values(array_filter(
-            $agingBuckets,
-            static fn (array $row): bool => $row['titles'] > 0
-        ));
+        $agingOverdueTotal = array_sum(array_column(array_values($agingBuckets), 'amount'));
+        $agingRows = [];
+        foreach ($agingBuckets as $agingBucket) {
+            if ($agingBucket['titles'] <= 0) {
+                continue;
+            }
+            $agingBucket['share'] = $agingOverdueTotal > 0
+                ? round(($agingBucket['amount'] / $agingOverdueTotal) * 100, 1)
+                : 0.0;
+            $agingRows[] = $agingBucket;
+        }
 
         return [
             'summary' => [
@@ -251,7 +260,63 @@ final class FinanceShadowCandidateBuilder
             'document_types' => array_slice($documentTypesRows, 0, 12),
             'payment_methods' => array_slice($paymentMethodRows, 0, 12),
             'aging' => $agingRows,
+            'trend' => $this->buildTrend($titles),
         ];
+    }
+
+    /**
+     * @param list<array<string,mixed>> $titles
+     * @return list<array<string,mixed>>
+     */
+    private function buildTrend(array $titles): array
+    {
+        $today = new DateTimeImmutable('today');
+        $buckets = [];
+
+        foreach ($titles as $title) {
+            $competencia = trim((string) ($title['data_competencia'] ?? ''));
+            if ($competencia === '') {
+                continue;
+            }
+            $month = substr($competencia, 0, 7);
+            if (!isset($buckets[$month])) {
+                $buckets[$month] = ['received' => 0.0, 'open' => 0.0, 'overdue' => 0.0];
+            }
+
+            $status     = strtolower(trim((string) ($title['status_titulo'] ?? '')));
+            $amountNet  = (float) ($title['valor_liquido'] ?? $title['valor_pago'] ?? 0);
+            $amountOpen = (float) ($title['valor_aberto'] ?? 0);
+            $dueDate    = trim((string) ($title['data_vencimento'] ?? ''));
+
+            if (in_array($status, ['liquidado', 'recebido', 'pago'], true) && $amountNet > 0.001) {
+                $buckets[$month]['received'] += $amountNet;
+            }
+
+            if ($amountOpen > 0.001) {
+                $isOverdue = $dueDate !== '' && new DateTimeImmutable($dueDate) < $today;
+                if ($isOverdue) {
+                    $buckets[$month]['overdue'] += $amountOpen;
+                } else {
+                    $buckets[$month]['open'] += $amountOpen;
+                }
+            }
+        }
+
+        ksort($buckets);
+
+        $trend = [];
+        foreach ($buckets as $month => $data) {
+            $trend[] = [
+                'key'      => $month,
+                'label'    => substr($month, 5, 2) . '/' . substr($month, 0, 4),
+                'received' => round($data['received'], 2),
+                'planned'  => 0.0,
+                'overdue'  => round($data['overdue'], 2),
+                'open'     => round($data['open'], 2),
+            ];
+        }
+
+        return $trend;
     }
 
     /**
@@ -277,7 +342,19 @@ final class FinanceShadowCandidateBuilder
 
         $documentNumber = trim((string) ($title['numero_documento'] ?? ''));
         $originRef = trim((string) ($title['documento_origem_ref'] ?? ''));
-        $documentLabel = $originRef !== '' ? $originRef : $documentNumber;
+
+        if ($originRef !== '') {
+            $documentLabel = $originRef;
+        } elseif ($documentNumber !== '') {
+            $documentLabel = ctype_digit($documentNumber)
+                ? 'NF ' . ltrim($documentNumber, '0')
+                : $documentNumber;
+        } else {
+            $documentLabel = '';
+        }
+
+        $accountCode = trim((string) ($title['codigo_conta_corrente_omie'] ?? ''));
+        $accountName = $accountCode !== '' ? 'Conta #' . $accountCode : 'Conta nao identificada';
 
         return [
             'title_id' => $titleId,
@@ -290,7 +367,7 @@ final class FinanceShadowCandidateBuilder
             'client_document' => (string) ($title['documento_cliente'] ?? ''),
             'vendor_id' => (string) ($title['codigo_vendedor_omie'] ?? ''),
             'vendor_name' => trim((string) ($title['nome_vendedor'] ?? '')) ?: 'Sem vendedor',
-            'account_name' => trim((string) ($title['codigo_conta_corrente_omie'] ?? '')) ?: 'Conta nao identificada',
+            'account_name' => $accountName,
             'due_date' => $dueDate,
             'paid_date' => (string) ($title['data_liquidacao'] ?? ''),
             'status' => (string) ($title['status_titulo'] ?? ''),

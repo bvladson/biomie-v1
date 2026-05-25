@@ -7,7 +7,7 @@ namespace BIomie\Modules\Sales\Application\Overview;
 use BIomie\CanonicalRepository;
 use BIomie\Config;
 use BIomie\Database;
-use BIomie\DataMasker;
+use BIomie\Acl\DataMasker;
 use BIomie\Logger;
 use BIomie\RequestContext;
 use RuntimeException;
@@ -165,7 +165,7 @@ final class OverviewDetailBuilder
         $stmt->execute();
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
-        return ['ok' => true, 'chart_id' => 'revenue_evolution', 'rows' => DataMasker::maskRows($rows)];
+        return ['ok' => true, 'chart_id' => 'revenue_evolution', 'rows' => DataMasker::applyToRows($rows)];
     }
 
     // ── Vendor Ranking ────────────────────────────────────────────────────────
@@ -269,7 +269,7 @@ final class OverviewDetailBuilder
         return [
             'ok' => true,
             'chart_id' => 'top_customers',
-            'rows' => DataMasker::maskRows($stmt->fetchAll(\PDO::FETCH_ASSOC) ?: []),
+            'rows' => DataMasker::applyToRows($stmt->fetchAll(\PDO::FETCH_ASSOC) ?: []),
             'meta' => ['source_tables' => ['mart_cliente_periodo']],
         ];
     }
@@ -377,7 +377,7 @@ final class OverviewDetailBuilder
         return [
             'ok' => true,
             'chart_id' => 'top_invoices',
-            'rows' => DataMasker::maskRows($rows),
+            'rows' => DataMasker::applyToRows($rows),
             'meta' => [
                 'source_tables' => array_values(array_unique($sourceTables)),
                 'warnings' => $rows === [] ? ['Nenhuma NF encontrada nas fontes locais para o periodo.'] : [],
@@ -507,7 +507,7 @@ final class OverviewDetailBuilder
         return [
             'ok' => true,
             'chart_id' => 'finance_risk',
-            'rows' => DataMasker::maskRows($stmt->fetchAll(\PDO::FETCH_ASSOC) ?: []),
+            'rows' => DataMasker::applyToRows($stmt->fetchAll(\PDO::FETCH_ASSOC) ?: []),
             'meta' => ['source_tables' => ['mart_financeiro_titulo']],
         ];
     }

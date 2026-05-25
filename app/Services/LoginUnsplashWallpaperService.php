@@ -97,7 +97,9 @@ final class LoginUnsplashWallpaperService
             CURLOPT_SSL_VERIFYHOST => 2,
         ]);
         curl_exec($ch);
-        curl_close($ch);
+        if (PHP_VERSION_ID < 80500) {
+            curl_close($ch);
+        }
     }
 
     // ── Cache ─────────────────────────────────────────────────────────────────
@@ -240,7 +242,9 @@ final class LoginUnsplashWallpaperService
         $raw    = curl_exec($ch);
         $errno  = curl_errno($ch);
         $http   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        if (PHP_VERSION_ID < 80500) {
+            curl_close($ch);
+        }
 
         if ($errno !== 0) {
             $this->lastError = 'curl_errno:' . $errno . ' [' . parse_url($url, PHP_URL_HOST) . ']';

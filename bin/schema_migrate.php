@@ -47,6 +47,17 @@ try {
             'result' => $runner->rollback($options['version']),
         ],
         'verify' => buildVerifyResponse($runner->verifyChecksums()),
+        'checksum-diagnose' => [
+            'ok' => true,
+            'command' => 'checksum-diagnose',
+            'result' => $runner->checksumDiagnose(),
+        ],
+        'repair-checksums' => [
+            'ok' => true,
+            'command' => 'repair-checksums',
+            'mode' => 'dry-run',
+            'result' => $runner->repairChecksumsDryRun($options['reason'], (bool) $options['apply']),
+        ],
         'help', '--help', '-h' => [
             'ok' => true,
             'command' => 'help',
@@ -57,9 +68,11 @@ try {
                 'php bin/schema_migrate.php rollback',
                 'php bin/schema_migrate.php rollback --version=20260413050500',
                 'php bin/schema_migrate.php verify',
+                'php bin/schema_migrate.php checksum-diagnose',
+                'php bin/schema_migrate.php repair-checksums --dry-run --reason="normalizar checksum v2 path-independent apos STAB.R3.1c"',
             ],
         ],
-        default => throw new RuntimeException('Comando invalido. Use status, migrate, rollback ou verify.'),
+        default => throw new RuntimeException('Comando invalido. Use status, migrate, rollback, verify, checksum-diagnose ou repair-checksums.'),
     };
 
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL;
@@ -83,13 +96,16 @@ try {
 
 /**
  * @param list<string> $args
- * @return array{target:?string,version:?string}
+ * @return array{target:?string,version:?string,reason:?string,dry_run:bool,apply:bool}
  */
 function parseOptions(array $args): array
 {
     $options = [
         'target' => null,
         'version' => null,
+        'reason' => null,
+        'dry_run' => true,
+        'apply' => false,
     ];
 
     foreach ($args as $arg) {
@@ -105,6 +121,21 @@ function parseOptions(array $args): array
 
         if ($key === 'version' && is_string($value) && $value !== '') {
             $options['version'] = $value;
+            continue;
+        }
+
+        if ($key === 'reason' && is_string($value) && $value !== '') {
+            $options['reason'] = $value;
+            continue;
+        }
+
+        if ($key === 'dry-run') {
+            $options['dry_run'] = true;
+            continue;
+        }
+
+        if ($key === 'apply') {
+            $options['apply'] = true;
         }
     }
 

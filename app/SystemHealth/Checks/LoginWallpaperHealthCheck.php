@@ -9,21 +9,25 @@ use BIomie\SystemHealth\SystemHealthCheck;
 
 final class LoginWallpaperHealthCheck implements CheckInterface
 {
-    private const CACHE_FILE  = __DIR__ . '/../../../storage/cache/login_wallpaper.json';
-    private const TTL         = 43200; // 12h default
-    private const WARN_BEFORE = 3600;  // warn when < 1h left
+    private const CACHE_FILE = __DIR__ . '/../../../storage/cache/login_wallpaper.json';
+    private const TTL = 43200; // 12h default
+    private const WARN_BEFORE = 3600; // warn when < 1h left
 
-    public function id(): string    { return 'login_wallpaper'; }
+    public function id(): string { return 'login_wallpaper'; }
     public function label(): string { return 'Wallpaper do Login'; }
 
     public function run(): SystemHealthCheck
     {
         $start = microtime(true);
+        $this->loadLocalUnsplashEnv();
 
         if (!file_exists(self::CACHE_FILE)) {
-            return SystemHealthCheck::unknown(
-                $this->id(), $this->label(),
-                new \RuntimeException('Cache ausente — api/login_wallpaper.php ainda não foi chamada neste ciclo.'),
+            return SystemHealthCheck::warning(
+                $this->id(),
+                $this->label(),
+                'Cache ausente; o wallpaper sera gerado na proxima chamada ao login.',
+                ['cache_exists' => false, 'auth_impact' => 'none'],
+                ['Aquecer cache com php tools/dev/login_wallpaper_debug.php --fetch --json.'],
                 $this->ms($start),
             );
         }
@@ -31,10 +35,11 @@ final class LoginWallpaperHealthCheck implements CheckInterface
         $raw = @file_get_contents(self::CACHE_FILE);
         if ($raw === false) {
             return SystemHealthCheck::critical(
-                $this->id(), $this->label(),
-                'Arquivo de cache ilegível.',
+                $this->id(),
+                $this->label(),
+                'Arquivo de cache ilegivel.',
                 [],
-                ['Verificar permissões de storage/cache/login_wallpaper.json.'],
+                ['Verificar permissoes de storage/cache/login_wallpaper.json.'],
                 $this->ms($start),
             );
         }
@@ -42,23 +47,22 @@ final class LoginWallpaperHealthCheck implements CheckInterface
         $data = json_decode($raw, true);
         if (!is_array($data)) {
             return SystemHealthCheck::critical(
-                $this->id(), $this->label(),
-                'Cache corrompido (JSON inválido).',
+                $this->id(),
+                $this->label(),
+                'Cache corrompido (JSON invalido).',
                 [],
-                ['Remover storage/cache/login_wallpaper.json para forçar renovação.'],
+                ['Remover storage/cache/login_wallpaper.json para forcar renovacao.'],
                 $this->ms($start),
             );
         }
 
-        $source   = (string) ($data['source']   ?? 'unknown');
+        $source = (string) ($data['source'] ?? 'unknown');
         $provider = (string) ($data['provider'] ?? 'unknown');
         $cachedAt = (string) ($data['cached_at'] ?? '');
-        $expiresAt = (string) ($data['expires_at'] ?? '');
-        $url      = (string) ($data['url']      ?? '');
-        $query    = (string) ($data['query']    ?? '');
+        $url = (string) ($data['url'] ?? '');
+        $query = (string) ($data['query'] ?? '');
         $photographerName = (string) ($data['photographer_name'] ?? '');
 
-        // Resolve timestamp — support both ISO string (new) and Unix int (legacy).
         $cachedTs = 0;
         if (isset($data['_cached_at_ts'])) {
             $cachedTs = (int) $data['_cached_at_ts'];
@@ -67,9 +71,8 @@ final class LoginWallpaperHealthCheck implements CheckInterface
         }
 
         $age = $cachedTs > 0 ? (time() - $cachedTs) : PHP_INT_MAX;
-
-        $effectiveTtl = ($source === 'fallback') ? 3600 : self::TTL;
-        $expiresIn    = $effectiveTtl - $age;
+        $effectiveTtl = $source === 'fallback' ? 3600 : self::TTL;
+        $expiresIn = $effectiveTtl - $age;
 
         $urlDomain = '';
         if ($url !== '' && !str_starts_with($url, 'assets/')) {
@@ -79,18 +82,18 @@ final class LoginWallpaperHealthCheck implements CheckInterface
         }
 
         $accessKeySet = (string) getenv('UNSPLASH_ACCESS_KEY') !== '';
-
         $metrics = [
-            'provider'            => $provider,
-            'source'              => $source,
-            'cache_criado'        => $cachedTs > 0 ? date('d/m H:i', $cachedTs)   : '—',
-            'idade'               => $this->fmtAge($age),
-            'proxima_atualizacao' => $cachedTs > 0 ? date('d/m H:i', $cachedTs + $effectiveTtl) : '—',
-            'expira_em'           => $expiresIn > 0 ? $this->fmtAge($expiresIn)    : 'expirado',
-            'url_dominio'         => $urlDomain ?: '(vazio)',
-            'photographer'        => $photographerName ?: '(fallback)',
-            'query'               => $query !== '' ? substr($query, 0, 60) : '(nenhuma)',
-            'access_key_configurada' => $accessKeySet ? 'sim' : 'não',
+            'provider' => $provider,
+            'source' => $source,
+            'cache_criado' => $cachedTs > 0 ? date('d/m H:i', $cachedTs) : '-',
+            'idade' => $this->fmtAge($age),
+            'proxima_atualizacao' => $cachedTs > 0 ? date('d/m H:i', $cachedTs + $effectiveTtl) : '-',
+            'expira_em' => $expiresIn > 0 ? $this->fmtAge($expiresIn) : 'expirado',
+            'url_dominio' => $urlDomain ?: '(vazio)',
+            'photographer' => $photographerName ?: '(fallback)',
+            'query' => $query !== '' ? substr($query, 0, 60) : '(nenhuma)',
+            'access_key_configurada' => $accessKeySet ? 'sim' : 'nao',
+            'auth_impact' => 'none',
         ];
 
         if (!empty($data['_last_error'])) {
@@ -99,59 +102,59 @@ final class LoginWallpaperHealthCheck implements CheckInterface
 
         $ms = $this->ms($start);
 
-        // Critical states.
         if ($url === '' || $cachedTs <= 0) {
             return SystemHealthCheck::critical(
-                $this->id(), $this->label(),
-                'Cache sem URL ou timestamp — estrutura inválida.',
+                $this->id(),
+                $this->label(),
+                'Cache sem URL ou timestamp; estrutura invalida.',
                 $metrics,
-                ['Remover storage/cache/login_wallpaper.json para forçar renovação.'],
+                ['Remover storage/cache/login_wallpaper.json para forcar renovacao.'],
                 $ms,
             );
         }
 
-        // No access key.
         if (!$accessKeySet) {
             return SystemHealthCheck::warning(
-                $this->id(), $this->label(),
-                'UNSPLASH_ACCESS_KEY não configurada — usando fallback local.',
+                $this->id(),
+                $this->label(),
+                'UNSPLASH_ACCESS_KEY nao configurada; usando fallback local.',
                 $metrics,
-                ['Configurar UNSPLASH_ACCESS_KEY no .env para ativar imagens dinâmicas.'],
+                ['Configurar UNSPLASH_ACCESS_KEY no .env para ativar imagens dinamicas.'],
                 $ms,
             );
         }
 
-        // Fallback or empty URL with key set.
         if ($source === 'fallback' || str_starts_with($url, 'assets/')) {
             return SystemHealthCheck::warning(
-                $this->id(), $this->label(),
-                'Usando imagem de fallback local — Unsplash não retornou URL válida na última tentativa.',
+                $this->id(),
+                $this->label(),
+                'Usando imagem de fallback local; Unsplash nao retornou URL valida na ultima tentativa.',
                 $metrics,
                 [
                     'Verificar conectividade do servidor com https://api.unsplash.com.',
                     'Verificar validade da UNSPLASH_ACCESS_KEY.',
-                    'Remover storage/cache/login_wallpaper.json para forçar nova tentativa.',
+                    'Remover storage/cache/login_wallpaper.json para forcar nova tentativa.',
                 ],
                 $ms,
             );
         }
 
-        // Cache expiring soon (< 1h).
         if ($expiresIn < self::WARN_BEFORE && $expiresIn > 0) {
             return SystemHealthCheck::warning(
-                $this->id(), $this->label(),
-                'Cache próximo do vencimento — atualiza em ' . $this->fmtAge($expiresIn) . '.',
+                $this->id(),
+                $this->label(),
+                'Cache proximo do vencimento; atualiza em ' . $this->fmtAge($expiresIn) . '.',
                 $metrics,
                 [],
                 $ms,
             );
         }
 
-        // Cache already expired (will renew on next login visit).
         if ($age > $effectiveTtl) {
             return SystemHealthCheck::warning(
-                $this->id(), $this->label(),
-                'Cache expirado há ' . $this->fmtAge($age - $effectiveTtl) . '. Renova automaticamente na próxima visita ao login.',
+                $this->id(),
+                $this->label(),
+                'Cache expirado ha ' . $this->fmtAge($age - $effectiveTtl) . '. Renova automaticamente na proxima visita ao login.',
                 $metrics,
                 [],
                 $ms,
@@ -159,8 +162,9 @@ final class LoginWallpaperHealthCheck implements CheckInterface
         }
 
         return SystemHealthCheck::ok(
-            $this->id(), $this->label(),
-            'Wallpaper ativo via ' . $provider . ' (' . $source . '), cache válido por mais ' . $this->fmtAge($expiresIn) . '.',
+            $this->id(),
+            $this->label(),
+            'Wallpaper ativo via ' . $provider . ' (' . $source . '), cache valido por mais ' . $this->fmtAge($expiresIn) . '.',
             $metrics,
             $ms,
         );
@@ -171,13 +175,36 @@ final class LoginWallpaperHealthCheck implements CheckInterface
         return (int) round((microtime(true) - $start) * 1000);
     }
 
+    private function loadLocalUnsplashEnv(): void
+    {
+        $localConfig = dirname(__DIR__, 3) . '/config/.env.local.php';
+        if (!is_file($localConfig)) {
+            return;
+        }
+
+        $values = (array) include $localConfig;
+        foreach (['UNSPLASH_ACCESS_KEY', 'UNSPLASH_ENABLED', 'UNSPLASH_UTM_SOURCE', 'UNSPLASH_QUERY', 'UNSPLASH_CACHE_TTL_HOURS'] as $key) {
+            $current = getenv($key);
+            if (isset($values[$key]) && $values[$key] !== '' && ($current === false || $current === '')) {
+                putenv($key . '=' . $values[$key]);
+            }
+        }
+    }
+
     private function fmtAge(int $seconds): string
     {
-        if ($seconds < 0)    return '0s';
-        if ($seconds < 60)   return $seconds . 's';
-        if ($seconds < 3600) return (int) ($seconds / 60) . 'min';
-        $h = (int) ($seconds / 3600);
-        $m = (int) (($seconds % 3600) / 60);
-        return $h . 'h' . ($m > 0 ? ' ' . $m . 'min' : '');
+        if ($seconds < 0) {
+            return '0s';
+        }
+        if ($seconds < 60) {
+            return $seconds . 's';
+        }
+        if ($seconds < 3600) {
+            return (int) ($seconds / 60) . 'min';
+        }
+
+        $hours = (int) ($seconds / 3600);
+        $minutes = (int) (($seconds % 3600) / 60);
+        return $hours . 'h' . ($minutes > 0 ? ' ' . $minutes . 'min' : '');
     }
 }
