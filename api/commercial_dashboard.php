@@ -68,7 +68,7 @@ try {
     }
     if ($fProduto !== '') {
         $where[]            = 'EXISTS (SELECT 1 FROM biomie_notas_fiscais_itens_canonicos i'
-                            . ' WHERE i.nota_fiscal_id = nf.id AND i.descricao LIKE :produto)';
+                            . ' WHERE i.nota_key = nf.nota_key AND i.descricao_produto LIKE :produto)';
         $params[':produto'] = '%' . $fProduto . '%';
     }
 
@@ -87,7 +87,7 @@ try {
     $stmtKpi = $pdo->prepare(
         "SELECT
             COUNT(*) AS nfs,
-            COUNT(DISTINCT nf.cnpj_cliente) AS clientes,
+            COUNT(DISTINCT nf.documento_cliente) AS clientes,
             COALESCE(SUM({$baseSql}), 0) AS base_comercial_nf,
             COALESCE(SUM(nf.valor_frete), 0) AS frete,
             COALESCE(SUM(nf.valor_outras_despesas), 0) AS outras_despesas,
@@ -140,7 +140,7 @@ try {
         "SELECT
             nf.nome_vendedor,
             COUNT(*) AS nfs,
-            COUNT(DISTINCT nf.cnpj_cliente) AS clientes,
+            COUNT(DISTINCT nf.documento_cliente) AS clientes,
             COALESCE(SUM({$baseSql}), 0) AS base_comercial
          FROM {$table} nf
          WHERE {$whereStr}
@@ -170,15 +170,15 @@ try {
     // ── Ranking produtos (top 10, via itens) ─────────────────────────────────
     $stmtProd = $pdo->prepare(
         "SELECT
-            i.descricao AS produto,
+            i.descricao_produto AS produto,
             i.codigo_produto AS codigo,
-            COUNT(DISTINCT i.nota_fiscal_id) AS nfs,
+            COUNT(DISTINCT i.nota_key) AS nfs,
             SUM(i.quantidade) AS quantidade,
             COALESCE(SUM(i.valor_total), 0) AS receita
          FROM biomie_notas_fiscais_itens_canonicos i
-         JOIN {$table} nf ON nf.id = i.nota_fiscal_id
+         JOIN {$table} nf ON nf.nota_key = i.nota_key
          WHERE {$whereStr}
-         GROUP BY i.codigo_produto, i.descricao
+         GROUP BY i.codigo_produto, i.descricao_produto
          ORDER BY receita DESC
          LIMIT 10"
     );

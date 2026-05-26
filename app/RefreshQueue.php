@@ -38,7 +38,10 @@ final class RefreshQueue
 
     public function claimNext(array $services = []): ?array
     {
-        $files = glob($this->jobsDir . '/queued_*.json') ?: [];
+        $files = array_merge(
+            glob($this->jobsDir . '/queued_sales_*.json') ?: [],
+            glob($this->jobsDir . '/queued_finance_*.json') ?: []
+        );
         sort($files);
         foreach ($files as $path) {
             $job = $this->readJson($path);
@@ -89,7 +92,10 @@ final class RefreshQueue
     {
         $counts = ['queued' => 0, 'running' => 0, 'done' => 0, 'failed' => 0];
         foreach (['queued', 'running', 'done', 'failed'] as $s) {
-            $counts[$s] = count(glob($this->jobsDir . "/{$s}_*.json") ?: []);
+            $counts[$s] = count(array_merge(
+                glob($this->jobsDir . "/{$s}_sales_*.json") ?: [],
+                glob($this->jobsDir . "/{$s}_finance_*.json") ?: []
+            ));
         }
         return $counts;
     }
