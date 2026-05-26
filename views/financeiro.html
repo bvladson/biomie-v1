@@ -207,6 +207,10 @@
         <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Valor sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><strong class="biomie-kpi-card__value" id="fcNoVendorValueCard">R$ 0,00</strong><span class="biomie-kpi-card__sub">Nao redistribuido.</span></article>
         <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Maior atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">timer</span></div><strong class="biomie-kpi-card__value" id="fcMaxDelay">0 dias</strong><span class="biomie-kpi-card__sub">Entre titulos filtrados.</span></article>
         <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">% vencido</span><span class="material-symbols-rounded biomie-kpi-card__icon">percent</span></div><strong class="biomie-kpi-card__value" id="fcOverduePct">0%</strong><span class="biomie-kpi-card__sub">Sobre carteira aberta.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cobrados hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">call</span></div><strong class="biomie-kpi-card__value" id="fcKpiCobradosHoje">0</strong><span class="biomie-kpi-card__sub">Ações registradas hoje.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Promessas de pagamento</span><span class="material-symbols-rounded biomie-kpi-card__icon">handshake</span></div><strong class="biomie-kpi-card__value" id="fcKpiPromessas">0</strong><span class="biomie-kpi-card__sub">Ações com promessa.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Revisões de vínculo</span><span class="material-symbols-rounded biomie-kpi-card__icon">find_in_page</span></div><strong class="biomie-kpi-card__value" id="fcKpiRevisoes">0</strong><span class="biomie-kpi-card__sub">Pendências de vínculo.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem ação de cobrança</span><span class="material-symbols-rounded biomie-kpi-card__icon">running_with_errors</span></div><strong class="biomie-kpi-card__value" id="fcKpiSemAcao">0</strong><span class="biomie-kpi-card__sub">Títulos abertos sem ação.</span></article>
       </section>
     </div>
 
@@ -401,6 +405,70 @@
     <span class="fin-bulk-count" id="finBulkCount">0 selecionadas</span>
     <button class="fin-bulk-btn" id="finBulkExport"><span class="material-symbols-rounded" style="font-size:15px">download</span> Exportar CSV</button>
     <button class="fin-bulk-clear" id="finBulkClear">Limpar selecao</button>
+  </div>
+  <!-- Collection Action Drawer -->
+  <div class="detail-drawer-backdrop" id="collectionActionBackdrop" style="display:none;"></div>
+  <div class="detail-drawer" id="collectionActionDrawer" style="display:none;">
+    <div class="detail-drawer-header">
+      <div>
+        <h3 class="detail-drawer-title" id="fcDrawerTitle">Registrar Cobrança</h3>
+        <p class="detail-drawer-subtitle" id="fcDrawerSubtitle">Título: -</p>
+      </div>
+      <button class="detail-drawer-close-btn" id="fcCloseDrawerBtn"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <div class="detail-drawer-body">
+      <div id="fcDrawerAlert" class="biomie-table-feedback" style="display:none;margin-bottom:12px;"></div>
+      
+      <!-- Current Title Info -->
+      <div class="fc-drawer-info-grid" style="margin-bottom:16px;display:grid;grid-template-columns: 1fr 1fr;gap:8px;font-size:0.8rem;color:var(--text-2);">
+        <div><strong>Cliente:</strong> <span id="fcInfoClient">-</span></div>
+        <div><strong>Vendedor:</strong> <span id="fcInfoVendor">-</span></div>
+        <div><strong>Vencimento:</strong> <span id="fcInfoDueDate">-</span></div>
+        <div><strong>Valor Aberto:</strong> <span id="fcInfoOpenValue">-</span></div>
+      </div>
+
+      <!-- Action Form -->
+      <form id="fcActionForm">
+        <input type="hidden" id="fcFormTituloKey" />
+        <input type="hidden" id="fcFormClienteId" />
+        <input type="hidden" id="fcFormVendedorId" />
+        
+        <div class="filter-group" style="margin-bottom:12px;display:flex;flex-direction:column;">
+          <label class="filter-label" style="margin-bottom:4px;">Ação realizada</label>
+          <select id="fcFormActionType" class="filter-input" required style="width:100%;">
+            <option value="">Selecione uma ação</option>
+            <option value="cobrado_hoje">Cobrado hoje</option>
+            <option value="whatsapp_enviado">WhatsApp enviado</option>
+            <option value="ligacao_realizada">Ligação realizada</option>
+            <option value="email_enviado">E-mail enviado</option>
+            <option value="aguardando_retorno">Aguardando retorno</option>
+            <option value="promessa_pagamento">Promessa de pagamento</option>
+            <option value="validar_baixa_caixa">Validar baixa no caixa</option>
+            <option value="revisar_vinculo_financeiro">Revisar vínculo financeiro</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="margin-bottom:12px;display:flex;flex-direction:column;">
+          <label class="filter-label" style="margin-bottom:4px;">Próxima ação (opcional)</label>
+          <input id="fcFormNextDate" type="date" class="filter-input" style="width:100%;" />
+        </div>
+
+        <div class="filter-group" style="margin-bottom:16px;display:flex;flex-direction:column;">
+          <label class="filter-label" style="margin-bottom:4px;">Observação / Notas</label>
+          <textarea id="fcFormNote" class="filter-input" rows="4" style="width:100%;resize:vertical;" placeholder="Detalhes do contato ou pendência..." maxlength="1000"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary mag-button-primary" style="width:100%;"><span class="material-symbols-rounded">save</span> Salvar Ação</button>
+      </form>
+
+      <!-- History of Actions -->
+      <div style="margin-top:24px;">
+        <h4 style="font-size:0.9rem;margin-bottom:8px;border-bottom:1px solid var(--mag-border,#e2e8f0);padding-bottom:4px;">Histórico de Ações</h4>
+        <div id="fcHistoryList" style="display:flex;flex-direction:column;gap:8px;max-height:250px;overflow-y:auto;padding-right:4px;">
+          <p style="font-size:0.8rem;color:var(--text-3);font-style:italic;">Nenhuma ação registrada para este título.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 </body>

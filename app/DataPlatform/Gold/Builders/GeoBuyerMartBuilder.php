@@ -45,7 +45,8 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             'delete_mart_compradores_por_geo_periodo'
         );
 
-        $inserted = $this->refresh($start, $end);
+        $monthStart = date('Y-m-01', strtotime($start));
+        $inserted = $this->refresh($monthStart, $end);
         $summary = $this->periodSummary($startComp, $endComp);
 
         return [

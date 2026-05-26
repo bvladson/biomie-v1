@@ -26,6 +26,7 @@ declare(strict_types=1);
  *   D8  STAB.R1 — SSE hardening no código  [informacional — não bloqueia]
  *   D9  Cache — limpeza                   [apenas com --clear-cache]
  *   D10 FIN.R1 — Enriquecimento financeiro  [informacional — não bloqueia]
+ *   D11 Daily Sales Integrity             (daily_sales_integrity_check)
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -370,6 +371,33 @@ $domains[] = [
     'issues'  => $d10warns,
 ];
 // D10 is informational only — does NOT flip $allPass
+
+// ── D11 — Daily Sales Integrity ──────────────────────────────────────────────
+$r    = rg_run($php, $toolsDir . '/daily_sales_integrity_check.php', ["--date={$end}", '--fail-on-drift', '--pretty']);
+$fail = rg_failed($r);
+$isWarning = str_contains($r['output'], 'WARNING');
+
+$d11Summary = '';
+foreach ($r['lines'] as $line) {
+    $clean = trim(preg_replace('/\033\[[0-9;]*m/', '', $line));
+    if (str_starts_with($clean, 'Mensagem:')) {
+        $d11Summary = trim(substr($clean, 9));
+        break;
+    }
+}
+if ($d11Summary === '') {
+    $d11Summary = rg_summary($r['lines']);
+}
+
+$domains[] = [
+    'label'   => 'D11 Daily Sales Integrity',
+    'guard'   => 'daily_sales_integrity_check.php',
+    'pass'    => !$fail,
+    'warn'    => $isWarning,
+    'summary' => $d11Summary,
+];
+if ($fail) $allPass = false;
+
 
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {

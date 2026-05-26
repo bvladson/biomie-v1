@@ -51,6 +51,7 @@
     sort: 'atraso',
     direction: 'desc'
   };
+  var lastLoadedData = [];
   var abortCtrl = null;
   var debounceTimer = null;
 
@@ -291,6 +292,10 @@
     setText('fcNoVendorValueCard', formatCurrency(kpis.valor_sem_vendedor || 0));
     setText('fcMaxDelay', formatNumber(kpis.maior_atraso_dias || 0) + ' dias');
     setText('fcOverduePct', formatPercent(overduePct));
+    setText('fcKpiCobradosHoje', formatNumber(kpis.titulos_cobrados_hoje || 0));
+    setText('fcKpiPromessas', formatNumber(kpis.promessas_pagamento || 0));
+    setText('fcKpiRevisoes', formatNumber(kpis.revisoes_vinculo_abertas || 0));
+    setText('fcKpiSemAcao', formatNumber(kpis.pendentes_sem_acao || 0));
   }
 
   function renderRanking(rows) {
@@ -331,6 +336,23 @@
     }).join('');
   }
 
+  function actionBadge(latestAction) {
+    if (!latestAction || !latestAction.action_type) {
+      return '<span class="fin-badge fin-badge-gray" style="margin-top:2px;display:inline-block;padding:2px 6px;font-size:10px;">Sem ação</span>';
+    }
+    var type = latestAction.action_type;
+    var label = latestAction.action_type.replace(/_/g, ' ');
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    
+    var kind = 'gray';
+    if (type === 'cobrado_hoje') kind = 'green';
+    else if (type === 'whatsapp_enviado' || type === 'ligacao_realizada' || type === 'email_enviado') kind = 'blue';
+    else if (type === 'aguardando_retorno' || type === 'promessa_pagamento') kind = 'gold';
+    else if (type === 'validar_baixa_caixa' || type === 'revisar_vinculo_financeiro') kind = 'red';
+    
+    return '<span class="fin-badge fin-badge-' + kind + '" style="margin-top:2px;display:inline-block;padding:2px 6px;font-size:10px;" title="' + escapeHtml(latestAction.note || '') + '">' + escapeHtml(label) + '</span>';
+  }
+
   function renderRows(rows) {
     var target = byId('fcTableBody');
     if (!target) return;
@@ -340,6 +362,16 @@
       return;
     }
     target.innerHTML = rows.map(function (row) {
+      var actionsHtml = '';
+      if (row.sem_vendedor) {
+        actionsHtml = '<button class="btn-xs-action btn-revisar-vinculo" data-fc-title-key="' + escapeHtml(row.id) + '" data-fc-client-id="' + escapeHtml(row.cliente_id) + '" data-fc-vendor-id="' + escapeHtml(row.vendedor_id) + '">Revisar vínculo</button>';
+      } else {
+        actionsHtml = '<div style="display:flex;gap:4px;">' +
+          '<button class="btn-xs-action btn-registrar-cobranca" data-fc-title-key="' + escapeHtml(row.id) + '" data-fc-client-id="' + escapeHtml(row.cliente_id) + '" data-fc-vendor-id="' + escapeHtml(row.vendedor_id) + '">Registrar cobrança</button>' +
+          '<button class="btn-xs-action btn-marcar-cobrado" data-fc-title-key="' + escapeHtml(row.id) + '" data-fc-client-id="' + escapeHtml(row.cliente_id) + '" data-fc-vendor-id="' + escapeHtml(row.vendedor_id) + '">Marcar cobrado hoje</button>' +
+          '</div>';
+      }
+
       return '<tr>' +
         '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.vendedor || 'Sem vendedor definido') + '</strong>' +
         (row.sem_vendedor ? '<small>Revisar vinculo financeiro</small>' : '') + '</div></td>' +
@@ -352,7 +384,11 @@
         '<td>' + delayLabel(row.dias_atraso) + '</td>' +
         '<td><strong>' + formatCurrency(row.valor_aberto) + '</strong></td>' +
         '<td>' + statusBadge(row) + '</td>' +
-        '<td><strong class="fc-action-label">' + escapeHtml(row.acao_recomendada || 'Acompanhar vencimento') + '</strong></td>' +
+        '<td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">' +
+        '<strong class="fc-action-label">' + escapeHtml(row.acao_recomendada || 'Acompanhar vencimento') + '</strong>' +
+        actionBadge(row.latest_action) +
+        '<div style="margin-top:2px;">' + actionsHtml + '</div>' +
+        '</div></td>' +
       '</tr>';
     }).join('');
     initMobileTables();
@@ -433,6 +469,7 @@
         }
         feedback('');
         saveUrl(filters);
+        lastLoadedData = payload.data || [];
         renderAll(payload, filters);
       })
       .catch(function (error) {
@@ -502,6 +539,169 @@
     }
   }
 
+  function openDrawer(titleKey, clientId, vendorId, isRevisarVinculo) {
+    byId('collectionActionBackdrop').style.display = 'block';
+    var drawer = byId('collectionActionDrawer');
+    drawer.style.display = 'flex';
+    drawer.offsetHeight;
+    drawer.classList.add('open');
+
+    setValue('fcFormTituloKey', titleKey);
+    setValue('fcFormClienteId', clientId);
+    setValue('fcFormVendedorId', vendorId);
+
+    setText('fcDrawerSubtitle', 'Título ID: ' + titleKey);
+    
+    var titleData = lastLoadedData.find(function(item) { return item.id === titleKey; }) || {};
+    
+    setText('fcInfoClient', titleData.cliente || '-');
+    setText('fcInfoVendor', titleData.vendedor || '-');
+    setText('fcInfoDueDate', formatDateBR(titleData.vencimento));
+    setText('fcInfoOpenValue', formatCurrency(titleData.valor_aberto));
+
+    if (isRevisarVinculo) {
+      setValue('fcFormActionType', 'revisar_vinculo_financeiro');
+    } else {
+      setValue('fcFormActionType', '');
+    }
+    setValue('fcFormNextDate', '');
+    setValue('fcFormNote', '');
+    
+    byId('fcDrawerAlert').style.display = 'none';
+    loadHistory(titleKey);
+  }
+
+  function closeDrawer() {
+    var drawer = byId('collectionActionDrawer');
+    drawer.classList.remove('open');
+    window.setTimeout(function() {
+      drawer.style.display = 'none';
+      byId('collectionActionBackdrop').style.display = 'none';
+    }, 300);
+  }
+
+  function loadHistory(titleKey) {
+    var listNode = byId('fcHistoryList');
+    listNode.innerHTML = '<p style="font-size:0.8rem;color:var(--text-3);font-style:italic;">Carregando histórico...</p>';
+    
+    window.fetch('api/finance_collection_action.php?titulo_key=' + encodeURIComponent(titleKey), {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (payload) {
+        if (!payload.ok) throw new Error(payload.error && payload.error.message || 'Erro ao carregar.');
+        
+        var history = payload.data || [];
+        if (!history.length) {
+          listNode.innerHTML = '<p style="font-size:0.8rem;color:var(--text-3);font-style:italic;">Nenhuma ação registrada para este título.</p>';
+          return;
+        }
+        
+        listNode.innerHTML = history.map(function (item) {
+          var label = (item.action_type || '').replace(/_/g, ' ');
+          label = label.charAt(0).toUpperCase() + label.slice(1);
+          var nextDateInfo = item.next_action_date ? ' | Próxima: ' + formatDateBR(item.next_action_date) : '';
+          
+          return '<div class="fc-history-item" style="margin-bottom: 8px; border: 1px solid var(--mag-border, #e2e8f0); padding: 8px; border-radius: 4px; background: var(--bg-hover, #f8fafc);">' +
+            '<div class="fc-history-meta" style="display:flex; justify-content:space-between; color:var(--text-3); font-size:10px; margin-bottom: 4px;">' +
+            '<span><strong>' + escapeHtml(item.actor_full_name) + '</strong></span>' +
+            '<span>' + formatDateBR(item.created_at.substring(0, 10)) + ' ' + item.created_at.substring(11, 16) + '</span>' +
+            '</div>' +
+            '<div style="font-weight:600; font-size:11px; margin-bottom:2px; color: var(--text-1);">' + escapeHtml(label) + nextDateInfo + '</div>' +
+            (item.note ? '<div style="color:var(--text-2); font-size:11px; word-break:break-word;">' + escapeHtml(item.note) + '</div>' : '') +
+            '</div>';
+        }).join('');
+      })
+      .catch(function (err) {
+        listNode.innerHTML = '<p style="font-size:0.8rem;color:var(--text-danger,#ef4444);font-style:italic;">Erro ao carregar histórico: ' + escapeHtml(err.message) + '</p>';
+      });
+  }
+
+  function submitAction(e) {
+    if (e) e.preventDefault();
+    
+    var alertNode = byId('fcDrawerAlert');
+    alertNode.style.display = 'none';
+    
+    var data = {
+      titulo_key: valueOf('fcFormTituloKey'),
+      cliente_codigo_omie: valueOf('fcFormClienteId'),
+      vendedor_codigo_omie: valueOf('fcFormVendedorId'),
+      action_type: valueOf('fcFormActionType'),
+      note: valueOf('fcFormNote'),
+      next_action_date: valueOf('fcFormNextDate')
+    };
+
+    window.fetch('api/finance_collection_action.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(data),
+      credentials: 'same-origin'
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (payload) {
+        if (!payload.ok) throw new Error(payload.error && payload.error.message || 'Erro ao salvar.');
+        load(state.page);
+        closeDrawer();
+      })
+      .catch(function (err) {
+        alertNode.style.display = 'block';
+        alertNode.className = 'biomie-table-feedback biomie-table-feedback--error';
+        alertNode.textContent = err.message || 'Erro desconhecido.';
+      });
+  }
+
+  function quickMarkCobrado(titleKey, clientId, vendorId) {
+    feedback('Registrando cobrança...', false);
+    
+    var data = {
+      titulo_key: titleKey,
+      cliente_codigo_omie: clientId,
+      vendedor_codigo_omie: vendorId,
+      action_type: 'cobrado_hoje',
+      note: 'Marcação rápida realizada pela carteira',
+      next_action_date: ''
+    };
+
+    window.fetch('api/finance_collection_action.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(data),
+      credentials: 'same-origin'
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (payload) {
+        if (!payload.ok) throw new Error(payload.error && payload.error.message || 'Erro ao registrar.');
+        load(state.page);
+      })
+      .catch(function (err) {
+        feedback(err.message || 'Erro ao marcar cobrado.', true);
+      });
+  }
+
+  function injectStyles() {
+    if (document.getElementById('fcActionStyles')) return;
+    var style = document.createElement('style');
+    style.id = 'fcActionStyles';
+    style.textContent = 
+      '.btn-xs-action { font-family: inherit; font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--mag-border, #e2e8f0); background-color: var(--card-bg, #ffffff); color: var(--text-1, #1e293b); cursor: pointer; transition: all 0.2s ease; }' +
+      '.btn-xs-action:hover { background-color: var(--bg-hover, #f1f5f9); border-color: var(--text-3, #94a3b8); }' +
+      '.btn-marcar-cobrado { background-color: var(--success-bg-light, #ecfdf5); color: var(--success-text, #0f766e); border-color: var(--success-border, #a7f3d0); }' +
+      '.btn-marcar-cobrado:hover { background-color: #d1fae5; border-color: #34d399; }' +
+      '.btn-revisar-vinculo { background-color: var(--warning-bg-light, #fffbeb); color: var(--warning-text, #b45309); border-color: var(--warning-border, #fde68a); }' +
+      '.btn-revisar-vinculo:hover { background-color: #fef3c7; border-color: #fbbf24; }' +
+      '.fin-badge-blue { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }';
+    document.head.appendChild(style);
+  }
+
   function bindEvents() {
     ['fcQ', 'fcVendor', 'fcClient', 'fcValueMin', 'fcValueMax'].forEach(function (id) {
       var node = byId(id);
@@ -552,6 +752,22 @@
       if (agingRow) {
         setValue('fcAging', agingRow.dataset.fcAgingRow);
         load(1);
+        return;
+      }
+      var btnRevisar = event.target.closest('.btn-revisar-vinculo');
+      if (btnRevisar) {
+        openDrawer(btnRevisar.dataset.fcTitleKey, btnRevisar.dataset.fcClientId, btnRevisar.dataset.fcVendorId, true);
+        return;
+      }
+      var btnRegistrar = event.target.closest('.btn-registrar-cobranca');
+      if (btnRegistrar) {
+        openDrawer(btnRegistrar.dataset.fcTitleKey, btnRegistrar.dataset.fcClientId, btnRegistrar.dataset.fcVendorId, false);
+        return;
+      }
+      var btnCobrado = event.target.closest('.btn-marcar-cobrado');
+      if (btnCobrado) {
+        quickMarkCobrado(btnCobrado.dataset.fcTitleKey, btnCobrado.dataset.fcClientId, btnCobrado.dataset.fcVendorId);
+        return;
       }
     });
 
@@ -560,10 +776,20 @@
         applyQuick(button.dataset.fcQuick || 'all');
       });
     });
+
+    var closeBtn = byId('fcCloseDrawerBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    
+    var backdrop = byId('collectionActionBackdrop');
+    if (backdrop) backdrop.addEventListener('click', closeDrawer);
+    
+    var form = byId('fcActionForm');
+    if (form) form.addEventListener('submit', submitAction);
   }
 
   function init() {
     if (!byId('financeCollectionSection')) return;
+    injectStyles();
     restoreUrl();
     bindEvents();
     window.setTimeout(function () { load(state.page || 1); }, 40);

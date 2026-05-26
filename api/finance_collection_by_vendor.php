@@ -410,6 +410,103 @@ try {
     $dataStmt->execute();
     $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- QUERY LATEST ACTIONS FOR PAGE ---
+    $latestActions = [];
+    if ($rows !== []) {
+        $likes = [];
+        $likeParams = [];
+        foreach ($rows as $idx => $r) {
+            $key = ':tkey_' . $idx;
+            $likes[] = "l.details_json LIKE " . $key;
+            $likeParams[$key] = '%"titulo_key":"' . $r['titulo_key'] . '"%';
+        }
+        
+        $actionsQuery = "
+            SELECT l.id, l.created_at, l.details_json, u.username, u.full_name
+            FROM biomie_admin_logs l
+            LEFT JOIN biomie_users u ON u.id = l.actor_user_id
+            WHERE l.event_type = 'finance.collection_action'
+              AND (" . implode(" OR ", $likes) . ")
+            ORDER BY l.id ASC
+        ";
+        
+        $actStmt = $pdo->prepare($actionsQuery);
+        $actStmt->execute($likeParams);
+        $actRows = $actStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        foreach ($actRows as $act) {
+            $details = json_decode((string) ($act['details_json'] ?? '{}'), true) ?: [];
+            $tkey = (string) ($details['titulo_key'] ?? '');
+            if ($tkey !== '') {
+                $latestActions[$tkey] = [
+                    'id' => (int) $act['id'],
+                    'created_at' => $act['created_at'],
+                    'actor_username' => (string) ($act['username'] ?? 'Sistema'),
+                    'actor_full_name' => (string) ($act['full_name'] ?? 'Sistema'),
+                    'action_type' => (string) ($details['action_type'] ?? ''),
+                    'note' => (string) ($details['note'] ?? ''),
+                    'next_action_date' => (string) ($details['next_action_date'] ?? ''),
+                ];
+            }
+        }
+    }
+
+    // --- QUERY ALL ACTIONS FOR OPEN TITLE KPIs ---
+    $allLogsStmt = $pdo->query("
+        SELECT created_at, details_json
+        FROM biomie_admin_logs
+        WHERE event_type = 'finance.collection_action'
+        ORDER BY id ASC
+    ");
+    $allLogs = $allLogsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    
+    $titleActions = [];
+    foreach ($allLogs as $log) {
+        $details = json_decode((string) ($log['details_json'] ?? '{}'), true) ?: [];
+        $tkey = (string) ($details['titulo_key'] ?? '');
+        if ($tkey !== '') {
+            $titleActions[$tkey] = [
+                'action_type' => (string) ($details['action_type'] ?? ''),
+                'created_at' => $log['created_at'],
+            ];
+        }
+    }
+
+    $openTitlesQuery = $pdo->query("
+        SELECT titulo_key, status_titulo 
+        FROM biomie_titulos_financeiros_canonicos 
+        WHERE " . FinanceCollectionFilters::openCondition()
+    );
+    $openTitles = $openTitlesQuery->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $cobradosHoje = 0;
+    $pendentesSemAcao = 0;
+    $promessasPagamento = 0;
+    $revisoesVinculo = 0;
+    $todayDate = date('Y-m-d');
+
+    foreach ($openTitles as $ot) {
+        $tkey = $ot['titulo_key'];
+        $act = $titleActions[$tkey] ?? null;
+        
+        if ($act === null) {
+            $pendentesSemAcao++;
+        } else {
+            $type = $act['action_type'];
+            $createdAtDay = substr($act['created_at'], 0, 10);
+            
+            if ($type === 'cobrado_hoje' || $createdAtDay === $todayDate) {
+                $cobradosHoje++;
+            }
+            if ($type === 'promessa_pagamento') {
+                $promessasPagamento++;
+            }
+            if ($type === 'revisar_vinculo_financeiro') {
+                $revisoesVinculo++;
+            }
+        }
+    }
+
     $ranking = array_map(static function (array $row): array {
         $open = (float) ($row['valor_aberto'] ?? 0);
         $overdue = (float) ($row['valor_vencido'] ?? 0);
@@ -446,7 +543,7 @@ try {
         ];
     }
 
-    $data = array_map(static function (array $row) use ($today): array {
+    $data = array_map(static function (array $row) use ($today, $latestActions): array {
         $normalized = [
             'id' => (string) ($row['titulo_key'] ?? ''),
             'titulo_id_omie' => $row['titulo_id_omie'] !== null ? (int) $row['titulo_id_omie'] : null,
@@ -482,6 +579,7 @@ try {
             'dias_atraso' => $normalized['dias_atraso'],
             'vencimento' => $normalized['vencimento'],
         ]);
+        $normalized['latest_action'] = $latestActions[$normalized['id']] ?? null;
 
         return $normalized;
     }, $rows);
@@ -507,6 +605,10 @@ try {
             'maior_atraso_dias' => (int) ($summary['maior_atraso_dias'] ?? 0),
             'qtd_titulos' => (int) ($summary['qtd_titulos'] ?? 0),
             'qtd_vencidos' => (int) ($summary['qtd_vencidos'] ?? 0),
+            'titulos_cobrados_hoje' => $cobradosHoje,
+            'pendentes_sem_acao' => $pendentesSemAcao,
+            'promessas_pagamento' => $promessasPagamento,
+            'revisoes_vinculo_abertas' => $revisoesVinculo,
         ],
         'ranking' => $ranking,
         'aging' => $agingOut,
