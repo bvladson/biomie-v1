@@ -1074,3 +1074,222 @@ body.finance-page {
     max-height: 300px;
   }
 }
+
+/* FIN.R3.1 - collection portfolio polish */
+.fc-executive-shell {
+  margin-bottom: 16px;
+}
+
+.fc-section-head {
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.fc-section-head > div:first-child {
+  min-width: 0;
+}
+
+.fc-portfolio-snapshot {
+  flex: 0 0 auto;
+  max-width: 100%;
+  border: 1px solid var(--fin-border);
+  background: var(--fin-surface-soft);
+  color: var(--fin-strong);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fc-filter-shell {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(118px, 1fr)) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--fin-border);
+  border-radius: 12px;
+  background: var(--fin-surface-soft);
+}
+
+.fc-filter-shell .filter-group {
+  min-width: 0;
+}
+
+.fc-filter-shell .filter-label {
+  font-size: 0.66rem;
+}
+
+.fc-filter-shell .filter-input {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+.fc-filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.fc-filter-actions .nf-quick-filter-btn,
+.fc-filter-actions .mag-button-primary,
+.fc-filter-actions .mag-button-secondary {
+  min-height: 34px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.fc-quick-filters {
+  margin-bottom: 10px;
+}
+
+.fc-kpi-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.fc-kpi-grid .biomie-kpi-card {
+  min-height: 104px;
+  padding: 12px;
+}
+
+.fc-kpi-grid .biomie-kpi-card__value {
+  font-size: clamp(1.05rem, 1.4vw, 1.42rem);
+}
+
+.fc-origin-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 210px;
+}
+
+.fc-origin-list .fin-tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-action-label {
+  display: inline-block;
+  max-width: 150px;
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.finance-raw-details {
+  margin: 20px 0 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--fin-border);
+}
+
+.finance-raw-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  padding: 7px 11px;
+  border: 1px solid var(--fin-border);
+  border-radius: 999px;
+  background: var(--fin-surface-soft);
+  color: var(--fin-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.finance-raw-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.finance-raw-details > summary strong {
+  font-size: 0.84rem;
+  color: var(--fin-strong);
+}
+
+.finance-raw-details > summary small {
+  font-size: 0.76rem;
+  color: var(--fin-muted);
+}
+
+.finance-raw-details > summary .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.finance-raw-details[open] > summary {
+  margin-bottom: 10px;
+}
+
+.finance-raw-details .section-label {
+  display: none;
+}
+
+@media (max-width: 1400px) {
+  .fc-filter-shell {
+    grid-template-columns: repeat(4, minmax(130px, 1fr));
+  }
+
+  .fc-filter-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .fc-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .fc-section-head {
+    flex-direction: column;
+  }
+
+  .fc-portfolio-snapshot {
+    white-space: normal;
+    border-radius: 12px;
+  }
+
+  .fc-filter-shell {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fc-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-raw-details > summary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .fc-filter-shell,
+  .fc-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fc-filter-actions {
+    align-items: stretch;
+  }
+
+  .fc-filter-actions .mag-button-primary,
+  .fc-filter-actions .mag-button-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fc-origin-list,
+  .fc-action-label {
+    max-width: 100%;
+  }
+}
