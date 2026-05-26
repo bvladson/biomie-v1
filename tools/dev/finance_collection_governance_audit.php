@@ -22,6 +22,35 @@ use BIomie\Config;
 use BIomie\Database;
 use BIomie\Support\Filters\Presets\FinanceCollectionFilters;
 
+function fcgAuditAgingBucket(?string $dueDate, string $today): string
+{
+    $dueDate = trim((string) $dueDate);
+    if ($dueDate === '') {
+        return 'sem_data';
+    }
+    if ($dueDate === $today) {
+        return 'vence_hoje';
+    }
+    if ($dueDate > $today) {
+        return 'a_vencer';
+    }
+
+    $diffDays = (int) round((strtotime($today) - strtotime($dueDate)) / 86400);
+    if ($diffDays <= 7) {
+        return '1_7';
+    }
+    if ($diffDays <= 15) {
+        return '8_15';
+    }
+    if ($diffDays <= 30) {
+        return '16_30';
+    }
+    if ($diffDays <= 60) {
+        return '31_60';
+    }
+    return '60_plus';
+}
+
 $opts = getopt('', ['start:', 'end:', 'pretty', 'json', 'csv', 'vendor:', 'actor:', 'critical-only']);
 $start = $opts['start'] ?? date('Y-m-d', strtotime('-30 days'));
 $end = $opts['end'] ?? date('Y-m-d');
@@ -155,8 +184,11 @@ foreach ($allOpenTitles as $title) {
     $lastActType = $lastAct ? $lastAct['action_type'] : '';
     $nextDate = $lastAct ? $lastAct['next_action_date'] : '';
     $daysSinceLastAct = $lastAct ? (int) round((strtotime($today) - strtotime(substr($lastAct['created_at'], 0, 10))) / 86400) : 999;
+    $isPromiseBroken = $lastActType === 'promessa_pagamento' && $nextDate !== '' && $nextDate < $today;
+    $isReturnLate = $nextDate !== '' && $nextDate < $today;
+    $agingBucket = fcgAuditAgingBucket($venc, $today);
     
-    if ($lastActType === 'promessa_pagamento' && $nextDate !== '' && $nextDate < $today) {
+    if ($isPromiseBroken) {
         $level = 1;
         $label = 'Crítico';
         $motivo = 'Promessa de pagamento vencida/quebrada';
@@ -204,6 +236,8 @@ foreach ($allOpenTitles as $title) {
         $rec = 'Validar baixa no caixa';
     }
     
+    $statusOperacional = $isNoVendor ? 'sem_vendedor' : ($level === 1 ? 'critico' : ($level === 2 ? 'atencao' : 'rotina'));
+
     $riskQueue[] = [
         'prioridade_nivel' => $level,
         'prioridade_label' => $label,
@@ -215,17 +249,26 @@ foreach ($allOpenTitles as $title) {
         'documento_cliente' => (string) $title['documento_cliente'],
         'data_vencimento' => $venc,
         'valor_aberto' => $valAberto,
+        'valor_vencido' => $diasAtraso > 0 ? $valAberto : 0.0,
         'valor_titulo' => (float) $title['valor_liquido'],
         'codigo_vendedor_omie' => $vCode,
         'nome_vendedor' => $vDispName,
         'vendedor_key' => $vKey,
         'dias_atraso' => $diasAtraso,
+        'aging_bucket' => $agingBucket,
+        'status_operacional' => $statusOperacional,
         'status_titulo' => (string) $title['status_titulo'],
         'documento_origem_ref' => (string) $title['documento_origem_ref'],
         'codigo_pedido_origem' => (string) $title['codigo_pedido_origem'],
         'pedido_id_omie' => (string) $title['pedido_id_omie'],
         'data_emissao' => (string) $title['data_emissao'],
         'ultima_acao' => $lastAct,
+        'ultima_acao_at' => $lastAct['created_at'] ?? '',
+        'next_action_date' => $nextDate,
+        'total_acoes' => count($allActionsByTitle[$tkey] ?? []),
+        'titulos_sem_acao' => $lastAct === null ? 1 : 0,
+        'promessas_vencidas' => $isPromiseBroken ? 1 : 0,
+        'retornos_atrasados' => $isReturnLate ? 1 : 0,
     ];
 }
 
@@ -236,8 +279,12 @@ foreach ($riskQueue as $item) {
     $lastActType = $lastAct ? $lastAct['action_type'] : '';
     $nextDate = $lastAct ? $lastAct['next_action_date'] : '';
     
-    if ($vendorFilter !== '' && $item['vendedor_key'] !== $vendorFilter && $item['codigo_vendedor_omie'] !== $vendorFilter) {
-        continue;
+    if ($vendorFilter !== '') {
+        $vendorNeedle = mb_strtolower($vendorFilter);
+        $vendorName = mb_strtolower($item['nome_vendedor']);
+        if ($item['vendedor_key'] !== $vendorFilter && $item['codigo_vendedor_omie'] !== $vendorFilter && !str_contains($vendorName, $vendorNeedle)) {
+            continue;
+        }
     }
     if ($actorFilter !== '' && (!$lastAct || (string)$lastAct['actor_user_id'] !== $actorFilter)) {
         continue;
@@ -269,6 +316,17 @@ $semVendedor = 0;
 $valorSemVendedor = 0.0;
 
 $actionMixCounts = [];
+$actionMixValues = [];
+
+$agingBuckets = [
+    'a_vencer'   => ['label' => 'A vencer', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    'vence_hoje' => ['label' => 'Vence hoje', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    '1_7'        => ['label' => '1 a 7 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    '8_15'       => ['label' => '8 a 15 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    '16_30'      => ['label' => '16 a 30 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    '31_60'      => ['label' => '31 a 60 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    '60_plus'    => ['label' => '60+ dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+];
 
 foreach ($filteredRiskQueue as $item) {
     $valAberto = $item['valor_aberto'];
@@ -292,6 +350,7 @@ foreach ($filteredRiskQueue as $item) {
         }
     } else {
         $actionMixCounts[$lastActType] = ($actionMixCounts[$lastActType] ?? 0) + 1;
+        $actionMixValues[$lastActType] = ($actionMixValues[$lastActType] ?? 0.0) + $valAberto;
         
         $createdDay = substr($lastAct['created_at'], 0, 10);
         if ($createdDay === $today) {
@@ -306,7 +365,7 @@ foreach ($filteredRiskQueue as $item) {
             }
         }
         
-        if ($lastActType === 'promessa_pagamento') {
+        if ($lastActType === 'promessa_pagamento' && $nextDate !== '') {
             if ($nextDate >= $today) {
                 $promessasAtivas++;
             } else {
@@ -333,6 +392,25 @@ foreach ($filteredRiskQueue as $item) {
             }
         }
     }
+
+    $bucketKey = $item['aging_bucket'];
+
+    if (isset($agingBuckets[$bucketKey])) {
+        $agingBuckets[$bucketKey]['qtd_titulos']++;
+        $agingBuckets[$bucketKey]['valor_aberto'] += $valAberto;
+        if ($item['ultima_acao'] !== null) {
+            $agingBuckets[$bucketKey]['qtd_com_acao']++;
+        }
+    }
+}
+
+$slaAging = [];
+foreach ($agingBuckets as $key => $b) {
+    $tot = $b['qtd_titulos'];
+    $b['percentual_sla'] = $tot > 0 ? round(($b['qtd_com_acao'] / $tot) * 100, 2) : 0.0;
+    $b['valor_aberto'] = round($b['valor_aberto'], 2);
+    $b['bucket'] = $key;
+    $slaAging[] = $b;
 }
 
 // ── 7. Calculate Productivity (Only within start/end period) ────────────
@@ -382,6 +460,7 @@ foreach ($actionsInPeriod as $act) {
         $p['ultima_acao_at'] = $act['created_at'];
     }
 }
+unset($p);
 
 $productivity = [];
 foreach ($prodGroup as $p) {
@@ -439,7 +518,7 @@ foreach ($filteredRiskQueue as $item) {
         $lastActType = $lastAct['action_type'];
         $nextDate = $lastAct['next_action_date'];
         
-        if ($lastActType === 'promessa_pagamento') {
+        if ($lastActType === 'promessa_pagamento' && $nextDate !== '') {
             if ($nextDate >= $today) {
                 $v['promessas_ativas']++;
             } else {
@@ -456,6 +535,7 @@ foreach ($filteredRiskQueue as $item) {
         }
     }
 }
+unset($v);
 
 $vendorGovernance = [];
 foreach ($vendorGroup as $vKey => $v) {
@@ -483,6 +563,7 @@ foreach ($actionMixCounts as $type => $count) {
         'action_type' => $type,
         'qtd' => $count,
         'percentual' => $totalActioned > 0 ? round(($count / $totalActioned) * 100, 2) : 0.0,
+        'valor_aberto_associado' => round($actionMixValues[$type] ?? 0.0, 2),
     ];
 }
 
@@ -522,7 +603,7 @@ foreach ($filteredRiskQueue as $item) {
         $fList['vencidos'][] = $followRow;
     } elseif ($nextDate === $today) {
         $fList['hoje'][] = $followRow;
-    } else {
+    } elseif ($nextDate <= date('Y-m-d', strtotime($today . ' +7 days'))) {
         $fList['proximos'][] = $followRow;
     }
 }
@@ -602,7 +683,8 @@ if ($jsonMode) {
         'followups' => $fList,
         'risk_queue' => $filteredRiskQueue,
         'vendor_governance' => $vendorGovernance,
-        'action_mix' => $actionMix
+        'action_mix' => $actionMix,
+        'sla_aging' => $slaAging
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
     exit(0);
 }
@@ -702,6 +784,13 @@ if (empty($actionMix)) {
     foreach ($actionMix as $am) {
         echo "  - " . str_pad($am['action_type'], 30, ' ') . ": {$am['qtd']} (" . $am['percentual'] . "%)\n";
     }
+}
+echo "\n";
+
+echo "SLA DA COBRANÇA POR AGING:\n";
+foreach ($slaAging as $sa) {
+    $pct = number_format((float) ($sa['percentual_sla'] ?? 0), 1) . '%';
+    echo "  - " . str_pad($sa['label'], 20, ' ') . " | Títulos: " . str_pad((string)$sa['qtd_titulos'], 6, ' ', STR_PAD_LEFT) . " | Aberto: R$ " . str_pad(number_format((float)$sa['valor_aberto'], 2, ',', '.'), 14, ' ', STR_PAD_LEFT) . " | Acionado: " . str_pad((string)$sa['qtd_com_acao'], 4, ' ', STR_PAD_LEFT) . " | SLA: " . str_pad($pct, 6, ' ', STR_PAD_LEFT) . "\n";
 }
 echo "\n";
 

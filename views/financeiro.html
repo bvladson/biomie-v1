@@ -312,6 +312,8 @@
         <button class="nf-quick-filter-btn" data-gov-quick="open_link_review">Revisões de vínculo</button>
       </div>
 
+      <div id="govChips" style="display:none;margin-bottom:12px;"></div>
+
       <section class="biomie-kpi-grid fc-kpi-grid">
         <article class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cobrados hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">call</span></div><strong class="biomie-kpi-card__value" id="govKpiCobradosHoje">0</strong><span class="biomie-kpi-card__sub">Ações registradas hoje.</span></article>
         <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Retornos hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">today</span></div><strong class="biomie-kpi-card__value" id="govKpiRetornosHoje">0</strong><span class="biomie-kpi-card__sub">Agenda para hoje.</span></article>
@@ -349,13 +351,24 @@
     </section>
 
     <section class="row g-4 mb-4">
-      <div class="col-xl-12">
+      <div class="col-xl-8">
         <div class="fin-panel x_panel">
           <div class="fin-panel-head"><div><h2>Agenda de retornos (Follow-ups)</h2><p>Próximas ações e retornos de contato agendados.</p></div></div>
           <div class="table-responsive fin-table-wrap" style="max-height: 300px; overflow-y: auto;">
             <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
               <thead><tr><th>Tipo</th><th>Título</th><th>Cliente</th><th>Próxima Ação</th><th>Responsável</th><th>Nota</th><th>Valor Aberto</th><th>Vencimento</th><th>Dias Atraso</th></tr></thead>
               <tbody id="govFollowupsBody" data-empty-title="Agenda vazia" data-empty-message="Nenhum retorno agendado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>SLA da cobrança por aging</h2><p>Acionamento e cobertura de cobrança por faixa de atraso.</p></div></div>
+          <div class="table-responsive fin-table-wrap" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Aging</th><th>Títulos</th><th>Aberto</th><th>Acionado</th><th>SLA %</th></tr></thead>
+              <tbody id="govSlaAgingBody" data-empty-title="Sem dados" data-empty-message="Nenhum título para calcular SLA."></tbody>
             </table>
           </div>
         </div>

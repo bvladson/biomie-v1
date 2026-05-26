@@ -14,6 +14,35 @@ require __DIR__ . '/bootstrap.php';
 
 Auth::requireCapability('finance.view', true);
 
+function fcgAgingBucket(?string $dueDate, string $today): string
+{
+    $dueDate = trim((string) $dueDate);
+    if ($dueDate === '') {
+        return 'sem_data';
+    }
+    if ($dueDate === $today) {
+        return 'vence_hoje';
+    }
+    if ($dueDate > $today) {
+        return 'a_vencer';
+    }
+
+    $diffDays = (int) round((strtotime($today) - strtotime($dueDate)) / 86400);
+    if ($diffDays <= 7) {
+        return '1_7';
+    }
+    if ($diffDays <= 15) {
+        return '8_15';
+    }
+    if ($diffDays <= 30) {
+        return '16_30';
+    }
+    if ($diffDays <= 60) {
+        return '31_60';
+    }
+    return '60_plus';
+}
+
 try {
     $today = date('Y-m-d');
     
@@ -27,6 +56,8 @@ try {
     $vendorFilter = FilterNormalizer::text((string) ($_GET['vendor'] ?? ''), 100);
     $actorFilter = FilterNormalizer::text((string) ($_GET['actor_user_id'] ?? ''), 20);
     $actionTypeFilter = FilterNormalizer::text((string) ($_GET['action_type'] ?? ''), 50);
+    $statusOperacionalFilter = FilterNormalizer::text((string) ($_GET['status_operacional'] ?? ''), 40);
+    $agingFilter = FilterNormalizer::text((string) ($_GET['aging'] ?? ''), 40);
     $qFilter = FilterNormalizer::text((string) ($_GET['q'] ?? ''), 100);
     
     $onlyOverdue = (int) ($_GET['only_overdue'] ?? 0) === 1;
@@ -49,7 +80,7 @@ try {
     if (!Http::tableExists($pdo, 'biomie_titulos_financeiros_canonicos')) {
         Http::jsonConflictMissingTable('biomie_titulos_financeiros_canonicos');
     }
-    
+
     $t0 = microtime(true);
     
     // ── 1. Fetch Open Titles in Date Range ───────────────────────────────────
@@ -170,9 +201,12 @@ try {
         $lastActType = $lastAct ? $lastAct['action_type'] : '';
         $nextDate = $lastAct ? $lastAct['next_action_date'] : '';
         $lastActDate = $lastAct ? substr($lastAct['created_at'], 0, 10) : '';
-        $daysSinceLastAct = $lastAct ? (int) round((strtotime($today) - strtotime($logDate = substr($lastAct['created_at'], 0, 10))) / 86400) : 999;
+        $daysSinceLastAct = $lastActDate !== '' ? (int) round((strtotime($today) - strtotime($lastActDate)) / 86400) : 999;
+        $isPromiseBroken = $lastActType === 'promessa_pagamento' && $nextDate !== '' && $nextDate < $today;
+        $isReturnLate = $nextDate !== '' && $nextDate < $today;
+        $agingBucket = fcgAgingBucket($venc, $today);
         
-        if ($lastActType === 'promessa_pagamento' && $nextDate !== '' && $nextDate < $today) {
+        if ($isPromiseBroken) {
             $level = 1;
             $label = 'Crítico';
             $motivo = 'Promessa de pagamento vencida/quebrada';
@@ -235,6 +269,8 @@ try {
             $motivo = 'Cobrança recente realizada nos últimos 5 dias';
             $rec = 'Acompanhar vencimento / aguardar data';
         }
+
+        $statusOperacional = $isNoVendor ? 'sem_vendedor' : ($level === 1 ? 'critico' : ($level === 2 ? 'atencao' : 'rotina'));
         
         $riskQueue[] = [
             'prioridade_nivel' => $level,
@@ -247,18 +283,27 @@ try {
             'documento_cliente' => (string) $title['documento_cliente'],
             'data_vencimento' => $venc,
             'valor_aberto' => $valAberto,
+            'valor_vencido' => $diasAtraso > 0 ? $valAberto : 0.0,
             'valor_titulo' => (float) $title['valor_liquido'],
             'codigo_vendedor_omie' => $vCode,
             'codigo_cliente_omie' => (string) ($title['codigo_cliente_omie'] ?? ''),
             'nome_vendedor' => $vDispName,
             'vendedor_key' => $vKey,
             'dias_atraso' => $diasAtraso,
+            'aging_bucket' => $agingBucket,
+            'status_operacional' => $statusOperacional,
             'status_titulo' => (string) $title['status_titulo'],
             'documento_origem_ref' => (string) $title['documento_origem_ref'],
             'codigo_pedido_origem' => (string) $title['codigo_pedido_origem'],
             'pedido_id_omie' => (string) $title['pedido_id_omie'],
             'data_emissao' => (string) $title['data_emissao'],
             'ultima_acao' => $lastAct,
+            'ultima_acao_at' => $lastAct['created_at'] ?? '',
+            'next_action_date' => $nextDate,
+            'total_acoes' => count($allActionsByTitle[$tkey] ?? []),
+            'titulos_sem_acao' => $lastAct === null ? 1 : 0,
+            'promessas_vencidas' => $isPromiseBroken ? 1 : 0,
+            'retornos_atrasados' => $isReturnLate ? 1 : 0,
         ];
     }
     
@@ -272,7 +317,9 @@ try {
         
         // Vendor filter
         if ($vendorFilter !== '') {
-            if ($item['vendedor_key'] !== $vendorFilter && $item['codigo_vendedor_omie'] !== $vendorFilter) {
+            $vendorNeedle = mb_strtolower($vendorFilter);
+            $vendorName = mb_strtolower($item['nome_vendedor']);
+            if ($item['vendedor_key'] !== $vendorFilter && $item['codigo_vendedor_omie'] !== $vendorFilter && !str_contains($vendorName, $vendorNeedle)) {
                 continue;
             }
         }
@@ -290,6 +337,18 @@ try {
                 continue;
             }
         }
+
+        if ($statusOperacionalFilter !== '') {
+            if ($item['status_operacional'] !== $statusOperacionalFilter) {
+                continue;
+            }
+        }
+
+        if ($agingFilter !== '') {
+            if ($item['aging_bucket'] !== $agingFilter) {
+                continue;
+            }
+        }
         
         // Text Search Filter (q)
         if ($qFilter !== '') {
@@ -299,6 +358,8 @@ try {
                   || str_contains(mb_strtolower($item['numero_documento']), $qLower)
                   || str_contains(mb_strtolower($item['nome_vendedor']), $qLower)
                   || str_contains(mb_strtolower($item['titulo_key']), $qLower)
+                  || str_contains(mb_strtolower($item['documento_origem_ref']), $qLower)
+                  || str_contains(mb_strtolower($item['codigo_pedido_origem']), $qLower)
                   || ($lastAct && str_contains(mb_strtolower($lastAct['note']), $qLower));
                   
             if (!$match) {
@@ -307,7 +368,7 @@ try {
         }
         
         // Operational/Status filters
-        if ($onlyOverdue && !($nextDate !== '' && $nextDate < $today)) {
+        if ($onlyOverdue && $item['dias_atraso'] <= 0) {
             continue;
         }
         if ($onlyDueToday && $nextDate !== $today) {
@@ -347,8 +408,19 @@ try {
     $revisoesAbertas = 0;
     $semVendedor = 0;
     $valorSemVendedor = 0.0;
-    
+
     $actionMixCounts = [];
+    $actionMixValues = [];
+
+    $agingBuckets = [
+        'a_vencer'   => ['label' => 'A vencer', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+        'vence_hoje' => ['label' => 'Vence hoje', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+        '1_7'        => ['label' => '1 a 7 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+        '8_15'       => ['label' => '8 a 15 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+        '16_30'      => ['label' => '16 a 30 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+        '31_60'      => ['label' => '31 a 60 dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+        '60_plus'    => ['label' => '60+ dias', 'qtd_titulos' => 0, 'valor_aberto' => 0.0, 'qtd_com_acao' => 0],
+    ];
     
     foreach ($filteredRiskQueue as $item) {
         $valAberto = $item['valor_aberto'];
@@ -373,6 +445,7 @@ try {
         } else {
             // Count for action mix
             $actionMixCounts[$lastActType] = ($actionMixCounts[$lastActType] ?? 0) + 1;
+            $actionMixValues[$lastActType] = ($actionMixValues[$lastActType] ?? 0.0) + $valAberto;
             
             // Check if action was registered today
             $createdDay = substr($lastAct['created_at'], 0, 10);
@@ -390,7 +463,7 @@ try {
             }
             
             // Promessas checks
-            if ($lastActType === 'promessa_pagamento') {
+            if ($lastActType === 'promessa_pagamento' && $nextDate !== '') {
                 if ($nextDate >= $today) {
                     $promessasAtivas++;
                 } else {
@@ -420,6 +493,25 @@ try {
                 }
             }
         }
+
+        $bucketKey = $item['aging_bucket'];
+
+        if (isset($agingBuckets[$bucketKey])) {
+            $agingBuckets[$bucketKey]['qtd_titulos']++;
+            $agingBuckets[$bucketKey]['valor_aberto'] += $valAberto;
+            if ($item['ultima_acao'] !== null) {
+                $agingBuckets[$bucketKey]['qtd_com_acao']++;
+            }
+        }
+    }
+
+    $slaAging = [];
+    foreach ($agingBuckets as $key => $b) {
+        $tot = $b['qtd_titulos'];
+        $b['percentual_sla'] = $tot > 0 ? round(($b['qtd_com_acao'] / $tot) * 100, 2) : 0.0;
+        $b['valor_aberto'] = round($b['valor_aberto'], 2);
+        $b['bucket'] = $key;
+        $slaAging[] = $b;
     }
     
     // ── 7. Calculate Productivity (Only within start/end period) ────────────
@@ -469,6 +561,7 @@ try {
             $p['ultima_acao_at'] = $act['created_at'];
         }
     }
+    unset($p);
     
     // Clean up temporary maps in productivity array
     $productivity = [];
@@ -527,7 +620,7 @@ try {
             $lastActType = $lastAct['action_type'];
             $nextDate = $lastAct['next_action_date'];
             
-            if ($lastActType === 'promessa_pagamento') {
+            if ($lastActType === 'promessa_pagamento' && $nextDate !== '') {
                 if ($nextDate >= $today) {
                     $v['promessas_ativas']++;
                 } else {
@@ -544,6 +637,7 @@ try {
             }
         }
     }
+    unset($v);
     
     $vendorGovernance = [];
     foreach ($vendorGroup as $vKey => $v) {
@@ -572,6 +666,7 @@ try {
             'action_type' => $type,
             'qtd' => $count,
             'percentual' => $totalActioned > 0 ? round(($count / $totalActioned) * 100, 2) : 0.0,
+            'valor_aberto_associado' => round($actionMixValues[$type] ?? 0.0, 2),
         ];
     }
     
@@ -611,7 +706,7 @@ try {
             $fList['vencidos'][] = $followRow;
         } elseif ($nextDate === $today) {
             $fList['hoje'][] = $followRow;
-        } else {
+        } elseif ($nextDate <= date('Y-m-d', strtotime($today . ' +7 days'))) {
             $fList['proximos'][] = $followRow;
         }
     }
@@ -624,8 +719,15 @@ try {
     // ── 11. Sorting and Pagination for Risk Queue ────────────────────────────
     $sortMap = [
         'valor_aberto' => 'valor_aberto',
+        'valor_vencido' => 'valor_vencido',
         'vencimento' => 'data_vencimento',
         'dias_atraso' => 'dias_atraso',
+        'next_action_date' => 'next_action_date',
+        'ultima_acao_at' => 'ultima_acao_at',
+        'total_acoes' => 'total_acoes',
+        'titulos_sem_acao' => 'titulos_sem_acao',
+        'promessas_vencidas' => 'promessas_vencidas',
+        'retornos_atrasados' => 'retornos_atrasados',
         'nome_cliente' => 'nome_cliente',
         'prioridade' => 'prioridade_nivel',
     ];
@@ -686,6 +788,7 @@ try {
         'risk_queue' => $paginatedRiskQueue,
         'vendor_governance' => $vendorGovernance,
         'action_mix' => $actionMix,
+        'sla_aging' => $slaAging,
         'pagination' => $pagination->toArray(),
         'filters' => [
             'start' => $start,
@@ -693,6 +796,8 @@ try {
             'vendor' => $vendorFilter,
             'actor_user_id' => $actorFilter,
             'action_type' => $actionTypeFilter,
+            'status_operacional' => $statusOperacionalFilter,
+            'aging' => $agingFilter,
             'q' => $qFilter,
             'only_overdue' => $onlyOverdue,
             'only_due_today' => $onlyDueToday,

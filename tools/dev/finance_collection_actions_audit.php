@@ -22,8 +22,8 @@ use BIomie\Database;
 
 // Parse CLI options
 $opts = getopt('', ['start:', 'end:', 'pretty', 'json', 'limit:']);
-$start = $opts['start'] ?? null;
-$end = $opts['end'] ?? null;
+$start = $opts['start'] ?? date('Y-m-d', strtotime('-30 days'));
+$end = $opts['end'] ?? date('Y-m-d');
 $pretty = isset($opts['pretty']);
 $jsonMode = isset($opts['json']);
 $limit = isset($opts['limit']) ? (int)$opts['limit'] : 100;
@@ -108,15 +108,11 @@ $sql = "
     WHERE l.event_type = 'finance.collection_action'
 ";
 
-$params = [];
-if ($start !== null) {
-    $sql .= " AND l.created_at >= :start";
-    $params['start'] = $start . ' 00:00:00';
-}
-if ($end !== null) {
-    $sql .= " AND l.created_at <= :end";
-    $params['end'] = $end . ' 23:59:59';
-}
+$params = [
+    'start' => $start . ' 00:00:00',
+    'end' => $end . ' 23:59:59',
+];
+$sql .= " AND l.created_at BETWEEN :start AND :end";
 
 $sql .= " ORDER BY l.id DESC LIMIT :limit";
 
@@ -144,13 +140,20 @@ $missingActionType = 0;
 $missingVendorOmie = 0;
 $openReviewLinks = [];
 
-// To find titles without action ever, we need all actions ever logged.
-// Let's fetch all actions' details_json to check history for open titles
-$allActionsStmt = $pdo->query("
-    SELECT details_json 
-    FROM biomie_admin_logs 
+$historyStart = date('Y-m-d 00:00:00', strtotime($start . ' -180 days'));
+$historyEnd = $end . ' 23:59:59';
+$allActionsStmt = $pdo->prepare("
+    SELECT details_json
+    FROM biomie_admin_logs
     WHERE event_type = 'finance.collection_action'
+      AND created_at BETWEEN :history_start AND :history_end
+    ORDER BY id DESC
+    LIMIT 50000
 ");
+$allActionsStmt->execute([
+    'history_start' => $historyStart,
+    'history_end' => $historyEnd,
+]);
 $allActions = $allActionsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 $titlesWithActionEver = [];
 foreach ($allActions as $a) {
@@ -288,7 +291,7 @@ $out = [
     'warnings' => $warnings,
     'recommendations' => $recommendations,
     'limit_applied' => $limit,
-    'note' => 'Details_json parse is performed in PHP memory which is optimized for reasonable log sizes (< 100k events). For high-scale, query using native JSON functions where supported.'
+    'note' => 'details_json is decoded in PHP after filtering by event_type and a bounded created_at window. Open-title no-action checks use a 180-day history window and may classify older actions as outside scope.'
 ];
 
 if ($jsonMode) {
@@ -308,7 +311,7 @@ echo "\n";
 echo "========================================================================\n";
 echo "          BIOMIE FINANCE COLLECTION ACTIONS AUDIT\n";
 echo "========================================================================\n";
-echo "Período analisado: " . ($start ?? 'Início') . " até " . ($end ?? 'Hoje') . "\n";
+echo "Período analisado: {$start} até {$end}\n";
 echo "Status Geral: {$statusColor}{$status}{$cReset}\n";
 if (!empty($warnings)) {
     echo "Avisos:\n";

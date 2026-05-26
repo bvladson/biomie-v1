@@ -17,6 +17,25 @@
     quick: 'all'
   };
 
+  var ACTION_LABELS = {
+    cobrado_hoje: 'Cobrado hoje',
+    whatsapp_enviado: 'WhatsApp enviado',
+    ligacao_realizada: 'Ligacao realizada',
+    email_enviado: 'E-mail enviado',
+    aguardando_retorno: 'Aguardando retorno',
+    promessa_pagamento: 'Promessa de pagamento',
+    validar_baixa_caixa: 'Validar baixa no caixa',
+    revisar_vinculo_financeiro: 'Revisar vinculo financeiro'
+  };
+
+  var QUICK_LABELS = {
+    critical: 'Criticos',
+    broken_promises: 'Promessas vencidas',
+    no_action: 'Titulos sem acao',
+    due_today: 'Retornos de hoje',
+    open_link_review: 'Revisoes de vinculo'
+  };
+
   var escapeHtml = function (value) {
     if (B.escapeHtml) return B.escapeHtml(value);
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
@@ -184,6 +203,55 @@
     return '<span class="fin-badge fin-badge-gray">' + escapeHtml(status).toUpperCase() + '</span>';
   }
 
+  function clearChip(key) {
+    if (key === 'vendor') setValue('govFilterVendor', '');
+    if (key === 'actor') setValue('govFilterActor', '');
+    if (key === 'action_type') setValue('govFilterActionType', '');
+    if (key === 'q') setValue('govFilterQ', '');
+    if (key === 'critical') setChecked('govFilterCriticalOnly', false);
+    if (key === 'quick') {
+      state.quick = 'all';
+      resetQuickActive('all');
+    }
+    load(1);
+  }
+
+  function renderChips(filters) {
+    var node = byId('govChips');
+    if (!node) return;
+    var chips = [];
+    if (filters.vendor) chips.push(['vendor', 'Vendedor: ' + filters.vendor]);
+    if (filters.actor_user_id) chips.push(['actor', 'Operador: ' + filters.actor_user_id]);
+    if (filters.action_type) chips.push(['action_type', 'Acao: ' + (ACTION_LABELS[filters.action_type] || filters.action_type)]);
+    if (filters.q) chips.push(['q', 'Busca: ' + filters.q]);
+    if (state.quick !== 'all') chips.push(['quick', 'Visao: ' + (QUICK_LABELS[state.quick] || state.quick)]);
+    if (filters.only_critical && state.quick === 'all') chips.push(['critical', 'Somente criticos']);
+
+    if (!chips.length) {
+      node.style.display = 'none';
+      node.innerHTML = '';
+      return;
+    }
+
+    if (B.FChips && B.FChips.render) {
+      B.FChips.render('govChips', chips.map(function (chip) {
+        return { key: chip[0], label: chip[1] };
+      }), function (key) {
+        if (key === '__all__') resetFilters();
+        else clearChip(key);
+      });
+      return;
+    }
+
+    node.style.display = 'flex';
+    node.style.flexWrap = 'wrap';
+    node.style.gap = '6px';
+    node.innerHTML = chips.map(function (chip) {
+      return '<button class="biomie-filter-chip" type="button" data-gov-chip="' + chip[0] + '">' +
+        escapeHtml(chip[1]) + ' <span aria-hidden="true">x</span></button>';
+    }).join('');
+  }
+
   function renderKpis(summary) {
     summary = summary || {};
     setText('govKpiCobradosHoje', formatNumber(summary.cobrados_hoje || 0));
@@ -241,6 +309,25 @@
         '<td>' + formatCurrency(row.valor_vencido) + '</td>' +
         '<td>' + pct + '</td>' +
         '<td>' + govStatusBadge(row.status_governanca) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function renderSlaAging(rows) {
+    var target = byId('govSlaAgingBody');
+    if (!target) return;
+    if (!rows || !rows.length) {
+      target.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Sem dados para SLA.</td></tr>';
+      return;
+    }
+    target.innerHTML = rows.map(function (row) {
+      var pct = Number(row.percentual_sla || 0).toFixed(1).replace('.', ',') + '%';
+      return '<tr>' +
+        '<td><strong>' + escapeHtml(row.label) + '</strong></td>' +
+        '<td>' + formatNumber(row.qtd_titulos) + '</td>' +
+        '<td>' + formatCurrency(row.valor_aberto) + '</td>' +
+        '<td>' + formatNumber(row.qtd_com_acao) + '</td>' +
+        '<td><strong>' + pct + '</strong></td>' +
         '</tr>';
     }).join('');
   }
@@ -387,8 +474,10 @@
         renderProductivity(payload.productivity || []);
         renderVendorGov(payload.vendor_governance || []);
         renderFollowups(payload.followups || {});
+        renderSlaAging(payload.sla_aging || []);
         renderRiskQueue(payload.risk_queue || []);
         renderPagination(payload.pagination || null);
+        renderChips(filters);
         updateSortHeaders();
         
         var total = payload.pagination ? payload.pagination.total : 0;
@@ -588,6 +677,11 @@
           state.direction = 'asc';
         }
         load(state.page || 1);
+        return;
+      }
+      var chip = event.target.closest('[data-gov-chip]');
+      if (chip) {
+        clearChip(chip.dataset.govChip);
         return;
       }
     });

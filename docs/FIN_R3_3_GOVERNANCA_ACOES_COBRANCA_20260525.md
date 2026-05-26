@@ -74,7 +74,7 @@ A fila de risco operacional classifica os títulos abertos de forma determiníst
 
 * **Fonte de Títulos**: Tabela `biomie_titulos_financeiros_canonicos`.
 * **Fonte de Ações**: Tabela `biomie_admin_logs` usando o `AdminLogService` (evento `finance.collection_action`).
-* **Segurança & RBAC**: Todos os endpoints de leitura exigem a capacidade `finance.view`. Ações de edição ou registro exigem `finance.manage` (se configurada).
+* **Segurança & RBAC**: Todos os endpoints de leitura exigem a capacidade `finance.view`. A gravação de ações continua no endpoint FIN.R3.2 existente e segue o RBAC atual desse endpoint.
 * **Prepared Statements**: Todas as queries e buscas por parâmetros utilizam prepared statements do PDO para total segurança contra SQL Injection.
 * **Leitura em Memória**: Para evitar gargalos e subqueries complexas em strings JSON, a API lê os dados brutos e realiza a consolidação e classificação lógica em memória no PHP de forma otimizada.
 
@@ -87,3 +87,76 @@ A fila de risco operacional classifica os títulos abertos de forma determiníst
   - **FIN.R3.4**: Atribuição e conciliação manual controlada de vendedor por título.
   - **FIN.R3.5**: Definição de metas de cobrança e KPIs de performance de conversão de promessas.
   - **FIN.R3.6**: Automação de envios de lembretes e mensagens pré-vencimento via canais homologados.
+
+---
+
+## 8. Entregas Técnicas
+
+Arquivos principais:
+
+* `api/finance_collection_governance.php`
+* `assets/js/modules/finance/collection-governance.js`
+* `tools/dev/finance_collection_actions_audit.php`
+* `tools/dev/finance_collection_governance_audit.php`
+* `views/financeiro.html`
+* `tools/dev/biomie_release_guard.php` com domínio D12 informacional
+
+Blocos entregues:
+
+* Painel `Governança da cobrança` no `financeiro.php`
+* KPIs de cobrança do dia
+* Produtividade por operador
+* Governança por vendedor
+* Agenda de retornos
+* Fila de risco operacional
+* SLA da cobrança por aging
+* Chips e restore de URL para filtros de governança
+* Export CSV no CLI operacional
+
+As queries em `biomie_admin_logs` filtram `event_type = finance.collection_action`, usam janela de data e limite defensivo. A consolidação decodifica `details_json` em PHP após esse recorte.
+
+---
+
+## 9. Diagnóstico Local 2026-05-26
+
+Comandos read-only executados:
+
+```bash
+php tools/dev/finance_collection_actions_audit.php --start=2026-05-01 --end=2026-05-25 --pretty
+php tools/dev/finance_collection_governance_audit.php --start=2026-05-01 --end=2026-05-25 --pretty
+```
+
+Resultado observado:
+
+* `finance_collection_actions_audit`: OK, 0 ações no período, 70 títulos em aberto sem ação na janela de histórico analisada.
+* `finance_collection_governance_audit`: WARNING operacional, 50 títulos vencidos em aberto no recorte, 50 sem ação, 10 sem vendedor definido, 0 promessas vencidas, 0 retornos atrasados.
+* O WARNING é operacional e esperado enquanto ainda não há rotina de ações registrada no período; não indica erro técnico.
+
+Limitação: a detecção de títulos sem ação usa `details_json` processado em PHP após filtro por `event_type` e janela limitada. A janela histórica padrão dos auditores é defensiva para evitar varredura global sem limite.
+
+---
+
+## 10. Validações
+
+Executar antes de commit/tag:
+
+```bash
+php -l api/finance_collection_governance.php
+php -l tools/dev/finance_collection_actions_audit.php
+php -l tools/dev/finance_collection_governance_audit.php
+node --check assets/js/modules/finance/collection-governance.js
+php tools/dev/lint_all.php
+php bin/schema_migrate.php verify
+php tools/dev/biomie_release_guard.php --start=2026-05-01 --end=2026-05-25 --pretty
+php healthz.php
+vendor/bin/phpstan analyse app tools/dev bin --level=0 --memory-limit=1G
+```
+
+Critérios técnicos:
+
+* endpoint sem `SELECT *`
+* endpoint com prepared statements
+* D12 informacional no release guard
+* sem migration nova
+* sem alteração de dados financeiros originais
+* ações continuam append-only via `biomie_admin_logs`
