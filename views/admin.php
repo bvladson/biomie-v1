@@ -55,6 +55,24 @@
     .admin-inline-form{display:grid;gap:8px;min-width:300px}
     .admin-user-actions{display:grid;gap:8px}
     .admin-table-compact td,.admin-table-compact th{padding:8px 10px;vertical-align:middle}
+    .admin-ops-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .admin-ops-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .admin-ops-grid.two{grid-template-columns:1.35fr .95fr}
+    .admin-ops-card{border:1px solid var(--mag-border,var(--border));border-radius:14px;background:var(--mag-bg,var(--bg-surface));padding:14px;min-height:96px}
+    .admin-ops-card span{display:block;font-size:.74rem;text-transform:uppercase;font-weight:800;letter-spacing:.04em;color:var(--mag-muted,var(--text-2))}
+    .admin-ops-card strong{display:block;margin-top:7px;color:var(--mag-text,var(--text-1));font-size:1.2rem;line-height:1.2}
+    .admin-ops-card p{margin:6px 0 0}
+    .admin-ops-card.ok{border-left:4px solid var(--success-strong,#147a42)}
+    .admin-ops-card.warning,.admin-ops-card.warn{border-left:4px solid var(--warning-strong,#925500)}
+    .admin-ops-card.critical,.admin-ops-card.danger,.admin-ops-card.error{border-left:4px solid var(--danger-strong,#96140a)}
+    .admin-ops-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    .admin-ops-search{max-width:320px}
+    .admin-ops-details{border:1px solid var(--mag-border,var(--border));border-radius:12px;background:var(--mag-bg,var(--bg-surface));padding:10px 12px;margin-top:8px}
+    .admin-ops-details summary{cursor:pointer;font-weight:800;color:var(--mag-text,var(--text-1))}
+    .admin-ops-pre{white-space:pre-wrap;word-break:break-word;font-size:.78rem;background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;max-height:320px;overflow:auto}
+    .admin-ops-link-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .admin-ops-link{display:flex;align-items:flex-start;gap:10px;text-decoration:none;color:inherit;border:1px solid var(--mag-border,var(--border));border-radius:14px;background:var(--mag-bg,var(--bg-surface));padding:14px}
+    .admin-ops-link .material-symbols-rounded{color:var(--page-accent);font-size:22px}
     .admin-user-cell{display:flex;flex-direction:column;gap:2px}
     .admin-row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
     .admin-row-btn{padding:4px 8px;border-radius:8px;font-size:.78rem;font-weight:800;border:1px solid var(--mag-border,var(--border));background:var(--mag-bg,var(--bg-surface));color:var(--mag-text,var(--text-1));cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1.4;white-space:nowrap}
@@ -68,8 +86,8 @@
     .admin-modal-head h3{margin:0;font-size:1rem;color:var(--mag-text,var(--text-1));display:flex;align-items:center;gap:6px}
     .admin-modal-close{background:none;border:none;cursor:pointer;color:var(--mag-muted,var(--text-2));padding:4px;border-radius:8px;line-height:1;display:flex;align-items:center}
     .admin-modal-close:hover{background:var(--mag-bg,var(--bg-surface));color:var(--mag-text,var(--text-1))}
-    @media(max-width:1180px){.admin-grid{grid-template-columns:1fr}.admin-roles-grid,.admin-diagnostics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-permission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:720px){.admin-wrap{padding:16px}.admin-form-grid,.admin-roles-grid,.admin-diagnostics-grid,.admin-permission-grid{grid-template-columns:1fr}.admin-tab{flex:1 1 auto;justify-content:center}.admin-inline-form{min-width:0}.admin-modal-box{padding:18px;border-radius:14px}}
+    @media(max-width:1180px){.admin-grid{grid-template-columns:1fr}.admin-roles-grid,.admin-diagnostics-grid,.admin-ops-grid,.admin-ops-link-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-ops-grid.two{grid-template-columns:1fr}.admin-permission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:720px){.admin-wrap{padding:16px}.admin-form-grid,.admin-roles-grid,.admin-diagnostics-grid,.admin-ops-grid,.admin-ops-link-grid,.admin-permission-grid{grid-template-columns:1fr}.admin-tab{flex:1 1 auto;justify-content:center}.admin-inline-form{min-width:0}.admin-modal-box{padding:18px;border-radius:14px}.admin-ops-head{display:block}.admin-ops-head .admin-actions{margin-top:10px}}
   </style>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
 </head>
@@ -78,7 +96,7 @@ $h = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_Q
 $roles            = is_array($roles            ?? null) ? $roles            : [];
 $permissions      = is_array($permissions      ?? null) ? $permissions      : [];
 $permissionMatrix = is_array($permissionMatrix ?? null) ? $permissionMatrix : [];
-$can              = is_array($can              ?? null) ? $can              : ['users' => false, 'logs' => false, 'migrations' => false, 'console' => false];
+$can              = is_array($can              ?? null) ? $can              : ['users' => false, 'logs' => false, 'migrations' => false, 'console' => false, 'operations' => false];
 $tabAccess = [
     'users'       => (bool) ($can['users']      ?? false),
     'profiles'    => (bool) ($can['users']      ?? false),
@@ -87,6 +105,10 @@ $tabAccess = [
     'diagnostics' => (bool) ($can['logs']       ?? false),
     'migrations'  => (bool) ($can['migrations'] ?? false),
     'console'     => (bool) ($can['console']    ?? false),
+    'system-health' => (bool) ($can['operations'] ?? false),
+    'integrations'  => (bool) ($can['operations'] ?? false),
+    'metrics'       => (bool) ($can['operations'] ?? false),
+    'cockpit'       => (bool) ($can['operations'] ?? false),
 ];
 $tabs = [
     ['key' => 'users',       'label' => 'Usu&aacute;rios',          'icon' => 'group'],
@@ -96,6 +118,10 @@ $tabs = [
     ['key' => 'diagnostics', 'label' => 'Diagn&oacute;stico',       'icon' => 'monitor_heart'],
     ['key' => 'migrations',  'label' => 'Migrations',               'icon' => 'database'],
     ['key' => 'console',     'label' => 'Console',                  'icon' => 'terminal'],
+    ['key' => 'system-health', 'label' => 'Sa&uacute;de',            'icon' => 'monitor_heart'],
+    ['key' => 'integrations',  'label' => 'Integra&ccedil;&otilde;es', 'icon' => 'hub'],
+    ['key' => 'metrics',       'label' => 'KPIs',                   'icon' => 'query_stats'],
+    ['key' => 'cockpit',       'label' => 'Cockpit',                'icon' => 'dashboard_customize'],
 ];
 $consoleCommandList = is_array($consoleCommandList ?? null) ? $consoleCommandList : [];
 $activeTab          = (string) ($activeTab ?? 'users');
@@ -155,10 +181,10 @@ $migrationStatus = is_array($migrationStatus ?? null) ? $migrationStatus : [];
           <div class="mag-page-title__copy">
             <div class="mag-kicker"><span class="material-symbols-rounded">admin_panel_settings</span>Admin</div>
             <h1>Administra&ccedil;&atilde;o</h1>
-            <p>Gerencie usu&aacute;rios, perfis, permiss&otilde;es, logs, diagn&oacute;stico e manuten&ccedil;&atilde;o do sistema.</p>
+            <p>Gerencie usu&aacute;rios, permiss&otilde;es, logs e opera&ccedil;&atilde;o t&eacute;cnica em uma &aacute;rea administrativa &uacute;nica.</p>
           </div>
           <div class="mag-page-title__actions">
-            <a class="btn-secondary" href="observabilidade.php"><span class="material-symbols-rounded">monitoring</span>Observabilidade</a>
+            <a class="btn-secondary" href="admin.php?tab=system-health"><span class="material-symbols-rounded">monitoring</span>Sa&uacute;de</a>
             <a class="btn-secondary" href="index.php"><span class="material-symbols-rounded">space_dashboard</span>Painel</a>
           </div>
         </section>
@@ -183,6 +209,10 @@ $migrationStatus = is_array($migrationStatus ?? null) ? $migrationStatus : [];
         <?php include __DIR__ . '/admin/tabs/diagnostics.php'; ?>
         <?php include __DIR__ . '/admin/tabs/migrations.php'; ?>
         <?php include __DIR__ . '/admin/tabs/console.php'; ?>
+        <?php include __DIR__ . '/admin/tabs/system-health.php'; ?>
+        <?php include __DIR__ . '/admin/tabs/integrations.php'; ?>
+        <?php include __DIR__ . '/admin/tabs/metric-catalog.php'; ?>
+        <?php include __DIR__ . '/admin/tabs/cockpit.php'; ?>
 
       </div>
     </main>

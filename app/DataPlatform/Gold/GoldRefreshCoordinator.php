@@ -11,6 +11,7 @@ use BIomie\DataPlatform\Gold\Builders\CustomerPeriodMartBuilder;
 use BIomie\DataPlatform\Gold\Builders\FinanceTitleMartBuilder;
 use BIomie\DataPlatform\Gold\Builders\FiscalNfeMartBuilder;
 use BIomie\DataPlatform\Gold\Builders\GeoBuyerMartBuilder;
+use BIomie\DataPlatform\Gold\Builders\NfTituloBridgeSummaryBuilder;
 use BIomie\DataPlatform\Gold\Builders\ProductPeriodMartBuilder;
 use BIomie\DataPlatform\Gold\Builders\VendorDayMartBuilder;
 use BIomie\Logger;
@@ -49,6 +50,7 @@ final class GoldRefreshCoordinator
 
         try {
             $bridge     = $this->bridge()->refresh($start, $end);
+            $bridgeSummary = $this->bridgeSummary()->refresh();
             $comercial  = $this->commercial()->refresh($start, $end);
             $fiscal     = $this->fiscal()->refresh($start, $end);
             $financeiro = $this->finance()->refresh($start, $end);
@@ -70,6 +72,7 @@ final class GoldRefreshCoordinator
             $duration = round(microtime(true) - $t0, 2);
             $counts = [
                 'bridge'          => $bridge,
+                'bridge_summary'  => $bridgeSummary,
                 'comercial'       => $comercial,
                 'fiscal'          => $fiscal,
                 'financeiro'      => $financeiro,
@@ -105,6 +108,7 @@ final class GoldRefreshCoordinator
 
         try {
             $bridge    = $this->bridge()->refresh($start, $end);
+            $bridgeSummary = $this->bridgeSummary()->refresh();
             $comercial = $this->commercial()->refresh($start, $end);
             $fiscal    = $this->fiscal()->refresh($start, $end);
             $vendorDay = $this->vendor()->refresh($start, $end);
@@ -122,6 +126,7 @@ final class GoldRefreshCoordinator
             $duration = round(microtime(true) - $t0, 2);
             $counts = [
                 'bridge'          => $bridge,
+                'bridge_summary'  => $bridgeSummary,
                 'comercial'       => $comercial,
                 'fiscal'          => $fiscal,
                 'vendedor_dia'    => $vendorDay,
@@ -144,6 +149,11 @@ final class GoldRefreshCoordinator
     private function bridge(): BridgeMartBuilder
     {
         return new BridgeMartBuilder($this->pdo, $this->logger);
+    }
+
+    private function bridgeSummary(): NfTituloBridgeSummaryBuilder
+    {
+        return new NfTituloBridgeSummaryBuilder($this->pdo, $this->logger);
     }
 
     private function commercial(): CommercialOrderMartBuilder

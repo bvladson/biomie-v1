@@ -28,6 +28,7 @@ declare(strict_types=1);
  *   D10 FIN.R1 — Enriquecimento financeiro  [informacional — não bloqueia]
  *   D11 Daily Sales Integrity             (daily_sales_integrity_check)
  *   D12 Finance Collection Governance     (finance_collection_governance_audit)
+ *   D13 Admin Operations Consolidation    (admin operations static audit)
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -214,15 +215,36 @@ $domains[] = [
 if (!$d5pass) $allPass = false;
 
 // ── D6 — SELECT * audit [informacional — não bloqueia release] ────────────────
-$grepR    = rg_exec('grep -rn -F "SELECT *" ' . escapeshellarg($projectRoot . '/api/'));
-$grepLines = $grepR['output'] !== '' ? explode("\n", rtrim($grepR['output'])) : [];
-$selectStarIssues = array_values(array_filter($grepLines, function (string $line): bool {
-    return $line !== '' && !preg_match('/COUNT\(\*\)|information_schema/i', $line);
-}));
+$selectStarIssues = [];
+$apiDir = $projectRoot . '/api';
+if (is_dir($apiDir)) {
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($apiDir, FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($iterator as $file) {
+        if (!$file instanceof SplFileInfo || !$file->isFile() || strtolower($file->getExtension()) !== 'php') {
+            continue;
+        }
+        $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+            continue;
+        }
+        foreach ($lines as $idx => $line) {
+            if (stripos($line, 'SELECT *') === false) {
+                continue;
+            }
+            if (preg_match('/COUNT\(\*\)|information_schema/i', $line)) {
+                continue;
+            }
+            $relative = str_replace('\\', '/', substr($file->getPathname(), strlen($projectRoot) + 1));
+            $selectStarIssues[] = $relative . ':' . ($idx + 1) . ': ' . trim($line);
+        }
+    }
+}
 $d6warn    = count($selectStarIssues) > 0;
 $domains[] = [
     'label'   => 'D6  Audit — SELECT * em APIs  [informacional]',
-    'guard'   => 'grep -F "SELECT *" api/',
+    'guard'   => 'static scan api/*.php',
     'pass'    => true,
     'warn'    => $d6warn,
     'summary' => $d6warn
@@ -462,6 +484,89 @@ $domains[] = [
 if (!$d12Pass) $allPass = false;
 
 
+// D13 -- Admin Operations Consolidation
+$d13Issues = [];
+$d13Warns = [];
+
+$adminSrc = is_file($projectRoot . '/views/admin.php') ? (string) file_get_contents($projectRoot . '/views/admin.php') : '';
+foreach (['system-health', 'integrations', 'metrics', 'cockpit'] as $tabKey) {
+    if (!str_contains($adminSrc, "'key' => '{$tabKey}'")
+        && !str_contains($adminSrc, "\"key\" => \"{$tabKey}\"")) {
+        $d13Issues[] = "Aba admin ausente: {$tabKey}";
+    }
+}
+
+$partials = [
+    'views/admin/tabs/system-health.php',
+    'views/admin/tabs/integrations.php',
+    'views/admin/tabs/metric-catalog.php',
+    'views/admin/tabs/cockpit.php',
+];
+foreach ($partials as $partial) {
+    if (!is_file($projectRoot . '/' . $partial)) {
+        $d13Issues[] = "Partial ausente: {$partial}";
+    }
+}
+
+$redirects = [
+    'system_health.php' => 'admin.php?tab=system-health',
+    'integracoes.php' => 'admin.php?tab=integrations',
+    'metric_catalog.php' => 'admin.php?tab=metrics',
+    'cockpit_interno.php' => 'admin.php?tab=cockpit',
+];
+foreach ($redirects as $route => $target) {
+    $routeSrc = is_file($projectRoot . '/' . $route) ? (string) file_get_contents($projectRoot . '/' . $route) : '';
+    if ($routeSrc === '') {
+        $d13Issues[] = "Rota antiga ausente: {$route}";
+        continue;
+    }
+    if (!str_contains($routeSrc, $target)) {
+        $d13Issues[] = "Rota antiga nao redireciona para {$target}: {$route}";
+    }
+    if (!str_contains($routeSrc, 'admin.view') || !str_contains($routeSrc, 'admin.manage')) {
+        $d13Issues[] = "Rota antiga sem auth admin explicito: {$route}";
+    }
+    if (str_contains($routeSrc, 'PageRenderer::render')) {
+        $d13Issues[] = "Rota antiga ainda renderiza shell proprio: {$route}";
+    }
+}
+
+$menuSrc = is_file($projectRoot . '/views/config/menu.php') ? (string) file_get_contents($projectRoot . '/views/config/menu.php') : '';
+foreach (['integracoes.php', 'observabilidade.php', 'cockpit_interno.php', 'metric_catalog.php', 'system_health.php'] as $href) {
+    $pattern = "/'href'\\s*=>\\s*'" . preg_quote($href, '/') . "'[\\s\\S]{0,260}'enabled'\\s*=>\\s*true/i";
+    if (preg_match($pattern, $menuSrc)) {
+        $d13Issues[] = "Sidebar ainda expoe pagina tecnica: {$href}";
+    }
+}
+
+foreach (['cron/hostinger/worker.sh', 'cron/hostinger/sync_commercial.sh', 'cron/hostinger/sync_finance.sh', 'cron/hostinger/materialize.sh'] as $wrapper) {
+    $wrapperSrc = is_file($projectRoot . '/' . $wrapper) ? (string) file_get_contents($projectRoot . '/' . $wrapper) : '';
+    if ($wrapperSrc === '') {
+        $d13Issues[] = "Wrapper cron ausente: {$wrapper}";
+        continue;
+    }
+    if (!str_contains($wrapperSrc, 'storage/logs/cron')) {
+        $d13Issues[] = "Wrapper cron sem log auditavel: {$wrapper}";
+    }
+    if (!str_contains($wrapperSrc, 'flock')) {
+        $d13Warns[] = "Wrapper cron sem flock detectado: {$wrapper}";
+    }
+}
+
+$d13Pass = count($d13Issues) === 0;
+$domains[] = [
+    'label'   => 'D13 Admin Operations Consolidation',
+    'guard'   => 'static audit admin tabs + legacy route redirects + cron wrappers',
+    'pass'    => $d13Pass,
+    'warn'    => count($d13Warns) > 0,
+    'summary' => $d13Pass
+        ? (count($d13Warns) > 0 ? 'Consolidado com aviso em wrappers' : 'Admin operations consolidado e rotas antigas protegidas')
+        : count($d13Issues) . ' problema(s) na consolidacao admin/ops',
+    'issues'  => array_merge($d13Issues, $d13Warns),
+];
+if (!$d13Pass) $allPass = false;
+
+
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
@@ -496,7 +601,7 @@ $passCount = count(array_filter($domains, fn($d) => $d['pass']));
 if ($jsonMode) {
     echo json_encode([
         'biomie_release_guard' => [
-            'version'   => 'FIN.R3.3',
+            'version'   => 'AUTO.R1+ADMIN.R1',
             'period'    => ['start' => $start, 'end' => $end],
             'overall'   => $allPass ? 'PASS' : 'FAIL',
             'elapsed_s' => $elapsed,
@@ -518,7 +623,7 @@ $hr2 = str_repeat('─', 72);
 
 echo PHP_EOL;
 echo $hr . PHP_EOL;
-echo '  BIomie Comercial — Release Guard  [FIN.R3.3]
+echo '  BIomie Comercial — Release Guard  [AUTO.R1+ADMIN.R1]
   Período : ' . $start . ' → ' . $end . PHP_EOL;
 echo $hr . PHP_EOL . PHP_EOL;
 

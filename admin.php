@@ -533,12 +533,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 }
 
-$activeTab = preg_replace('/[^a-z_]/', '', (string) ($_GET['tab'] ?? 'users')) ?: 'users';
+$activeTab = preg_replace('/[^a-z_-]/', '', (string) ($_GET['tab'] ?? 'users')) ?: 'users';
 $can = [
     'users' => $guard->can('admin.manage'),
     'logs' => $guard->can('logs.view'),
     'migrations' => $guard->can('settings.manage'),
     'console' => $guard->can('settings.manage'),
+    'operations' => $guard->can('admin.view') || $guard->can('admin.manage'),
 ];
 
 $users = $repo->listUsers();

@@ -93,7 +93,7 @@ final class OmieClient
                 throw new RuntimeException('Nao foi possivel iniciar a conexao com a API do Omie.');
             }
 
-            curl_setopt_array($ch, [
+            $curlOptions = [
                 CURLOPT_POST => true,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => [
@@ -103,12 +103,21 @@ final class OmieClient
                 CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 CURLOPT_TIMEOUT => $timeoutSeconds,
                 CURLOPT_CONNECTTIMEOUT => $connectTimeoutSeconds,
-            ]);
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+            ];
+            $caBundle = $this->resolveCaBundle();
+            if ($caBundle !== null) {
+                $curlOptions[CURLOPT_CAINFO] = $caBundle;
+            }
+            curl_setopt_array($ch, $curlOptions);
 
             $response = curl_exec($ch);
             $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $curlError = curl_error($ch);
-            curl_close($ch);
+            if (PHP_VERSION_ID < 80000) {
+                curl_close($ch);
+            }
 
             try {
                 if ($response === false || $curlError !== '') {
@@ -418,6 +427,29 @@ final class OmieClient
         }
 
         return false;
+    }
+
+    private function resolveCaBundle(): ?string
+    {
+        $candidates = [
+            getenv('OMIE_CA_BUNDLE') ?: '',
+            getenv('CURL_CA_BUNDLE') ?: '',
+            (string) ini_get('curl.cainfo'),
+            (string) ini_get('openssl.cafile'),
+            Bootstrap::rootPath('storage/certs/cacert.pem'),
+            '/etc/ssl/certs/ca-certificates.crt',
+            '/etc/pki/tls/certs/ca-bundle.crt',
+            '/usr/local/share/certs/ca-root-nss.crt',
+        ];
+
+        foreach ($candidates as $candidate) {
+            $path = trim($candidate);
+            if ($path !== '' && is_file($path) && is_readable($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     /**

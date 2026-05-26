@@ -73,8 +73,10 @@ final class OmieSyncFreshnessHealthCheck implements CheckInterface
             $stats     = $domainStats[$domain] ?? [];
             $lastOk    = $stats['last_success_at'] ?? null;
             $lastFail  = $stats['last_failure_at'] ?? null;
-            $lagMin    = $this->lagMinutes($lastOk);
-            $domStatus = $this->statusForDomain($domain, $lastOk);
+            $canonicalOk = $this->canonicalDateForDomain($domain, $canonicalDates);
+            $effectiveOk = $this->freshestDate($lastOk, $canonicalOk);
+            $lagMin    = $this->lagMinutes($effectiveOk);
+            $domStatus = $this->statusForDomain($domain, $effectiveOk);
 
             if ($domStatus === 'unknown') {
                 $neverRanCount++;
@@ -83,6 +85,8 @@ final class OmieSyncFreshnessHealthCheck implements CheckInterface
             $statuses[] = $domStatus;
             $metrics["{$domain}_last_success_at"]  = $lastOk;
             $metrics["{$domain}_last_failure_at"]  = $lastFail;
+            $metrics["{$domain}_effective_success_at"] = $effectiveOk;
+            $metrics["{$domain}_freshness_source"] = $effectiveOk === $lastOk ? 'sync_runs' : 'canonical_fallback';
             $metrics["{$domain}_lag_minutes"]      = $lagMin;
             $metrics["{$domain}_records_written"]  = (int) ($stats['records_written'] ?? 0);
             $metrics["{$domain}_status"]           = $domStatus;
@@ -202,7 +206,7 @@ final class OmieSyncFreshnessHealthCheck implements CheckInterface
         if ($ts === false) {
             return 'unknown';
         }
-        $hours = (time() - $ts) / 3600;
+        $hours = max(0.0, (time() - $ts) / 3600);
         $t = self::DOMAIN_THRESHOLDS[$domain] ?? self::DEFAULT_THRESHOLDS;
         if ($hours <= $t['ok']) {
             return 'ok';
@@ -216,7 +220,41 @@ final class OmieSyncFreshnessHealthCheck implements CheckInterface
             return null;
         }
         $ts = strtotime($date);
-        return $ts !== false ? (int) round((time() - $ts) / 60) : null;
+        return $ts !== false ? max(0, (int) round((time() - $ts) / 60)) : null;
+    }
+
+    /**
+     * @param array<string,?string> $canonicalDates
+     */
+    private function canonicalDateForDomain(string $domain, array $canonicalDates): ?string
+    {
+        if ($domain === 'finance') {
+            return $canonicalDates['finance'] ?? null;
+        }
+
+        if ($domain === 'commercial') {
+            return $this->freshestDate(
+                $canonicalDates['orders'] ?? null,
+                $this->freshestDate($canonicalDates['invoices'] ?? null, $canonicalDates['clients'] ?? null)
+            );
+        }
+
+        return null;
+    }
+
+    private function freshestDate(?string $left, ?string $right): ?string
+    {
+        $leftTs = $left !== null && $left !== '' ? strtotime($left) : false;
+        $rightTs = $right !== null && $right !== '' ? strtotime($right) : false;
+
+        if ($leftTs === false) {
+            return $rightTs === false ? null : $right;
+        }
+        if ($rightTs === false) {
+            return $left;
+        }
+
+        return $rightTs > $leftTs ? $right : $left;
     }
 
     /** @param list<string> $columns */

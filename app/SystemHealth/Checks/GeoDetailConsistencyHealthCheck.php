@@ -49,6 +49,7 @@ final class GeoDetailConsistencyHealthCheck implements CheckInterface
 
         $propagationIssues  = [];
         $technicalIssues    = [];
+        $technicalWarnings  = [];
         $technicalActions   = [];
         $emptyBairroRev     = 0.0;
 
@@ -176,7 +177,7 @@ final class GeoDetailConsistencyHealthCheck implements CheckInterface
                      ) t"
                 )->fetchColumn();
                 if ($metrics['multiple_names_per_key'] > 0) {
-                    $technicalIssues[] = $metrics['multiple_names_per_key'] . ' bairro_key com nomes humanos conflitantes.';
+                    $technicalWarnings[] = $metrics['multiple_names_per_key'] . ' bairro_key com nomes humanos conflitantes.';
                 }
             }
 
@@ -200,7 +201,7 @@ final class GeoDetailConsistencyHealthCheck implements CheckInterface
 
         $ms = (int) round((microtime(true) - $start) * 1000);
 
-        $metrics['technical_consistency'] = (count($technicalIssues) === 0 && count($propagationIssues) === 0) ? 'ok' : 'issues';
+        $metrics['technical_consistency'] = (count($technicalIssues) === 0 && count($technicalWarnings) === 0 && count($propagationIssues) === 0) ? 'ok' : 'issues';
         $metrics['data_quality'] = [
             'empty_bairro_count'   => $metrics['empty_bairro_with_revenue'],
             'empty_bairro_revenue' => round($emptyBairroRev, 2),
@@ -240,6 +241,16 @@ final class GeoDetailConsistencyHealthCheck implements CheckInterface
                 'Inconsistencias tecnicas no mapa geo: ' . implode(' | ', $technicalIssues),
                 $metrics,
                 $technicalActions,
+                $ms
+            );
+        }
+
+        if (count($technicalWarnings) > 0) {
+            return SystemHealthCheck::warning(
+                $this->id(), $this->label(),
+                'Avisos de nomenclatura geo: ' . implode(' | ', $technicalWarnings),
+                $metrics,
+                ['Manter conflitos documentados ou padronizar nomes humanos em fase geo dedicada.'],
                 $ms
             );
         }
