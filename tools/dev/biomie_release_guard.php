@@ -27,6 +27,7 @@ declare(strict_types=1);
  *   D9  Cache — limpeza                   [apenas com --clear-cache]
  *   D10 FIN.R1 — Enriquecimento financeiro  [informacional — não bloqueia]
  *   D11 Daily Sales Integrity             (daily_sales_integrity_check)
+ *   D12 Finance Collection Governance     (finance_collection_governance_audit)
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -399,6 +400,68 @@ $domains[] = [
 if ($fail) $allPass = false;
 
 
+// ── D12 — Finance Collection Governance ──────────────────────────────────────
+$d12Issues = [];
+$d12Warn = false;
+
+// 1. Files existence
+if (!is_file($projectRoot . '/api/finance_collection_governance.php')) {
+    $d12Issues[] = 'api/finance_collection_governance.php ausente';
+}
+if (!is_file($projectRoot . '/assets/js/modules/finance/collection-governance.js')) {
+    $d12Issues[] = 'assets/js/modules/finance/collection-governance.js ausente';
+}
+if (!is_file($toolsDir . '/finance_collection_governance_audit.php')) {
+    $d12Issues[] = 'finance_collection_governance_audit.php ausente';
+}
+
+// 2. Asset registration check
+$registrySrc = file_get_contents($projectRoot . '/app/PageAssetRegistry.php');
+if (!str_contains($registrySrc, 'collection-governance.js')) {
+    $d12Issues[] = 'collection-governance.js não registrado no PageAssetRegistry';
+}
+
+// 3. SELECT * check
+if (is_file($projectRoot . '/api/finance_collection_governance.php')) {
+    $apiSrc = file_get_contents($projectRoot . '/api/finance_collection_governance.php');
+    if (preg_match('/SELECT\s+\*\s+/i', $apiSrc)) {
+        $d12Issues[] = 'SELECT * detectado no endpoint de governança';
+    }
+    if (!str_contains($apiSrc, 'finance.view')) {
+        $d12Issues[] = 'Falta verificação de capacidade finance.view no endpoint';
+    }
+}
+
+// 4. Run CLI Auditor
+$rGov = rg_run($php, $toolsDir . '/finance_collection_governance_audit.php', ["--start={$start}", "--end={$end}", '--json']);
+if ($rGov['exit'] !== 0) {
+    $d12Issues[] = 'CLI de governança falhou com código ' . $rGov['exit'];
+} else {
+    $govJson = json_decode($rGov['output'], true);
+    if (!is_array($govJson) || !isset($govJson['ok'])) {
+        $d12Issues[] = 'CLI de governança retornou JSON inválido';
+    } else {
+        $summary = $govJson['summary'] ?? [];
+        if (($summary['titulos_com_acao_periodo'] ?? 0) === 0) {
+            $d12Warn = true; // Warning justificado se não houver ações no período
+        }
+    }
+}
+
+$d12Pass = count($d12Issues) === 0;
+$domains[] = [
+    'label'   => 'D12 Finance Collection Governance',
+    'guard'   => 'finance_collection_governance_audit.php + static analysis',
+    'pass'    => $d12Pass,
+    'warn'    => $d12Warn,
+    'summary' => $d12Pass
+        ? ($d12Warn ? 'Sem ações de cobrança registradas no período (WARN esperado)' : 'Painel de governança operacional validado com sucesso')
+        : count($d12Issues) . ' problema(s) de governança de cobrança encontrado(s)',
+    'issues'  => $d12Issues,
+];
+if (!$d12Pass) $allPass = false;
+
+
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
@@ -433,7 +496,7 @@ $passCount = count(array_filter($domains, fn($d) => $d['pass']));
 if ($jsonMode) {
     echo json_encode([
         'biomie_release_guard' => [
-            'version'   => 'Q.11',
+            'version'   => 'FIN.R3.3',
             'period'    => ['start' => $start, 'end' => $end],
             'overall'   => $allPass ? 'PASS' : 'FAIL',
             'elapsed_s' => $elapsed,
@@ -455,8 +518,8 @@ $hr2 = str_repeat('─', 72);
 
 echo PHP_EOL;
 echo $hr . PHP_EOL;
-echo '  BIomie Comercial — Release Guard  [Q.11]' . PHP_EOL;
-echo '  Período : ' . $start . ' → ' . $end . PHP_EOL;
+echo '  BIomie Comercial — Release Guard  [FIN.R3.3]
+  Período : ' . $start . ' → ' . $end . PHP_EOL;
 echo $hr . PHP_EOL . PHP_EOL;
 
 foreach ($domains as $d) {

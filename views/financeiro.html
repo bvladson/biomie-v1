@@ -266,6 +266,130 @@
     </section>
   </section>
 
+  <div class="section-label anim d4" id="cobranca-governanca">Governança da cobrança</div>
+  <section id="financeGovernanceSection" class="mb-4">
+    <div class="fc-executive-shell">
+      <div class="fin-panel-head fc-section-head">
+        <div>
+          <h2>Painel de Governança da Cobrança</h2>
+          <p>Produtividade dos operadores, controle de SLAs, fila de risco prioritária e agenda de retornos.</p>
+        </div>
+      </div>
+
+      <div id="govFeedback" class="biomie-table-feedback" style="display:none;margin-bottom:10px;font-size:0.82rem;"></div>
+
+      <div class="fc-filter-shell">
+        <div class="filter-group"><label class="filter-label">Vendedor</label><input id="govFilterVendor" type="search" class="filter-input" placeholder="Código ou nome" /></div>
+        <div class="filter-group"><label class="filter-label">Operador</label><input id="govFilterActor" type="search" class="filter-input" placeholder="ID do operador" /></div>
+        <div class="filter-group">
+          <label class="filter-label">Tipo de ação</label>
+          <select id="govFilterActionType" class="filter-input">
+            <option value="">Todas as ações</option>
+            <option value="cobrado_hoje">Cobrado hoje</option>
+            <option value="whatsapp_enviado">WhatsApp enviado</option>
+            <option value="ligacao_realizada">Ligação realizada</option>
+            <option value="email_enviado">E-mail enviado</option>
+            <option value="aguardando_retorno">Aguardando retorno</option>
+            <option value="promessa_pagamento">Promessa de pagamento</option>
+            <option value="validar_baixa_caixa">Validar baixa no caixa</option>
+            <option value="revisar_vinculo_financeiro">Revisar vínculo financeiro</option>
+          </select>
+        </div>
+        <div class="filter-group"><label class="filter-label">Busca</label><input id="govFilterQ" type="search" class="filter-input" placeholder="Cliente, documento..." /></div>
+        <div class="fc-filter-actions">
+          <label class="nf-quick-filter-btn" style="gap:6px;"><input id="govFilterCriticalOnly" type="checkbox" /> Críticos</label>
+          <button id="govApply" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span>Filtrar</button>
+          <button id="govReset" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">restart_alt</span>Limpar</button>
+        </div>
+      </div>
+
+      <div class="nf-quick-filter-bar fc-quick-filters" id="govQuickFilters">
+        <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-gov-quick="all">Todos</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="critical">Críticos</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="broken_promises">Promessas vencidas</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="no_action">Títulos sem ação</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="due_today">Retornos de hoje</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="open_link_review">Revisões de vínculo</button>
+      </div>
+
+      <section class="biomie-kpi-grid fc-kpi-grid">
+        <article class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cobrados hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">call</span></div><strong class="biomie-kpi-card__value" id="govKpiCobradosHoje">0</strong><span class="biomie-kpi-card__sub">Ações registradas hoje.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Retornos hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">today</span></div><strong class="biomie-kpi-card__value" id="govKpiRetornosHoje">0</strong><span class="biomie-kpi-card__sub">Agenda para hoje.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Retornos atrasados</span><span class="material-symbols-rounded biomie-kpi-card__icon">history</span></div><strong class="biomie-kpi-card__value" id="govKpiRetornosAtrasados">0</strong><span class="biomie-kpi-card__sub">SLA de contato vencido.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Promessas vencidas</span><span class="material-symbols-rounded biomie-kpi-card__icon">running_with_errors</span></div><strong class="biomie-kpi-card__value" id="govKpiPromessasVencidas">0</strong><span class="biomie-kpi-card__sub">Acordo de pgto quebrado.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vencidos sem ação</span><span class="material-symbols-rounded biomie-kpi-card__icon">report_problem</span></div><strong class="biomie-kpi-card__value" id="govKpiVencidosSemAcao">0</strong><span class="biomie-kpi-card__sub">Sem histórico de cobrança.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">link_off</span></div><strong class="biomie-kpi-card__value" id="govKpiSemVendedor">0</strong><span class="biomie-kpi-card__sub">Pendência de origem.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">% acionada</span><span class="material-symbols-rounded biomie-kpi-card__icon">percent</span></div><strong class="biomie-kpi-card__value" id="govKpiPctAcionada">0%</strong><span class="biomie-kpi-card__sub">Cobertura de cobrança.</span></article>
+      </section>
+    </div>
+
+    <section class="row g-4 mb-4">
+      <div class="col-xl-7">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Produtividade dos operadores</h2><p>Quantidade e tipos de ações de cobrança registradas por operador.</p></div></div>
+          <div class="table-responsive fin-table-wrap">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Operador</th><th>Ações</th><th>Títulos</th><th>Clientes</th><th>WhatsApp</th><th>Ligação</th><th>E-mail</th><th>Promessa</th><th>Retorno</th><th>Período</th></tr></thead>
+              <tbody id="govProductivityBody" data-empty-title="Sem produtividade" data-empty-message="Nenhuma ação registrada para o período selecionado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-5">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Governança por vendedor</h2><p>Acionamento e controle de SLA da carteira de cada vendedor.</p></div></div>
+          <div class="table-responsive fin-table-wrap">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Vendedor</th><th>Aberto</th><th>Vencido</th><th>% Acionado</th><th>Status</th></tr></thead>
+              <tbody id="govVendorGovBody" data-empty-title="Sem dados" data-empty-message="Nenhum vendedor encontrado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row g-4 mb-4">
+      <div class="col-xl-12">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Agenda de retornos (Follow-ups)</h2><p>Próximas ações e retornos de contato agendados.</p></div></div>
+          <div class="table-responsive fin-table-wrap" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Tipo</th><th>Título</th><th>Cliente</th><th>Próxima Ação</th><th>Responsável</th><th>Nota</th><th>Valor Aberto</th><th>Vencimento</th><th>Dias Atraso</th></tr></thead>
+              <tbody id="govFollowupsBody" data-empty-title="Agenda vazia" data-empty-message="Nenhum retorno agendado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-card anim d4">
+      <div class="table-card-header">
+        <h2 class="table-card-title">Fila de risco prioritária</h2>
+        <span class="table-card-meta" id="govRiskMeta"></span>
+      </div>
+      <div class="table-responsive fin-table-wrap">
+        <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th class="nf-th-sortable" data-gov-sort="prioridade">Prioridade <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Motivo de Risco</th>
+              <th class="nf-th-sortable" data-gov-sort="cliente">Cliente <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Vendedor</th>
+              <th class="nf-th-sortable" data-gov-sort="documento">Título <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-gov-sort="vencimento">Vencimento <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-gov-sort="dias_atraso">Atraso <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-gov-sort="valor_aberto">Valor Aberto <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Ação Recomendada</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="govRiskQueueBody" data-empty-title="Fila vazia" data-empty-message="Nenhum título crítico na fila de risco operacional."></tbody>
+        </table>
+      </div>
+      <div id="govPagination" style="display:none;padding:12px 16px;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;color:var(--text-2);"></div>
+    </section>
+  </section>
+
   <!-- ═══════════════════════════════════════════════════════════════════════
        BUSCA DE TÍTULOS — server-side, Q.5
   ════════════════════════════════════════════════════════════════════════ -->

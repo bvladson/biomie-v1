@@ -147,6 +147,7 @@ final class PageAssetRegistry
                 'assets/js/finance.js',
                 'assets/js/modules/finance/page-drilldown.js',
                 'assets/js/modules/finance/collection-by-vendor.js',
+                'assets/js/modules/finance/collection-governance.js',
             ],
         ],
 
