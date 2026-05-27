@@ -81,44 +81,174 @@
 
   <div class="section-label anim d2" id="cards">Indicadores</div>
   <section class="biomie-kpi-grid anim d2">
-    <article class="biomie-kpi-card biomie-kpi-card--info">
+    <article class="biomie-kpi-card biomie-kpi-card--info" data-finance-insight="open">
       <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">A receber</span><span class="material-symbols-rounded biomie-kpi-card__icon">account_balance</span></div>
       <strong class="biomie-kpi-card__value" id="finOpen">R$ 0,00<span id="finOpenArrow"></span></strong>
       <span class="biomie-kpi-card__sub" id="finOpenDetail">Títulos ainda não liquidados.</span>
       <span class="mag-kpi-card__meta" id="finOpenHelper"></span>
       <div class="fin-kpi-progress"><span id="finOpenProgress"></span></div>
     </article>
-    <article class="biomie-kpi-card biomie-kpi-card--danger">
+    <article class="biomie-kpi-card biomie-kpi-card--danger" data-finance-insight="overdue">
       <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vencido</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning</span></div>
       <strong class="biomie-kpi-card__value" id="finOverdue">R$ 0,00<span id="finOverdueArrow"></span></strong>
       <span class="biomie-kpi-card__sub" id="finOverdueDetail">Títulos em atraso no recorte.</span>
       <span class="mag-kpi-card__meta" id="finOverdueHelper"></span>
       <div class="fin-kpi-progress"><span id="finOverdueProgress"></span></div>
     </article>
-    <article class="biomie-kpi-card biomie-kpi-card--warning">
+    <article class="biomie-kpi-card biomie-kpi-card--warning" data-finance-insight="due">
       <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">A vencer</span><span class="material-symbols-rounded biomie-kpi-card__icon">event_available</span></div>
       <strong class="biomie-kpi-card__value" id="finDue">R$ 0,00</strong>
       <span class="biomie-kpi-card__sub" id="finDueDetail">Valores em aberto dentro do prazo.</span>
       <span class="mag-kpi-card__meta" id="finDueHelper"></span>
       <div class="fin-kpi-progress"><span id="finDueProgress"></span></div>
     </article>
-    <article class="biomie-kpi-card biomie-kpi-card--success">
+    <article class="biomie-kpi-card biomie-kpi-card--success" data-finance-insight="received">
       <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebido no mês</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
       <strong class="biomie-kpi-card__value" id="finReceived">R$ 0,00<span id="finReceivedArrow"></span></strong>
       <span class="biomie-kpi-card__sub" id="finReceivedDetail">Baixas financeiras do período.</span>
       <span class="mag-kpi-card__meta" id="finReceivedHelper"></span>
       <div class="fin-kpi-progress"><span id="finReceivedProgress"></span></div>
     </article>
-    <article class="biomie-kpi-card biomie-kpi-card--danger">
+    <article class="biomie-kpi-card biomie-kpi-card--danger" data-finance-insight="late_clients">
       <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes em atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div>
       <strong class="biomie-kpi-card__value" id="finLateClients">0</strong>
       <span class="biomie-kpi-card__sub" id="finLateClientsDetail">Clientes com títulos vencidos.</span>
     </article>
-    <article class="biomie-kpi-card biomie-kpi-card--warning">
+    <article class="biomie-kpi-card biomie-kpi-card--warning" data-finance-insight="max_delay">
       <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Maior atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">timer</span></div>
       <strong class="biomie-kpi-card__value" id="finMaxDelay">-</strong>
       <span class="biomie-kpi-card__sub" id="finMaxDelayDetail">Cliente com maior atraso no recorte.</span>
     </article>
+  </section>
+
+  <div class="section-label anim d3" id="finance-visual">Visao visual</div>
+  <section id="financeVisualAnalytics" class="finance-visual-shell anim d3" aria-label="Analytics financeiro visual">
+    <div class="finance-visual-head">
+      <div>
+        <h2>Financeiro visual</h2>
+        <p>Carteira, aging, vendedores, clientes de risco e governanca em graficos clicaveis.</p>
+      </div>
+      <span id="financeVisualMeta" class="finance-visual-meta">Aguardando dados...</span>
+    </div>
+    <div class="finance-visual-grid">
+      <article class="finance-visual-card finance-visual-card--compact" data-drawer-type="composition">
+        <div class="finance-visual-card__head"><div><h3>Composicao da carteira</h3><small>Recebido, vencido e a vencer.</small></div></div>
+        <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeVisualCompositionChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card finance-visual-card--wide" data-drawer-type="evolution">
+        <div class="finance-visual-card__head"><div><h3>Evolucao da carteira</h3><small>Barras de recebido e linha de aberto/vencido.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualEvolutionChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-drawer-type="aging">
+        <div class="finance-visual-card__head"><div><h3>Aging de recebiveis</h3><small>Faixas de vencimento em aberto.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualAgingChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-drawer-type="vendor">
+        <div class="finance-visual-card__head"><div><h3>Cobranca por vendedor</h3><small>Valor vencido, carteira e acionamento.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualVendorChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-drawer-type="customer">
+        <div class="finance-visual-card__head"><div><h3>Clientes de risco</h3><small>Pareto por valor vencido.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualClientRiskChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card finance-visual-card--compact" data-drawer-type="governance">
+        <div class="finance-visual-card__head"><div><h3>Governanca da cobranca</h3><small>Acoes, retornos e pendencias.</small></div></div>
+        <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeVisualGovernanceChart"></canvas></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RASTREABILIDADE DE RECEBÍVEIS — FIN.R4.1
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="section-label anim d3" id="finance-trace">Rastreabilidade de Recebíveis</div>
+  <section id="financeReceivableTrace" class="finance-visual-shell anim d3" aria-label="Rastreabilidade de recebíveis">
+    <div class="finance-visual-head">
+      <div>
+        <h2>Rastreabilidade de Recebíveis</h2>
+        <p>Notas fiscais, boletos em aberto, métodos de pagamento e responsáveis.</p>
+      </div>
+      <span id="financeTraceMeta" class="finance-visual-meta">Aguardando dados...</span>
+    </div>
+
+    <section class="biomie-kpi-grid anim d3" style="margin-bottom:14px;">
+      <article class="biomie-kpi-card biomie-kpi-card--danger" data-trace-insight="nfs_open_boleto" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs com boleto em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
+        <strong class="biomie-kpi-card__value" id="traceNfsOpenBoleto">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceNfsOpenBoletoSub">notas fiscais pendentes</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="boletos_open" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Boletos em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+        <strong class="biomie-kpi-card__value" id="traceBoletosOpen">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceBoletosOpenSub">valor aberto</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--danger" data-trace-insight="boletos_overdue" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Boletos vencidos</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning_amber</span></div>
+        <strong class="biomie-kpi-card__value" id="traceBoletosOverdue">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceBoletosOverdueSub">maior atraso</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="sem_nf" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem NF vinculada</span><span class="material-symbols-rounded biomie-kpi-card__icon">link_off</span></div>
+        <strong class="biomie-kpi-card__value" id="traceSemNf">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceSemNfSub">títulos sem rastreio</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="sem_vendedor" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">person_off</span></div>
+        <strong class="biomie-kpi-card__value" id="traceSemVendedor">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceSemVendedorSub">valor sem responsável</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--info" data-trace-insight="metodo_principal" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Método principal</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div>
+        <strong class="biomie-kpi-card__value" id="traceMetodoPrincipal">-</strong>
+        <span class="biomie-kpi-card__sub" id="traceMetodoPrincipalSub">maior share no período</span>
+      </article>
+    </section>
+
+    <div class="finance-visual-grid">
+      <article class="finance-visual-card finance-visual-card--wide" data-trace-type="nf_open" data-drawer-type="trace_nf">
+        <div class="finance-visual-card__head"><div><h3>NFs com boletos em aberto</h3><small>Top 10 por valor aberto — clique para ver detalhes.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceNfChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-trace-type="payment_methods" data-drawer-type="trace_method">
+        <div class="finance-visual-card__head">
+          <div><h3>Top 10 métodos de pagamento</h3><small>Comparação de valor no período.</small></div>
+          <div class="finance-trace-toggle" id="traceMethodToggle">
+            <button class="finance-trace-btn finance-trace-btn--active" data-trace-metric="total_value">Valor total</button>
+            <button class="finance-trace-btn" data-trace-metric="open_value">Aberto</button>
+            <button class="finance-trace-btn" data-trace-metric="titles_count">Qtd</button>
+          </div>
+        </div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceMethodChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-trace-type="vendor_boleto" data-drawer-type="trace_vendor">
+        <div class="finance-visual-card__head"><div><h3>Boletos por vendedor</h3><small>Valor aberto em boleto por responsável.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceVendorChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card finance-visual-card--compact" data-trace-type="coverage" data-drawer-type="trace_coverage">
+        <div class="finance-visual-card__head"><div><h3>Cobertura NF × título</h3><small>Vínculo entre títulos e notas fiscais.</small></div></div>
+        <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeTraceCoverageChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-trace-type="aging_boleto" data-drawer-type="trace_aging">
+        <div class="finance-visual-card__head"><div><h3>Aging de boletos em aberto</h3><small>Faixas de vencimento apenas para boletos.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceAgingChart"></canvas></div>
+      </article>
+    </div>
+
+    <div class="finance-trace-nf-table-section" id="financeTraceNfTableSection">
+      <div class="finance-visual-card__head" style="padding:10px 0 6px;"><div><h3>NFs com boletos em aberto</h3><small>Top 10 operacionais — clique na NF para abrir detalhes.</small></div><button id="traceNfTableViewAll" class="btn-secondary mag-button-secondary" style="font-size:0.8rem;padding:4px 10px;">Ver todas</button></div>
+      <div class="table-responsive fin-table-wrap">
+        <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th>NF</th><th>Emissão</th><th>Cliente</th><th>Vendedor</th>
+              <th>Boletos</th><th>Vencido</th><th>A vencer</th><th>Aberto</th>
+              <th>Maior atraso</th><th>Método</th><th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="financeTraceNfTableBody" data-empty-title="Sem NFs com boleto aberto" data-empty-message="Nenhuma NF com boleto em aberto no período."></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <div class="section-label anim d3" id="graficos">Analises</div>
@@ -607,6 +737,69 @@
       </div>
     </div>
   </div>
+  <!-- Trace Drawer: NF / method / vendor / aging operacional -->
+  <div id="financeTraceDrawerBackdrop" class="finance-insight-backdrop" hidden></div>
+  <aside id="financeTraceDrawer" class="finance-insight-drawer finance-trace-drawer" role="dialog" aria-modal="true" aria-labelledby="financeTraceTitle" aria-hidden="true" hidden>
+    <div class="finance-insight-drawer__head">
+      <div>
+        <span class="weather-card-label" id="financeTraceLabel">Rastreabilidade</span>
+        <h3 id="financeTraceTitle">Detalhe financeiro</h3>
+        <p id="financeTraceSubtitle">NF, boletos, cliente, vendedor e ação.</p>
+      </div>
+      <button type="button" class="btn-icon" id="financeTraceClose" aria-label="Fechar drawer de rastreabilidade"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+    </div>
+    <div id="financeTraceMetrics" class="finance-insight-metrics"></div>
+    <div class="finance-insight-table-wrap">
+      <table class="mag-table mag-table-clean" id="financeTraceTable">
+        <thead id="financeTraceTableHead">
+          <tr>
+            <th>NF</th><th>Título</th><th>Cliente</th><th>Vendedor</th>
+            <th>Vencimento</th><th>Atraso</th><th>Aberto</th><th>Método</th><th>Ação</th>
+          </tr>
+        </thead>
+        <tbody id="financeTraceRows"></tbody>
+      </table>
+      <div id="financeTraceEmpty" class="finance-insight-empty" hidden>Nenhum dado encontrado para este recorte.</div>
+    </div>
+    <details class="finance-insight-diagnostics">
+      <summary>Diagnóstico técnico</summary>
+      <pre id="financeTraceDiagnostics">{}</pre>
+    </details>
+  </aside>
+
+  <div id="financeInsightDrawerBackdrop" class="finance-insight-backdrop" hidden></div>
+  <aside id="financeInsightDrawer" class="finance-insight-drawer" role="dialog" aria-modal="true" aria-labelledby="financeInsightTitle" aria-hidden="true" hidden>
+    <div class="finance-insight-drawer__head">
+      <div>
+        <span class="weather-card-label">Detalhamento financeiro</span>
+        <h3 id="financeInsightTitle">Insight financeiro</h3>
+        <p id="financeInsightSubtitle">Titulos e indicadores do recorte selecionado.</p>
+      </div>
+      <button type="button" class="btn-icon" id="financeInsightClose" aria-label="Fechar detalhe financeiro"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+    </div>
+    <div id="financeInsightMetrics" class="finance-insight-metrics"></div>
+    <div class="finance-insight-table-wrap">
+      <table class="mag-table mag-table-clean">
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Cliente</th>
+            <th>Vendedor</th>
+            <th>Vencimento</th>
+            <th>Atraso</th>
+            <th>Valor</th>
+            <th>Acao</th>
+          </tr>
+        </thead>
+        <tbody id="financeInsightRows"></tbody>
+      </table>
+      <div id="financeInsightEmpty" class="finance-insight-empty" hidden>Nenhum titulo encontrado para este recorte.</div>
+    </div>
+    <details class="finance-insight-diagnostics">
+      <summary>Diagnostico tecnico</summary>
+      <pre id="financeInsightDiagnostics">{}</pre>
+    </details>
+  </aside>
 </main>
 </body>
 </html>
