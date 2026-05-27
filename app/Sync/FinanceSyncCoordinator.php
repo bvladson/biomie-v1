@@ -95,6 +95,23 @@ final class FinanceSyncCoordinator
         $dueRows   = $this->finance->searchTitlesByDueDate($start, $end);
         $titles    = $this->buildCanonicalTitles(array_merge($paidRows, $dueRows), $fonte);
 
+        $needsEnrichment = array_filter(
+            $titles,
+            static fn (array $t): bool => ($t['forma_pagamento'] ?? null) === null && ($t['especie_documento'] ?? null) === null
+        );
+
+        if ($needsEnrichment !== []) {
+            try {
+                $receivables = $this->finance->listReceivablesByDueDate($start, $end);
+                $titles      = $this->enrichPaymentMethods($titles, $receivables);
+            } catch (Throwable $e) {
+                $this->logger->warning('FinanceSyncCoordinator: enriquecimento via ListarContasReceber falhou; continuando sem método de pagamento.', [
+                    'message' => $e->getMessage(),
+                    'period'  => "$start → $end",
+                ]);
+            }
+        }
+
         $stats       = $this->canonical->replaceFinancialTitlesWindow($start, $end, array_values($titles));
         $divergences = $this->detectDivergences(array_values($titles));
 
@@ -103,6 +120,56 @@ final class FinanceSyncCoordinator
             'titles_checked' => count($titles),
             'divergences'    => $divergences,
         ];
+    }
+
+    /**
+     * Enriquece forma_pagamento e especie_documento usando dados de ListarContasReceber.
+     * Apenas preenche campos nulos — nunca sobrescreve dados existentes.
+     *
+     * @param array<string,array<string,mixed>> $titles indexed by titulo_key
+     * @param list<array<string,mixed>>         $receivables raw rows from ListarContasReceber
+     * @return array<string,array<string,mixed>>
+     */
+    private function enrichPaymentMethods(array $titles, array $receivables): array
+    {
+        $lookup = [];
+        foreach ($receivables as $row) {
+            $titleId = (int) Support::getByPaths($row, ['cabecTitulo.nCodTitulo', 'nCodTitulo'], 0);
+            if ($titleId <= 0) {
+                continue;
+            }
+
+            $forma   = $this->nullableString(Support::findFirstByKeys($row, ['cFormaPag', 'forma_pagamento', 'cMeioPagamento'], ''));
+            $especie = $this->nullableString(Support::findFirstByKeys($row, ['cTipoTitulo', 'cEspecie', 'tipo_titulo', 'especie_documento'], ''));
+
+            if ($forma !== null || $especie !== null) {
+                $lookup[$titleId] = ['forma_pagamento' => $forma, 'especie_documento' => $especie];
+            }
+        }
+
+        if ($lookup === []) {
+            return $titles;
+        }
+
+        foreach ($titles as $key => $title) {
+            if (($title['forma_pagamento'] ?? null) !== null || ($title['especie_documento'] ?? null) !== null) {
+                continue;
+            }
+
+            $titleId = (int) ($title['titulo_id_omie'] ?? 0);
+            if ($titleId <= 0 || !isset($lookup[$titleId])) {
+                continue;
+            }
+
+            if ($lookup[$titleId]['forma_pagamento'] !== null) {
+                $titles[$key]['forma_pagamento'] = $lookup[$titleId]['forma_pagamento'];
+            }
+            if ($lookup[$titleId]['especie_documento'] !== null) {
+                $titles[$key]['especie_documento'] = $lookup[$titleId]['especie_documento'];
+            }
+        }
+
+        return $titles;
     }
 
     /**

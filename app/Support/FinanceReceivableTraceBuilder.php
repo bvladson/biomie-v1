@@ -19,6 +19,9 @@ final class FinanceReceivableTraceBuilder
         'duplicata', 'borderô', 'bordero',
     ];
 
+    /** Espécies de documento Omie que indicam boleto/duplicata. */
+    private const BOLETO_ESPECIES = ['bol', 'dup', 'dmi', 'dme'];
+
     private const METHOD_MAP = [
         'boleto'         => ['boleto', 'bol ', 'cobrança', 'cobranca', 'duplicata', 'borderô', 'bordero'],
         'pix'            => ['pix'],
@@ -29,6 +32,9 @@ final class FinanceReceivableTraceBuilder
         'cheque'         => ['cheque', 'chq'],
         'deposito'       => ['depós', 'depos', 'deposit'],
     ];
+
+    /** Lookup nCodCC → {bol_sn, pix_sn, descricao} carregado sob demanda do bronze. */
+    private ?array $accountLookup = null;
 
     public function __construct(private readonly PDO $pdo)
     {
@@ -228,8 +234,14 @@ final class FinanceReceivableTraceBuilder
     {
         $forma   = strtolower(trim((string) ($title['forma_pagamento'] ?? '')));
         $especie = strtolower(trim((string) ($title['especie_documento'] ?? '')));
-        $combined = $forma . ' ' . $especie;
 
+        // 1. Espécie de documento Omie (código oficial: BOL, DUP, DMI, DME)
+        if (in_array($especie, self::BOLETO_ESPECIES, true)) {
+            return 'boleto';
+        }
+
+        // 2. Keyword search em forma_pagamento + especie_documento
+        $combined = $forma . ' ' . $especie;
         foreach (self::METHOD_MAP as $method => $keywords) {
             foreach ($keywords as $kw) {
                 if (str_contains($combined, $kw)) {
@@ -238,11 +250,105 @@ final class FinanceReceivableTraceBuilder
             }
         }
 
+        // 3. Fallback via configuração da conta corrente (bol_sn / pix_sn do bronze Omie)
+        $contaCode = trim((string) ($title['codigo_conta_corrente_omie'] ?? $title['raw_account'] ?? ''));
+        if ($contaCode !== '') {
+            $accountMethod = $this->detectMethodFromAccount($contaCode);
+            if ($accountMethod !== null) {
+                return $accountMethod;
+            }
+        }
+
         if ($forma === '' && $especie === '') {
             return 'nao_informado';
         }
 
         return 'outro';
+    }
+
+    /**
+     * Detecta método de pagamento a partir da configuração da conta corrente no bronze Omie.
+     * Usa bol_sn (conta configurada para boleto) e pix_sn (conta configurada para PIX).
+     * Fonte oficial Omie — não é heurística de nome de conta.
+     */
+    private function detectMethodFromAccount(string $contaCode): ?string
+    {
+        $lookup = $this->loadAccountLookup();
+        $account = $lookup[$contaCode] ?? null;
+        if ($account === null) {
+            return null;
+        }
+
+        $bolSn = strtolower(trim((string) ($account['bol_sn'] ?? '')));
+        $pixSn = strtolower(trim((string) ($account['pix_sn'] ?? '')));
+
+        // bol_sn='S' → conta configurada para boleto bancário (campo oficial Omie)
+        if ($bolSn === 's') {
+            return 'boleto';
+        }
+        // pix_sn='S' → conta configurada para PIX (campo oficial Omie)
+        if ($pixSn === 's') {
+            return 'pix';
+        }
+
+        return null;
+    }
+
+    /**
+     * Carrega lookup nCodCC (string) → {bol_sn, pix_sn} do bronze Omie (ListarContasCorrentes).
+     * Lazy-loaded uma vez por instância do builder.
+     *
+     * @return array<string,array<string,mixed>>
+     */
+    private function loadAccountLookup(): array
+    {
+        if ($this->accountLookup !== null) {
+            return $this->accountLookup;
+        }
+
+        $this->accountLookup = [];
+
+        try {
+            $bronzeExists = (bool) $this->pdo->query(
+                "SELECT COUNT(*) FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biomie_omie_bronze'"
+            )->fetchColumn();
+
+            if (!$bronzeExists) {
+                return $this->accountLookup;
+            }
+
+            $stmt = $this->pdo->query(
+                "SELECT payload_json FROM biomie_omie_bronze
+                 WHERE omie_method = 'ListarContasCorrentes'
+                 ORDER BY ingested_at DESC
+                 LIMIT 500"
+            );
+            if ($stmt === false) {
+                return $this->accountLookup;
+            }
+
+            foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) as $payloadJson) {
+                $payload = json_decode((string) $payloadJson, true);
+                if (!is_array($payload)) {
+                    continue;
+                }
+                $nCodCC = trim((string) ($payload['nCodCC'] ?? ''));
+                if ($nCodCC === '') {
+                    continue;
+                }
+                $this->accountLookup[$nCodCC] = [
+                    'bol_sn'  => (string) ($payload['bol_sn'] ?? ''),
+                    'pix_sn'  => (string) ($payload['pix_sn'] ?? ''),
+                    'descricao' => (string) ($payload['descricao'] ?? ''),
+                    'cobr_sn' => (string) ($payload['cobr_sn'] ?? ''),
+                ];
+            }
+        } catch (\Throwable) {
+            // Bronze não disponível — continua sem enriquecimento de conta
+        }
+
+        return $this->accountLookup;
     }
 
     private function resolveNfKey(array $t): string

@@ -34,6 +34,7 @@ declare(strict_types=1);
  *   D16 Product Mix Scope                 (product_mix_scope_audit + UX.R12 static audit)
  *   D17 Finance Visual Analytics          (finance_visual_analytics_audit + FIN.R4 static audit)
  *   D18 Finance Receivable Traceability   (finance_receivable_trace_audit + FIN.R4.1 static audit)
+ *   D19 Finance Payment Method Enrichment [informacional — FIN.R4.2 static audit]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -925,6 +926,59 @@ $domains[] = [
 ];
 if (!$d18Pass) $allPass = false;
 
+// ── D19 — Finance Payment Method Enrichment (FIN.R4.2) [informacional] ───────
+$d19Issues = [];
+
+$payloadAuditFile  = $toolsDir . '/finance_payment_method_payload_audit.php';
+$financeRepoFile   = $projectRoot . '/app/FinanceRepository.php';
+$syncCoordFile     = $projectRoot . '/app/Sync/FinanceSyncCoordinator.php';
+$traceBuilderFile2 = $projectRoot . '/app/Support/FinanceReceivableTraceBuilder.php';
+
+if (!is_file($payloadAuditFile)) {
+    $d19Issues[] = 'finance_payment_method_payload_audit.php ausente';
+}
+
+$financeRepoSrc = is_file($financeRepoFile) ? (string) file_get_contents($financeRepoFile) : '';
+if (!str_contains($financeRepoSrc, 'listReceivablesByDueDate')) {
+    $d19Issues[] = 'FinanceRepository: listReceivablesByDueDate() ausente';
+}
+if (!str_contains($financeRepoSrc, 'ListarContasReceber')) {
+    $d19Issues[] = 'FinanceRepository: chamada ListarContasReceber ausente';
+}
+
+$syncCoordSrc = is_file($syncCoordFile) ? (string) file_get_contents($syncCoordFile) : '';
+if (!str_contains($syncCoordSrc, 'enrichPaymentMethods')) {
+    $d19Issues[] = 'FinanceSyncCoordinator: enrichPaymentMethods() ausente';
+}
+if (!str_contains($syncCoordSrc, 'listReceivablesByDueDate')) {
+    $d19Issues[] = 'FinanceSyncCoordinator: chamada listReceivablesByDueDate ausente';
+}
+
+$traceBuilderSrc2 = is_file($traceBuilderFile2) ? (string) file_get_contents($traceBuilderFile2) : '';
+if (!str_contains($traceBuilderSrc2, 'BOLETO_ESPECIES')) {
+    $d19Issues[] = 'FinanceReceivableTraceBuilder: BOLETO_ESPECIES ausente (detecção por especie_documento)';
+}
+if (!str_contains($traceBuilderSrc2, 'detectMethodFromAccount')) {
+    $d19Issues[] = 'FinanceReceivableTraceBuilder: detectMethodFromAccount() ausente (detecção bol_sn/pix_sn)';
+}
+if (!str_contains($traceBuilderSrc2, 'loadAccountLookup')) {
+    $d19Issues[] = 'FinanceReceivableTraceBuilder: loadAccountLookup() ausente';
+}
+
+$d19Pass = $d19Issues === [];
+
+$domains[] = [
+    'label'       => 'D19 Finance Payment Method Enrichment',
+    'guard'       => 'finance_payment_method_payload_audit.php + FIN.R4.2 static audit',
+    'pass'        => true,
+    'warn'        => count($d19Issues) > 0,
+    'informational' => true,
+    'summary'     => $d19Pass
+        ? 'FIN.R4.2 enriquecimento presente: ListarContasReceber + bol_sn/pix_sn + BOLETO_ESPECIES'
+        : count($d19Issues) . ' componente(s) FIN.R4.2 ausente(s) [informacional]',
+    'issues'      => $d19Issues,
+];
+
 
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {
@@ -960,7 +1014,7 @@ $passCount = count(array_filter($domains, fn($d) => $d['pass']));
 if ($jsonMode) {
     echo json_encode([
         'biomie_release_guard' => [
-            'version'   => 'AUTO.R1.1+ADMIN.R1.1+FIN.R4.1',
+            'version'   => 'AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2',
             'period'    => ['start' => $start, 'end' => $end],
             'overall'   => $allPass ? 'PASS' : 'FAIL',
             'elapsed_s' => $elapsed,
@@ -982,7 +1036,7 @@ $hr2 = str_repeat('─', 72);
 
 echo PHP_EOL;
 echo $hr . PHP_EOL;
-echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1]
+echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2]
   Período : ' . $start . ' → ' . $end . PHP_EOL;
 echo $hr . PHP_EOL . PHP_EOL;
 

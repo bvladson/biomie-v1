@@ -157,6 +157,35 @@ final class FinanceRepository
     }
 
     /**
+     * Busca contas a receber completas via ListarContasReceber.
+     * Retorna campos enriquecidos como cFormaPag e cTipoTitulo ausentes em PesquisarLancamentos.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function listReceivablesByDueDate(string $start, string $end): array
+    {
+        return $this->fetchWithMonthlyCache('receivables_full', $start, $end, function ($mStart, $mEnd) {
+            return $this->postAllPages(
+                $this->endpoint('fin_receivables', 'https://app.omie.com.br/api/v1/financas/contasreceber/'),
+                ['ListarContasReceber'],
+                [
+                    'nPagina'            => 1,
+                    'nRegPorPagina'      => $this->pageSizeFor('ListarContasReceber'),
+                    'cNatureza'          => 'R',
+                    'dDtVencDe'          => date('d/m/Y', strtotime($mStart)),
+                    'dDtVencAte'         => date('d/m/Y', strtotime($mEnd)),
+                    'filtrar_por_status' => 'TODOS',
+                ],
+                ['conta_receber_cadastro', 'clientes_cadastro', 'lista_conta_receber', 'titulos'],
+                'finance',
+                'receivable',
+                fn (array $row): ?string => $this->extractTitleNaturalKey($row),
+                fn (array $row): ?string => $this->extractTitleProviderKey($row)
+            );
+        });
+    }
+
+    /**
      * @return list<array<string,mixed>>
      */
     public function listBudgetMonths(string $start, string $end): array

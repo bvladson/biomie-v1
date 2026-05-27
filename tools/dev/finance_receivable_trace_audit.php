@@ -169,7 +169,7 @@ try {
 
     // ── Detecção de boleto ────────────────────────────────────────────────────
     $boletoDetection = [
-        'boleto_detection_rule'   => 'normalizePaymentMethod(): keywords boleto/bol/cobrança/duplicata no forma_pagamento ou especie_documento',
+        'boleto_detection_rule'   => 'normalizePaymentMethod(): (1) especie_documento [BOL/DUP]; (2) keywords forma_pagamento; (3) bol_sn da conta corrente (bronze Omie)',
         'boleto_titles_total'     => 0,
         'boleto_open_total'       => 0,
         'boleto_overdue_total'    => 0,
@@ -191,6 +191,9 @@ try {
         }
         if ($row['is_overdue']) $boletoDetection['boleto_overdue_total']++;
     }
+
+    // ── Cobertura de método de pagamento (FIN.R4.2) ───────────────────────────
+    $methodCoverage = buildMethodCoverage($pdo, $payload['nf_rows'], $start, $end);
 
     // ── Métodos de pagamento ──────────────────────────────────────────────────
     $paymentMethods = [
@@ -246,6 +249,7 @@ try {
         'coverage' => array_merge($summary, $coverage),
         'payment_methods' => $paymentMethods,
         'boleto_detection' => $boletoDetection,
+        'method_coverage'  => $methodCoverage,
         'column_inventory' => $columnInventory,
         'examples'  => $includeExamples ? $examples : ['note' => 'use --include-examples'],
         'diagnostics' => $payload['diagnostics'],
@@ -269,6 +273,84 @@ exit(($report['ok'] ?? false) ? 0 : 1);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** @return array<string,mixed> */
+function buildMethodCoverage(PDO $pdo, array $rows, string $start, string $end): array
+{
+    $total = 0;
+    $withForma = $withEspecie = $withBolSn = $withPix = $naoInformado = 0;
+    $methodDist = [];
+
+    foreach ($rows as $row) {
+        $total++;
+        if (($row['raw_payment_method'] ?? '') !== '') $withForma++;
+        if (($row['raw_document_species'] ?? '') !== '') $withEspecie++;
+        $method = (string) ($row['normalized_payment_method'] ?? 'nao_informado');
+        $methodDist[$method] = ($methodDist[$method] ?? 0) + 1;
+        if ($method === 'nao_informado') $naoInformado++;
+    }
+
+    // Contar títulos com conta corrente configurada (bol_sn/pix_sn via bronze)
+    $bronzeExists = false;
+    try {
+        $bronzeExists = (bool) $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='biomie_omie_bronze'"
+        )->fetchColumn();
+    } catch (Throwable) {}
+
+    $accountBoleto = $accountPix = $accountConfigured = 0;
+    if ($bronzeExists) {
+        $stmt = $pdo->query(
+            "SELECT COALESCE(t.codigo_conta_corrente_omie,'') cc,
+                    COALESCE(b.payload_json,'{}') payload
+             FROM biomie_titulos_financeiros_canonicos t
+             LEFT JOIN biomie_omie_bronze b
+               ON b.omie_method = 'ListarContasCorrentes'
+               AND CAST(JSON_UNQUOTE(JSON_EXTRACT(b.payload_json,'$.nCodCC')) AS CHAR) = t.codigo_conta_corrente_omie
+             WHERE t.data_competencia BETWEEN " . $pdo->quote($start) . " AND " . $pdo->quote($end) . "
+             GROUP BY t.codigo_conta_corrente_omie, b.payload_json"
+        );
+        if ($stmt) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $accRow) {
+                $p = json_decode((string) $accRow['payload'], true);
+                if (!is_array($p)) continue;
+                if (strtolower(trim((string) ($p['bol_sn'] ?? ''))) === 's') $accountBoleto++;
+                if (strtolower(trim((string) ($p['pix_sn'] ?? ''))) === 's') $accountPix++;
+                if (($p['bol_sn'] ?? '') !== '' || ($p['pix_sn'] ?? '') !== '') $accountConfigured++;
+            }
+        }
+    }
+
+    // Canonical field stats
+    $canonStmt = $pdo->prepare(
+        "SELECT
+            SUM(CASE WHEN forma_pagamento IS NOT NULL AND forma_pagamento != '' THEN 1 ELSE 0 END) wf,
+            SUM(CASE WHEN especie_documento IS NOT NULL AND especie_documento != '' THEN 1 ELSE 0 END) we,
+            COUNT(*) tot
+         FROM biomie_titulos_financeiros_canonicos
+         WHERE data_competencia BETWEEN :s AND :e"
+    );
+    $canonStmt->execute(['s' => $start, 'e' => $end]);
+    $canon = $canonStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    arsort($methodDist);
+
+    return [
+        'total_rows'              => $total,
+        'with_forma_pagamento_raw'  => (int) ($canon['wf'] ?? 0),
+        'with_especie_documento_raw'=> (int) ($canon['we'] ?? 0),
+        'canonical_total'          => (int) ($canon['tot'] ?? 0),
+        'method_distribution'      => $methodDist,
+        'nao_informado_count'      => $naoInformado,
+        'nao_informado_pct'        => $total > 0 ? round($naoInformado / $total * 100, 1) : 0,
+        'account_configured_bol'   => $accountBoleto,
+        'account_configured_pix'   => $accountPix,
+        'enrichment_source'        => 'ListarContasReceber (sync) + bol_sn/pix_sn (bronze conta corrente)',
+        'enrichment_status'        => (int) ($canon['wf'] ?? 0) === 0
+            ? 'PENDING — reprocessar sincronização financeira para popular forma_pagamento via ListarContasReceber'
+            : 'OK — forma_pagamento preenchida; detecção via especie_documento e conta corrente ativa',
+    ];
+}
+
 function getOpts(array $argv): array
 {
     $out = [];
@@ -291,7 +373,7 @@ function validateDate(string $value, string $label): void
 function printPretty(array $report): void
 {
     $hr = str_repeat('─', 74);
-    echo PHP_EOL . '═══ Finance Receivable Trace Audit — FIN.R4.1 ═══' . PHP_EOL;
+    echo PHP_EOL . '═══ Finance Receivable Trace Audit — FIN.R4.1+R4.2 ═══' . PHP_EOL;
     echo 'Status: ' . ($report['status'] ?? 'UNKNOWN') . PHP_EOL;
     $p = $report['period'] ?? [];
     echo 'Período: ' . ($p['start'] ?? '-') . ' → ' . ($p['end'] ?? '-') . PHP_EOL . PHP_EOL;
@@ -347,6 +429,29 @@ function printPretty(array $report): void
             . ' | Aberto: R$ ' . number_format((float) ($m['open_value'] ?? 0), 2, ',', '.')
             . ' | Títulos: ' . ($m['titles_count'] ?? 0)
             . PHP_EOL;
+    }
+
+    // ── FIN.R4.2 Method Coverage
+    $mc = $report['method_coverage'] ?? [];
+    if ($mc !== []) {
+        echo PHP_EOL . $hr . PHP_EOL . 'COBERTURA DE MÉTODO DE PAGAMENTO (FIN.R4.2)' . PHP_EOL . $hr . PHP_EOL;
+        $tot = (int) ($mc['canonical_total'] ?? 0);
+        $wf  = (int) ($mc['with_forma_pagamento_raw'] ?? 0);
+        $we  = (int) ($mc['with_especie_documento_raw'] ?? 0);
+        $ni  = (int) ($mc['nao_informado_count'] ?? 0);
+        $niPct = (float) ($mc['nao_informado_pct'] ?? 0);
+        echo sprintf("  Total títulos no período         : %d\n", $tot);
+        echo sprintf("  forma_pagamento preenchido (raw) : %d (%.1f%%)\n", $wf, $tot > 0 ? round($wf / $tot * 100, 1) : 0);
+        echo sprintf("  especie_documento preenchido     : %d (%.1f%%)\n", $we, $tot > 0 ? round($we / $tot * 100, 1) : 0);
+        echo sprintf("  Método nao_informado             : %d (%.1f%%)\n", $ni, $niPct);
+        echo sprintf("  Contas config. boleto (bol_sn=S) : %d\n", $mc['account_configured_bol'] ?? 0);
+        echo sprintf("  Contas config. PIX (pix_sn=S)   : %d\n", $mc['account_configured_pix'] ?? 0);
+        echo PHP_EOL . '  Distribuição de métodos detectados:' . PHP_EOL;
+        foreach ($mc['method_distribution'] ?? [] as $m => $cnt) {
+            echo sprintf("    %-25s : %d\n", $m, $cnt);
+        }
+        echo PHP_EOL . '  Status enriquecimento: ' . ($mc['enrichment_status'] ?? '-') . PHP_EOL;
+        echo '  Fonte: ' . ($mc['enrichment_source'] ?? '-') . PHP_EOL;
     }
 
     echo PHP_EOL . $hr . PHP_EOL . 'INVENTÁRIO DE TABELAS' . PHP_EOL . $hr . PHP_EOL;
