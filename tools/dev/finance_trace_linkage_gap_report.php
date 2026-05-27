@@ -16,13 +16,19 @@ require_once __DIR__ . '/../../app/Support/CliGuard.php';
 require_once __DIR__ . '/../../app/Bootstrap.php';
 \BIomie\Bootstrap::init();
 
+use BIomie\Config;
+use BIomie\Database;
+
 // ──────────────────────────── CLI args ────────────────────────────
 $args  = getopt('', ['start:', 'end:', 'pretty']);
 $start = $args['start'] ?? date('Y-m-01');
 $end   = $args['end']   ?? date('Y-m-t');
 $pretty = array_key_exists('pretty', $args);
 
-$pdo = \BIomie\Bootstrap::getPdo();
+$config = new Config();
+$conn   = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+$pdo    = Database::connect($config, $conn);
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // ──────────────────────────── helpers ─────────────────────────────
 function tableExists(PDO $pdo, string $table): bool
@@ -52,17 +58,25 @@ function pct(int $num, int $denom): string
 
 function q(PDO $pdo, string $sql, array $params = []): array
 {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return is_array($rows) ? $rows : [];
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return is_array($rows) ? $rows : [];
+    } catch (\Throwable) {
+        return [];
+    }
 }
 
 function scalar(PDO $pdo, string $sql, array $params = []): mixed
 {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchColumn();
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchColumn();
+    } catch (\Throwable) {
+        return false;
+    }
 }
 
 // ──────────────────────────── table inventory ──────────────────────
