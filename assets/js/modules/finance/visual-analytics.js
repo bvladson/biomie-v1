@@ -518,9 +518,39 @@
     });
   }
 
-  // ── Gráfico C: Boletos por vendedor ─────────────────────────────────────────
+  // ── Gráfico C: Cobrança por vendedor ────────────────────────────────────────
   function drawTraceVendor(payload) {
-    var rows = (payload.vendor_ranking || []).slice(0, 10);
+    var allRanking = payload.vendor_ranking || [];
+    // Separate unknown vendor — show as warning card, not a chart bar
+    var semVendedor = allRanking.find(function (r) { return r.is_unknown_vendor || r.vendor_key === '__sem_vendedor__'; }) || null;
+    var rows = allRanking.filter(function (r) { return !r.is_unknown_vendor && r.vendor_key !== '__sem_vendedor__'; }).slice(0, 10);
+
+    // Show / hide the "Sem vendedor" warning card
+    var noDataCard = document.getElementById('financeTraceVendorNoData');
+    if (noDataCard) {
+      if (semVendedor && semVendedor.open_value > 0) {
+        noDataCard.hidden = false;
+        noDataCard.innerHTML =
+          '<div class="finance-trace-vendor-alert" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;cursor:pointer;" data-vendor-missing="1">' +
+          '<span style="font-size:1.4rem;">⚠</span>' +
+          '<div>' +
+          '<strong style="display:block;font-size:0.85rem;">' + fmtC(semVendedor.open_value) + ' sem vendedor definido</strong>' +
+          '<small style="color:#92400e;">' + fmtN(semVendedor.receivable_count || semVendedor.boleto_count || 0) + ' recebíveis sem responsável — clique para revisar</small>' +
+          '</div></div>';
+        noDataCard.querySelector('[data-vendor-missing]').addEventListener('click', function () {
+          openTraceDrawer('vendor', '__sem_vendedor__', 'Recebíveis sem vendedor', semVendedor);
+        });
+      } else {
+        noDataCard.hidden = true;
+        noDataCard.innerHTML = '';
+      }
+    }
+
+    if (!rows.length) {
+      destroyTraceChart('financeTraceVendorChart');
+      return;
+    }
+
     renderTraceChart('financeTraceVendorChart', {
       type: 'bar',
       data: {
@@ -540,7 +570,7 @@
         onClick: function (_ev, elements) {
           if (!elements || !elements.length) return;
           var row = rows[elements[0].index] || {};
-          openTraceDrawer('vendor', row.vendor_key, 'Boletos — ' + (row.vendor_name || 'Sem vendedor'), row);
+          openTraceDrawer('vendor', row.vendor_key, 'Cobrança — ' + (row.vendor_name || 'Sem vendedor'), row);
         }
       })
     });
@@ -606,27 +636,38 @@
   }
 
   // ── Tabela compacta de NFs ──────────────────────────────────────────────────
+  var METHOD_LABELS = { boleto: 'Boleto', pix: 'Pix', cartao_credito: 'Cartão Cred.', cartao_debito: 'Cartão Déb.', dinheiro: 'Dinheiro', transferencia: 'Transferência', cheque: 'Cheque', deposito: 'Depósito', nao_informado: 'Não inform.', outro: 'Outro' };
+
+  function methodBadge(method) {
+    var lbl = METHOD_LABELS[method] || method || '-';
+    var cls = method === 'boleto' ? 'fin-badge--boleto' : method === 'pix' ? 'fin-badge--pix' : method === 'nao_informado' ? 'fin-badge--muted' : 'fin-badge--default';
+    return '<span class="fin-badge ' + cls + '">' + esc(lbl) + '</span>';
+  }
+
   function renderTraceNfTable(payload) {
     var tbody = document.getElementById('financeTraceNfTableBody');
     if (!tbody) return;
     var rows = (payload.open_invoice_summary || []).slice(0, 10);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text-3);padding:18px;">Nenhuma NF com boleto em aberto no período.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text-3);padding:18px;">Nenhuma NF com recebível em aberto no período.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (r) {
       var action = r.vendor_missing ? '⚠ Sem vendedor' : (r.valor_vencido > 0 ? 'Cobrar hoje' : 'Acompanhar');
+      var pedidoLabel = r.pedido_id_omie && r.pedido_id_omie !== '0' ? esc(r.pedido_id_omie) : '<span style="color:var(--fin-muted)">—</span>';
+      var methods = (r.methods || []).filter(function (m) { return m && m !== 'nao_informado'; });
+      var methodDisplay = methods.length ? methodBadge(methods[0]) : methodBadge(r.metodo_pagamento_principal || 'nao_informado');
       return '<tr style="cursor:pointer;" data-trace-nf="' + esc(r.nota_key || '') + '">' +
-        '<td><strong>' + esc(r.numero_nf || r.nota_key || '-') + '</strong></td>' +
-        '<td>' + esc(r.nf_data_emissao || '-') + '</td>' +
+        '<td><strong>' + esc(r.numero_nf || (r.nota_key ? r.nota_key.slice(-8) : '-')) + '</strong></td>' +
+        '<td><small>' + pedidoLabel + '</small></td>' +
         '<td>' + esc(r.cliente_nome || 'Cliente não informado') + '</td>' +
-        '<td>' + esc(r.vendedor_nome || 'Sem vendedor definido') + '</td>' +
-        '<td>' + fmtN(r.qtd_boletos || r.qtd_titulos || 0) + '</td>' +
+        '<td>' + (r.vendor_missing ? '<span style="color:#f59e0b">⚠ ' + esc(r.vendedor_nome || 'Sem vendedor') + '</span>' : esc(r.vendedor_nome || '-')) + '</td>' +
+        '<td>' + fmtN(r.qtd_titulos || 0) + '</td>' +
         '<td style="color:#ef4444"><strong>' + fmtC(r.valor_vencido || 0) + '</strong></td>' +
         '<td>' + fmtC(r.valor_a_vencer || 0) + '</td>' +
         '<td><strong>' + fmtC(r.valor_aberto || 0) + '</strong></td>' +
-        '<td>' + (r.maior_atraso > 0 ? r.maior_atraso + 'd' : '-') + '</td>' +
-        '<td><span class="fin-badge">' + esc(r.metodo_pagamento_principal || '-') + '</span></td>' +
+        '<td>' + (r.maior_atraso > 0 ? '<strong style="color:#ef4444">' + r.maior_atraso + 'd</strong>' : '-') + '</td>' +
+        '<td>' + methodDisplay + '</td>' +
         '<td><small>' + esc(action) + '</small></td>' +
         '</tr>';
     }).join('');
@@ -635,7 +676,7 @@
       tr.addEventListener('click', function () {
         var nfKey = tr.getAttribute('data-trace-nf');
         var row = rows.find(function (r) { return r.nota_key === nfKey; }) || {};
-        openTraceDrawer('nf', nfKey, 'NF ' + (row.numero_nf || nfKey || '-'), row);
+        openTraceDrawer('nf', nfKey, 'NF ' + (row.numero_nf || (nfKey ? nfKey.slice(-8) : '-')), row);
       });
     });
   }
@@ -729,8 +770,10 @@
     var allRows = tracePayload.nf_rows || [];
 
     if (type === 'nf') {
-      rows = allRows.filter(function (r) { return r.nota_key === key; });
-      subtitle = rows.length + ' título(s) da NF';
+      rows = key === ''
+        ? allRows.filter(function (r) { return r.is_open; })
+        : allRows.filter(function (r) { return r.nota_key === key; });
+      subtitle = key === '' ? rows.length + ' recebível(is) em aberto' : rows.length + ' título(s) da NF';
       var openVal = rows.reduce(function (s, r) { return s + (r.is_open ? Number(r.valor_aberto || 0) : 0); }, 0);
       var overdueVal = rows.reduce(function (s, r) { return s + Number(r.valor_vencido || 0); }, 0);
       var maxDelay = rows.reduce(function (s, r) { return Math.max(s, Number(r.dias_atraso || 0)); }, 0);
@@ -744,11 +787,13 @@
       var ovdVal = rows.reduce(function (s, r) { return s + Number(r.valor_vencido || 0); }, 0);
       metrics = metric('Aberto', fmtC(totVal)) + metric('Vencido', fmtC(ovdVal)) + metric('Títulos', String(rows.length)) + metric('NFs', String(new Set(rows.filter(function (r) { return r.nota_key; }).map(function (r) { return r.nota_key; })).size));
     } else if (type === 'vendor') {
-      rows = allRows.filter(function (r) { return r.vendor_key === key && r.is_open && r.is_boleto; });
-      subtitle = rows.length + ' boleto(s) deste vendedor';
+      rows = key === ''
+        ? allRows.filter(function (r) { return r.is_open; })
+        : allRows.filter(function (r) { return r.vendor_key === key && r.is_open; });
+      subtitle = rows.length + ' recebível(is) deste vendedor';
       var vOpenVal = rows.reduce(function (s, r) { return s + Number(r.valor_aberto || 0); }, 0);
       var vOvdVal = rows.reduce(function (s, r) { return s + Number(r.valor_vencido || 0); }, 0);
-      metrics = metric('Boletos abertos', fmtC(vOpenVal)) + metric('Vencido', fmtC(vOvdVal)) + metric('Boletos', String(rows.length)) + metric('Clientes', String(new Set(rows.map(function (r) { return r.client_key; })).size));
+      metrics = metric('Aberto', fmtC(vOpenVal)) + metric('Vencido', fmtC(vOvdVal)) + metric('Recebíveis', String(rows.length)) + metric('Clientes', String(new Set(rows.map(function (r) { return r.client_key; })).size));
     } else if (type === 'coverage') {
       if (key === 'sem_nf') rows = allRows.filter(function (r) { return r.is_open && r.nota_key === ''; });
       else if (key === 'sem_vendedor') rows = allRows.filter(function (r) { return r.is_open && r.vendor_missing; });
@@ -766,23 +811,33 @@
     document.getElementById('financeTraceMetrics').innerHTML = metrics;
 
     var tbody = document.getElementById('financeTraceRows');
+    var empty = document.getElementById('financeTraceEmpty');
+
     if (tbody) {
-      tbody.innerHTML = rows.slice(0, 80).map(function (r) {
-        return '<tr>' +
-          '<td>' + esc(r.numero_nf || r.nota_key || '—') + '</td>' +
-          '<td><strong>' + esc(r.numero_documento || r.titulo_key || '-') + '</strong></td>' +
-          '<td>' + esc(r.cliente_nome || 'Não informado') + '</td>' +
-          '<td>' + esc(r.vendedor_nome || 'Sem vendedor definido') + '</td>' +
-          '<td>' + esc(r.data_vencimento || '-') + '</td>' +
-          '<td>' + (r.dias_atraso > 0 ? '<strong style="color:#ef4444">' + r.dias_atraso + 'd</strong>' : '-') + '</td>' +
-          '<td><strong>' + fmtC(r.valor_aberto || 0) + '</strong></td>' +
-          '<td><small>' + esc(r.normalized_payment_method || '-') + '</small></td>' +
-          '<td><small>' + esc(r.recommended_action || '-') + '</small></td>' +
-          '</tr>';
-      }).join('');
+      if (!rows.length) {
+        tbody.innerHTML = '';
+      } else {
+        tbody.innerHTML = rows.slice(0, 80).map(function (r) {
+          // Display NF number if available; fall back to last 10 chars of nota_key; never show full 44-char key inline
+          var nfDisplay = r.numero_nf
+            ? esc(r.numero_nf)
+            : (r.nota_key ? '<span title="' + esc(r.nota_key) + '">…' + esc(r.nota_key.slice(-8)) + '</span>' : '—');
+          var pedido = r.pedido_id_omie && r.pedido_id_omie !== '0' ? '<small>' + esc(r.pedido_id_omie) + '</small>' : '<span style="color:var(--fin-muted)">—</span>';
+          return '<tr>' +
+            '<td>' + nfDisplay + '</td>' +
+            '<td>' + pedido + '</td>' +
+            '<td>' + esc(r.cliente_nome || 'Não informado') + '</td>' +
+            '<td>' + (r.vendor_missing ? '<span style="color:#f59e0b">⚠ ' + esc(r.vendedor_nome || 'Sem vendedor') + '</span>' : esc(r.vendedor_nome || '-')) + '</td>' +
+            '<td>' + esc(r.data_vencimento || '-') + '</td>' +
+            '<td>' + (r.dias_atraso > 0 ? '<strong style="color:#ef4444">' + r.dias_atraso + 'd</strong>' : '-') + '</td>' +
+            '<td><strong>' + fmtC(r.valor_aberto || 0) + '</strong></td>' +
+            '<td>' + methodBadge(r.normalized_payment_method || 'nao_informado') + '</td>' +
+            '<td><small>' + esc(r.recommended_action || '-') + '</small></td>' +
+            '</tr>';
+        }).join('');
+      }
     }
 
-    var empty = document.getElementById('financeTraceEmpty');
     if (empty) empty.hidden = rows.length > 0;
 
     var diag = document.getElementById('financeTraceDiagnostics');
@@ -815,8 +870,8 @@
         if (!tracePayload) { loadTrace().then(function () { openFromKpi(); }).catch(function () {}); return; }
         var label = card.querySelector('.biomie-kpi-card__label');
         var title = label ? label.textContent : insight;
-        if (insight === 'nfs_open_boleto') openTraceDrawer('nf', '', 'NFs com boleto em aberto', null);
-        else if (insight === 'boletos_open') openTraceDrawer('method', 'boleto', 'Boletos em aberto', null);
+        if (insight === 'nfs_open_boleto') openTraceDrawer('nf', '', 'NFs com recebíveis em aberto', null);
+        else if (insight === 'boletos_open') openTraceDrawer('method', 'all', 'Recebíveis em aberto', null);
         else if (insight === 'boletos_overdue') openTraceDrawer('aging', '', 'Boletos vencidos', null);
         else if (insight === 'sem_nf') openTraceDrawer('coverage', 'sem_nf', 'Sem NF vinculada', null);
         else if (insight === 'sem_vendedor') openTraceDrawer('coverage', 'sem_vendedor', 'Sem vendedor', null);

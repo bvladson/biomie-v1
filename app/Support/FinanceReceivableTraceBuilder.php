@@ -169,7 +169,25 @@ final class FinanceReceivableTraceBuilder
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['start' => $start, 'end' => $end]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return is_array($rows) ? $rows : [];
+        if (!is_array($rows)) return [];
+
+        // Deduplicate by titulo_key — bridge JOIN can produce multiple rows per title.
+        // Keep row with highest confidence_score; ties favour first occurrence (date-ordered).
+        $deduped = [];
+        foreach ($rows as $row) {
+            $key = (string) $row['titulo_key'];
+            if (!isset($deduped[$key])) {
+                $deduped[$key] = $row;
+                continue;
+            }
+            $existingConf = (int) ($deduped[$key]['confidence_score'] ?? 0);
+            $newConf      = (int) ($row['confidence_score'] ?? 0);
+            if ($newConf > $existingConf) {
+                $deduped[$key] = $row;
+            }
+        }
+
+        return array_values($deduped);
     }
 
     /** @param array<string,mixed> $t @return array<string,mixed> */
@@ -533,11 +551,13 @@ final class FinanceReceivableTraceBuilder
                 $nfMap[$key] = [
                     'nota_key'                => $key,
                     'numero_nf'               => $row['numero_nf'],
+                    'pedido_id_omie'          => $row['pedido_id_omie'],
                     'nf_data_emissao'         => $row['nf_data_emissao'],
                     'cliente_nome'            => $row['cliente_nome'],
                     'cliente_documento'       => $row['cliente_documento'],
                     'vendedor_nome'           => $row['vendedor_nome'],
                     'vendor_key'              => $row['vendor_key'],
+                    'vendor_missing'          => $row['vendor_missing'],
                     'qtd_titulos'             => 0,
                     'qtd_boletos'             => 0,
                     'valor_aberto'            => 0.0,
@@ -547,12 +567,14 @@ final class FinanceReceivableTraceBuilder
                     'maior_vencimento'        => null,
                     'maior_atraso'            => 0,
                     'metodo_pagamento_principal' => $row['normalized_payment_method'],
+                    'methods_set'             => [],
                     'bridge_confidence'       => $row['bridge_confidence'],
                     'bridge_status'           => $row['bridge_status'],
                     'match_method'            => $row['bridge_match_method'],
                     'recommended_action'      => $row['recommended_action'],
                 ];
             }
+            $nfMap[$key]['methods_set'][$row['normalized_payment_method']] = true;
 
             $entry = &$nfMap[$key];
             $entry['qtd_titulos']++;
@@ -575,6 +597,8 @@ final class FinanceReceivableTraceBuilder
             $entry['valor_aberto']   = round((float) $entry['valor_aberto'], 2);
             $entry['valor_vencido']  = round((float) $entry['valor_vencido'], 2);
             $entry['valor_a_vencer'] = round((float) $entry['valor_a_vencer'], 2);
+            $entry['methods']        = array_keys($entry['methods_set']);
+            unset($entry['methods_set']);
         }
         unset($entry);
 
@@ -670,44 +694,65 @@ final class FinanceReceivableTraceBuilder
         $map = [];
 
         foreach ($rows as $row) {
-            if (!$row['is_open'] || !$row['is_boleto']) continue;
+            if (!$row['is_open']) continue;
             $key = $row['vendor_key'];
             if (!isset($map[$key])) {
                 $map[$key] = [
-                    'vendor_key'   => $key,
-                    'vendor_name'  => $row['vendedor_nome'],
-                    'open_value'   => 0.0,
-                    'overdue_value'=> 0.0,
-                    'boleto_count' => 0,
-                    'nf_set'       => [],
-                    'max_delay'    => 0,
+                    'vendor_key'        => $key,
+                    'vendor_name'       => $row['vendedor_nome'],
+                    'is_unknown_vendor' => (bool) $row['vendor_missing'],
+                    'open_value'        => 0.0,
+                    'overdue_value'     => 0.0,
+                    'receivable_count'  => 0,
+                    'boleto_count'      => 0,
+                    'nf_set'            => [],
+                    'method_set'        => [],
+                    'max_delay'         => 0,
                 ];
             }
-            $map[$key]['open_value']    += (float) $row['valor_aberto'];
-            $map[$key]['overdue_value'] += (float) $row['valor_vencido'];
-            $map[$key]['boleto_count']++;
+            $map[$key]['open_value']   += (float) $row['valor_aberto'];
+            $map[$key]['overdue_value']+= (float) $row['valor_vencido'];
+            $map[$key]['receivable_count']++;
+            if ($row['is_boleto']) $map[$key]['boleto_count']++;
             if ($row['nota_key'] !== '') $map[$key]['nf_set'][$row['nota_key']] = true;
+            $map[$key]['method_set'][$row['normalized_payment_method']] = true;
             $map[$key]['max_delay'] = max((int) $map[$key]['max_delay'], (int) $row['dias_atraso']);
         }
 
-        $out = [];
+        $known   = [];
+        $unknown = null;
+
         foreach ($map as $entry) {
-            $out[] = [
-                'vendor_key'   => $entry['vendor_key'],
-                'vendor_name'  => $entry['vendor_name'],
-                'open_value'   => round((float) $entry['open_value'], 2),
-                'overdue_value'=> round((float) $entry['overdue_value'], 2),
-                'boleto_count' => $entry['boleto_count'],
-                'nf_count'     => count($entry['nf_set']),
-                'max_delay'    => $entry['max_delay'],
+            $item = [
+                'vendor_key'        => $entry['vendor_key'],
+                'vendor_name'       => $entry['vendor_name'],
+                'is_unknown_vendor' => $entry['is_unknown_vendor'],
+                'open_value'        => round((float) $entry['open_value'], 2),
+                'overdue_value'     => round((float) $entry['overdue_value'], 2),
+                'receivable_count'  => $entry['receivable_count'],
+                'boleto_count'      => $entry['boleto_count'],
+                'nf_count'          => count($entry['nf_set']),
+                'methods'           => array_keys($entry['method_set']),
+                'max_delay'         => $entry['max_delay'],
             ];
+            if ($entry['is_unknown_vendor']) {
+                $unknown = $item;
+            } else {
+                $known[] = $item;
+            }
         }
 
-        usort($out, static fn (array $a, array $b): int =>
+        usort($known, static fn (array $a, array $b): int =>
             ((float) $b['open_value'] <=> (float) $a['open_value'])
         );
 
-        return array_slice($out, 0, 20);
+        // Known vendors first (top 19), sem_vendedor appended last for special UI handling.
+        $out = array_slice($known, 0, 19);
+        if ($unknown !== null) {
+            $out[] = $unknown;
+        }
+
+        return $out;
     }
 
     /** @param list<array<string,mixed>> $rows @return list<array<string,mixed>> */
@@ -742,6 +787,21 @@ final class FinanceReceivableTraceBuilder
         );
 
         return array_slice($out, 0, 100);
+    }
+
+    /**
+     * Creates a composite identity key for grouping/deduplication.
+     * Useful for grouping titles by their NF / pedido / vendor / client combination.
+     *
+     * @param array<string,mixed> $row
+     */
+    public static function makeTitleIdentityKey(array $row): string
+    {
+        $notaKey  = (string) ($row['nota_key'] ?? '');
+        $pedido   = (string) ($row['pedido_id_omie'] ?? '');
+        $vendor   = (string) ($row['vendor_key'] ?? '');
+        $client   = (string) ($row['client_key'] ?? '');
+        return implode('|', [$notaKey, $pedido, $vendor, $client]);
     }
 
     private function tableExists(string $table): bool

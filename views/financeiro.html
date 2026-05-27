@@ -165,25 +165,25 @@
   <section id="financeReceivableTrace" class="finance-visual-shell anim d3" aria-label="Rastreabilidade de recebíveis">
     <div class="finance-visual-head">
       <div>
-        <h2>Rastreabilidade de Recebíveis</h2>
-        <p>Notas fiscais, boletos em aberto, métodos de pagamento e responsáveis.</p>
+        <h2>Recebíveis Operacional — NF, Pedido, Vendedor</h2>
+        <p>Rastreabilidade: notas fiscais, métodos de pagamento, vendedores e ações de cobrança.</p>
       </div>
       <span id="financeTraceMeta" class="finance-visual-meta">Aguardando dados...</span>
     </div>
 
     <section class="biomie-kpi-grid anim d3" style="margin-bottom:14px;">
       <article class="biomie-kpi-card biomie-kpi-card--danger" data-trace-insight="nfs_open_boleto" role="button" tabindex="0">
-        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs com boleto em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs com recebíveis em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
         <strong class="biomie-kpi-card__value" id="traceNfsOpenBoleto">0</strong>
         <span class="biomie-kpi-card__sub" id="traceNfsOpenBoletoSub">notas fiscais pendentes</span>
       </article>
       <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="boletos_open" role="button" tabindex="0">
-        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Boletos em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebíveis em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
         <strong class="biomie-kpi-card__value" id="traceBoletosOpen">0</strong>
         <span class="biomie-kpi-card__sub" id="traceBoletosOpenSub">valor aberto</span>
       </article>
       <article class="biomie-kpi-card biomie-kpi-card--danger" data-trace-insight="boletos_overdue" role="button" tabindex="0">
-        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Boletos vencidos</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning_amber</span></div>
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebíveis vencidos</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning_amber</span></div>
         <strong class="biomie-kpi-card__value" id="traceBoletosOverdue">0</strong>
         <span class="biomie-kpi-card__sub" id="traceBoletosOverdueSub">maior atraso</span>
       </article>
@@ -206,7 +206,7 @@
 
     <div class="finance-visual-grid">
       <article class="finance-visual-card finance-visual-card--wide" data-trace-type="nf_open" data-drawer-type="trace_nf">
-        <div class="finance-visual-card__head"><div><h3>NFs com boletos em aberto</h3><small>Top 10 por valor aberto — clique para ver detalhes.</small></div></div>
+        <div class="finance-visual-card__head"><div><h3>NFs com recebíveis em aberto</h3><small>Top 10 por valor aberto — clique para ver detalhes.</small></div></div>
         <div class="finance-visual-canvas"><canvas id="financeTraceNfChart"></canvas></div>
       </article>
       <article class="finance-visual-card" data-trace-type="payment_methods" data-drawer-type="trace_method">
@@ -221,7 +221,8 @@
         <div class="finance-visual-canvas"><canvas id="financeTraceMethodChart"></canvas></div>
       </article>
       <article class="finance-visual-card" data-trace-type="vendor_boleto" data-drawer-type="trace_vendor">
-        <div class="finance-visual-card__head"><div><h3>Boletos por vendedor</h3><small>Valor aberto em boleto por responsável.</small></div></div>
+        <div class="finance-visual-card__head"><div><h3>Cobrança por vendedor</h3><small>Valor aberto em recebíveis por responsável.</small></div></div>
+        <div id="financeTraceVendorNoData" class="finance-trace-vendor-nodata" hidden></div>
         <div class="finance-visual-canvas"><canvas id="financeTraceVendorChart"></canvas></div>
       </article>
       <article class="finance-visual-card finance-visual-card--compact" data-trace-type="coverage" data-drawer-type="trace_coverage">
@@ -229,23 +230,23 @@
         <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeTraceCoverageChart"></canvas></div>
       </article>
       <article class="finance-visual-card" data-trace-type="aging_boleto" data-drawer-type="trace_aging">
-        <div class="finance-visual-card__head"><div><h3>Aging de boletos em aberto</h3><small>Faixas de vencimento apenas para boletos.</small></div></div>
+        <div class="finance-visual-card__head"><div><h3>Aging de recebíveis em aberto</h3><small>Faixas de vencimento para todos os recebíveis abertos.</small></div></div>
         <div class="finance-visual-canvas"><canvas id="financeTraceAgingChart"></canvas></div>
       </article>
     </div>
 
     <div class="finance-trace-nf-table-section" id="financeTraceNfTableSection">
-      <div class="finance-visual-card__head" style="padding:10px 0 6px;"><div><h3>NFs com boletos em aberto</h3><small>Top 10 operacionais — clique na NF para abrir detalhes.</small></div><button id="traceNfTableViewAll" class="btn-secondary mag-button-secondary" style="font-size:0.8rem;padding:4px 10px;">Ver todas</button></div>
+      <div class="finance-visual-card__head" style="padding:10px 0 6px;"><div><h3>NFs com recebíveis em aberto</h3><small>Top 10 operacionais — clique na NF para abrir detalhes.</small></div><button id="traceNfTableViewAll" class="btn-secondary mag-button-secondary" style="font-size:0.8rem;padding:4px 10px;">Ver todas</button></div>
       <div class="table-responsive fin-table-wrap">
         <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
           <thead>
             <tr>
-              <th>NF</th><th>Emissão</th><th>Cliente</th><th>Vendedor</th>
-              <th>Boletos</th><th>Vencido</th><th>A vencer</th><th>Aberto</th>
+              <th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
+              <th>Recebíveis</th><th>Vencido</th><th>A vencer</th><th>Aberto</th>
               <th>Maior atraso</th><th>Método</th><th>Ação</th>
             </tr>
           </thead>
-          <tbody id="financeTraceNfTableBody" data-empty-title="Sem NFs com boleto aberto" data-empty-message="Nenhuma NF com boleto em aberto no período."></tbody>
+          <tbody id="financeTraceNfTableBody" data-empty-title="Sem NFs com recebível aberto" data-empty-message="Nenhuma NF com recebível em aberto no período."></tbody>
         </table>
       </div>
     </div>
@@ -753,7 +754,7 @@
       <table class="mag-table mag-table-clean" id="financeTraceTable">
         <thead id="financeTraceTableHead">
           <tr>
-            <th>NF</th><th>Título</th><th>Cliente</th><th>Vendedor</th>
+            <th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
             <th>Vencimento</th><th>Atraso</th><th>Aberto</th><th>Método</th><th>Ação</th>
           </tr>
         </thead>

@@ -117,6 +117,16 @@ function buildChecks(string $root): array
         checkContains('finance_trace_method_toggle', $financeHtml, 'traceMethodToggle', 'Toggle por valor/qtd/NFs no grafico de metodos (FIN.R4.1).'),
         checkContains('finance_trace_kpi_sem_nf', $financeHtml, 'traceSemNf', 'KPI Sem NF vinculada existe (FIN.R4.1).'),
         checkContains('finance_trace_kpi_sem_vendedor', $financeHtml, 'traceSemVendedor', 'KPI Sem vendedor existe (FIN.R4.1).'),
+        // FIN.R4.3 — Recebíveis Operacional 360
+        checkContains('fin_r4_3_gap_report', file_exists($root . '/tools/dev/finance_trace_linkage_gap_report.php') ? 'ok' : '', 'ok', 'Ferramenta de diagnostico de gaps de rastreabilidade existe (FIN.R4.3).'),
+        checkContains('fin_r4_3_vendor_nodata', $financeHtml, 'financeTraceVendorNoData', 'Card de aviso para sem-vendedor existe no HTML (FIN.R4.3 Phase 6).'),
+        checkContains('fin_r4_3_pedido_col', $financeHtml, '<th>Pedido</th>', 'Coluna Pedido existe na tabela de NFs (FIN.R4.3 Phase 5).'),
+        checkContains('fin_r4_3_recebiveis_label', $financeHtml, 'recebíveis em aberto', 'Label Recebiveis em aberto substitui Boletos (FIN.R4.3 Phase 4).'),
+        checkContains('fin_r4_3_drawer_width', $financeCss, '720px', 'Drawer largura minima 720px configurada (FIN.R4.3 Phase 7).'),
+        checkContains('fin_r4_3_method_badge_js', $financeJs, 'methodBadge', 'Funcao methodBadge() existe no JS (FIN.R4.3 Phase 4).'),
+        checkContains('fin_r4_3_vendor_filter_js', $financeJs, 'is_unknown_vendor', 'Filtro is_unknown_vendor no vendor chart JS (FIN.R4.3 Phase 6).'),
+        checkContains('fin_r4_3_dedup_builder', file_exists($root . '/app/Support/FinanceReceivableTraceBuilder.php') ? (string)file_get_contents($root . '/app/Support/FinanceReceivableTraceBuilder.php') : '', 'deduped', 'Builder deduplica por titulo_key (FIN.R4.3 Phase 2).'),
+        checkContains('fin_r4_3_identity_key', file_exists($root . '/app/Support/FinanceReceivableTraceBuilder.php') ? (string)file_get_contents($root . '/app/Support/FinanceReceivableTraceBuilder.php') : '', 'makeTitleIdentityKey', 'Builder expoe makeTitleIdentityKey() (FIN.R4.3 Phase 2).'),
         checkNoNewMigration($root),
     ];
 }

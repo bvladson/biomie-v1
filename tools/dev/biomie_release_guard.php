@@ -35,6 +35,7 @@ declare(strict_types=1);
  *   D17 Finance Visual Analytics          (finance_visual_analytics_audit + FIN.R4 static audit)
  *   D18 Finance Receivable Traceability   (finance_receivable_trace_audit + FIN.R4.1 static audit)
  *   D19 Finance Payment Method Enrichment [informacional — FIN.R4.2 static audit]
+ *   D20 Finance Receivable 360 (FIN.R4.3)  [informacional — UI/builder static audit]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -980,6 +981,65 @@ $domains[] = [
 ];
 
 
+// ── D20 — Finance Receivable 360 (FIN.R4.3) [informacional] ─────────────────
+$d20Issues = [];
+
+$gapReportFile   = $toolsDir . '/finance_trace_linkage_gap_report.php';
+$traceBuilderSrc3 = $traceBuilderSrc2; // reuse D19 read
+
+if (!is_file($gapReportFile)) {
+    $d20Issues[] = 'finance_trace_linkage_gap_report.php ausente';
+}
+
+if (!str_contains($traceBuilderSrc3, 'makeTitleIdentityKey')) {
+    $d20Issues[] = 'FinanceReceivableTraceBuilder: makeTitleIdentityKey() ausente';
+}
+if (!str_contains($traceBuilderSrc3, 'deduped')) {
+    $d20Issues[] = 'FinanceReceivableTraceBuilder: deduplicação por titulo_key ausente';
+}
+if (!str_contains($traceBuilderSrc3, 'is_unknown_vendor')) {
+    $d20Issues[] = 'FinanceReceivableTraceBuilder: is_unknown_vendor no vendor_ranking ausente';
+}
+if (!str_contains($traceBuilderSrc3, 'receivable_count')) {
+    $d20Issues[] = 'FinanceReceivableTraceBuilder: receivable_count no vendor_ranking ausente';
+}
+if (!str_contains($traceBuilderSrc3, 'pedido_id_omie')) {
+    $d20Issues[] = 'FinanceReceivableTraceBuilder: pedido_id_omie em buildOpenInvoiceSummary ausente';
+}
+
+// Check JS for vendor chart fix
+$visualAnalyticsJs = $projectRoot . '/assets/js/modules/finance/visual-analytics.js';
+$visualJsSrc = is_file($visualAnalyticsJs) ? (string) file_get_contents($visualAnalyticsJs) : '';
+if (!str_contains($visualJsSrc, 'is_unknown_vendor')) {
+    $d20Issues[] = 'visual-analytics.js: is_unknown_vendor filter ausente (vendor chart fix)';
+}
+if (!str_contains($visualJsSrc, 'financeTraceVendorNoData')) {
+    $d20Issues[] = 'visual-analytics.js: financeTraceVendorNoData card ausente';
+}
+if (!str_contains($visualJsSrc, 'methodBadge')) {
+    $d20Issues[] = 'visual-analytics.js: methodBadge() ausente (Phase 4 badge)';
+}
+
+// Check CSS for drawer width
+$financeCss = $projectRoot . '/assets/css/finance-realizado.css';
+$cssSrc = is_file($financeCss) ? (string) file_get_contents($financeCss) : '';
+if (!str_contains($cssSrc, '720px')) {
+    $d20Issues[] = 'finance-realizado.css: drawer min-width 720px ausente (Phase 7)';
+}
+
+$domains[] = [
+    'label'       => 'D20 Finance Receivable 360 (FIN.R4.3)',
+    'guard'       => 'finance_trace_linkage_gap_report.php + FIN.R4.3 static audit',
+    'pass'        => true,
+    'warn'        => count($d20Issues) > 0,
+    'informational' => true,
+    'summary'     => $d20Issues === []
+        ? 'FIN.R4.3 presente: gap report + dedup + vendor fix + drawer width + method badges'
+        : count($d20Issues) . ' componente(s) FIN.R4.3 ausente(s) [informacional]',
+    'issues'      => $d20Issues,
+];
+
+
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
@@ -1014,7 +1074,7 @@ $passCount = count(array_filter($domains, fn($d) => $d['pass']));
 if ($jsonMode) {
     echo json_encode([
         'biomie_release_guard' => [
-            'version'   => 'AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2',
+            'version'   => 'AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3',
             'period'    => ['start' => $start, 'end' => $end],
             'overall'   => $allPass ? 'PASS' : 'FAIL',
             'elapsed_s' => $elapsed,
@@ -1036,7 +1096,7 @@ $hr2 = str_repeat('─', 72);
 
 echo PHP_EOL;
 echo $hr . PHP_EOL;
-echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2]
+echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3]
   Período : ' . $start . ' → ' . $end . PHP_EOL;
 echo $hr . PHP_EOL . PHP_EOL;
 
