@@ -56,7 +56,8 @@ final class CanonicalOverviewPayloadBuilder
         $canonicalProducts = $canonical->topProductsCommercial($start, $end, 12);
         $canonicalAuthorizedNfsCount = (int) ($summaryRow['billed_orders'] ?? 0);
         $gold = new GoldMartRepository($pdo, $logger);
-        $goldClients = $gold->topClientsCommercial($start, $end, 8);
+        $canUseMonthlyMarts = $this->isFullCalendarMonth($start, $end);
+        $goldClients = $canUseMonthlyMarts ? $gold->topClientsCommercial($start, $end, 8) : [];
         $martClienteCount = count($goldClients);
         if ($goldClients !== []) {
             $canonicalClients = $goldClients;
@@ -197,7 +198,9 @@ final class CanonicalOverviewPayloadBuilder
                 'revenue' => Support::money((float) ($row['revenue'] ?? 0)),
                 'orders' => (int) ($row['orders'] ?? 0),
             ], $canonicalProducts)
-            : (is_array($snapshot['top_products'] ?? null) ? $snapshot['top_products'] : []);
+            : (($canUseMonthlyMarts && $canonicalAuthorizedNfsCount > 0 && is_array($snapshot['top_products'] ?? null))
+                ? $snapshot['top_products']
+                : []);
         $alerts = is_array($snapshot['alerts'] ?? null) ? $snapshot['alerts'] : [];
         if ($canonicalClients !== []) {
             $topClientRevenue = (float) (($canonicalClients[0] ?? [])['invoice_total'] ?? 0);
@@ -471,5 +474,18 @@ final class CanonicalOverviewPayloadBuilder
                 'targets_source' => ($targetsRepository !== null && $targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',
             ],
         ];
+    }
+
+    private function isFullCalendarMonth(string $start, string $end): bool
+    {
+        $startTs = strtotime($start);
+        $endTs = strtotime($end);
+        if ($startTs === false || $endTs === false) {
+            return false;
+        }
+
+        return date('Y-m-01', $startTs) === $start
+            && date('Y-m-t', $startTs) === $end
+            && date('Y-m', $startTs) === date('Y-m', $endTs);
     }
 }

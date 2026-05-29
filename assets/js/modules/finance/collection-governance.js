@@ -367,17 +367,49 @@
     }).join('');
   }
 
+  function riskNfCell(row) {
+    var parts = [];
+    var nfLabel   = String(row.nf_label || '').trim();
+    var nf        = String(row.numero_nf || '').trim();
+    var notaKey   = String(row.nota_key || '').trim();
+    var pedidoLabel = String(row.pedido_label || '').trim();
+    var pedido    = String(row.pedido_id_omie || row.codigo_pedido_origem || '').trim();
+    var gap       = String(row.gap_reason || '').trim();
+
+    if (nfLabel) {
+      var nfTitle = row.nf_chave_nfe || notaKey || nfLabel;
+      parts.push('<span class="fin-tag" title="' + escapeHtml(nfTitle) + '">' + escapeHtml(nfLabel) + '</span>');
+    } else if (nf) {
+      parts.push('<span class="fin-tag">NF ' + escapeHtml(nf) + '</span>');
+    } else if (notaKey) {
+      var short = notaKey.length > 12 ? '…' + notaKey.slice(-8) : notaKey;
+      parts.push('<span class="fin-tag" title="' + escapeHtml(notaKey) + '">NF ' + escapeHtml(short) + '</span>');
+    }
+    if (pedidoLabel) {
+      parts.push('<span class="fin-tag" style="background:var(--color-blue-50,#eff6ff);color:var(--color-blue-700,#1d4ed8);">' + escapeHtml(pedidoLabel) + '</span>');
+    } else if (pedido && pedido !== '0') {
+      parts.push('<span class="fin-tag" style="background:var(--color-blue-50,#eff6ff);color:var(--color-blue-700,#1d4ed8);">Ped. ' + escapeHtml(pedido) + '</span>');
+    }
+    if (!parts.length && gap && gap !== 'ok') {
+      parts.push('<span class="fin-badge fin-badge-gray" style="font-size:10px;" title="' + escapeHtml(gap) + '">Sem vínculo</span>');
+    }
+    if (!parts.length) {
+      parts.push('<span style="color:var(--text-3,#9ca3af);">—</span>');
+    }
+    return '<div style="display:flex;flex-direction:column;gap:2px;">' + parts.join('') + '</div>';
+  }
+
   function renderRiskQueue(rows) {
     var target = byId('govRiskQueueBody');
     if (!target) return;
     if (!rows || !rows.length) {
-      target.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">Nenhum título crítico na fila de risco operacional.</td></tr>';
+      target.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhum título crítico na fila de risco operacional.</td></tr>';
       return;
     }
     target.innerHTML = rows.map(function (row) {
       var levelClass = row.prioridade_nivel === 1 ? 'red' : (row.prioridade_nivel === 2 ? 'gold' : 'green');
       var priorityBadge = '<span class="fin-badge fin-badge-' + levelClass + '">' + escapeHtml(row.prioridade_label) + '</span>';
-      
+
       var isNoVendor = row.vendedor_key === '__sem_vendedor__';
       var actionsHtml = '';
       if (isNoVendor) {
@@ -391,13 +423,22 @@
 
       var lastActBadge = row.ultima_acao ? actionBadge(row.ultima_acao) : '<span class="fin-badge fin-badge-gray" style="font-size:10px;padding:2px 4px;">Sem ação</span>';
 
+      var vendorGap = (isNoVendor && row.gap_reason && row.gap_reason !== 'ok')
+        ? '<small class="fin-gap-hint" title="' + escapeHtml(row.gap_reason) + '">Revisar vínculo</small>'
+        : '';
+
+      var scoreHtml = (typeof row.trace_quality_score === 'number' && row.trace_quality_score < 75)
+        ? '<span class="fin-badge fin-badge-gray" style="font-size:9px;padding:1px 4px;" title="Qualidade do vínculo: ' + row.trace_quality_score + '/100">Q:' + row.trace_quality_score + '</span>'
+        : '';
+
       return '<tr>' +
         '<td>' + priorityBadge + '</td>' +
         '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.prioridade_motivo) + '</strong>' + lastActBadge + '</div></td>' +
-        '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.nome_cliente) + '</strong>' +
+        '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.nome_cliente || 'Cliente não informado') + '</strong>' +
         (row.documento_cliente ? '<small>' + escapeHtml(row.documento_cliente) + '</small>' : '') + '</div></td>' +
-        '<td>' + escapeHtml(row.nome_vendedor) + '</td>' +
-        '<td><strong>' + escapeHtml(row.numero_documento) + '</strong></td>' +
+        '<td><div class="fin-doc-cell">' + escapeHtml(row.nome_vendedor || '—') + vendorGap + '</div></td>' +
+        '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.numero_documento || '—') + '</strong>' + scoreHtml + '</div></td>' +
+        '<td>' + riskNfCell(row) + '</td>' +
         '<td>' + formatDateBR(row.data_vencimento) + '</td>' +
         '<td>' + (row.dias_atraso > 0 ? '<span class="fin-badge fin-badge-red">' + row.dias_atraso + 'd</span>' : '<span class="fin-badge fin-badge-green">No prazo</span>') + '</td>' +
         '<td><strong>' + formatCurrency(row.valor_aberto) + '</strong></td>' +

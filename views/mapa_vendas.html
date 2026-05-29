@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
   <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
-  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260513-mapfix1" />
+  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260527-uxr11-1" />
   <script src="assets/js/chart.umd.js"></script>
   <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
@@ -120,8 +120,8 @@
 
       <section id="geoMapState" class="biomie-map-state" aria-live="polite"></section>
 
-      <section class="biomie-map-layout anim d3">
-        <article class="wallboard-card biomie-map-card">
+      <section class="biomie-map-layout geo-main-grid anim d3">
+        <article class="wallboard-card biomie-map-card geo-map-card">
           <div class="biomie-map-card__head">
             <div>
               <h2>Fortaleza por bairros</h2>
@@ -137,7 +137,45 @@
           </div>
         </article>
 
-        <section class="biomie-side-panel" aria-label="Painel do bairro selecionado">
+        <article class="wallboard-card geo-ranking-card" aria-label="Ranking de bairros">
+          <div class="wallboard-card-header geo-ranking-card__header">
+            <div>
+              <h3>Ranking de bairros</h3>
+              <small>Lista navegavel por faturamento, clientes, NFs ou ticket.</small>
+            </div>
+          </div>
+          <div class="geo-ranking-toolbar">
+            <div class="geo-ranking-controls">
+              <input id="geoRankingSearch" type="search" class="filter-input" placeholder="Buscar bairro..." autocomplete="off" />
+              <select id="geoRankingSort" class="filter-input" aria-label="Ordenar bairros">
+                <option value="revenue_desc">Faturamento</option>
+                <option value="customers_desc">Clientes</option>
+                <option value="invoices_desc">NFs</option>
+                <option value="ticket_desc">Ticket</option>
+                <option value="name_asc">A-Z</option>
+              </select>
+            </div>
+            <span id="geoRankingCount" class="geo-ranking-count">0 de 0 bairros</span>
+          </div>
+          <div class="geo-ranking-scroll">
+            <div id="scopeRankingTable" class="geo-ranking-list" role="listbox" aria-label="Ranking de bairros" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></div>
+          </div>
+        </article>
+      </section>
+
+      <div id="geoNeighborhoodDrawerBackdrop" class="geo-drawer-backdrop" hidden></div>
+      <aside id="geoNeighborhoodDrawer" class="geo-drawer" role="dialog" aria-modal="true" aria-labelledby="panelTitle" hidden>
+        <div class="geo-drawer__header">
+          <div>
+            <span class="geo-drawer__eyebrow">Detalhe do bairro</span>
+            <h2 id="geoDrawerHeading">Leitura comercial</h2>
+          </div>
+          <button id="geoDrawerClose" type="button" class="btn-secondary geo-drawer__close" aria-label="Fechar detalhe do bairro">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <section class="biomie-side-panel geo-drawer__body" aria-label="Detalhe do bairro selecionado">
           <article class="wallboard-card">
             <div class="biomie-panel-head">
               <div>
@@ -200,53 +238,9 @@
             </div>
           </article>
         </section>
-      </section>
+      </aside>
 
       <section id="geoCoverageBar" class="module-alert module-alert--info d-none" aria-live="polite" style="margin:0 0 8px;padding:10px 16px;font-size:13px;"></section>
-
-      <section class="wallboard-grid anim d4" style="flex-wrap:wrap;">
-        <div class="wallboard-column" style="flex:1 1 340px;min-width:280px;">
-          <article class="wallboard-card">
-            <div class="wallboard-card-header">
-              <div>
-                <h3>Ranking de bairros</h3>
-                <small>Clique em uma linha para selecionar o bairro no mapa.</small>
-              </div>
-            </div>
-            <div class="wallboard-card-body compact">
-              <table class="mag-table mag-table-clean" data-mobile-card-table>
-                <thead><tr><th>#</th><th>Bairro</th><th>Faturamento</th></tr></thead>
-                <tbody id="scopeRankingTable" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-        <div class="wallboard-column" style="flex:1 1 340px;min-width:280px;">
-          <article class="wallboard-card">
-            <div class="wallboard-card-header">
-              <div>
-                <h3>Detalhamento comercial por bairro</h3>
-                <small>Clique em uma linha para filtrar o mapa pelo bairro.</small>
-              </div>
-            </div>
-            <div class="wallboard-card-body compact biomie-table-wrap">
-              <table class="mag-table mag-table-clean" data-mobile-card-table>
-                <thead>
-                  <tr>
-                    <th>Bairro</th>
-                    <th>Clientes</th>
-                    <th>Notas</th>
-                    <th>Faturamento</th>
-                    <th>Ticket</th>
-                    <th>Share</th>
-                  </tr>
-                </thead>
-                <tbody id="drillDownTable" data-empty-title="Sem detalhamento" data-empty-message="Nenhum dado agregado para o filtro atual." data-empty-icon="table_view"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-      </section>
 
       <details class="mag-technical-diagnostics biomie-map-diagnostics">
         <summary aria-expanded="false" aria-controls="geoDiagnosticsContent"><span class="material-symbols-rounded">tune</span>Diagnostico tecnico</summary>
@@ -300,8 +294,8 @@
 <script src="assets/js/modules/order-detail/index.js"></script>
 <script src="assets/js/modules/invoice-detail/index.js"></script>
 <script src="assets/js/modules/customer-detail/index.js"></script>
-<script src="assets/js/biomie-map-panel.js?v=20260501-f6"></script>
+<script src="assets/js/biomie-map-panel.js?v=20260527-uxr11-1"></script>
 <script src="assets/js/geo-normalizer.js?v=20260513-mapfix2"></script>
-<script src="assets/js/biomie-map.js?v=20260513-mapfix2"></script>
+<script src="assets/js/biomie-map.js?v=20260527-uxr11-1"></script>
 </body>
 </html>

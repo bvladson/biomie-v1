@@ -262,21 +262,61 @@
   function renderOriginRef(row) {
     row = row || {};
     var items = [];
-    var nf = String(row.nota_key || '').trim();
-    var pedido = String(row.codigo_pedido_origem || row.pedido_id_omie || '').trim();
-    var origin = String(row.documento_origem_ref || row.nf_pedido || '').trim();
+    var nfLabel   = String(row.nf_label || '').trim();
+    var pedidoLabel = String(row.pedido_label || '').trim();
+    var nfRaw     = String(row.nota_key || '').trim();
+    var pedidoRaw = String(row.codigo_pedido_origem || row.pedido_id_omie || '').trim();
+    var origin    = String(row.documento_origem_ref || row.nf_pedido || '').trim();
 
-    if (nf) {
-      items.push('<span class="fin-tag" title="' + escapeHtml(nf) + '">NF ' + escapeHtml(compactRef(nf, 12)) + '</span>');
+    if (nfLabel) {
+      var nfTitle = row.nf_chave_nfe || row.nf_nota_key || nfLabel;
+      items.push('<span class="fin-tag" title="' + escapeHtml(nfTitle) + '">' + escapeHtml(nfLabel) + '</span>');
+    } else if (nfRaw) {
+      items.push('<span class="fin-tag" title="' + escapeHtml(nfRaw) + '">NF ' + escapeHtml(compactRef(nfRaw, 12)) + '</span>');
     }
-    if (pedido) {
-      items.push('<span class="fin-tag" title="' + escapeHtml(pedido) + '">Pedido ' + escapeHtml(compactRef(pedido, 12)) + '</span>');
+    if (pedidoLabel) {
+      items.push('<span class="fin-tag" style="background:var(--color-blue-50,#eff6ff);color:var(--color-blue-700,#1d4ed8);">' + escapeHtml(pedidoLabel) + '</span>');
+    } else if (pedidoRaw && pedidoRaw !== '0') {
+      items.push('<span class="fin-tag" title="' + escapeHtml(pedidoRaw) + '">Pedido ' + escapeHtml(compactRef(pedidoRaw, 12)) + '</span>');
     }
     if (!items.length && origin) {
       items.push('<span class="fin-tag" title="' + escapeHtml(origin) + '">Ref ' + escapeHtml(compactRef(origin, 14)) + '</span>');
     }
     if (!items.length) return '<span class="text-muted">-</span>';
     return '<div class="fc-origin-list">' + items.join('') + '</div>';
+  }
+
+  function renderUnresolvedVendorAlert(bucket) {
+    var node = byId('fcUnresolvedVendorAlert');
+    if (!node) return;
+    if (!bucket || !bucket.count) {
+      node.style.display = 'none';
+      node.innerHTML = '';
+      return;
+    }
+    var gapsHtml = '';
+    if (bucket.top_gap_reasons) {
+      var reasons = Object.keys(bucket.top_gap_reasons).slice(0, 3);
+      if (reasons.length) {
+        gapsHtml = '<div style="margin-top:4px;font-size:11px;opacity:0.8;">Motivos: ' +
+          reasons.map(function (k) { return escapeHtml(k) + ' (' + bucket.top_gap_reasons[k] + ')'; }).join(' · ') +
+          '</div>';
+      }
+    }
+    node.style.display = 'block';
+    node.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+      '<strong>⚠ ' + bucket.count + ' título(s) sem vendedor resolvido</strong>' +
+      '<span style="font-size:12px;opacity:0.75;">nesta página</span>' +
+      '<button class="btn-xs-action btn-revisar-vinculo" style="margin-left:auto;" id="fcAlertVerSemVendedor">Ver todos sem vendedor</button>' +
+      '</div>' + gapsHtml;
+    var btn = byId('fcAlertVerSemVendedor');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        setChecked('fcOnlyNoVendor', true);
+        load(1);
+      });
+    }
   }
 
   function renderKpis(kpis) {
@@ -306,9 +346,12 @@
       return;
     }
     target.innerHTML = rows.map(function (row) {
+      var vendorSub = row.sem_vendedor
+        ? '<small style="color:var(--warning-text,#b45309);">Títulos sem vínculo resolvido</small>'
+        : '<small>' + formatNumber(row.qtd_titulos) + ' titulo(s)</small>';
       return '<tr data-fc-vendor-row="' + escapeHtml(row.nome_vendedor) + '" data-fc-no-vendor="' + (row.sem_vendedor ? '1' : '0') + '">' +
         '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.nome_vendedor) + '</strong>' +
-        (row.sem_vendedor ? '<small>Pendencia de origem/vinculo</small>' : '<small>' + formatNumber(row.qtd_titulos) + ' titulo(s)</small>') + '</div></td>' +
+        vendorSub + '</div></td>' +
         '<td><strong>' + formatCurrency(row.valor_aberto) + '</strong></td>' +
         '<td>' + formatCurrency(row.valor_vencido) + '</td>' +
         '<td>' + formatCurrency(row.valor_a_vencer) + '</td>' +
@@ -357,37 +400,65 @@
     var target = byId('fcTableBody');
     if (!target) return;
     if (!rows || !rows.length) {
-      target.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhum titulo acionavel para os filtros atuais.</td></tr>';
+      target.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Nenhum titulo acionavel para os filtros atuais.</td></tr>';
       initMobileTables();
       return;
     }
     target.innerHTML = rows.map(function (row) {
+      var tKey     = escapeHtml(row.titulo_key || row.id || '');
+      var clientId = escapeHtml(row.cliente_id || '');
+      var vendorId = escapeHtml(row.vendedor_id || '');
+
       var actionsHtml = '';
       if (row.sem_vendedor) {
-        actionsHtml = '<button class="btn-xs-action btn-revisar-vinculo" data-fc-title-key="' + escapeHtml(row.id) + '" data-fc-client-id="' + escapeHtml(row.cliente_id) + '" data-fc-vendor-id="' + escapeHtml(row.vendedor_id) + '">Revisar vínculo</button>';
+        actionsHtml = '<button class="btn-xs-action btn-revisar-vinculo" data-fc-title-key="' + tKey + '" data-fc-client-id="' + clientId + '" data-fc-vendor-id="' + vendorId + '">Revisar vínculo</button>';
       } else {
-        actionsHtml = '<div style="display:flex;gap:4px;">' +
-          '<button class="btn-xs-action btn-registrar-cobranca" data-fc-title-key="' + escapeHtml(row.id) + '" data-fc-client-id="' + escapeHtml(row.cliente_id) + '" data-fc-vendor-id="' + escapeHtml(row.vendedor_id) + '">Registrar cobrança</button>' +
-          '<button class="btn-xs-action btn-marcar-cobrado" data-fc-title-key="' + escapeHtml(row.id) + '" data-fc-client-id="' + escapeHtml(row.cliente_id) + '" data-fc-vendor-id="' + escapeHtml(row.vendedor_id) + '">Marcar cobrado hoje</button>' +
+        actionsHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          '<button class="btn-xs-action btn-registrar-cobranca" data-fc-title-key="' + tKey + '" data-fc-client-id="' + clientId + '" data-fc-vendor-id="' + vendorId + '">Registrar</button>' +
+          '<button class="btn-xs-action btn-marcar-cobrado" data-fc-title-key="' + tKey + '" data-fc-client-id="' + clientId + '" data-fc-vendor-id="' + vendorId + '">Cobrado</button>' +
           '</div>';
       }
 
+      var clienteNome   = row.cliente_nome_resolvido || row.cliente || 'Cliente nao informado';
+      var vendorNome    = row.vendedor_nome_resolvido || row.vendedor || '';
+      var vendorSource  = String(row.vendedor_source || '');
+      var docCliente    = row.cliente_documento || row.documento_cliente || '';
+      var methodLabel   = String(row.payment_method_label || row.forma_pagamento || '').trim();
+      var traceScore    = typeof row.trace_quality_score === 'number' ? row.trace_quality_score : -1;
+      var gapReason     = String(row.gap_reason || '').trim();
+
+      var vendorChip = vendorNome
+        ? '<span class="fin-tag" style="font-size:10px;padding:1px 5px;margin-top:2px;background:var(--color-blue-50,#eff6ff);color:var(--color-blue-700,#1d4ed8);" title="' + escapeHtml(vendorSource) + '">' + escapeHtml(vendorNome) + '</span>'
+        : '<span class="fin-tag" style="font-size:10px;padding:1px 5px;margin-top:2px;background:var(--warning-bg-light,#fffbeb);color:var(--warning-text,#b45309);">Sem vendedor</span>';
+
+      var scoreChip = (traceScore >= 0 && traceScore < 75)
+        ? '<span class="fin-badge fin-badge-gray" style="font-size:9px;padding:1px 4px;margin-left:4px;" title="Qualidade do vínculo: ' + traceScore + '/100 — ' + escapeHtml(gapReason) + '">Q:' + traceScore + '</span>'
+        : '';
+
+      var methodChip = methodLabel
+        ? '<span class="fin-badge fin-badge-gray" style="font-size:10px;padding:2px 5px;">' + escapeHtml(methodLabel) + '</span>'
+        : '';
+
       return '<tr>' +
-        '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.vendedor || 'Sem vendedor definido') + '</strong>' +
-        (row.sem_vendedor ? '<small>Revisar vinculo financeiro</small>' : '') + '</div></td>' +
-        '<td><div class="fin-doc-cell"><strong>' + escapeHtml(row.cliente || 'Cliente nao informado') + '</strong>' +
-        (row.documento_cliente ? '<small>' + escapeHtml(row.documento_cliente) + '</small>' : '') + '</div></td>' +
-        '<td><div class="fin-doc-cell"><span class="fin-tag">' + escapeHtml(row.especie || 'Titulo') + '</span><strong>' + escapeHtml(row.documento || row.id || '-') + '</strong>' +
-        (row.forma_pagamento ? '<small>' + escapeHtml(row.forma_pagamento) + '</small>' : '') + '</div></td>' +
+        '<td><div class="fin-doc-cell">' +
+          '<strong>' + escapeHtml(clienteNome) + '</strong>' +
+          (docCliente ? '<small>' + escapeHtml(docCliente) + '</small>' : '') +
+          '<div style="margin-top:2px;">' + vendorChip + '</div>' +
+        '</div></td>' +
+        '<td><div class="fin-doc-cell">' +
+          '<span class="fin-tag">' + escapeHtml(row.especie || 'Titulo') + '</span>' +
+          '<strong>' + escapeHtml(row.documento || row.id || '-') + '</strong>' +
+          (methodChip ? '<div style="margin-top:2px;">' + methodChip + '</div>' : '') +
+        '</div></td>' +
         '<td>' + renderOriginRef(row) + '</td>' +
         '<td>' + formatDateBR(row.vencimento) + '</td>' +
         '<td>' + delayLabel(row.dias_atraso) + '</td>' +
         '<td><strong>' + formatCurrency(row.valor_aberto) + '</strong></td>' +
-        '<td>' + statusBadge(row) + '</td>' +
+        '<td>' + statusBadge(row) + scoreChip + '</td>' +
         '<td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">' +
-        '<strong class="fc-action-label">' + escapeHtml(row.acao_recomendada || 'Acompanhar vencimento') + '</strong>' +
-        actionBadge(row.latest_action) +
-        '<div style="margin-top:2px;">' + actionsHtml + '</div>' +
+          '<strong class="fc-action-label" style="font-size:11px;">' + escapeHtml(row.acao_recomendada || 'Acompanhar vencimento') + '</strong>' +
+          actionBadge(row.latest_action) +
+          '<div style="margin-top:2px;">' + actionsHtml + '</div>' +
         '</div></td>' +
       '</tr>';
     }).join('');
@@ -433,6 +504,7 @@
     renderKpis(payload.kpis || {});
     renderRanking(payload.ranking || []);
     renderAging(payload.aging || []);
+    renderUnresolvedVendorAlert(payload.unresolved_vendor_bucket || null);
     renderRows(payload.data || []);
     renderPagination(payload.pagination || null);
     renderChips(filters);
@@ -550,14 +622,75 @@
     setValue('fcFormClienteId', clientId);
     setValue('fcFormVendedorId', vendorId);
 
-    setText('fcDrawerSubtitle', 'Título ID: ' + titleKey);
-    
-    var titleData = lastLoadedData.find(function(item) { return item.id === titleKey; }) || {};
-    
-    setText('fcInfoClient', titleData.cliente || '-');
-    setText('fcInfoVendor', titleData.vendedor || '-');
+    var titleData = lastLoadedData.find(function (item) { return (item.titulo_key || item.id) === titleKey; }) || {};
+
+    setText('fcDrawerSubtitle', 'Título: ' + (titleData.documento || titleKey));
+
+    // Cliente
+    setText('fcInfoClient', titleData.cliente_nome_resolvido || titleData.cliente || '-');
+    var clientDocEl = byId('fcInfoClientDoc');
+    if (clientDocEl) clientDocEl.textContent = titleData.cliente_documento || titleData.documento_cliente || '';
+
+    // Vendedor — show as chip with source hint
+    var vendorEl = byId('fcInfoVendor');
+    if (vendorEl) {
+      var vNome   = titleData.vendedor_nome_resolvido || titleData.vendedor || '';
+      var vSrc    = String(titleData.vendedor_source || '');
+      if (vNome) {
+        var vColor = titleData.sem_vendedor ? 'color:var(--warning-text,#b45309);background:var(--warning-bg-light,#fffbeb);border-color:var(--warning-border,#fde68a);' : 'color:var(--color-blue-700,#1d4ed8);background:var(--color-blue-50,#eff6ff);border-color:#bfdbfe;';
+        vendorEl.innerHTML = '<span class="fin-tag" style="' + vColor + '" title="' + escapeHtml(vSrc) + '">' + escapeHtml(vNome) + '</span>';
+      } else {
+        vendorEl.innerHTML = '<span class="fin-badge fin-badge-gray" style="font-size:11px;">Sem vendedor</span>';
+      }
+    }
+
     setText('fcInfoDueDate', formatDateBR(titleData.vencimento));
     setText('fcInfoOpenValue', formatCurrency(titleData.valor_aberto));
+
+    // NF / Pedido / Método chips
+    var nfPedidoEl = byId('fcInfoNfPedido');
+    if (nfPedidoEl) {
+      var chips = [];
+      var nfLbl = String(titleData.nf_label || '').trim();
+      var pedLbl = String(titleData.pedido_label || '').trim();
+      var methodLbl = String(titleData.payment_method_label || titleData.forma_pagamento || '').trim();
+      var nfSrc = String(titleData.nf_source || '').trim();
+      if (nfLbl) chips.push('<span class="fin-tag" title="' + escapeHtml(titleData.nf_chave_nfe || nfLbl) + ' — via ' + escapeHtml(nfSrc) + '">' + escapeHtml(nfLbl) + '</span>');
+      if (pedLbl) chips.push('<span class="fin-tag" style="background:var(--color-blue-50,#eff6ff);color:var(--color-blue-700,#1d4ed8);">' + escapeHtml(pedLbl) + '</span>');
+      if (methodLbl) chips.push('<span class="fin-badge fin-badge-gray" style="font-size:10px;">' + escapeHtml(methodLbl) + '</span>');
+      nfPedidoEl.innerHTML = chips.length ? chips.join('') : '<span style="color:var(--text-3,#9ca3af);font-size:11px;">Sem vínculo NF/Pedido</span>';
+    }
+
+    // Trace quality alert
+    var traceEl = byId('fcInfoTraceQuality');
+    if (traceEl) {
+      var score = typeof titleData.trace_quality_score === 'number' ? titleData.trace_quality_score : -1;
+      var gap   = String(titleData.gap_reason || '').trim();
+      var missing = Array.isArray(titleData.missing_fields) ? titleData.missing_fields : [];
+      if (score >= 0 && score < 75) {
+        traceEl.style.display = 'block';
+        traceEl.innerHTML = '<strong>Qualidade do vínculo: ' + score + '/100</strong>' +
+          (gap ? ' — ' + escapeHtml(gap) : '') +
+          (missing.length ? '<br>Campos ausentes: ' + escapeHtml(missing.join(', ')) : '');
+      } else {
+        traceEl.style.display = 'none';
+      }
+    }
+
+    // Diagnostic section
+    var diagEl = byId('fcDiagnosticContent');
+    if (diagEl) {
+      var parts = [];
+      parts.push('<strong>Título:</strong> ' + escapeHtml(titleData.documento || titleKey));
+      if (titleData.nota_key) parts.push('<strong>nota_key:</strong> ' + escapeHtml(String(titleData.nota_key).slice(0, 20)) + (String(titleData.nota_key).length > 20 ? '…' : ''));
+      if (titleData.nf_chave_nfe) parts.push('<strong>chave_nfe:</strong> ' + escapeHtml(String(titleData.nf_chave_nfe).slice(0, 20)) + '…');
+      if (titleData.nf_label) parts.push('<strong>NF:</strong> ' + escapeHtml(titleData.nf_label) + (titleData.nf_source ? ' <em>(' + escapeHtml(titleData.nf_source) + ')</em>' : ''));
+      if (titleData.pedido_label) parts.push('<strong>Pedido:</strong> ' + escapeHtml(titleData.pedido_label));
+      if (titleData.vendedor_nome_resolvido) parts.push('<strong>Vendedor:</strong> ' + escapeHtml(titleData.vendedor_nome_resolvido) + (titleData.vendedor_source ? ' <em>(' + escapeHtml(titleData.vendedor_source) + ')</em>' : ''));
+      var scoreVal = typeof titleData.trace_quality_score === 'number' ? titleData.trace_quality_score : '?';
+      parts.push('<strong>Qualidade:</strong> ' + scoreVal + '/100');
+      diagEl.innerHTML = parts.join('<br>');
+    }
 
     if (isRevisarVinculo) {
       setValue('fcFormActionType', 'revisar_vinculo_financeiro');
@@ -566,7 +699,7 @@
     }
     setValue('fcFormNextDate', '');
     setValue('fcFormNote', '');
-    
+
     byId('fcDrawerAlert').style.display = 'none';
     loadHistory(titleKey);
   }

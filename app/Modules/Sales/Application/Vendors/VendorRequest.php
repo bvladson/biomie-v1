@@ -17,6 +17,7 @@ final class VendorRequest
         public readonly array $range,
         public readonly bool $forceRefresh,
         public readonly int $vendorLimit,
+        public readonly bool $includeInactive,
     ) {
     }
 
@@ -25,8 +26,9 @@ final class VendorRequest
         $range = self::resolvePeriod();
         $forceRefresh = Http::boolQuery('force', false);
         $vendorLimit = min(100, max(10, (int) (Http::query('limit') ?? '50')));
+        $includeInactive = Http::boolQuery('include_inactive', false);
 
-        return new self($range, $forceRefresh, $vendorLimit);
+        return new self($range, $forceRefresh, $vendorLimit, $includeInactive);
     }
 
     public function start(): string

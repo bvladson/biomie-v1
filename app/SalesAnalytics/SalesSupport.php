@@ -190,7 +190,15 @@ final class SalesSupport
     }
 
     /**
-     * Classifica o status bruto do Omie em um grupo canônico.
+     * Classifica o status bruto do Omie em um grupo canônico ENUM.
+     *
+     * Retorna apenas valores compatíveis com o ENUM do banco:
+     *   'faturado' | 'autorizado' | 'cancelado' | 'outro'
+     *
+     * Para classificação semântica estendida use CommercialPipelineClassifier::classifyEtapa().
+     *
+     * COM.R1.2: etapa 60 (Entrega Finalizada) retorna 'outro', NÃO 'faturado'.
+     * A etapa 60 é pós-venda; o faturamento já ocorreu em etapa 50.
      */
     public function classifyStatus(string $raw): string
     {
@@ -201,6 +209,10 @@ final class SalesSupport
 
         if (ctype_digit($n)) {
             $code = (int) $n;
+            // etapa 60 = Entrega Finalizada — pós-venda, NÃO novo faturamento
+            if ($code === 60) {
+                return 'outro';
+            }
             if ($code >= 50 && $code <= 69) {
                 return 'faturado';
             }
@@ -210,6 +222,7 @@ final class SalesSupport
             if ($code >= 70) {
                 return 'cancelado';
             }
+            // etapa 10 = Orçamento
             if ($code <= 19) {
                 return 'outro';
             }
@@ -217,7 +230,11 @@ final class SalesSupport
             return 'outro';
         }
 
-        if (str_contains($n, 'faturad') || str_contains($n, 'entregue') || str_contains($n, 'conclu')) {
+        // entregue/concluido sem código numérico → 'outro' (pós-venda)
+        if (str_contains($n, 'entregue') || str_contains($n, 'conclu') || str_contains($n, 'entrega finalizada')) {
+            return 'outro';
+        }
+        if (str_contains($n, 'faturad')) {
             return 'faturado';
         }
         if (str_contains($n, 'autoriz') || str_contains($n, 'aprovad') || str_contains($n, 'separ') || str_contains($n, 'aberto') || str_contains($n, 'pedido')) {
@@ -228,5 +245,15 @@ final class SalesSupport
         }
 
         return 'outro';
+    }
+
+    /**
+     * Classificação semântica estendida — retorna o scope completo do CommercialPipelineClassifier.
+     * NÃO usa valores ENUM; use para análise, diagnóstico e dashboards.
+     */
+    public function classifyStatusExtended(string $etapaOmie): string
+    {
+        $entry = (new \BIomie\Support\CommercialPipelineClassifier())->classifyEtapa($etapaOmie);
+        return $entry['scope'];
     }
 }

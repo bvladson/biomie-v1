@@ -10,6 +10,7 @@ use BIomie\Support\Filters\FilterNormalizer;
 use BIomie\Support\Filters\Pagination;
 use BIomie\Support\Filters\Presets\FinanceCollectionFilters;
 use BIomie\Support\Filters\QueryStringMapper;
+use BIomie\Support\FinanceReceivableIdentityResolver;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -382,6 +383,7 @@ try {
             {$vendorNameExpr} AS vendedor_nome,
             CASE WHEN {$vendorMissingExpr} THEN 1 ELSE 0 END AS is_vendor_missing,
             nota_key,
+            COALESCE(chave_nfe, '') AS chave_nfe,
             documento_origem_tipo,
             documento_origem_ref,
             codigo_pedido_origem,
@@ -409,6 +411,29 @@ try {
     bindCollectionParams($dataStmt, $dataParams);
     $dataStmt->execute();
     $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // --- BATCH IDENTITY RESOLUTION (for current page) ---
+    $identityResolver = new FinanceReceivableIdentityResolver($pdo);
+    $resolvedByTituloKey = [];
+    foreach ($rows as $r) {
+        $tKey = (string) ($r['titulo_key'] ?? '');
+        if ($tKey !== '') {
+            $resolvedByTituloKey[$tKey] = $identityResolver->resolveTitle($r);
+        }
+    }
+
+    // Build unresolved_vendor_bucket from current page
+    $unresolvedCount  = 0;
+    $unresolvedAmount = 0.0;
+    $unresolvedGaps   = [];
+    foreach ($resolvedByTituloKey as $rid) {
+        if (!($rid['vendedor']['found'] ?? false)) {
+            $unresolvedCount++;
+            // valor_aberto is in the original row but not in $rid — approximate via risk
+            $gap = (string) ($rid['trace_quality']['gap_reason'] ?? 'gap_desconhecido');
+            $unresolvedGaps[$gap] = ($unresolvedGaps[$gap] ?? 0) + 1;
+        }
+    }
 
     // --- QUERY LATEST ACTIONS FOR PAGE ---
     $latestActions = [];
@@ -543,43 +568,101 @@ try {
         ];
     }
 
-    $data = array_map(static function (array $row) use ($today, $latestActions): array {
+    $data = array_map(static function (array $row) use ($today, $latestActions, $resolvedByTituloKey): array {
+        $tKey = (string) ($row['titulo_key'] ?? '');
+        $rid  = $resolvedByTituloKey[$tKey] ?? null;
+
+        $nfResolved     = $rid['nf']            ?? [];
+        $pedidoResolved = $rid['pedido']         ?? [];
+        $vendorResolved = $rid['vendedor']       ?? [];
+        $clienteResolved= $rid['cliente']        ?? [];
+        $paymentResolved= $rid['payment']        ?? [];
+        $traceQuality   = $rid['trace_quality']  ?? [];
+
+        $nfNumero       = (string) ($nfResolved['numero_nf']       ?? '');
+        $nfNotaKey      = (string) ($nfResolved['nota_key']        ?? $row['nota_key'] ?? '');
+        $nfChaveNfe     = (string) ($nfResolved['chave_nfe']       ?? $row['chave_nfe'] ?? '');
+        $nfSource       = (string) ($nfResolved['source']          ?? 'none');
+        $nfLabel        = $nfNumero !== '' ? 'NF ' . $nfNumero : ($nfNotaKey !== '' ? 'NF …' . substr($nfNotaKey, -8) : '');
+
+        $pedidoId       = (string) ($pedidoResolved['pedido_id_omie'] ?? $row['pedido_id_omie'] ?? '');
+        $pedidoLabel    = $pedidoId !== '' && $pedidoId !== '0' ? 'Ped. ' . $pedidoId : '';
+
+        $clienteNome    = (string) ($clienteResolved['nome'] ?? $row['nome_cliente'] ?? 'Cliente nao informado');
+        $clienteDoc     = (string) ($clienteResolved['documento'] ?? $row['documento_cliente'] ?? '');
+
+        $vendorNome     = (string) ($vendorResolved['nome']               ?? $row['vendedor_nome'] ?? FinanceCollectionFilters::VENDOR_LABEL_MISSING);
+        $vendorCodigo   = (string) ($vendorResolved['codigo_vendedor_omie'] ?? $row['codigo_vendedor_omie'] ?? '');
+        $vendorSource   = (string) ($vendorResolved['source']             ?? 'none');
+        $vendorResolvido = (bool) ($vendorResolved['found']              ?? false);
+
+        $paymentLabel   = (string) ($paymentResolved['method_label'] ?? '');
+
+        $traceScore     = (int) ($traceQuality['score']      ?? 0);
+        $gapReason      = (string) ($traceQuality['gap_reason'] ?? '');
+        $missingFields  = (array) ($traceQuality['missing']   ?? []);
+
         $normalized = [
-            'id' => (string) ($row['titulo_key'] ?? ''),
-            'titulo_id_omie' => $row['titulo_id_omie'] !== null ? (int) $row['titulo_id_omie'] : null,
-            'documento' => (string) ($row['numero_documento'] ?? ''),
-            'especie' => (string) ($row['especie_documento'] ?? 'Titulo'),
-            'forma_pagamento' => (string) ($row['forma_pagamento'] ?? ''),
-            'cliente_id' => (string) ($row['codigo_cliente_omie'] ?? ''),
-            'cliente' => (string) (($row['nome_cliente'] ?? '') !== '' ? $row['nome_cliente'] : 'Cliente nao informado'),
-            'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
-            'vendedor_id' => (string) ($row['codigo_vendedor_omie'] ?? ''),
-            'vendedor' => (string) ($row['vendedor_nome'] ?? FinanceCollectionFilters::VENDOR_LABEL_MISSING),
-            'sem_vendedor' => (int) ($row['is_vendor_missing'] ?? 0) === 1,
-            'nota_key' => (string) ($row['nota_key'] ?? ''),
+            'id'                    => $tKey,
+            'titulo_key'            => $tKey,
+            'titulo_id_omie'        => $row['titulo_id_omie'] !== null ? (int) $row['titulo_id_omie'] : null,
+            'documento'             => (string) ($row['numero_documento'] ?? ''),
+            'especie'               => (string) ($row['especie_documento'] ?? 'Titulo'),
+            'forma_pagamento'       => (string) ($row['forma_pagamento'] ?? ''),
+            // Cliente — resolver preferred
+            'cliente_id'            => (string) ($row['codigo_cliente_omie'] ?? ''),
+            'cliente'               => $clienteNome !== '' ? $clienteNome : 'Cliente nao informado',
+            'cliente_nome_resolvido'=> $clienteNome,
+            'cliente_documento'     => $clienteDoc,
+            'documento_cliente'     => (string) ($row['documento_cliente'] ?? ''),
+            // Vendedor — resolver preferred
+            'vendedor_id'           => (string) ($row['codigo_vendedor_omie'] ?? ''),
+            'vendedor'              => $vendorNome,
+            'vendedor_nome_resolvido' => $vendorNome,
+            'vendedor_codigo_resolvido' => $vendorCodigo,
+            'vendedor_source'       => $vendorSource,
+            'sem_vendedor'          => !$vendorResolvido,
+            // NF identity
+            'nota_key'              => (string) ($row['nota_key'] ?? ''),
+            'nf_numero'             => $nfNumero,
+            'nf_label'              => $nfLabel,
+            'nf_nota_key'           => $nfNotaKey,
+            'nf_chave_nfe'          => $nfChaveNfe,
+            'nf_source'             => $nfSource,
+            // Pedido identity
             'documento_origem_tipo' => (string) ($row['documento_origem_tipo'] ?? ''),
-            'documento_origem_ref' => (string) ($row['documento_origem_ref'] ?? ''),
-            'codigo_pedido_origem' => (string) ($row['codigo_pedido_origem'] ?? ''),
-            'pedido_id_omie' => $row['pedido_id_omie'] !== null ? (int) $row['pedido_id_omie'] : null,
-            'emissao' => $row['data_emissao'] ? (string) $row['data_emissao'] : null,
-            'vencimento' => $row['data_vencimento'] ? (string) $row['data_vencimento'] : null,
-            'competencia' => $row['data_competencia'] ? (string) $row['data_competencia'] : null,
-            'status_titulo' => (string) ($row['status_titulo'] ?? 'aberto'),
-            'valor_aberto' => round((float) ($row['valor_aberto'] ?? 0), 2),
-            'valor_pago' => round((float) ($row['valor_pago'] ?? 0), 2),
-            'valor_liquido' => round((float) ($row['valor_liquido'] ?? 0), 2),
-            'dias_atraso' => max(0, (int) ($row['dias_atraso'] ?? 0)),
+            'documento_origem_ref'  => (string) ($row['documento_origem_ref'] ?? ''),
+            'codigo_pedido_origem'  => (string) ($row['codigo_pedido_origem'] ?? ''),
+            'pedido_id_omie'        => $pedidoId !== '' && $pedidoId !== '0' ? $pedidoId : ($row['pedido_id_omie'] !== null ? (string)(int) $row['pedido_id_omie'] : null),
+            'pedido_label'          => $pedidoLabel,
+            // Payment
+            'payment_method_label'  => $paymentLabel,
+            // Dates and values
+            'emissao'               => $row['data_emissao']    ? (string) $row['data_emissao']    : null,
+            'vencimento'            => $row['data_vencimento'] ? (string) $row['data_vencimento'] : null,
+            'competencia'           => $row['data_competencia']? (string) $row['data_competencia']: null,
+            'status_titulo'         => (string) ($row['status_titulo'] ?? 'aberto'),
+            'valor_aberto'          => round((float) ($row['valor_aberto'] ?? 0), 2),
+            'valor_pago'            => round((float) ($row['valor_pago']   ?? 0), 2),
+            'valor_liquido'         => round((float) ($row['valor_liquido'] ?? 0), 2),
+            'dias_atraso'           => max(0, (int) ($row['dias_atraso'] ?? 0)),
+            // Trace quality
+            'trace_quality_score'   => $traceScore,
+            'gap_reason'            => $gapReason,
+            'missing_fields'        => $missingFields,
+            'identity_key'          => (string) ($rid['identity_key'] ?? ''),
         ];
-        $normalized['aging_bucket'] = collectionBucketForRow($normalized['vencimento'], $today);
-        $normalized['nf_pedido'] = collectionOriginRef($normalized);
-        $normalized['acao_recomendada'] = collectionAction([
+        $normalized['aging_bucket']    = collectionBucketForRow($normalized['vencimento'], $today);
+        $normalized['nf_pedido']       = collectionOriginRef($normalized);
+        $normalized['action_label']    = collectionAction([
             'is_vendor_missing' => $normalized['sem_vendedor'] ? 1 : 0,
-            'status' => $normalized['status_titulo'],
-            'valor_aberto' => $normalized['valor_aberto'],
-            'dias_atraso' => $normalized['dias_atraso'],
-            'vencimento' => $normalized['vencimento'],
+            'status'            => $normalized['status_titulo'],
+            'valor_aberto'      => $normalized['valor_aberto'],
+            'dias_atraso'       => $normalized['dias_atraso'],
+            'vencimento'        => $normalized['vencimento'],
         ]);
-        $normalized['latest_action'] = $latestActions[$normalized['id']] ?? null;
+        $normalized['acao_recomendada'] = $normalized['action_label'];
+        $normalized['latest_action']    = $latestActions[$tKey] ?? null;
 
         return $normalized;
     }, $rows);
@@ -623,10 +706,17 @@ try {
             'only_no_vendor' => $onlyNoVendor === true,
         ]),
         'sort' => ['field' => $sortField, 'direction' => strtolower($sortDir)],
+        'unresolved_vendor_bucket' => $unresolvedCount > 0 ? [
+            'count'           => $unresolvedCount,
+            'page_total'      => count($rows),
+            'top_gap_reasons' => array_slice($unresolvedGaps, 0, 5, true),
+            'note'            => $unresolvedCount . ' títulos nesta página sem vendedor resolvido',
+        ] : null,
         'diagnostics' => [
-            'source' => 'canonical_finance_titles',
-            'elapsed_ms' => $elapsedMs,
-            'request_id' => RequestContext::id(),
+            'source'       => 'canonical_finance_titles',
+            'resolver'     => 'FinanceReceivableIdentityResolver',
+            'elapsed_ms'   => $elapsedMs,
+            'request_id'   => RequestContext::id(),
         ],
     ]);
 } catch (InvalidArgumentException $e) {

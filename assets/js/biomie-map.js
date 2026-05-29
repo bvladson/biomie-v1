@@ -53,6 +53,7 @@
     normalizationExamples: [],
     matchConfidence: {},
     panelToken: 0,
+    drawerReturnFocus: null,
   };
 
   const formatters = {
@@ -714,15 +715,38 @@
     }).addTo(state.map);
   }
 
+  // UX.CHARTS.R1 — 5-bucket color scale (Sem vendas → Muito alto)
+  var MAP_BUCKET_COLORS = ['#e5e7eb', '#fef3c7', '#fbbf24', '#d97706', '#96140a'];
+
+  function getRevenueBucket(revenue) {
+    const buckets = state.scale && state.scale.buckets;
+    if (buckets && buckets.length) {
+      for (var i = 1; i < buckets.length; i++) {
+        var b = buckets[i];
+        var max = b.max != null ? b.max : Infinity;
+        if (revenue <= max) return i;
+      }
+      return buckets.length - 1;
+    }
+    // Fallback: percentile-based 4 tiers
+    const max = Number(state.scale && state.scale.max || 0);
+    if (max <= 0) return 0;
+    const pct = revenue / max;
+    if (pct >= 0.66) return 4;
+    if (pct >= 0.33) return 3;
+    if (pct > 0)     return 2;
+    return 0;
+  }
+
+  function getBucketColor(bucketIndex) {
+    return MAP_BUCKET_COLORS[Math.min(bucketIndex, MAP_BUCKET_COLORS.length - 1)] || '#e5e7eb';
+  }
+
   function getColorByRevenue(value, hasData) {
     if (!hasData) return '#e5e7eb';
     const amount = Number(value || 0);
-    const max = Number(state.scale?.max || 0);
-    if (amount <= 0 || max <= 0) return '#e5e7eb';
-    const pct = amount / max;
-    if (pct >= 0.66) return '#96140a';
-    if (pct >= 0.33) return '#d97706';
-    return '#f59e0b';
+    if (amount <= 0) return '#e5e7eb';
+    return getBucketColor(getRevenueBucket(amount));
   }
 
   function featureStyle(feature) {
@@ -759,10 +783,14 @@
     if (!row) {
       return `<div class="biomie-map-tooltip"><strong>${escapeHtml(label)}</strong><span>Sem dados comerciais</span></div>`;
     }
+    const revenue = getRowRevenue(row);
+    // UX.CHARTS.R1 — participation % in total
+    const totalRevenue = Number(state.scale && state.scale.total || 0);
+    const sharePct = totalRevenue > 0 ? (revenue / totalRevenue * 100).toFixed(1) + '%' : null;
     return `
       <div class="biomie-map-tooltip">
         <strong>${escapeHtml(label)}</strong>
-        <span><em>Faturamento</em><b>${formatters.money(getRowRevenue(row))}</b></span>
+        <span><em>Faturamento</em><b>${formatters.money(revenue)}${sharePct ? ' <small>(' + sharePct + ')</small>' : ''}</b></span>
         <span><em>Clientes</em><b>${formatters.number(row.customers || row.clientes || 0)}</b></span>
         <span><em>Notas</em><b>${formatters.number(row.invoices || row.notas || 0)}</b></span>
         <span><em>Ticket</em><b>${formatters.money(row.average_ticket || row.ticket_medio || 0)}</b></span>
@@ -880,18 +908,74 @@
   function renderLegend() {
     const node = $('mapLegend');
     if (!node) return;
-    const scale = state.scale || { buckets: [] };
+    const scale = state.scale || {};
     const buckets = scale.buckets || [];
-    node.innerHTML = buckets.map((bucket) => {
-      bucket = bucket || {};
-      const color = bucket.min === null ? '#e5e7eb' : getColorByRevenue(bucket.max || bucket.min || 1, true);
-      return `
+
+    if (buckets.length) {
+      // Use bucket index to assign consistent colors
+      node.innerHTML = buckets.map((bucket, idx) => {
+        bucket = bucket || {};
+        const color = (bucket.min === null || idx === 0) ? MAP_BUCKET_COLORS[0] : getBucketColor(idx);
+        return `
+          <span class="biomie-map-legend__item">
+            <span class="biomie-map-legend__swatch" style="background:${color}"></span>
+            ${escapeHtml(bucket.label || '-')}
+          </span>
+        `;
+      }).join('');
+    } else {
+      // Fallback static legend when API sends no buckets
+      const staticBuckets = [
+        { color: MAP_BUCKET_COLORS[0], label: 'Sem vendas' },
+        { color: MAP_BUCKET_COLORS[2], label: 'Baixo' },
+        { color: MAP_BUCKET_COLORS[3], label: 'Médio' },
+        { color: MAP_BUCKET_COLORS[4], label: 'Alto' },
+      ];
+      node.innerHTML = staticBuckets.map((b) => `
         <span class="biomie-map-legend__item">
-          <span class="biomie-map-legend__swatch" style="background:${color}"></span>
-          ${escapeHtml(bucket.label || '-')}
+          <span class="biomie-map-legend__swatch" style="background:${b.color}"></span>
+          ${escapeHtml(b.label)}
         </span>
-      `;
-    }).join('');
+      `).join('');
+    }
+  }
+
+  function scheduleMapInvalidate() {
+    if (!state.map || typeof state.map.invalidateSize !== 'function') return;
+    window.requestAnimationFrame(() => state.map.invalidateSize({ pan: false }));
+  }
+
+  function updateRankingActiveRow() {
+    document.querySelectorAll('.geo-ranking-row').forEach((row) => {
+      const isActive = !!state.selectedKey && row.getAttribute('data-key') === state.selectedKey;
+      row.classList.toggle('geo-ranking-row--active', isActive);
+      row.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+  }
+
+  function openNeighborhoodDrawer(trigger) {
+    const drawer = $('geoNeighborhoodDrawer');
+    const backdrop = $('geoNeighborhoodDrawerBackdrop');
+    if (!drawer) return;
+    state.drawerReturnFocus = trigger || document.activeElement || null;
+    drawer.hidden = false;
+    if (backdrop) backdrop.hidden = false;
+    document.body.classList.add('geo-drawer-open');
+    $('geoDrawerClose')?.focus({ preventScroll: true });
+    scheduleMapInvalidate();
+  }
+
+  function closeNeighborhoodDrawer() {
+    const drawer = $('geoNeighborhoodDrawer');
+    const backdrop = $('geoNeighborhoodDrawerBackdrop');
+    if (drawer) drawer.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+    document.body.classList.remove('geo-drawer-open');
+    scheduleMapInvalidate();
+    if (state.drawerReturnFocus && typeof state.drawerReturnFocus.focus === 'function') {
+      state.drawerReturnFocus.focus({ preventScroll: true });
+    }
+    state.drawerReturnFocus = null;
   }
 
   function renderSummary(payload) {
@@ -918,88 +1002,69 @@
   }
 
   function renderRanking() {
-    const tbody = $('scopeRankingTable');
-    if (!tbody) return;
+    const list = $('scopeRankingTable');
+    const countNode = $('geoRankingCount');
+    if (!list) return;
     if (!state.rows.length) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--mag-muted);padding:18px;">Sem bairros no filtro.</td></tr>';
+      if (countNode) countNode.textContent = '0 de 0 bairros';
+      list.innerHTML = '<div class="geo-ranking-empty">Sem bairros no filtro.</div>';
       return;
     }
-    const rowsWithSales = state.rows.filter((row) => getRowRevenue(row) > 0);
-    const visibleRows = (rowsWithSales.length ? rowsWithSales : state.rows).slice(0, 10);
-    const maxRevenue  = Math.max(...visibleRows.map((r) => getRowRevenue(r)), 1);
-    tbody.innerHTML = visibleRows.map((row) => {
+
+    const query = String($('geoRankingSearch')?.value || '').trim().toLowerCase();
+    const sort = $('geoRankingSort')?.value || 'revenue_desc';
+    const visibleRows = state.rows
+      .filter((row) => {
+        if (!query) return true;
+        const label = (getApiNeighborhoodName(row) || safeText(row.neighborhood_key) || '').toLowerCase();
+        return label.includes(query);
+      })
+      .slice();
+
+    visibleRows.sort((a, b) => {
+      const revA = getRowRevenue(a);
+      const revB = getRowRevenue(b);
+      if (sort === 'customers_desc') return Number(b.customers || 0) - Number(a.customers || 0) || revB - revA;
+      if (sort === 'invoices_desc') return Number(b.invoices || 0) - Number(a.invoices || 0) || revB - revA;
+      if (sort === 'ticket_desc') return Number(b.average_ticket || 0) - Number(a.average_ticket || 0) || revB - revA;
+      if (sort === 'name_asc') return String(getApiNeighborhoodName(a) || '').localeCompare(String(getApiNeighborhoodName(b) || ''), 'pt-BR');
+      return revB - revA || String(getApiNeighborhoodName(a) || '').localeCompare(String(getApiNeighborhoodName(b) || ''), 'pt-BR');
+    });
+
+    if (countNode) {
+      countNode.textContent = `${formatters.number(visibleRows.length)} de ${formatters.number(state.rows.length)} bairros`;
+    }
+
+    if (!visibleRows.length) {
+      list.innerHTML = '<div class="geo-ranking-empty">Nenhum bairro corresponde a busca.</div>';
+      return;
+    }
+
+    const maxRevenue = Math.max(...visibleRows.map((r) => getRowRevenue(r)), 1);
+    list.innerHTML = visibleRows.map((row, index) => {
       const label   = getApiNeighborhoodName(row) || safeText(row.neighborhood_key) || 'Sem bairro';
       const rev     = getRowRevenue(row);
       const barPct  = Math.round((rev / maxRevenue) * 100);
       const hasData = rev > 0;
-      const rowStyle = hasData ? '' : 'opacity:0.42;';
       const key     = normalizeNeighborhoodKey(row.neighborhood_key || label);
+      const active  = state.selectedKey && state.selectedKey === key;
       return `
-        <tr class="geo-row-clickable" data-key="${escapeHtml(key)}" data-label="${escapeHtml(label)}" style="${rowStyle}cursor:pointer;" title="Clique para selecionar ${escapeHtml(label)} no mapa">
-          <td style="width:28px;padding-right:4px;color:var(--mag-muted);font-size:12px;">${row.rank}</td>
-          <td>
-            <span style="font-weight:500;">${escapeHtml(label)}</span>
-            ${hasData ? `<div style="margin-top:3px;height:4px;border-radius:2px;background:var(--mag-border,#e5e7eb);overflow:hidden;"><div style="width:${barPct}%;height:4px;border-radius:2px;background:var(--mag-accent-1,#96140a);"></div></div>` : ''}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;">
-            ${hasData ? `<strong>${formatters.money(rev)}</strong>` : '<span style="color:var(--mag-muted)">-</span>'}
-          </td>
-        </tr>
+        <button type="button" class="geo-row-clickable geo-ranking-row${active ? ' geo-ranking-row--active' : ''}" role="option" data-key="${escapeHtml(key)}" data-label="${escapeHtml(label)}" data-city-key="${escapeHtml(row.city_key || row.cidade_key || 'fortaleza')}" aria-selected="${active ? 'true' : 'false'}" title="Clique para abrir detalhes de ${escapeHtml(label)}">
+          <span class="geo-ranking-rank">${index + 1}</span>
+          <span class="geo-ranking-main">
+            <span class="geo-ranking-name">${escapeHtml(label)}</span>
+            <span class="geo-ranking-meta">${escapeHtml(row.city || 'Fortaleza')} · ${formatters.number(row.invoices || 0)} NF</span>
+            <span class="geo-ranking-bar" aria-hidden="true"><span style="width:${barPct}%;"></span></span>
+          </span>
+          <span class="geo-ranking-value">${hasData ? formatters.money(rev) : '-'}</span>
+        </button>
       `;
     }).join('');
 
-    tbody.onclick = function (e) {
-      const tr = e.target.closest('tr[data-key]');
-      if (!tr) return;
-      selectNeighborhood(tr.dataset.key, tr.dataset.label, tr.dataset.cityKey || 'fortaleza');
-    };
-  }
-
-  function renderDrilldown() {
-    const tbody = $('drillDownTable');
-    if (!tbody) return;
-    if (!state.rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mag-muted);padding:18px;">Nenhuma venda encontrada para os filtros selecionados.</td></tr>';
-      return;
-    }
-    const rowsWithSales = state.rows.filter((row) => getRowRevenue(row) > 0);
-    const displayRows = rowsWithSales.length ? rowsWithSales : state.rows;
-    const total = displayRows.reduce((sum, row) => sum + getRowRevenue(row), 0);
-    tbody.innerHTML = displayRows.map((row) => {
-      const label     = getApiNeighborhoodName(row) || safeText(row.neighborhood_key) || 'Sem bairro';
-      const rev       = getRowRevenue(row);
-      const sharePct  = total > 0 ? (rev / total) * 100 : 0;
-      const shareStr  = `${sharePct.toFixed(1)}%`;
-      const barWidth  = Math.round(sharePct);
-      const hasData   = rev > 0;
-      const rowStyle  = hasData ? '' : 'opacity:0.42;';
-      const key       = normalizeNeighborhoodKey(row.neighborhood_key || label);
-      return `
-        <tr class="geo-row-clickable" data-key="${escapeHtml(key)}" data-label="${escapeHtml(label)}" style="${rowStyle}cursor:pointer;" title="Clique para selecionar ${escapeHtml(label)} no mapa">
-          <td>
-            <strong>${escapeHtml(label)}</strong>
-            <div style="font-size:11px;color:var(--mag-muted);">${escapeHtml(row.city || 'Fortaleza')}</div>
-          </td>
-          <td style="text-align:right;">${formatters.number(row.customers)}</td>
-          <td style="text-align:right;">${formatters.number(row.invoices)}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;">${hasData ? `<strong>${formatters.money(rev)}</strong>` : '-'}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px;">${hasData ? formatters.money(row.average_ticket) : '-'}</td>
-          <td style="min-width:80px;">
-            <div style="display:flex;align-items:center;gap:5px;">
-              <div style="flex:1;background:var(--mag-border,#e5e7eb);border-radius:2px;height:5px;overflow:hidden;">
-                <div style="width:${barWidth}%;height:5px;border-radius:2px;background:var(--mag-accent-1,#96140a);"></div>
-              </div>
-              <span style="width:36px;text-align:right;font-size:11px;color:var(--mag-muted);">${shareStr}</span>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    tbody.onclick = function (e) {
-      const tr = e.target.closest('tr[data-key]');
-      if (!tr) return;
-      selectNeighborhood(tr.dataset.key, tr.dataset.label, tr.dataset.cityKey || 'fortaleza');
+    list.onclick = function (e) {
+      const item = e.target.closest('[data-key]');
+      if (!item) return;
+      selectNeighborhood(item.dataset.key, item.dataset.label, item.dataset.cityKey || 'fortaleza', item);
     };
   }
 
@@ -1065,11 +1130,12 @@
     }
   }
 
-  function selectNeighborhood(key, label, cityKey) {
+  function selectNeighborhood(key, label, cityKey, trigger) {
     const matched = findCommercialRowByKeyOrLabel(key, label, false);
     state.selectedKey = matched.key || key || '';
     if ($('neighborhoodFilter')) $('neighborhoodFilter').value = label || '';
     state.geoLayer?.eachLayer((layer) => layer.setStyle(featureStyle(layer.feature)));
+    updateRankingActiveRow();
     const matchedRow = matched.row;
     const row = matchedRow ? Object.assign({}, matchedRow, {
       bairro_key:    key || matchedRow.bairro_key || matchedRow.neighborhood_key || '',
@@ -1085,6 +1151,7 @@
       invoices:      0,
       average_ticket: 0,
     };
+    openNeighborhoodDrawer(trigger);
     loadPanelData(row);
   }
 
@@ -1092,6 +1159,8 @@
     state.selectedKey = '';
     if (clearInput && $('neighborhoodFilter')) $('neighborhoodFilter').value = '';
     state.geoLayer?.eachLayer((layer) => layer.setStyle(featureStyle(layer.feature)));
+    updateRankingActiveRow();
+    closeNeighborhoodDrawer();
     // Restore global panel if summary data is available; otherwise show empty state
     const buyers = state.summary ? (state._summaryPayload?.top_buyers || []) : [];
     const cnaes  = state.summary ? (state._summaryPayload?.top_cnaes  || []) : [];
@@ -1137,6 +1206,8 @@
           average_ticket: 0,
         };
         state.selectedKey = '__sem_bairro__';
+        updateRankingActiveRow();
+        openNeighborhoodDrawer(btn);
         loadSemBairroPanel(semBairroRow);
       });
     }
@@ -1304,7 +1375,6 @@
 
       safeRender('summary', () => renderSummary(summaryPayload));
       safeRender('ranking', renderRanking);
-      safeRender('drilldown', renderDrilldown);
       safeRender('geo_layer', () => renderGeoLayer(geoJson));
       safeRender('legend', renderLegend);
       safeRender('selection', () => resetSelection(false));
@@ -1374,7 +1444,6 @@
       state.rowsByKey = new Map();
       state.revenueByNeighborhoodKey = new Map();
       renderRanking();
-      renderDrilldown();
       renderGeoLayer();
       renderLegend();
       resetSelection(false);
@@ -1441,6 +1510,8 @@
     if ($('neighborhoodFilter')) $('neighborhoodFilter').value = '';
     if ($('cnaeFilter')) $('cnaeFilter').value = '';
     if ($('vendedorFilter')) $('vendedorFilter').value = '';
+    if ($('geoRankingSearch')) $('geoRankingSearch').value = '';
+    if ($('geoRankingSort')) $('geoRankingSort').value = 'revenue_desc';
     state.selectedKey = '';
     loadCommercialData();
   }
@@ -1530,11 +1601,19 @@
     });
     $('clearFilters')?.addEventListener('click', clearFilters);
     $('clearSelection')?.addEventListener('click', clearSelection);
+    $('geoRankingSearch')?.addEventListener('input', renderRanking);
+    $('geoRankingSort')?.addEventListener('change', renderRanking);
+    $('geoDrawerClose')?.addEventListener('click', closeNeighborhoodDrawer);
+    $('geoNeighborhoodDrawerBackdrop')?.addEventListener('click', closeNeighborhoodDrawer);
     $('geoPresetThisMonth')?.addEventListener('click', () => { applyPresetThisMonth(); loadCommercialData(); });
     $('geoPresetLast3')?.addEventListener('click', () => { applyPreset3Months(); loadCommercialData(); });
     $('geoPresetThisYear')?.addEventListener('click', () => { applyPresetMonth(); loadCommercialData(); });
     document.addEventListener('click', handleCustomerOpenClick);
     document.addEventListener('keydown', handleCustomerOpenKeydown);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !$('geoNeighborhoodDrawer')?.hidden) closeNeighborhoodDrawer();
+    });
+    window.addEventListener('resize', scheduleMapInvalidate);
   }
 
   function dataFromTrigger(trigger, attr) {

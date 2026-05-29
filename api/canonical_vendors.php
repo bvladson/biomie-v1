@@ -13,9 +13,14 @@ declare(strict_types=1);
  */
 
 use BIomie\CanonicalRepository;
+use BIomie\CommercialPlanning;
 use BIomie\Database;
 use BIomie\Http;
 use BIomie\Support;
+use BIomie\Support\ActiveVendorResolver;
+use BIomie\Support\CustomerOwnershipResolver;
+use BIomie\Support\SalesGoalPeriodCalculator;
+use BIomie\Support\VendorAliasResolver;
 
 require __DIR__ . '/bootstrap.php';
 \BIomie\Auth::requireCapability('sales.view', true);
@@ -24,7 +29,14 @@ try {
     $range = Http::resolveDateRange();
     Http::validateDateRange($range['start'], $range['end']);
     $start = $range['start'];
-    $end = $range['end'];
+    $end   = $range['end'];
+
+    // ── COM.R1.5 — active_only (default true) + channel filter ───────────────
+    $activeOnly    = Http::boolQuery('active_only', true) && !Http::boolQuery('include_inactive', false);
+    $inactiveOnly  = Http::boolQuery('inactive_only', false);
+    $channelFilter = trim(Http::query('channel', ''));
+    $allowedChannels = ['varejo', 'revenda', 'representante', 'licitacao', 'outro'];
+    if (!in_array($channelFilter, $allowedChannels, true)) $channelFilter = '';
 
     // ── Verificar se a camada canônica está disponível ────────────────────────
     $connection = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
@@ -148,6 +160,168 @@ try {
             'share_billed' => $billedVal > 0 ? round(($vBilledVal / $billedVal) * 100, 2) : 0,
         ];
     }
+    // ── COM.R1.5 — Active vendor status + channel resolution ─────────────────
+    $aliasRes  = new VendorAliasResolver();
+    $activeRes = new ActiveVendorResolver($pdo, $aliasRes);
+    $activeRes->ensureLoaded();
+    $activeSummary = $activeRes->getSummary();
+
+    // ── COM.R1.4 — Meta proporcional + NF realized + conflitos de carteirização ─
+
+    // 1. Load monthly targets from biomie_sales_targets_monthly
+    $targetsRows = [];
+    try {
+        $targRepo = new \BIomie\TargetsRepository($pdo, $logger);
+        if ($targRepo->isAvailable()) {
+            $months      = CommercialPlanning::monthsInRange($start, $end);
+            $targetsMap  = $targRepo->getTargetsForMonths($months);
+            $targetsRows = array_values($targetsMap);
+        }
+    } catch (\Throwable) {}
+
+    // 2. Build monthly target map keyed by year_month for team total
+    $teamMonthlyTargets = [];
+    foreach ($targetsRows as $tr) {
+        $ym  = (string) ($tr['year_month'] ?? '');
+        $amt = (float)  ($tr['target_amount'] ?? 0);
+        if ($ym !== '') $teamMonthlyTargets[$ym] = ($teamMonthlyTargets[$ym] ?? 0.0) + $amt;
+    }
+
+    // 3. Compute team-level proportional goal using calendar-day calculator
+    $goalCalc  = new SalesGoalPeriodCalculator();
+    $teamGoal  = $goalCalc->calculate($start, $end, $teamMonthlyTargets);
+    $teamMetaProporcional = $teamGoal['meta_total_periodo'];
+
+    // 4. Compute NF-based realized per vendor (biomie_notas_fiscais_canonicas)
+    $nfRealizedByVendor = [];
+    $nfRealizedTotal    = 0.0;
+    try {
+        $hasNfTable = (function(PDO $p): bool { try { $s = $p->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='biomie_notas_fiscais_canonicas' LIMIT 1"); $s->execute(); return (int)$s->fetchColumn() > 0; } catch(\Throwable) { return false; } })($pdo);
+        if ($hasNfTable) {
+            $nfDateExpr = "COALESCE(data_competencia, data_emissao)";
+            $sNfReal = $pdo->prepare(
+                "SELECT nome_vendedor, SUM(valor_mercadorias) AS valor_merc
+                 FROM biomie_notas_fiscais_canonicas
+                 WHERE {$nfDateExpr} BETWEEN :start AND :end
+                   AND status_fiscal = 'autorizada'
+                 GROUP BY nome_vendedor"
+            );
+            $sNfReal->execute([':start' => $start, ':end' => $end]);
+            foreach ($sNfReal->fetchAll(PDO::FETCH_ASSOC) as $nfRow) {
+                $vn = trim((string) ($nfRow['nome_vendedor'] ?? ''));
+                $vm = (float) ($nfRow['valor_merc'] ?? 0);
+                $nfRealizedByVendor[$vn] = ($nfRealizedByVendor[$vn] ?? 0.0) + $vm;
+                $nfRealizedTotal += $vm;
+            }
+        }
+    } catch (\Throwable) {}
+
+    // 5. Compute conflict counts per vendor from dim
+    $vendorConflictCounts  = [];  // vendor_name => ['conflicts'=>N, 'value'=>F]
+    $vendorInvadedCounts   = [];  // owner_vendor_name => count
+    $totalConflictsGlobal  = 0;
+    $totalConflictValue    = 0.0;
+    try {
+        $hasDimTable = (function(PDO $p): bool { try { $s = $p->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='biomie_clientes_dim' LIMIT 1"); $s->execute(); return (int)$s->fetchColumn() > 0; } catch(\Throwable) { return false; } })($pdo);
+        if ($hasNfTable && $hasDimTable) {
+            $nfDateExpr = "COALESCE(nf.data_competencia, nf.data_emissao)";
+            $sConf = $pdo->prepare(
+                "SELECT nf.nome_vendedor        AS sale_vendor,
+                        cd.vendedor_responsavel_nome AS owner_vendor,
+                        COUNT(DISTINCT nf.nota_key) AS qtd_nfs,
+                        SUM(nf.valor_mercadorias)   AS valor
+                 FROM biomie_notas_fiscais_canonicas nf
+                 INNER JOIN biomie_clientes_dim cd ON cd.codigo_cliente_omie = nf.codigo_cliente_omie
+                 WHERE {$nfDateExpr} BETWEEN :start AND :end
+                   AND nf.status_fiscal = 'autorizada'
+                   AND cd.vendedor_responsavel_nome IS NOT NULL
+                   AND cd.vendedor_responsavel_nome != ''
+                   AND cd.vendedor_responsavel_nome != 'Sem vendedor'
+                 GROUP BY nf.nome_vendedor, cd.vendedor_responsavel_nome"
+            );
+            $sConf->execute([':start' => $start, ':end' => $end]);
+            $conflRows = $sConf->fetchAll(PDO::FETCH_ASSOC);
+            $ownerRes  = new CustomerOwnershipResolver();
+            foreach ($conflRows as $cr) {
+                $sv   = trim((string) ($cr['sale_vendor']  ?? ''));
+                $ov   = trim((string) ($cr['owner_vendor'] ?? ''));
+                $val  = (float) ($cr['valor'] ?? 0);
+                if ($ownerRes->isEmptyVendor($sv) || $ownerRes->isEmptyVendor($ov)) continue;
+                if (!$ownerRes->sameVendor($sv, $ov)) {
+                    // conflict: sold by different vendor
+                    $vendorConflictCounts[$sv] = $vendorConflictCounts[$sv] ?? ['conflicts' => 0, 'value' => 0.0];
+                    $vendorConflictCounts[$sv]['conflicts']++;
+                    $vendorConflictCounts[$sv]['value'] += $val;
+                    $vendorInvadedCounts[$ov] = ($vendorInvadedCounts[$ov] ?? 0) + 1;
+                    $totalConflictsGlobal++;
+                    $totalConflictValue += $val;
+                }
+            }
+        }
+    } catch (\Throwable) {}
+
+    // 6. Enrich vendorMatrix with target_period, attainment_pct, nf_realized, conflicts, active/channel
+    foreach ($vendorMatrix as &$vm) {
+        $vName = (string) ($vm['vendor_name'] ?? '');
+        // Target proporcional (calendar days)
+        $vGoal   = $goalCalc->calculateForVendor($start, $end, (string)($vm['vendor_id'] ?? ''), $vName, $targetsRows);
+        $vTarget = $vGoal['meta_total_periodo'];
+        $vm['target_period']         = round($vTarget, 2);
+        // NF-based realized
+        $vNfReal = $nfRealizedByVendor[$vName] ?? 0.0;
+        $vm['realized_by_nf']        = round($vNfReal, 2);
+        // Attainment based on NF realized vs proportional target
+        $vm['attainment_pct'] = $vTarget > 0 ? round($vNfReal / $vTarget * 100, 2) : 0.0;
+        // Risk status based on attainment
+        $vm['risk_status'] = match (true) {
+            $vTarget <= 0                  => 'no_target',
+            $vm['attainment_pct'] >= 100   => 'on_track',
+            $vm['attainment_pct'] >= 85    => 'at_risk',
+            $vm['attainment_pct'] >= 60    => 'below_target',
+            default                        => 'critical',
+        };
+        // Conflict counts
+        $vConf = $vendorConflictCounts[$vName] ?? null;
+        $vm['conflicts_out_of_portfolio'] = $vConf ? (int)$vConf['conflicts'] : 0;
+        $vm['conflicts_value_out']        = $vConf ? round($vConf['value'], 2) : 0.0;
+        $vm['clients_invaded']            = $vendorInvadedCounts[$vName] ?? 0;
+        // vendor_ref for drawer
+        $vm['vendor_ref'] = (string)($vm['vendor_id'] ?? '');
+        // COM.R1.5 — active status + channel
+        $vStatus = $activeRes->resolve((string)($vm['vendor_id'] ?? ''), $vName);
+        $vm['is_active']         = $vStatus['is_active'];
+        $vm['active_status_confidence'] = $vStatus['active_status_confidence'] ?? $vStatus['confidence'] ?? 0;
+        $vm['active_status_warning']    = $vStatus['active_status_warning'] ?? '';
+        $vm['active_status_warnings']   = $vStatus['warnings'] ?? [];
+        $vm['ghost_vendor']      = $vStatus['ghost_vendor'] ?? false;
+        $vm['vendor_channel']    = $vStatus['vendor_channel'];
+        $vm['canonical_name']    = $vStatus['canonical_name'] ?: $vName;
+        $vm['display_name']      = $vName;
+        $vm['inactive_badge']    = $vStatus['inactive_badge'];
+        $vm['channel_badge']     = $vStatus['channel_badge'];
+        $vm['status_source']     = $vStatus['source'] ?? '';
+        $vm['suggested_alias']   = $vStatus['suggested_alias'] ?? null;
+        $vm['requires_manual_approval'] = $vStatus['requires_manual_approval'] ?? false;
+    }
+    unset($vm);
+
+    // COM.R1.5 — Apply active_only / inactive_only filter and channel filter
+    if ($inactiveOnly) {
+        $vendorMatrix = array_values(array_filter($vendorMatrix, fn($v) => (int)($v['active_status_confidence'] ?? 0) >= 80 && !($v['is_active'] ?? true)));
+    } elseif ($activeOnly) {
+        $vendorMatrix = array_values(array_filter($vendorMatrix, fn($v) => (int)($v['active_status_confidence'] ?? 0) < 80 || (bool)($v['is_active'] ?? true)));
+    }
+    if ($channelFilter !== '') {
+        $vendorMatrix = array_values(array_filter($vendorMatrix, fn($v) => ($v['vendor_channel'] ?? '') === $channelFilter));
+    }
+
+    // Update team summary with NF-based realized and proportional target
+    $summaryCompat['target']        = round($teamMetaProporcional, 2);
+    $summaryCompat['realized_by_nf']= round($nfRealizedTotal, 2);
+    $summaryCompat['goal_progress'] = $teamMetaProporcional > 0
+        ? round($nfRealizedTotal / $teamMetaProporcional * 100, 2)
+        : 0.0;
+
     usort($vendorMatrix, fn($a, $b) => $b['billed_value'] <=> $a['billed_value']);
 
     // ── Montar daily_status ──────────────────────────────────────────────────
@@ -182,6 +356,13 @@ try {
 
     // ── Alertas operacionais ─────────────────────────────────────────────────
     $alertsOp = [];
+    if (!empty($activeSummary['active_status_mapping_gap'])) {
+        $alertsOp[] = [
+            'level' => 'warning',
+            'title' => 'Status de vendedores em validacao',
+            'message' => 'Ha divergencia entre cadastro Omie e BIomie.',
+        ];
+    }
     foreach ($vendorMatrix as $v) {
         if ($v['cancel_rate'] > 15 && ($v['cancelled_orders'] + $v['authorized_orders']) >= 3) {
             $alertsOp[] = [
@@ -241,8 +422,22 @@ try {
         'alerts_operational' => $alertsOp,
         'meta' => [
             'generated_at' => date(DATE_ATOM),
-            'served_from' => 'canonical-db',
-            'last_sync' => $lastSync,
+            'served_from'  => 'canonical-db',
+            'last_sync'    => $lastSync,
+            'active_filter' => $activeOnly ? 'active_only_when_confident' : ($inactiveOnly ? 'inactive_only_confident' : 'all'),
+            'vendor_roster' => $activeSummary,
+        ],
+        'goal_period' => [
+            'meta_proporcional_total'   => round($teamMetaProporcional, 2),
+            'realizado_por_nf'          => round($nfRealizedTotal, 2),
+            'dias_periodo'              => $teamGoal['dias_periodo'],
+            'breakdown_por_mes'         => $teamGoal['breakdown'],
+            'calculator'                => 'SalesGoalPeriodCalculator (dias corridos)',
+        ],
+        'ownership_summary' => [
+            'total_conflicts_out'   => $totalConflictsGlobal,
+            'conflict_value_out'    => round($totalConflictValue, 2),
+            'note'                  => 'Vendas onde o vendedor da NF ≠ dono da carteira (biomie_clientes_dim)',
         ],
     ]);
 } catch (\InvalidArgumentException $e) {

@@ -102,9 +102,9 @@ function buildAutomationReport(PDO $pdo, Config $config, string $root, string $c
 
     $commands = [
         'worker' => 'php cron/worker.php --queue=high,default,low --limit=50 --max-runtime=55 --stop-when-empty --json',
-        'sync_commercial' => 'php cron/sync_realtime_pipeline.php --domains=commercial --mode=delta --json',
-        'sync_finance' => 'php cron/sync_realtime_pipeline.php --domains=finance --mode=delta --json',
-        'materialize_gold' => 'php bin/materialize_marts.php --json',
+        'sync_commercial' => '/bin/sh cron/hostinger/sync_commercial.sh',
+        'sync_finance' => '/bin/sh cron/hostinger/sync_finance.sh',
+        'materialize_gold' => '/bin/sh cron/hostinger/materialize.sh',
         'geo_rebuild' => 'php cron/geo_rebuild_period.php --start=YYYY-MM-01 --end=YYYY-MM-DD --assert --allow-open-month --json',
     ];
 
@@ -307,10 +307,7 @@ function readSyncState(PDO $pdo, int $sinceHours): array
     $canonicalDates = [
         'commercial' => freshestDate(
             lastUpdatedAt($pdo, 'biomie_pedidos_canonicos', ['sincronizado_em', 'updated_at']),
-            freshestDate(
-                lastUpdatedAt($pdo, 'biomie_notas_fiscais_canonicas', ['sincronizado_em', 'updated_at']),
-                lastUpdatedAt($pdo, 'biomie_clientes_dim', ['sincronizado_em', 'updated_at'])
-            )
+            lastUpdatedAt($pdo, 'biomie_notas_fiscais_canonicas', ['sincronizado_em', 'updated_at'])
         ),
         'finance' => lastUpdatedAt($pdo, 'biomie_titulos_financeiros_canonicos', ['sincronizado_em', 'updated_at']),
     ];

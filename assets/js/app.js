@@ -291,6 +291,80 @@
     return `${url.pathname}${url.search}`;
   }
 
+  function normalizeProductScope(scope) {
+    const value = String(scope || '').toLowerCase().trim();
+    if (['remittance', 'remessa', 'remessas'].includes(value)) return 'remittance';
+    if (['all', 'todas', 'todos'].includes(value)) return 'all';
+    return 'commercial';
+  }
+
+  function productScopeLabel(scope) {
+    const value = normalizeProductScope(scope);
+    if (value === 'remittance') return 'Remessas';
+    if (value === 'all') return 'Todas';
+    return 'Orc-PD';
+  }
+
+  function getProductScope() {
+    if (window.BIomieProductScope) return normalizeProductScope(window.BIomieProductScope);
+    const urlScope = new URLSearchParams(window.location.search).get('scope');
+    return normalizeProductScope(urlScope || 'commercial');
+  }
+
+  function setProductScope(scope, updateUrl) {
+    const value = normalizeProductScope(scope);
+    window.BIomieProductScope = value;
+    document.querySelectorAll('[data-product-scope]').forEach((btn) => {
+      const active = normalizeProductScope(btn.getAttribute('data-product-scope')) === value;
+      btn.classList.toggle('product-scope-chip--active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-product-scope-label]').forEach((el) => {
+      el.textContent = productScopeLabel(value);
+    });
+    if (document.body && ['products', 'mix-faturado'].includes(document.body.dataset.page || '')) {
+      const label = productScopeLabel(value);
+      const kpiLabels = Array.from(document.querySelectorAll('.biomie-kpi-card__label'));
+      if (kpiLabels[0]) kpiLabels[0].textContent = 'Mercadoria ' + label;
+      if (kpiLabels[1]) kpiLabels[1].textContent = 'Faturamento ' + label;
+      if (kpiLabels[4]) kpiLabels[4].textContent = 'Ticket medio ' + label;
+      if (kpiLabels[5]) kpiLabels[5].textContent = 'NFs ' + label;
+      const heroLabels = Array.from(document.querySelectorAll('.hero-chip-label'));
+      if (heroLabels[0]) heroLabels[0].textContent = 'Mercadoria ' + label;
+      if (heroLabels[1]) heroLabels[1].textContent = 'Faturamento ' + label;
+      const forecast = document.querySelector('.forecast-label');
+      if (forecast) forecast.textContent = 'Ticket medio ' + label;
+    }
+    const hint = document.getElementById('productScopeHint');
+    if (hint) {
+      hint.textContent = value === 'remittance'
+        ? 'Remessas isoladas do mix comercial Orc-PD. Licitacao continua excluida.'
+        : (value === 'all'
+          ? 'Visao combinada: Orc-PD + Remessas. Licitacao permanece excluida.'
+          : 'Orc-PD exclui Licitacao e Remessas. Use os chips para investigar remessas separadamente.');
+    }
+    if (updateUrl && window.history && history.replaceState) {
+      const url = new URL(window.location.href);
+      if (value === 'commercial') url.searchParams.delete('scope');
+      else url.searchParams.set('scope', value);
+      history.replaceState(null, '', url.toString());
+    }
+  }
+
+  function initProductScopeSwitcher() {
+    if (!document.getElementById('productScopeSwitcher')) return;
+    setProductScope(getProductScope(), false);
+    document.querySelectorAll('[data-product-scope]').forEach((btn) => {
+      if (btn.dataset.scopeBound === '1') return;
+      btn.dataset.scopeBound = '1';
+      btn.addEventListener('click', () => {
+        setProductScope(btn.getAttribute('data-product-scope'), true);
+        document.dispatchEvent(new CustomEvent('biomie:product-scope-change', { detail: { scope: getProductScope() } }));
+        loadCurrentPage(false);
+      });
+    });
+  }
+
   // ── Dashboard render ──────────────────────────────────────────────────────
 
   function renderDashboardPayloads(overview, vendors, health, weather, prevOverview) {
@@ -806,8 +880,16 @@
 
   async function loadVendors(force, options) {
     options = options || {};
-    const data          = await fetchJson(buildApiUrl('api/vendors.php', force), options);
+    // COM.R1.5 — pass include_inactive when user toggled the filter on vendedores page
+    var vendorExtraParams = {};
+    if (window.BIomieVendorsIncludeInactive) vendorExtraParams.include_inactive = '1';
+    const data          = await fetchJson(buildApiUrl('api/vendors.php', force, vendorExtraParams), options);
     const summaryStatus = data.summary_status || {};
+    const vendorRoster  = data.meta && data.meta.vendor_roster ? data.meta.vendor_roster : {};
+    const statusGapAlert = document.getElementById('vendorStatusGapAlert');
+    if (statusGapAlert) {
+      statusGapAlert.style.display = vendorRoster.active_status_mapping_gap ? 'flex' : 'none';
+    }
     B.updateGlobalMeta(data);
     B.renderSummaryCards(data.summary, data.mode);
 
@@ -836,6 +918,28 @@
     lazyChart('dailyMixedChart',  () => B.createMixedDailyChart('dailyMixedChart', data.daily_status || []));
     B.renderPipelineTable('vendorsTable', matrix);
     B.renderOperationalAlerts('alertsOperational', data.alerts_operational || []);
+
+    // COM.R1.4 — Carteirização KPIs
+    const goalPeriod      = data.goal_period || {};
+    const ownershipSum    = data.ownership_summary || {};
+    const kpiSection      = document.getElementById('ownershipKpiSection');
+    const kpiMeta         = document.getElementById('kpiMetaProporcional');
+    const kpiNf           = document.getElementById('kpiRealizadoNF');
+    const kpiCount        = document.getElementById('kpiConflictCount');
+    const kpiVal          = document.getElementById('kpiConflictValue');
+
+    if (kpiSection && (Number(goalPeriod.meta_proporcional_total || 0) > 0 || Number(ownershipSum.total_conflicts_out || 0) > 0)) {
+      kpiSection.style.display = 'block';
+      if (kpiMeta) kpiMeta.textContent = formatCurrency(goalPeriod.meta_proporcional_total || 0);
+      if (kpiNf)   kpiNf.textContent   = formatCurrency(goalPeriod.realizado_por_nf        || 0);
+      if (kpiCount) {
+        var conflictsOut = Number(ownershipSum.total_conflicts_out || 0);
+        kpiCount.textContent = conflictsOut > 0 ? conflictsOut + ' NF(s)' : '0';
+        kpiCount.style.color = conflictsOut > 0 ? 'var(--warning-text, #b45309)' : 'var(--text-1)';
+      }
+      if (kpiVal) kpiVal.textContent = formatCurrency(ownershipSum.conflict_value_out || 0) + ' valor';
+    }
+
     bindVendorDrawerTriggers();
     maybeHandleVendorDeepLink();
   }
@@ -965,7 +1069,8 @@
 
   async function loadProducts(force, options) {
     options = options || {};
-    const data           = await fetchJson(buildApiUrl('api/products.php', force), options);
+    const scope          = getProductScope();
+    const data           = await fetchJson(buildApiUrl('api/products.php', force, { scope }), options);
     const breakdownState = B.resolveProductBreakdownState(data);
     const products       = Array.isArray(data.products) ? data.products
       : (Array.isArray(data.top_products) ? data.top_products
@@ -977,6 +1082,7 @@
       : (Array.isArray(data.mix_share) ? data.mix_share : products));
     const emptyState     = data.empty_states && (data.empty_states.products || data.empty_states.products_table || data.empty_states.product_mix);
     B.updateGlobalMeta(data);
+    setProductScope((data && data.scope) || (data.meta && data.meta.scope) || scope, false);
     B.renderSummaryCards(data.summary, data.mode);
     // Bind products_count — not in the shared renderSummaryCards but needed by mercadorias.html
     const productsCount = data.summary && data.summary.products_count != null
@@ -1011,6 +1117,8 @@
       { render: (row) => formatCurrency(row.revenue) },
       { render: (row) => row.share_pct != null ? Number(row.share_pct).toFixed(1) + '%' : '-' }
     ], products, (emptyState && (emptyState.message || emptyState.title)) || 'Sem item fiscal Orç-PD no periodo.');
+    annotateProductRows(products);
+    initProductBreakdownDelegation();
     bindProductBreakdownTriggers();
   }
 
@@ -1136,6 +1244,33 @@
                      + renderList(pipeline, 'Carteira', 'Sem pedidos na carteira.', 'Pedido')
                      + renderList(cancelled, 'NF canceladas', 'Nenhuma NF cancelada.', 'NF');
       }
+      // COM.R1.4 — Ownership conflicts section in drawer
+      const ownershipSection  = document.getElementById('drawerOwnershipSection');
+      const ownershipContent  = document.getElementById('drawerOwnershipContent');
+      const vendorName = v.vendor_name || '';
+      if (ownershipSection && ownershipContent && vendorName) {
+        try {
+          const oParams = new URLSearchParams({ mode: 'summary', vendor: vendorName });
+          if (start) oParams.set('start', start);
+          if (end)   oParams.set('end', end);
+          const oData = await fetchJson('api/customer_ownership_conflicts.php?' + oParams.toString());
+          const oSum  = oData.data || {};
+          var conflOut = Number(oSum.conflict_nfs || 0);
+          if (conflOut > 0 || Number(oSum.total_nfs || 0) > 0) {
+            ownershipSection.style.display = 'block';
+            ownershipContent.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+              + '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Total NFs</div><strong>' + formatNumber(oSum.total_nfs || 0) + '</strong></div>'
+              + '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Fora da carteira</div>'
+              + (conflOut > 0
+                  ? '<strong style="color:var(--warning-text,#b45309);">' + conflOut + ' NF(s) — ' + formatCurrency(oSum.conflict_valor || 0) + '</strong>'
+                  : '<strong style="color:var(--text-3);">Sem conflitos</strong>')
+              + '</div></div>'
+              + (conflOut > 0 ? '<small style="color:var(--text-3);">Vendas onde o cliente pertence a outro vendedor. Não bloqueia venda.</small>' : '');
+          } else {
+            ownershipSection.style.display = 'none';
+          }
+        } catch (_) { ownershipSection.style.display = 'none'; }
+      }
     } catch (err) {
       if (nameEl) nameEl.textContent = 'Erro ao carregar';
       const ow = document.getElementById('drawerOrdersList');
@@ -1158,7 +1293,53 @@
     document.querySelectorAll('.product-breakdown-trigger').forEach((btn) => {
       if (btn.dataset.bound === '1') return;
       btn.dataset.bound = '1';
-      btn.addEventListener('click', () => window.openProductBreakdown(btn.getAttribute('data-product-code') || '', btn.getAttribute('data-product-label') || 'Produto sem descricao'));
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.openProductBreakdown(btn.getAttribute('data-product-code') || '', btn.getAttribute('data-product-label') || 'Produto sem descricao');
+      });
+    });
+  }
+
+  function annotateProductRows(products) {
+    const table = document.getElementById('productsTable');
+    if (!table) return;
+    Array.from(table.querySelectorAll('tr')).forEach((row, index) => {
+      const item = (products || [])[index] || {};
+      const productCode = String(item.product_code || item.codigo || '').trim();
+      const label = String(item.description || item.product_name || 'Produto sem descricao').trim();
+      if (!productCode) return;
+      row.dataset.productKey = productCode;
+      row.dataset.productCode = productCode;
+      row.dataset.productLabel = label;
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('role', 'button');
+      row.setAttribute('aria-label', 'Abrir detalhamento de ' + label);
+    });
+  }
+
+  function initProductBreakdownDelegation() {
+    const table = document.getElementById('productsTable');
+    if (!table || table.dataset.productRowDelegation === '1') return;
+    table.dataset.productRowDelegation = '1';
+    const openFromRow = (row) => {
+      if (!row || typeof window.openProductBreakdown !== 'function') return;
+      const productCode = row.getAttribute('data-product-code') || row.getAttribute('data-product-key') || '';
+      if (!productCode) return;
+      window.openProductBreakdown(productCode, row.getAttribute('data-product-label') || 'Produto sem descricao');
+    };
+    table.addEventListener('click', (event) => {
+      if (event.target.closest('a, button, input, select, textarea')) return;
+      const row = event.target.closest('tr[data-product-key]');
+      if (!row) return;
+      openFromRow(row);
+    });
+    table.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const row = event.target.closest('tr[data-product-key]');
+      if (!row) return;
+      event.preventDefault();
+      openFromRow(row);
     });
   }
 
@@ -1192,6 +1373,78 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
   }
 
+  function productBreakdownTotals(rows) {
+    const clients = new Map();
+    const vendors = new Map();
+    const nfs = new Set();
+    let revenue = 0;
+    let quantity = 0;
+    let discount = 0;
+    (rows || []).forEach((row) => {
+      const value = Number(row.revenue != null ? row.revenue : (row.product_total || 0));
+      const qty = Number(row.quantity || 0);
+      const disc = Number(row.discount_total != null ? row.discount_total : (row.discount || 0));
+      revenue += Number.isFinite(value) ? value : 0;
+      quantity += Number.isFinite(qty) ? qty : 0;
+      discount += Number.isFinite(disc) ? disc : 0;
+      if (row.nota_key || row.numero_nf) nfs.add(String(row.nota_key || row.numero_nf));
+      const clientKey = String(row.customer_id || row.client_id || row.customer_document || row.customer_name || row.client_name || '');
+      if (clientKey) {
+        const current = clients.get(clientKey) || { name: row.customer_name || row.client_name || 'Cliente nao informado', revenue: 0, quantity: 0, nfs: new Set() };
+        current.revenue += Number.isFinite(value) ? value : 0;
+        current.quantity += Number.isFinite(qty) ? qty : 0;
+        if (row.nota_key || row.numero_nf) current.nfs.add(String(row.nota_key || row.numero_nf));
+        clients.set(clientKey, current);
+      }
+      const vendorKey = String(row.vendor_id || row.codigo_vendedor_omie || row.vendor_name || '');
+      if (vendorKey) {
+        const current = vendors.get(vendorKey) || { name: row.vendor_name || 'Sem vendedor', revenue: 0, quantity: 0, nfs: new Set() };
+        current.revenue += Number.isFinite(value) ? value : 0;
+        current.quantity += Number.isFinite(qty) ? qty : 0;
+        if (row.nota_key || row.numero_nf) current.nfs.add(String(row.nota_key || row.numero_nf));
+        vendors.set(vendorKey, current);
+      }
+    });
+    const clientCount = clients.size;
+    const vendorCount = vendors.size;
+    const listFromMap = (map) => Array.from(map.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+    return { revenue, quantity, discount, invoices: nfs.size, clientCount, vendorCount, clients: listFromMap(clients), vendors: listFromMap(vendors) };
+  }
+
+  function renderProductMiniList(targetId, rows, emptyText) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    if (!rows || !rows.length) {
+      target.innerHTML = `<div class="product-mini-list__row"><strong>${escapeHtml(emptyText)}</strong><small>-</small></div>`;
+      return;
+    }
+    target.innerHTML = rows.map((row) => (
+      `<div class="product-mini-list__row">`
+      + `<div><strong title="${escapeHtml(row.name || '')}">${escapeHtml(row.name || '-')}</strong><small>${formatNumber(row.quantity || 0)} un · ${formatNumber(row.nfs ? row.nfs.size : 0)} NF</small></div>`
+      + `<strong>${formatCurrency(row.revenue || 0)}</strong>`
+      + `</div>`
+    )).join('');
+  }
+
+  function renderProductBreakdownInsights(rows) {
+    const totals = productBreakdownTotals(rows);
+    const summary = document.getElementById('productBreakdownSummary');
+    if (summary) {
+      summary.innerHTML = [
+        ['Receita', formatCurrency(totals.revenue)],
+        ['Quantidade', formatNumber(totals.quantity)],
+        ['Clientes', formatNumber(totals.clientCount)],
+        ['NFs', formatNumber(totals.invoices)],
+        ['Ticket medio', totals.invoices > 0 ? formatCurrency(totals.revenue / totals.invoices) : '-'],
+        ['Descontos', formatCurrency(totals.discount)],
+      ].map(([label, value]) => `<div class="product-breakdown-metric"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`).join('');
+    }
+    setText('#productBreakdownClientsCount', `${formatNumber(totals.clientCount)} cliente(s)`);
+    setText('#productBreakdownVendorsCount', `${formatNumber(totals.vendorCount)} vendedor(es)`);
+    renderProductMiniList('productBreakdownClients', totals.clients, 'Sem clientes detalhados');
+    renderProductMiniList('productBreakdownVendors', totals.vendors, 'Sem vendedores detalhados');
+  }
+
   window.openProductBreakdown = async function (productCode, productLabel) {
     const modal    = document.getElementById('productBreakdownModal');
     const backdrop = document.getElementById('productBreakdownBackdrop');
@@ -1202,6 +1455,9 @@
     const loading  = document.getElementById('productBreakdownLoading');
     const meta     = document.getElementById('productBreakdownMeta');
     const filter   = document.getElementById('productBreakdownFilter');
+    const summary  = document.getElementById('productBreakdownSummary');
+    const clients  = document.getElementById('productBreakdownClients');
+    const vendors  = document.getElementById('productBreakdownVendors');
     if (!modal || !backdrop || !body) return;
 
     if (filter) filter.value = '';
@@ -1213,10 +1469,13 @@
     if (meta)    meta.innerHTML  = '';
     if (loading) loading.hidden  = false;
     if (empty)   empty.hidden    = true;
+    if (summary) summary.innerHTML = '';
+    if (clients) clients.innerHTML = '';
+    if (vendors) vendors.innerHTML = '';
     body.innerHTML = '';
 
     try {
-      const data           = await fetchJson(buildApiUrl('api/products.php', false, { product_code: productCode || '', limit: 200 }));
+      const data           = await fetchJson(buildApiUrl('api/products.php', false, { product_code: productCode || '', limit: 200, scope: getProductScope() }));
       const rows           = Array.isArray(data.breakdown) ? data.breakdown : [];
       const breakdownState = B.resolveProductBreakdownState(data);
       if (meta) {
@@ -1227,6 +1486,7 @@
           breakdownState.source ? `<span class="mag-status-chip mag-status-live">${escapeHtml(String(breakdownState.source).replace(/-/g, ' '))}</span>` : '',
         ].filter(Boolean).join(' ');
       }
+      renderProductBreakdownInsights(rows);
       body.innerHTML = B.renderProductBreakdownRows(rows);
       if (empty) {
         empty.hidden = rows.length > 0;
@@ -1417,6 +1677,7 @@
     initMenuToggle();
     highlightCurrentMenu();
     initRangePresets();
+    initProductScopeSwitcher();
     document.getElementById('applyFilters')?.addEventListener('click', () => {
       if (window.NavContext) { const r = getDateRange(); window.NavContext.setDateRange(r.start, r.end); window.NavContext.pushState(); }
       loadCurrentPage(false);

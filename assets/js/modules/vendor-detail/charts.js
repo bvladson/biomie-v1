@@ -128,13 +128,15 @@
 
     if (!target && !realized && !forecast) return;
 
+    // UX.CHARTS.R1 — semantic colors for target comparison bars
+    var targetBarColors = ['#0f172a', '#16a34a', '#2563eb', '#d97706'];
     new window.Chart(canvas, {
       type: 'bar',
       data: {
-        labels: ['Meta', 'Realizado', 'Projecao', 'Gap'],
+        labels: ['Meta', 'Realizado', 'Projeção', 'Gap'],
         datasets: [{
           data: [target, realized, forecast, gap],
-          backgroundColor: [colors[2] || '#6f42c1', colors[0] || '#0d6efd', colors[7] || '#198754', colors[5] || '#fd7e14'],
+          backgroundColor: targetBarColors,
           borderRadius: 4
         }]
       },

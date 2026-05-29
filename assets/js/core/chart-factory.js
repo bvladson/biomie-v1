@@ -165,14 +165,15 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var barColors   = items.map(function (r) { return r.is_current ? B.buildGradient(ctx, accent, 0.3) : B.buildGradient(ctx, B.adjustColour(accent, 18), 0.18); });
     var borderColors = items.map(function (r) { return r.is_current ? accent : B.adjustColour(accent, 18); });
 
+    var monthlyDatasets = [
+      { type: 'bar',  label: 'Receita',   data: revenue, backgroundColor: barColors, borderColor: borderColors, borderWidth: 1, borderRadius: 10, maxBarThickness: 30, order: 3 },
+      { type: 'line', label: 'Meta',       data: targets, borderColor: muted, backgroundColor: 'transparent', borderDash: [6, 4], pointHoverRadius: 6, pointHitRadius: 10, tension: 0.4, order: 1 },
+      { type: 'line', label: 'Tendencia',  data: forecast, borderColor: secondary, backgroundColor: B.hexToRgba(secondary, 0.12), pointBackgroundColor: secondary, pointBorderColor: B._surfaceColor(), pointRadius: 3, pointHoverRadius: 6, pointHitRadius: 10, tension: 0.4, fill: false, order: 2 }
+    ];
     B._renderChart(canvasId, {
       data: {
         labels: labels,
-        datasets: [
-          { type: 'bar',  label: 'Receita',   data: revenue, backgroundColor: barColors, borderColor: borderColors, borderWidth: 1, borderRadius: 10, maxBarThickness: 30, order: 3 },
-          { type: 'line', label: 'Meta',       data: targets, borderColor: muted, backgroundColor: 'transparent', borderDash: [6, 4], pointHoverRadius: 6, pointHitRadius: 10, tension: 0.4, order: 1 },
-          { type: 'line', label: 'Tendencia',  data: forecast, borderColor: secondary, backgroundColor: B.hexToRgba(secondary, 0.12), pointBackgroundColor: secondary, pointBorderColor: B._surfaceColor(), pointRadius: 3, pointHoverRadius: 6, pointHitRadius: 10, tension: 0.4, fill: false, order: 2 }
-        ]
+        datasets: monthlyDatasets
       },
       options: {
         responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
@@ -181,6 +182,8 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
         scales: { x: B.chartAxisOptions('label', { grid: { display: false } }), y: B.chartAxisOptions('money', { beginAtZero: true }) }
       }
     });
+    // UX.CHARTS.R1 — external legend
+    window.requestAnimationFrame(function () { cfApplyGovernance(canvasId, monthlyDatasets, null); });
   };
 
   B.createBarChart = function (canvasId, labels, values, chartOptions) {
@@ -221,20 +224,32 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var ticket     = ranking.map(function (r) { return Number(r.ticket_avg != null ? r.ticket_avg : (Number(r.orders || 0) > 0 ? Number(r.revenue || 0) / Number(r.orders || 1) : 0)); });
     var ctx = canvas.getContext('2d');
 
+    var ticketDatasets = [
+      { type: 'bar',  label: 'Receita', data: revenue, backgroundColor: B.buildGradient(ctx, accent, 0.26), borderColor: accent, borderWidth: 1, borderRadius: 10, maxBarThickness: 30, yAxisID: 'y' },
+      { type: 'line', label: 'Ticket médio', data: ticket, borderColor: secondary, backgroundColor: B.hexToRgba(secondary, 0.12), pointBackgroundColor: secondary, pointBorderColor: B._surfaceColor(), pointBorderWidth: 2, pointRadius: 4, tension: 0.35, yAxisID: 'y1' }
+    ];
     B._renderChart(canvasId, {
-      data: {
-        labels: labels,
-        datasets: [
-          { type: 'bar',  label: 'Receita', data: revenue, backgroundColor: B.buildGradient(ctx, accent, 0.26), borderColor: accent, borderWidth: 1, borderRadius: 10, maxBarThickness: 30, yAxisID: 'y' },
-          { type: 'line', label: 'Ticket',  data: ticket, borderColor: secondary, backgroundColor: B.hexToRgba(secondary, 0.12), pointBackgroundColor: secondary, pointBorderColor: B._surfaceColor(), pointBorderWidth: 2, pointRadius: 4, tension: 0.35, yAxisID: 'y1' }
-        ]
-      },
+      data: { labels: labels, datasets: ticketDatasets },
       options: {
         responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (items) { return fullLabels[items[0].dataIndex] || items[0].label; }, label: function (ctx) { return ctx.dataset.label === 'Ticket' ? 'Ticket: ' + B.formatCurrency(ctx.parsed.y) : 'Receita: ' + B.formatCurrency(ctx.parsed.y); } } } },
-        scales: { x: B.chartAxisOptions('label', { grid: { display: false } }), y: B.chartAxisOptions('money', { beginAtZero: true }), y1: B.chartAxisOptions('money', { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }) }
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (items) { return fullLabels[items[0].dataIndex] || items[0].label; }, label: function (ctx) { return ctx.dataset.label === 'Ticket médio' ? 'Ticket: ' + B.formatCurrency(ctx.parsed.y) : 'Receita: ' + B.formatCurrency(ctx.parsed.y); } } } },
+        scales: {
+          x: B.chartAxisOptions('label', { grid: { display: false } }),
+          y: B.chartAxisOptions('money', { beginAtZero: true }),
+          y1: B.chartAxisOptions('money', { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Ticket', color: secondary, font: { size: 10 } } })
+        }
       }
+    });
+    // UX.CHARTS.R1 — external legend + rank insight
+    window.requestAnimationFrame(function () {
+      var insight = null;
+      if (window.BIOMIE_CHART_GOVERNANCE) {
+        insight = window.BIOMIE_CHART_GOVERNANCE.buildRankInsight(
+          ranking.map(function (r) { return r.vendor_name || ''; }), revenue
+        );
+      }
+      cfApplyGovernance(canvasId, ticketDatasets, insight);
     });
   };
 
@@ -246,6 +261,14 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var rows = (matrix || []).slice(0, 8);
     if (!rows.length) { B._chartEmpty(canvasId, 'Sem movimentacao de pipeline no periodo.'); return; }
 
+    var wrap = canvas.parentElement;
+    if (wrap) {
+      var rowHeight = 38;
+      var computedHeight = Math.max(260, Math.min(520, rows.length * rowHeight + 96));
+      wrap.style.height = computedHeight + 'px';
+      wrap.style.minHeight = computedHeight + 'px';
+    }
+
     var theme      = B._chartTheme();
     var billedColor = theme.billed;
     var authColor   = theme.authorized;
@@ -254,21 +277,34 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var fullLabels  = rows.map(function (r) { return r.vendor_name || 'Sem vendedor'; });
     var ctx = canvas.getContext('2d');
 
-    B._renderChart(canvasId, {
+    var groupedDatasets = [
+      { label: 'NF',         data: rows.map(function (r) { return Number(r.billed_value    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.28), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status' },
+      { label: 'Carteira',   data: rows.map(function (r) { return Number(r.authorized_value|| 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.24), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status' },
+      { label: 'Canceladas', data: rows.map(function (r) { return Number(r.cancelled_value || 0); }), backgroundColor: B.buildGradient(ctx, cancelColor,  0.22), borderColor: cancelColor,  borderWidth: 1, borderRadius: 8, stack: 'status' }
+    ];
+    var chart = B._renderChart(canvasId, {
       type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          { label: 'NF',         data: rows.map(function (r) { return Number(r.billed_value    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.28), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status' },
-          { label: 'Carteira',   data: rows.map(function (r) { return Number(r.authorized_value|| 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.24), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status' },
-          { label: 'Canceladas', data: rows.map(function (r) { return Number(r.cancelled_value || 0); }), backgroundColor: B.buildGradient(ctx, cancelColor,  0.22), borderColor: cancelColor,  borderWidth: 1, borderRadius: 8, stack: 'status' }
-        ]
-      },
+      data: { labels: labels, datasets: groupedDatasets },
       options: {
         indexAxis: 'y', responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (items) { return fullLabels[items[0].dataIndex] || items[0].label; }, label: function (ctx) { return ctx.dataset.label + ': ' + B.formatCurrency(ctx.parsed.x); }, footer: function (items) { var row = rows[items[0].dataIndex] || {}; return 'Conversao: ' + (row.conversion_rate || 0) + '% | Cancelamento: ' + (row.cancel_rate || 0) + '%'; } } } },
+        interaction: { mode: 'nearest', axis: 'y', intersect: false },
+        hover: { mode: 'nearest', axis: 'y', intersect: false },
+        plugins: { legend: { display: false }, tooltip: { mode: 'nearest', axis: 'y', intersect: false, callbacks: { title: function (items) { return fullLabels[items[0].dataIndex] || items[0].label; }, label: function (ctx) { return ctx.dataset.label + ': ' + B.formatCurrency(ctx.parsed.x); }, footer: function (items) { var row = rows[items[0].dataIndex] || {}; return 'Conversao: ' + (row.conversion_rate || 0) + '% | Cancelamento: ' + (row.cancel_rate || 0) + '%'; } } } },
         scales: { x: B.chartAxisOptions('money', { beginAtZero: true, stacked: true }), y: B.chartAxisOptions('label', { stacked: true, grid: { display: false } }) }
+      }
+    });
+    window.requestAnimationFrame(function () {
+      if (chart && typeof chart.resize === 'function') chart.resize();
+      // UX.CHARTS.R1 — external legend + insight
+      var billedVals = groupedDatasets[0].data;
+      var leaderIdx  = billedVals.reduce(function (max, v, i) { return v > billedVals[max] ? i : max; }, 0);
+      var cartSum    = groupedDatasets[1].data.reduce(function (s, v) { return s + v; }, 0);
+      var totalSum   = billedVals.reduce(function (s, v) { return s + v; }, 0);
+      var insightObj = null;
+      if (window.BIOMIE_CHART_GOVERNANCE && fullLabels.length) {
+        var G = window.BIOMIE_CHART_GOVERNANCE;
+        insightObj = G.buildRankInsight(fullLabels, billedVals);
+        cfApplyGovernance(canvasId, groupedDatasets, insightObj);
       }
     });
   };
@@ -288,14 +324,15 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var cancelColor = theme.cancelled;
     var ctx = canvas.getContext('2d');
 
+    var mixedDatasets = [
+      { type: 'bar',  label: 'NF',         data: compactRows.map(function (r) { return Number(r.billed_value    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.26), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
+      { type: 'bar',  label: 'Carteira',   data: compactRows.map(function (r) { return Number(r.authorized_value|| 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.22), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
+      { type: 'line', label: 'Canceladas', data: compactRows.map(function (r) { return Number(r.cancelled_value || 0); }), borderColor: cancelColor, backgroundColor: B.hexToRgba(cancelColor, 0.1), pointBackgroundColor: cancelColor, pointRadius: 0, pointHoverRadius: 3, tension: 0.32, fill: false, order: 1 }
+    ];
     B._renderChart(canvasId, {
       data: {
         labels: compactRows.map(function (r) { return B.chartDateLabel(r.date || ''); }),
-        datasets: [
-          { type: 'bar',  label: 'NF',         data: compactRows.map(function (r) { return Number(r.billed_value    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.26), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
-          { type: 'bar',  label: 'Carteira',   data: compactRows.map(function (r) { return Number(r.authorized_value|| 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.22), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
-          { type: 'line', label: 'Canceladas', data: compactRows.map(function (r) { return Number(r.cancelled_value || 0); }), borderColor: cancelColor, backgroundColor: B.hexToRgba(cancelColor, 0.1), pointBackgroundColor: cancelColor, pointRadius: 0, pointHoverRadius: 3, tension: 0.32, fill: false, order: 1 }
-        ]
+        datasets: mixedDatasets
       },
       options: {
         responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
@@ -304,6 +341,8 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
         scales: { x: B.chartAxisOptions('label', { stacked: true, grid: { display: false } }), y: B.chartAxisOptions('money', { stacked: true, beginAtZero: true }) }
       }
     });
+    // UX.CHARTS.R1 — external legend
+    window.requestAnimationFrame(function () { cfApplyGovernance(canvasId, mixedDatasets, null); });
   };
 
   B.createOrdersStatusChart = function (canvasId, orders, pendingOrders, cancelledOrders) {
@@ -332,15 +371,16 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var cancelColor = theme.cancelled;
     var ctx = canvas.getContext('2d');
 
+    var statusDatasets = [
+      { label: 'NF',         data: dates.map(function (d) { return Number(billedMap.get(d)    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.28), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status' },
+      { label: 'Carteira',   data: dates.map(function (d) { return Number(pendingMap.get(d)   || 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.22), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status' },
+      { label: 'Canceladas', data: dates.map(function (d) { return Number(cancelledMap.get(d) || 0); }), backgroundColor: B.buildGradient(ctx, cancelColor,  0.20), borderColor: cancelColor,  borderWidth: 1, borderRadius: 8, stack: 'status' }
+    ];
     B._renderChart(canvasId, {
       type: 'bar',
       data: {
         labels: dates.map(function (d) { return B.chartDateLabel(d); }),
-        datasets: [
-          { label: 'NF',         data: dates.map(function (d) { return Number(billedMap.get(d)    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.28), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status' },
-          { label: 'Carteira',   data: dates.map(function (d) { return Number(pendingMap.get(d)   || 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.22), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status' },
-          { label: 'Canceladas', data: dates.map(function (d) { return Number(cancelledMap.get(d) || 0); }), backgroundColor: B.buildGradient(ctx, cancelColor,  0.20), borderColor: cancelColor,  borderWidth: 1, borderRadius: 8, stack: 'status' }
-        ]
+        datasets: statusDatasets
       },
       options: {
         responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
@@ -348,6 +388,14 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + B.formatCurrency(ctx.parsed.y); } } } },
         scales: { x: B.chartAxisOptions('label', { stacked: true, grid: { display: false } }), y: B.chartAxisOptions('money', { stacked: true, beginAtZero: true }) }
       }
+    });
+    // UX.CHARTS.R1 — external legend + status insight
+    window.requestAnimationFrame(function () {
+      var insight = null;
+      if (window.BIOMIE_CHART_GOVERNANCE) {
+        insight = window.BIOMIE_CHART_GOVERNANCE.buildStatusInsight(statusDatasets, dates);
+      }
+      cfApplyGovernance(canvasId, statusDatasets, insight);
     });
   };
 
@@ -373,56 +421,152 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     });
   };
 
-  B.createProductMixChart = function (canvasId, rows) {
+  function productLegendId(canvasId) {
+    if (canvasId === 'productsRevenueChart') return 'productsRevenueLegend';
+    if (canvasId === 'productsShareChart') return 'productsShareLegend';
+    return canvasId + 'Legend';
+  }
+
+  function buildTopProductSlices(rows, metric) {
+    var source = (rows || []).filter(function (row) {
+      return Number(row && row[metric] || 0) > 0;
+    });
+    var total = source.reduce(function (sum, row) { return sum + Number(row[metric] || 0); }, 0);
+    var top = source.slice(0, 10);
+    var topTotal = top.reduce(function (sum, row) { return sum + Number(row[metric] || 0); }, 0);
+    var slices = top.map(function (row) {
+      return Object.assign({}, row, { _value: Number(row[metric] || 0), _isOther: false });
+    });
+    if (total > topTotal) {
+      slices.push({
+        product_code: '',
+        description: 'Outros',
+        product_name: 'Outros',
+        quantity: source.slice(10).reduce(function (sum, row) { return sum + Number(row.quantity || 0); }, 0),
+        revenue: total - topTotal,
+        invoices_count: source.slice(10).reduce(function (sum, row) { return sum + Number(row.invoices_count || row.orders || 0); }, 0),
+        _value: total - topTotal,
+        _isOther: true
+      });
+    }
+    return { total: total, slices: slices };
+  }
+
+  function renderProductLegend(canvasId, slices, total, metric, colors) {
+    var target = document.getElementById(productLegendId(canvasId));
+    if (!target) return;
+    if (!slices.length) { target.innerHTML = ''; return; }
+    target.innerHTML = slices.map(function (row, idx) {
+      var name = row.description || row.product_name || 'Produto sem descricao';
+      var value = Number(row._value || 0);
+      var pct = total > 0 ? (value / total * 100).toFixed(1) : '0.0';
+      var meta = metric === 'revenue'
+        ? B.formatCurrency(value) + ' · ' + pct + '%'
+        : B.formatNumber(value) + ' un · ' + pct + '%';
+      return '<button type="button" class="product-donut-legend__item"'
+        + (row._isOther ? ' disabled aria-disabled="true"' : '')
+        + ' data-product-code="' + B.escapeHtml(row.product_code || '') + '"'
+        + ' data-product-label="' + B.escapeHtml(name) + '">'
+        + '<span class="product-donut-legend__swatch" style="background:' + B.escapeHtml(colors[idx] || '#7c3aed') + '"></span>'
+        + '<span class="product-donut-legend__name" title="' + B.escapeHtml(name) + '">' + B.escapeHtml(name) + '</span>'
+        + '<span class="product-donut-legend__meta">' + B.escapeHtml(meta) + '</span>'
+        + '</button>';
+    }).join('');
+    target.querySelectorAll('.product-donut-legend__item:not([disabled])').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof window.openProductBreakdown === 'function') {
+          window.openProductBreakdown(btn.getAttribute('data-product-code') || '', btn.getAttribute('data-product-label') || 'Produto sem descricao');
+        }
+      });
+    });
+  }
+
+  function renderProductDoughnut(canvasId, rows, metric, emptyMessage) {
     var canvas = document.getElementById(canvasId);
     if (!canvas || !window.Chart) return;
     window.BIomieCharts.destroyChart(canvasId);
 
-    var products = (rows || []).slice(0, 10);
-    if (!products.length) { B._chartEmpty(canvasId, 'Sem produtos faturados no periodo.'); return; }
+    var built = buildTopProductSlices(rows, metric);
+    if (!built.slices.length || built.total <= 0) {
+      var legend = document.getElementById(productLegendId(canvasId));
+      if (legend) legend.innerHTML = '';
+      B._chartEmpty(canvasId, emptyMessage || 'Sem produtos faturados no periodo.');
+      return;
+    }
 
-    var ctx    = canvas.getContext('2d');
-    var theme  = B._chartTheme();
-    var accent = theme.accent;
+    var theme = B._chartTheme();
+    var baseColors = ['#7c3aed', '#2563eb', '#059669', '#f59e0b', '#ef4444', '#0891b2', '#db2777', '#65a30d', '#9333ea', '#ea580c', '#94a3b8'];
+    var colors = built.slices.map(function (_, idx) { return baseColors[idx] || B.adjustColour(theme.accent, idx * 9); });
+
+    renderProductLegend(canvasId, built.slices, built.total, metric, colors);
 
     B._renderChart(canvasId, {
-      type: 'bar',
-      data: { labels: products.map(function (r) { return B.shortenLabel(r.description, 14); }), datasets: [{ label: 'Receita', data: products.map(function (r) { return Number(r.revenue || 0); }), backgroundColor: B.buildGradient(ctx, accent, 0.26), borderColor: accent, borderWidth: 1, borderRadius: 10, maxBarThickness: 28 }] },
+      type: 'doughnut',
+      data: {
+        labels: built.slices.map(function (row) { return B.shortenLabel(row.description || row.product_name || 'Produto', 24); }),
+        datasets: [{
+          data: built.slices.map(function (row) { return row._value; }),
+          backgroundColor: colors.map(function (color) { return B.hexToRgba(color, 0.86); }),
+          borderColor: '#fff',
+          borderWidth: 2,
+          hoverOffset: 5
+        }]
+      },
       options: {
-        indexAxis: 'y', responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (items) { return (products[items[0].dataIndex] && products[items[0].dataIndex].description) || items[0].label; }, label: function (ctx) { var value = ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : (ctx.parsed || 0); return 'Receita: ' + B.formatCurrency(value); } } } },
-        scales: { x: B.chartAxisOptions('money', { beginAtZero: true }), y: B.chartAxisOptions('label', { grid: { display: false } }) }
+        responsive: true,
+        resizeDelay: 100,
+        maintainAspectRatio: false,
+        animation: false,
+        cutout: '66%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function (items) {
+                var row = built.slices[items[0].dataIndex] || {};
+                return row.description || row.product_name || items[0].label;
+              },
+              label: function (ctx) {
+                var row = built.slices[ctx.dataIndex] || {};
+                var value = Number(row._value || 0);
+                var pct = built.total > 0 ? (value / built.total * 100).toFixed(1) : '0.0';
+                if (metric === 'revenue') {
+                  return B.formatCurrency(value) + ' | ' + pct + '% | Qtd ' + B.formatNumber(row.quantity || 0);
+                }
+                return B.formatNumber(value) + ' un | ' + pct + '% | Receita ' + B.formatCurrency(row.revenue || 0);
+              }
+            }
+          }
+        },
+        onClick: function (_event, elements) {
+          if (!elements || !elements.length) return;
+          var row = built.slices[elements[0].index] || {};
+          if (row._isOther || !row.product_code || typeof window.openProductBreakdown !== 'function') return;
+          window.openProductBreakdown(row.product_code, row.description || row.product_name || 'Produto sem descricao');
+        }
       }
-    });
+    }, { message: emptyMessage || 'Sem produtos faturados no periodo.' });
+  }
+
+  B.createProductMixChart = function (canvasId, rows) {
+    renderProductDoughnut(canvasId, rows, 'revenue', 'Sem produtos faturados no periodo.');
   };
 
   B.createProductShareChart = function (canvasId, rows) {
-    var canvas = document.getElementById(canvasId);
-    if (!canvas || !window.Chart) return;
-    window.BIomieCharts.destroyChart(canvasId);
-
-    var products = (rows || []).slice(0, 8);
-    if (!products.length) { B._chartEmpty(canvasId, 'Sem composicao de produtos no periodo.'); return; }
-
-    var total    = (rows || []).reduce(function (s, r) { return s + Number(r.revenue || 0); }, 0);
-    var topTotal = products.reduce(function (s, r) { return s + Number(r.revenue || 0); }, 0);
-    var labels   = products.map(function (r) { return B.shortenLabel(r.description, 18); });
-    var values   = products.map(function (r) { return Number(r.revenue || 0); });
-    if (total > topTotal) { labels.push('Demais'); values.push(total - topTotal); }
-
-    var accent  = B._chartTheme().accent;
-    var palette = labels.map(function (_, i) { return B.adjustColour(accent, i * 10); });
-
-    B._renderChart(canvasId, {
-      type: 'bar',
-      data: { labels: labels, datasets: [{ label: 'Participacao', data: values, backgroundColor: palette.map(function (c) { return B.hexToRgba(c, 0.9); }), borderColor: palette, borderWidth: 1, borderRadius: 8, maxBarThickness: 26 }] },
-      options: {
-        indexAxis: 'y', responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { var value = ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : (ctx.parsed || 0); var share = total > 0 ? (Number(value || 0) / total * 100).toFixed(1) : '0.0'; return B.formatCurrency(value) + ' | ' + share + '%'; } } } },
-        scales: { x: B.chartAxisOptions('money', { beginAtZero: true }), y: B.chartAxisOptions('label', { grid: { display: false } }) }
-      }
-    });
+    renderProductDoughnut(canvasId, rows, 'quantity', 'Sem composicao de produtos no periodo.');
   };
+
+  // ── UX.CHARTS.R1 — Governance helper ────────────────────────────────────
+  function cfApplyGovernance(canvasId, datasets, insightObj) {
+    if (!window.BIOMIE_CHART_GOVERNANCE) return;
+    var G = window.BIOMIE_CHART_GOVERNANCE;
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var container = canvas.closest('.chart-card, .mag-chart-card') || canvas.parentElement;
+    if (!container) return;
+    if (datasets && datasets.length > 1) G.ensureLegend(container, datasets);
+    if (insightObj) G.renderInsight(container, insightObj);
+  }
 
   // ── Phase 10G: Generic horizontal bar chart ──────────────────────────────
   B.createHorizontalBarChart = function (canvasId, labels, data, opts) {

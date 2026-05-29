@@ -7,7 +7,10 @@ namespace BIomie\Modules\Sales\Application\Vendors;
 use BIomie\CanonicalRepository;
 use BIomie\CommercialPlanning;
 use BIomie\Support;
+use BIomie\Support\ActiveVendorResolver;
+use BIomie\Support\VendorAliasResolver;
 use BIomie\TargetsRepository;
+use PDO;
 
 final class CanonicalVendorPayloadBuilder
 {
@@ -21,7 +24,9 @@ final class CanonicalVendorPayloadBuilder
         string $end,
         string $lastSync,
         float $saturdayWeight = 0.33,
-        int $vendorLimit = 50
+        int $vendorLimit = 50,
+        ?PDO $pdo = null,
+        bool $includeInactive = false
     ): array {
         $summary = $canonical->summarizeCommercial($start, $end);
         $invoiceSummary = $canonical->summarizeInvoicesCommercial($start, $end);
@@ -134,6 +139,13 @@ final class CanonicalVendorPayloadBuilder
             $byVendor[$key]['billed_merchandise'] = $or['merchandise_total'];
         }
 
+        $activeResolver = $pdo !== null ? new ActiveVendorResolver($pdo, new VendorAliasResolver()) : null;
+        $activeSummary = null;
+        if ($activeResolver !== null) {
+            $activeResolver->ensureLoaded();
+            $activeSummary = $activeResolver->getSummary();
+        }
+
         foreach ($byVendor as $vendor) {
             $vendorBilledValue = (float) ($vendor['billed_value'] ?? 0);
             $vendorBilledOrders = (int) ($vendor['billed_orders'] ?? 0);
@@ -144,6 +156,10 @@ final class CanonicalVendorPayloadBuilder
             $vendorCancelledValue = (float) ($vendor['cancelled_value'] ?? 0);
             $vendorCancelledOrders = (int) ($vendor['cancelled_orders'] ?? 0);
             $vendorRef = (string) ($vendor['vendor_ref'] ?? trim((string) ($vendor['vendor_id'] ?? '')));
+
+            $status = $activeResolver !== null
+                ? $activeResolver->resolve((string) ($vendor['vendor_id'] ?? ''), (string) ($vendor['vendor_name'] ?? 'Sem vendedor'))
+                : null;
 
             $vendorMatrix[] = [
                 'vendor_id'            => (string) ($vendor['vendor_id'] ?? ''),
@@ -178,7 +194,27 @@ final class CanonicalVendorPayloadBuilder
                 'attainment_pct'       => 0.0,
                 'risk_status'          => 'SEM_META',
                 'forecasts'            => [],
+                'is_active'            => $status['is_active'] ?? true,
+                'active_status_confidence' => $status['active_status_confidence'] ?? 0,
+                'active_status_warning' => $status['active_status_warning'] ?? '',
+                'active_status_warnings' => $status['warnings'] ?? [],
+                'ghost_vendor'         => $status['ghost_vendor'] ?? false,
+                'vendor_channel'       => $status['vendor_channel'] ?? VendorAliasResolver::CHANNEL_OUTRO,
+                'canonical_name'       => $status['canonical_name'] ?? (string) ($vendor['vendor_name'] ?? 'Sem vendedor'),
+                'inactive_badge'       => $status['inactive_badge'] ?? '',
+                'channel_badge'        => $status['channel_badge'] ?? '',
+                'status_source'        => $status['source'] ?? 'unavailable',
+                'suggested_alias'      => $status['suggested_alias'] ?? null,
+                'requires_manual_approval' => $status['requires_manual_approval'] ?? false,
             ];
+        }
+
+        if (!$includeInactive && $activeResolver !== null) {
+            $vendorMatrix = array_values(array_filter(
+                $vendorMatrix,
+                static fn (array $vendor): bool => (int) ($vendor['active_status_confidence'] ?? 0) < 80
+                    || (bool) ($vendor['is_active'] ?? true)
+            ));
         }
 
         usort(
@@ -265,6 +301,13 @@ final class CanonicalVendorPayloadBuilder
         }
 
         $alertsOperational = [];
+        if (is_array($activeSummary) && !empty($activeSummary['active_status_mapping_gap'])) {
+            $alertsOperational[] = [
+                'level' => 'warning',
+                'title' => 'Status de vendedores em validacao',
+                'message' => 'Ha divergencia entre cadastro Omie e BIomie.',
+            ];
+        }
         foreach ($vendorMatrix as $vendor) {
             $baseOrders = (int) ($vendor['cancelled_orders'] ?? 0) + (int) ($vendor['authorized_orders'] ?? 0);
             if ((float) ($vendor['cancel_rate'] ?? 0) > 15 && $baseOrders >= 3) {
@@ -341,6 +384,12 @@ final class CanonicalVendorPayloadBuilder
                 'wallet_period_basis'   => 'data_emissao',       // carteira — data_emissao do pedido
                 'target_period_basis'   => 'year_month',         // metas — competencia mensal
                 'targets_source'        => ($targetsRepository !== null && $targetsRepository->isAvailable()) ? 'mysql' : 'unconfigured',
+                'active_filter'         => $includeInactive ? 'include_inactive' : 'active_only_when_confident',
+                'vendor_roster'         => $activeSummary ?? [
+                    'source' => 'unavailable',
+                    'status_reliable' => false,
+                    'active_status_mapping_gap' => false,
+                ],
             ],
         ];
     }

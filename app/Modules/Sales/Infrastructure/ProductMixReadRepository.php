@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\Modules\Sales\Infrastructure;
 
 use BIomie\Http;
+use BIomie\Support\BiVisibilityScope;
 use PDO;
 use Throwable;
 
@@ -15,8 +16,9 @@ use Throwable;
  * bug: SUM(n.valor_total) via a LEFT JOIN on items multiplies each NF's total
  * by the number of items on that NF, producing a grossly inflated revenue figure.
  *
- * All queries filter by operation_scope = 'commercial' when the column exists,
- * so remittance and unknown NFs never contaminate the Mix Faturado.
+ * All queries filter by operation_scope plus the central BiVisibilityScope.
+ * Licitacao can be operation_scope='commercial', so operation_scope alone is
+ * not enough to protect the commercial mix.
  */
 final class ProductMixReadRepository
 {
@@ -51,23 +53,48 @@ final class ProductMixReadRepository
         return $this->hasScope;
     }
 
-    /** Scope fragment for queries that alias the NF table as `n`. */
-    private function nScopeFilter(): string
+    private function normalizeScope(string $scope): string
     {
-        return $this->hasOperationScope() ? "\n              AND n.operation_scope = 'commercial'" : '';
+        $scope = strtolower(trim($scope));
+        return in_array($scope, ['commercial', 'remittance', 'all'], true) ? $scope : 'commercial';
     }
 
-    /** Scope fragment for queries with no alias (bare table name). */
-    private function bareScope(): string
+    private function scopeLabel(string $scope): string
     {
-        return $this->hasOperationScope() ? "\n              AND operation_scope = 'commercial'" : '';
+        return match ($this->normalizeScope($scope)) {
+            'remittance' => 'Remessas',
+            'all' => 'Todas',
+            default => 'Orc-PD',
+        };
+    }
+
+    /** Scope + visibility fragment for queries that read the canonical NF table. */
+    private function nfScopeFilter(string $alias, string $scope): string
+    {
+        $scope = $this->normalizeScope($scope);
+        $prefix = $alias !== '' ? "{$alias}." : '';
+        $conditions = [];
+
+        if ($this->hasOperationScope()) {
+            if ($scope === 'commercial') {
+                $conditions[] = "{$prefix}operation_scope = 'commercial'";
+            } elseif ($scope === 'remittance') {
+                $conditions[] = "{$prefix}operation_scope = 'remittance'";
+            } else {
+                $conditions[] = "{$prefix}operation_scope IN ('commercial', 'remittance')";
+            }
+        }
+
+        $conditions[] = BiVisibilityScope::getCondition($this->pdo, 'biomie_notas_fiscais_canonicas', $alias);
+
+        return "\n              AND " . implode("\n              AND ", $conditions);
     }
 
     /** @return array<string,mixed> */
-    public function summary(string $start, string $end): array
+    public function summary(string $start, string $end, string $scope = 'commercial'): array
     {
-        $bareScope = $this->bareScope();
-        $nScope    = $this->nScopeFilter();
+        $bareScope = $this->nfScopeFilter('', $scope);
+        $nScope    = $this->nfScopeFilter('n', $scope);
 
         // ── NF-level aggregates (no join — avoids multiplication by item count) ──
         $nfSql = <<<SQL
@@ -104,13 +131,17 @@ final class ProductMixReadRepository
     }
 
     /** @return list<array<string,mixed>> */
-    public function products(string $start, string $end, int $limit = 100): array
+    public function products(string $start, string $end, int $limit = 100, string $scope = 'commercial'): array
     {
-        $nScope = $this->nScopeFilter();
+        $scope = $this->normalizeScope($scope);
+        $scopeLabel = $this->scopeLabel($scope);
+        $nScope = $this->nfScopeFilter('n', $scope);
         $sql = <<<SQL
             SELECT
               NULLIF(TRIM(COALESCE(i.codigo_produto, '')), '') AS product_code,
               COALESCE(NULLIF(TRIM(i.descricao_produto), ''), 'Produto sem descricao') AS description,
+              '{$scope}'                                       AS scope,
+              '{$scopeLabel}'                                  AS scope_label,
               COALESCE(SUM(i.quantidade),    0)               AS quantity,
               COALESCE(SUM(i.valor_total),   0)               AS revenue,
               COALESCE(SUM(i.valor_desconto),0)               AS discount_total,
@@ -137,12 +168,17 @@ final class ProductMixReadRepository
     }
 
     /** @return list<array<string,mixed>> */
-    public function breakdown(string $start, string $end, string $productCode, int $limit = 200): array
+    public function breakdown(string $start, string $end, string $productCode, int $limit = 200, string $scope = 'commercial'): array
     {
         if ($productCode === '') {
             return [];
         }
-        $nScope = $this->nScopeFilter();
+        $scope = $this->normalizeScope($scope);
+        $scopeLabel = $this->scopeLabel($scope);
+        $nScope = $this->nfScopeFilter('n', $scope);
+        $operationScopeExpr = $this->hasOperationScope()
+            ? "COALESCE(n.operation_scope, '{$scope}')"
+            : "'{$scope}'";
         $sql = <<<SQL
             SELECT
               n.nota_key,
@@ -157,6 +193,9 @@ final class ProductMixReadRepository
               n.documento_cliente          AS customer_document,
               n.codigo_vendedor_omie       AS vendor_id,
               n.nome_vendedor              AS vendor_name,
+              {$operationScopeExpr}         AS operation_scope,
+              '{$scopeLabel}'              AS scope_label,
+              n.omie_operation_name,
               i.codigo_produto             AS product_code,
               i.descricao_produto          AS description,
               i.quantidade,

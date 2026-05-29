@@ -125,18 +125,18 @@
 
       <!-- Compact KPI Strip -->
       <div class="fp-kpi-strip anim d2">
-        <div class="biomie-kpi-card">
-          <div class="biomie-kpi-card__label">Meta Total</div>
+        <div class="biomie-kpi-card" title="Meta proporcional ao período selecionado (dias corridos). Fórmula: meta_mensal × dias_selecionados/dias_do_mês por cada mês tocado.">
+          <div class="biomie-kpi-card__label">Meta proporcional</div>
           <div class="biomie-kpi-card__value" data-bind="fp-meta-total">-</div>
-          <div class="biomie-kpi-card__sub">Alvo do período</div>
+          <div class="biomie-kpi-card__sub">Proporcional ao período</div>
         </div>
-        <div class="biomie-kpi-card biomie-kpi-card--accent">
-          <div class="biomie-kpi-card__label">Realizado Oficial</div>
+        <div class="biomie-kpi-card biomie-kpi-card--accent" title="Realizado por NF autorizada (Base Comercial NF). Não inclui carteira, orçamentos ou entrega finalizada.">
+          <div class="biomie-kpi-card__label">Realizado por NF</div>
           <div class="biomie-kpi-card__value" data-bind="fp-realizado">-</div>
           <div class="biomie-kpi-card__sub" data-bind="fp-notas">0 NFs</div>
         </div>
-        <div class="biomie-kpi-card">
-          <div class="biomie-kpi-card__label">Gap</div>
+        <div class="biomie-kpi-card" title="Gap = Meta proporcional − Realizado por NF. Atingimento = Realizado / Meta proporcional.">
+          <div class="biomie-kpi-card__label">Gap proporcional</div>
           <div class="biomie-kpi-card__value" data-bind="fp-gap-total">-</div>
           <div class="biomie-kpi-card__sub" data-bind="fp-atingimento-total">Atingimento 0%</div>
         </div>

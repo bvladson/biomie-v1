@@ -375,12 +375,12 @@
         <h2 class="table-card-title">Titulos acionaveis</h2>
         <span class="table-card-meta" id="fcTableMeta"></span>
       </div>
+      <div id="fcUnresolvedVendorAlert" style="display:none;margin:0 0 12px;padding:10px 14px;background:var(--warning-bg-light,#fffbeb);border:1px solid var(--warning-border,#fde68a);border-radius:8px;font-size:13px;color:var(--warning-text,#b45309);"></div>
       <div class="table-responsive fin-table-wrap">
         <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
           <thead>
             <tr>
-              <th class="nf-th-sortable" data-fc-sort="vendedor">Vendedor <span class="nf-sort-icon">&#8597;</span></th>
-              <th class="nf-th-sortable" data-fc-sort="cliente">Cliente <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-fc-sort="cliente">Cliente / Vendedor <span class="nf-sort-icon">&#8597;</span></th>
               <th class="nf-th-sortable" data-fc-sort="documento">Titulo <span class="nf-sort-icon">&#8597;</span></th>
               <th>NF / Pedido</th>
               <th class="nf-th-sortable" data-fc-sort="vencimento">Vencimento <span class="nf-sort-icon">&#8597;</span></th>
@@ -520,6 +520,7 @@
               <th class="nf-th-sortable" data-gov-sort="cliente">Cliente <span class="nf-sort-icon">&#8597;</span></th>
               <th>Vendedor</th>
               <th class="nf-th-sortable" data-gov-sort="documento">Título <span class="nf-sort-icon">&#8597;</span></th>
+              <th>NF / Pedido</th>
               <th class="nf-th-sortable" data-gov-sort="vencimento">Vencimento <span class="nf-sort-icon">&#8597;</span></th>
               <th class="nf-th-sortable" data-gov-sort="dias_atraso">Atraso <span class="nf-sort-icon">&#8597;</span></th>
               <th class="nf-th-sortable" data-gov-sort="valor_aberto">Valor Aberto <span class="nf-sort-icon">&#8597;</span></th>
@@ -687,12 +688,28 @@
     <div class="detail-drawer-body">
       <div id="fcDrawerAlert" class="biomie-table-feedback" style="display:none;margin-bottom:12px;"></div>
       
-      <!-- Current Title Info -->
-      <div class="fc-drawer-info-grid" style="margin-bottom:16px;display:grid;grid-template-columns: 1fr 1fr;gap:8px;font-size:0.8rem;color:var(--text-2);">
-        <div><strong>Cliente:</strong> <span id="fcInfoClient">-</span></div>
-        <div><strong>Vendedor:</strong> <span id="fcInfoVendor">-</span></div>
-        <div><strong>Vencimento:</strong> <span id="fcInfoDueDate">-</span></div>
-        <div><strong>Valor Aberto:</strong> <span id="fcInfoOpenValue">-</span></div>
+      <!-- Identity Block -->
+      <div class="fc-drawer-identity" id="fcDrawerIdentity" style="margin-bottom:16px;padding:12px;background:var(--bg-secondary,#f8fafc);border-radius:8px;border:1px solid var(--mag-border,#e2e8f0);font-size:0.82rem;">
+        <div style="margin-bottom:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Cliente</div>
+          <strong id="fcInfoClient">-</strong><small id="fcInfoClientDoc" style="color:var(--text-3);margin-left:6px;"></small>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Vendedor</div>
+          <span id="fcInfoVendor">-</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Vencimento</div>
+            <span id="fcInfoDueDate">-</span>
+          </div>
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Valor Aberto</div>
+            <strong id="fcInfoOpenValue">-</strong>
+          </div>
+        </div>
+        <div id="fcInfoNfPedido" style="display:flex;flex-wrap:wrap;gap:4px;min-height:20px;"></div>
+        <div id="fcInfoTraceQuality" style="display:none;margin-top:6px;padding:6px 8px;background:var(--warning-bg-light,#fffbeb);border-radius:4px;font-size:11px;color:var(--warning-text,#b45309);border:1px solid var(--warning-border,#fde68a);"></div>
       </div>
 
       <!-- Action Form -->
@@ -735,6 +752,14 @@
         <div id="fcHistoryList" style="display:flex;flex-direction:column;gap:8px;max-height:250px;overflow-y:auto;padding-right:4px;">
           <p style="font-size:0.8rem;color:var(--text-3);font-style:italic;">Nenhuma ação registrada para este título.</p>
         </div>
+      </div>
+
+      <!-- Diagnostic Section -->
+      <div style="margin-top:16px;">
+        <details id="fcDiagnosticDetails">
+          <summary style="font-size:0.82rem;cursor:pointer;padding:4px 0;color:var(--text-3);user-select:none;">Diagnóstico de vínculo</summary>
+          <div id="fcDiagnosticContent" style="padding:8px 4px;font-size:11px;color:var(--text-2);line-height:1.6;"></div>
+        </details>
       </div>
     </div>
   </div>

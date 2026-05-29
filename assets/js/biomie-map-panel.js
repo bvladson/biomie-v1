@@ -26,6 +26,7 @@
 
   function setInitial(formatters) {
     text('selectedFeatureBadge', 'Nenhuma selecao');
+    text('geoDrawerHeading', 'Leitura comercial');
     text('panelTitle', 'Selecione um bairro');
     text('panelSubtitle', 'Clique em um bairro no mapa para ver a leitura comercial.');
     text('kpiFeatureRevenue', '-');
@@ -44,6 +45,7 @@
 
   function setGlobal(buyers, cnaes, formatters) {
     text('selectedFeatureBadge', 'Todos os bairros');
+    text('geoDrawerHeading', 'Visao geral');
     text('panelTitle', 'Visao geral');
     text('panelSubtitle', 'Top compradores e CNAEs do periodo. Clique em um bairro para detalhar.');
     text('kpiFeatureRevenue', '-');
@@ -117,6 +119,7 @@
     const nbKey  = data.neighborhood_key || data.bairro_key || normalizeKey(nbName);
     const city   = data.city || 'Fortaleza';
     text('selectedFeatureBadge', nbName);
+    text('geoDrawerHeading', nbName);
     text('panelTitle', nbName);
     text('panelSubtitle', city ? `Fortaleza / ${city}` : 'Fortaleza');
     text('kpiFeatureRevenue', formatters.money(data.revenue));
@@ -243,6 +246,7 @@
     clearBuyersSourceBadge();
     const ctx = context || {};
     text('selectedFeatureBadge', 'Sem bairro');
+    text('geoDrawerHeading', 'Sem bairro');
     text('panelTitle', ctx.title || 'Sem bairro cadastrado');
     text('panelSubtitle', 'Qualidade de cadastro Omie — nao e um bug tecnico');
     text('kpiFeatureRevenue', formatters.money(revenue || 0));

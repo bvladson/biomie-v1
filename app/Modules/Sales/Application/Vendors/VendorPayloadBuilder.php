@@ -112,7 +112,9 @@ final class VendorPayloadBuilder
                             $end,
                             $lastSync,
                             (float) $this->config->get('flight_plan.saturday_weight', 0.33),
-                            $request->vendorLimit
+                            $request->vendorLimit,
+                            $pdo,
+                            $request->includeInactive
                         );
                         $canonicalPayload = $freshness->attach('vendors', $canonicalPayload, ['observe_request' => true]);
                         $canonicalPayload = $this->meta->enrich($canonicalPayload, $canonicalCoverage ?? [], null);

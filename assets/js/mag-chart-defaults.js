@@ -82,8 +82,33 @@
       });
     });
 
+    // UX.CHARTS.R1 — Semantic palette aligned with chart-governance.js
+    var semanticPalette = {
+      billed:     '#16a34a',  // green — NF/realizado/recebido
+      authorized: '#d97706',  // amber — carteira/autorizado/aberto
+      cancelled:  '#7f1d1d',  // dark red — cancelado
+      revenue:    '#96140a',  // MAG red — receita
+      target:     '#0f172a',  // near-black — meta
+      forecast:   '#2563eb',  // blue — projeção/tendência
+      overdue:    '#dc2626',  // red — vencido/risco
+      neutral:    '#94a3b8',  // gray — neutro/sem dados
+      info:       '#3b82f6',  // blue — informação
+    };
+
     window.MagChartDefaults = Object.assign({}, window.MagChartDefaults || {}, {
+      // Legacy palette kept for backward compatibility
       palette: ['#96140a', '#16834a', '#2563eb', '#0f5b66', '#b7791f', '#c7352f', '#64748b'],
+      // UX.CHARTS.R1 — semantic palette
+      semanticPalette: semanticPalette,
+      getSemanticColor: function (name) {
+        var n = String(name || '').toLowerCase().trim();
+        if (semanticPalette[n]) return semanticPalette[n];
+        // Delegate to governance layer if available
+        if (window.BIOMIE_CHART_GOVERNANCE && window.BIOMIE_CHART_GOVERNANCE.getSemanticColor) {
+          return window.BIOMIE_CHART_GOVERNANCE.getSemanticColor(n) || null;
+        }
+        return null;
+      },
       maxItems: 10,
       trimItems: function (items, limit) {
         if (!Array.isArray(items)) {

@@ -104,7 +104,7 @@ function filterMigrations(status, btn) {
     var s = String(status || '').toLowerCase();
     if (s === 'ok' || s === 'pass' || s === 'success') return 'ok';
     if (s === 'warning' || s === 'warn') return 'warning';
-    if (s === 'critical' || s === 'error' || s === 'fail' || s === 'failed') return 'critical';
+    if (s === 'critical' || s === 'danger' || s === 'error' || s === 'fail' || s === 'failed') return 'critical';
     return 'neutral';
   }
 
@@ -191,25 +191,143 @@ function filterMigrations(status, btn) {
     if (!summary || !raw) return;
 
     summary.innerHTML = adminOpsCard('Status', 'Carregando', 'Consultando integracoes.', 'neutral');
-    adminFetchJson('api/omie_status.php').then(function (payload) {
-      raw.textContent = adminJson(payload);
-      var worker = payload.worker_queue || payload.worker || payload.queue || {};
-      var freshness = payload.freshness || payload.sync_freshness || payload.omie_sync || {};
-      var queueStatus = worker.status || payload.status || (payload.ok ? 'ok' : 'warning');
-      var pending = worker.pending_jobs ?? worker.pending ?? payload.pending_jobs ?? '-';
-      var running = worker.running_jobs ?? worker.running ?? payload.running_jobs ?? '-';
-      var failed = worker.failed_terminal ?? payload.failed_terminal ?? payload.failures_24h ?? '-';
-      var syncStatus = freshness.status || payload.freshness_status || payload.status || '-';
+    Promise.all([
+      adminFetchJson('api/omie_status.php'),
+      adminFetchJson('api/cron_wrapper_status.php').catch(function (error) {
+        return { ok: false, error: error.message, wrappers: [] };
+      })
+    ]).then(function (results) {
+      var payload = results[0] || {};
+      var cronPayload = results[1] || {};
+      raw.textContent = adminJson({ omie_status: payload, cron_wrappers: cronPayload });
+
+      var worker = payload.worker_queue_status || {};
+      var sync = payload.source_sync_status || {};
+      var canonical = payload.canonical_freshness_status || {};
+      var gold = payload.gold_materialization_status || payload.gold || {};
+      var webhook = payload.webhook_status || {};
+      var api = payload.api || {};
+      var credentials = payload.credentials || {};
+      var lastError = payload.last_error || {};
+      var queueCounts = worker.counts || {};
+      var dead = worker.dead_letters || {};
+
       summary.innerHTML = [
-        adminOpsCard('Fila pendente', pending, 'Jobs aguardando worker.', Number(pending) > 0 ? 'warning' : 'ok'),
-        adminOpsCard('Em execucao', running, 'Jobs em processamento.', Number(running) > 0 ? 'warning' : 'ok'),
-        adminOpsCard('Falhas', failed, 'Falhas recentes ou terminal.', Number(failed) > 0 ? 'warning' : 'ok'),
-        adminOpsCard('Freshness', String(syncStatus).toUpperCase(), 'Sync Omie e canonical.', syncStatus || queueStatus)
+        adminOpsCard('Sync Omie', String(sync.status || 'unknown').toUpperCase(), sync.message || 'Pipeline delta/backfill.', sync.status),
+        adminOpsCard('Origem canonica', String(canonical.status || 'unknown').toUpperCase(), canonical.message || 'Pedidos, NFs e titulos.', canonical.status),
+        adminOpsCard('Gold', String(gold.status || 'unknown').toUpperCase(), gold.message || 'Materializacao dos marts.', gold.status),
+        adminOpsCard('Worker/Fila', String(worker.status || 'unknown').toUpperCase(), worker.message || 'Fila operacional.', worker.status)
       ].join('');
+
+      renderAdminIntegrationCards('adminIntegrationStatusCards', [
+        ['API Omie', String(api.status || 'pending').toUpperCase(), api.last_success_at ? ('Ultimo sucesso ' + api.last_success_at) : (api.last_failure_at ? ('Ultima falha ' + api.last_failure_at) : 'Sem teste recente.'), api.status],
+        ['Credenciais', credentials.credentials_valid || (credentials.app_key_configured && credentials.app_secret_configured ? 'configuradas' : 'pendente'), credentials.app_key_masked || 'APP_KEY mascarada indisponivel.', credentials.credentials_valid === 'ok' ? 'ok' : (credentials.app_key_configured && credentials.app_secret_configured ? 'warning' : 'critical')],
+        ['Sync comercial', sync.last_commercial_sync_at || '-', 'Fiscal/NF roda dentro do dominio commercial.', sync.status],
+        ['Sync financeiro', sync.last_finance_sync_at || '-', 'Titulos financeiros canonicos.', sync.status],
+        ['Webhook inbox', String(webhook.status || 'unknown').toUpperCase(), webhook.message || 'Eventos recebidos da Omie.', webhook.status],
+        ['Ultimo erro', lastError && lastError.message ? lastError.domain || 'Erro recente' : 'Sem erro recente', lastError && lastError.message ? lastError.message : 'Nenhum erro operacional retornado.', lastError && lastError.message ? 'warning' : 'ok']
+      ]);
+
+      var data = payload.data || {};
+      renderAdminIntegrationCards('adminIntegrationDataCards', Object.keys(data).map(function (key) {
+        var row = data[key] || {};
+        return [row.label || key, row.count ?? '-', row.message || ('Atualizado em ' + (row.last_sync || '-')), row.status || 'neutral'];
+      }));
+
+      renderAdminIntegrationDomains(payload.sync_domains || []);
+      renderAdminIntegrationRateQueue(payload.rate_limits || {}, worker, queueCounts, dead);
+      renderAdminIntegrationCron(cronPayload.wrappers || []);
+      renderAdminIntegrationActions(payload.recommended_actions || []);
+      renderAdminIntegrationRecent(payload.recent_syncs || []);
+      renderAdminIntegrationTables(payload.tables || {});
     }).catch(function (error) {
       raw.textContent = error.message;
       summary.innerHTML = adminOpsCard('Status', 'Erro', error.message, 'critical');
     });
+  }
+
+  function renderAdminIntegrationCards(targetId, rows) {
+    var target = document.getElementById(targetId);
+    if (!target) return;
+    target.innerHTML = rows.length ? rows.map(function (row) {
+      return adminOpsCard(row[0], row[1], row[2], row[3]);
+    }).join('') : adminOpsCard('Sem dados', '-', 'API nao retornou linhas para este bloco.', 'neutral');
+  }
+
+  function adminAge(minutes) {
+    if (minutes === null || minutes === undefined || minutes === '') return '-';
+    var n = Number(minutes);
+    if (!Number.isFinite(n)) return '-';
+    if (n < 60) return Math.round(n) + ' min';
+    if (n < 1440) return Math.round(n / 60) + ' h';
+    return Math.round(n / 1440) + ' d';
+  }
+
+  function renderAdminIntegrationDomains(rows) {
+    var target = document.getElementById('adminIntegrationDomainRows');
+    if (!target) return;
+    target.innerHTML = rows.length ? rows.map(function (row) {
+      return '<tr><td><strong>' + adminEsc(row.label || row.domain || '-') + '</strong><br><span class="admin-small">' + adminEsc(row.domain || '') + '</span></td><td>' + adminTag(row.status || '-') + '</td><td class="admin-small">' + adminEsc(row.last_success_at || '-') + '</td><td class="admin-small">' + adminEsc(adminAge(row.age_minutes)) + '</td><td class="admin-small"><code>' + adminEsc(row.recommended_command || '-') + '</code></td><td class="admin-small">' + adminEsc(row.last_error || row.message || '-') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="admin-small">Nenhum dominio retornado.</td></tr>';
+  }
+
+  function renderAdminIntegrationRateQueue(rate, worker, counts, dead) {
+    var domains = rate.domains || {};
+    var methods = rate.methods || [];
+    var limits = rate.limits || {};
+    var queuePending = Number(worker.queued ?? worker.pending ?? counts.queued ?? 0) + Number(counts.failed_retryable ?? 0);
+    renderAdminIntegrationCards('adminIntegrationRateQueue', [
+      ['IP/min', limits.global_per_ip_per_minute ?? '-', 'Limite global documentado no projeto.', 'ok'],
+      ['App+metodo/min', limits.per_app_method_per_minute ?? '-', 'Rate limit por APP_KEY/metodo.', 'ok'],
+      ['Metodos mapeados', methods.length, Object.keys(domains).length + ' dominio(s) com politica.', 'ok'],
+      ['Fila pendente', queuePending, 'queued + failed_retryable.', queuePending > 0 ? 'warning' : 'ok'],
+      ['Em execucao', worker.running ?? counts.running ?? 0, 'Jobs running.', Number(worker.running ?? counts.running ?? 0) > 0 ? 'warning' : 'ok'],
+      ['Dead-letter', dead.unresolved ?? 0, 'Dead letters nao resolvidas.', Number(dead.unresolved ?? 0) > 0 ? 'critical' : 'ok']
+    ]);
+  }
+
+  function renderAdminIntegrationCron(rows) {
+    var target = document.getElementById('adminIntegrationCronRows');
+    if (!target) return;
+    target.innerHTML = rows.length ? rows.map(function (row) {
+      return '<tr><td><strong>' + adminEsc(row.label || row.key || '-') + '</strong><br><span class="admin-small">' + adminEsc(row.log || '') + '</span></td><td>' + adminTag(row.status || '-') + '</td><td class="admin-small">' + adminEsc(row.frequency || '-') + '</td><td class="admin-small">' + adminEsc(row.last_modified_at || '-') + '<br>' + adminEsc(adminAge(row.age_minutes)) + '</td><td class="admin-small"><code>' + adminEsc(row.command || '-') + '</code></td><td><details class="admin-ops-details"><summary>Ver log</summary><pre class="admin-ops-pre">' + adminEsc((row.last_lines || []).join('\\n') || 'Sem log.') + '</pre></details></td></tr>';
+    }).join('') : '<tr><td colspan="6" class="admin-small">Status dos wrappers indisponivel.</td></tr>';
+  }
+
+  function renderAdminIntegrationActions(actions) {
+    var target = document.getElementById('adminIntegrationActions');
+    if (!target) return;
+    target.innerHTML = actions.length ? actions.map(function (row) {
+      return '<div class="admin-ops-list-item"><strong>' + adminEsc(row.message || row.key || '-') + '</strong><span class="admin-small">' + adminEsc(row.severity || 'info') + (row.link ? ' · ' + row.link : '') + '</span></div>';
+    }).join('') : '<div class="admin-ops-list-item"><strong>Nenhuma acao recomendada</strong><span class="admin-small">Checks operacionais sem recomendacao imediata.</span></div>';
+  }
+
+  function renderAdminIntegrationRecent(rows) {
+    var target = document.getElementById('adminIntegrationRecentRows');
+    if (!target) return;
+    target.innerHTML = rows.length ? rows.map(function (row) {
+      return '<tr><td>' + adminEsc(row.domain || '-') + '</td><td>' + adminEsc(row.type || '-') + '</td><td>' + adminTag(row.status || '-') + '</td><td class="admin-small">' + adminEsc(row.started_at || '-') + '</td><td>' + adminEsc(row.items_processed ?? '-') + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="admin-small">Nenhuma sincronizacao recente.</td></tr>';
+  }
+
+  function renderAdminIntegrationTables(tables) {
+    var target = document.getElementById('adminIntegrationTables');
+    if (!target) return;
+    var rows = [];
+    Object.keys(tables || {}).forEach(function (group) {
+      var groupRows = Array.isArray(tables[group]) ? tables[group] : Object.keys(tables[group] || {}).map(function (key) {
+        var row = tables[group][key] || {};
+        if (row && typeof row === 'object') row.table = row.table || key;
+        return row;
+      });
+      groupRows.forEach(function (row) {
+        rows.push({ group: group, row: row });
+      });
+    });
+    target.innerHTML = '<table class="admin-table admin-table-compact"><thead><tr><th>Camada</th><th>Tabela</th><th>Status</th><th>Registros</th><th>Atualizado</th><th>Diagnostico</th></tr></thead><tbody>' + (rows.length ? rows.map(function (item) {
+      var row = item.row || {};
+      return '<tr><td>' + adminEsc(item.group) + '</td><td><strong>' + adminEsc(row.table || row.name || row.label || '-') + '</strong></td><td>' + adminTag(row.status || '-') + '</td><td>' + adminEsc(row.rows ?? row.count ?? '-') + '</td><td class="admin-small">' + adminEsc(row.last_updated_at || row.updated_at || row.last_sync || '-') + '</td><td class="admin-small">' + adminEsc(row.message || row.note || row.diagnostic || '-') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="admin-small">Nenhuma tabela retornada.</td></tr>') + '</tbody></table>';
   }
 
   function flattenMetricRows(payload) {

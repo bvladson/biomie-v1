@@ -235,7 +235,7 @@ final class OmieSyncFreshnessHealthCheck implements CheckInterface
         if ($domain === 'commercial') {
             return $this->freshestDate(
                 $canonicalDates['orders'] ?? null,
-                $this->freshestDate($canonicalDates['invoices'] ?? null, $canonicalDates['clients'] ?? null)
+                $canonicalDates['invoices'] ?? null
             );
         }
 

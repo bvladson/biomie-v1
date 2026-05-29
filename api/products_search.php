@@ -63,7 +63,15 @@ try {
                AND COLUMN_NAME  = 'operation_scope'"
         )->fetchColumn() > 0;
     } catch (Throwable) {}
-    $scopeFilter      = $hasScope ? "\n              AND n.operation_scope = 'commercial'" : '';
+    $scope = in_array($state->scope, ['commercial', 'remittance', 'all'], true) ? $state->scope : 'commercial';
+    $scopeFilter = '';
+    if ($hasScope) {
+        $scopeFilter = match ($scope) {
+            'remittance' => "\n              AND n.operation_scope = 'remittance'",
+            'all' => "\n              AND n.operation_scope IN ('commercial', 'remittance')",
+            default => "\n              AND n.operation_scope = 'commercial'",
+        };
+    }
     // Fase L: exclude non-commercial business units (e.g. Licitação) by default.
     $visibilityFilter = "\n              AND " . BiVisibilityScope::getCondition($pdo, 'biomie_notas_fiscais_canonicas', 'n');
 
@@ -168,6 +176,8 @@ try {
         SELECT
             NULLIF(TRIM(COALESCE(i.codigo_produto, '')), '')                   AS product_code,
             COALESCE(NULLIF(TRIM(i.descricao_produto), ''), 'Produto sem descricao') AS description,
+            :scope_label                                                       AS scope_label,
+            :scope_value                                                       AS scope,
             COALESCE(SUM(i.quantidade),    0)                                  AS quantity,
             COALESCE(SUM(i.valor_total),   0)                                  AS revenue,
             COALESCE(SUM(i.valor_desconto),0)                                  AS discount_total,
@@ -195,6 +205,8 @@ try {
     foreach ($params as $k => $v) {
         $countStmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
     }
+    $countStmt->bindValue(':scope_label', $scope === 'remittance' ? 'Remessas' : ($scope === 'all' ? 'Todas' : 'Orc-PD'));
+    $countStmt->bindValue(':scope_value', $scope);
     $countStmt->execute();
     $total = (int) ($countStmt->fetchColumn() ?: 0);
 
@@ -206,6 +218,8 @@ try {
     foreach ($params as $k => $v) {
         $dataStmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
     }
+    $dataStmt->bindValue(':scope_label', $scope === 'remittance' ? 'Remessas' : ($scope === 'all' ? 'Todas' : 'Orc-PD'));
+    $dataStmt->bindValue(':scope_value', $scope);
     $dataStmt->bindValue(':per_page', $state->perPage, PDO::PARAM_INT);
     $dataStmt->bindValue(':offset',   $pag->offset,    PDO::PARAM_INT);
     $dataStmt->execute();
@@ -217,6 +231,8 @@ try {
         return [
             'product_code'    => (string) ($row['product_code'] ?? ''),
             'description'     => (string) ($row['description'] ?? 'Produto sem descricao'),
+            'scope'           => (string) ($row['scope'] ?? $scope),
+            'scope_label'     => (string) ($row['scope_label'] ?? ($scope === 'remittance' ? 'Remessas' : ($scope === 'all' ? 'Todas' : 'Orc-PD'))),
             'quantity'        => (float)  ($row['quantity'] ?? 0),
             'revenue'         => (float)  ($row['revenue'] ?? 0),
             'discount_total'  => (float)  ($row['discount_total'] ?? 0),
@@ -232,6 +248,7 @@ try {
         'data'       => $data,
         'pagination' => $pag->toArray(),
         'filters'    => $state->toApiArray(),
+        'scope'      => $scope,
         'sort'       => ['field' => $state->sortField, 'direction' => $state->sortDir],
         'diagnostics' => [
             'query_ms'  => $queryMs,

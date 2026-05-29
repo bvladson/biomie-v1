@@ -72,6 +72,10 @@
     </div>
   </div>
   <div id="syncFeedback"></div>
+  <div id="vendorStatusGapAlert" class="module-alert module-alert--warning" style="display:none;margin:10px 24px 0;">
+    <strong>Status de vendedores em validação</strong>
+    <span>há divergência entre cadastro Omie e BIomie.</span>
+  </div>
   <div id="pageError" class="d-none"></div>
   <div id="pageLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
     <div class="module-loading-grid cols-3">
@@ -102,6 +106,16 @@
     <div class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__label">Ticket Orç-PD</div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Por NF Orçamento-PD</div></div>
   </section>
 
+  <!-- COM.R1.4 — Carteirização KPIs -->
+  <div id="ownershipKpiSection" style="display:none;margin-top:8px;">
+    <div class="section-label" style="margin-top:16px;">Carteirização</div>
+    <section class="biomie-kpi-grid" style="margin-bottom:0;">
+      <div class="biomie-kpi-card biomie-kpi-card--neutral" title="Meta proporcional ao período selecionado (dias corridos)"><div class="biomie-kpi-card__label">Meta proporcional</div><div class="biomie-kpi-card__value" id="kpiMetaProporcional">-</div><div class="biomie-kpi-card__sub">Período selecionado</div></div>
+      <div class="biomie-kpi-card biomie-kpi-card--success" title="Realizado por NF autorizada — Base Comercial NF"><div class="biomie-kpi-card__label">Realizado por NF</div><div class="biomie-kpi-card__value" id="kpiRealizadoNF">-</div><div class="biomie-kpi-card__sub">NF autorizada Orç-PD</div></div>
+      <div class="biomie-kpi-card biomie-kpi-card--warning" id="kpiConflictCard" title="Vendas onde o vendedor da NF é diferente do dono da carteira do cliente"><div class="biomie-kpi-card__label">Fora da carteira</div><div class="biomie-kpi-card__value" id="kpiConflictCount">-</div><div class="biomie-kpi-card__sub" id="kpiConflictValue">-</div></div>
+    </section>
+  </div>
+
   <section class="alerts-op anim d3" id="alertsOperational"></section>
 
   <div class="section-label anim d3" id="graficos">Analises</div>
@@ -124,12 +138,16 @@
     <div class="table-card-header"><h3>Base por vendedor Orçamento-PD</h3><small>Faturamento Orç-PD, meta, atingimento, risco, carteira e cancelamentos. Remessas excluídas. Clique para detalhar.</small></div>
 
     <!-- Fase Q.3 — quick sort + search chips -->
-    <div class="nf-quick-filter-bar" id="vendorQuickFilters" style="padding:8px 16px 0;">
+    <div class="nf-quick-filter-bar" id="vendorQuickFilters" style="padding:8px 16px 0;flex-wrap:wrap;gap:6px;">
       <span style="font-size:0.78rem;color:var(--text-3);font-weight:600;margin-right:4px;">Ordenar:</span>
       <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-vendor-sort="base_comercial" data-vendor-dir="desc">Maiores</button>
       <button class="nf-quick-filter-btn" data-vendor-sort="nfs" data-vendor-dir="desc">Mais NFs</button>
       <button class="nf-quick-filter-btn" data-vendor-sort="clientes" data-vendor-dir="desc">Mais clientes</button>
       <button class="nf-quick-filter-btn" data-vendor-sort="ticket_medio" data-vendor-dir="desc">Maior ticket</button>
+      <!-- COM.R1.5 — Incluir inativos toggle -->
+      <button id="vendorIncludeInactiveBtn" type="button" class="nf-quick-filter-btn" data-include-inactive="0" title="Por padrão apenas vendedores ativos são exibidos. Clique para incluir inativos." style="margin-left:auto;color:var(--text-3);border-color:var(--border);">
+        <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;margin-right:2px;">visibility_off</span>Incluir inativos
+      </button>
     </div>
     <div id="vendorFilterChips" style="display:none;padding:4px 16px 0;"></div>
     <div id="vendorFilterFeedback" style="display:none;padding:6px 16px;font-size:0.82rem;"></div>
@@ -141,13 +159,14 @@
           <tr>
             <th id="th-vendor-vendedor" data-filter-header="vendedor">Vendedor</th>
             <th id="th-vendor-bc" class="nf-th-sortable" data-sort-field="base_comercial">Merc. Orç-PD <span class="nf-sort-icon">↓</span></th>
-            <th>Meta</th>
-            <th>Ating.</th>
+            <th title="Meta proporcional ao período (dias corridos)">Meta prop.</th>
+            <th title="Atingimento: Realizado NF ÷ Meta proporcional">Ating.</th>
             <th>Risco</th>
             <th>Carteira</th>
             <th>Canceladas</th>
             <th>Conversão</th>
             <th id="th-vendor-ticket" class="nf-th-sortable" data-sort-field="ticket_medio">Ticket <span class="nf-sort-icon">↕</span></th>
+            <th title="Vendas onde o vendedor da NF ≠ dono da carteira" style="font-size:11px;">Carteira</th>
           </tr>
           <tr class="nf-filter-row" id="vendorFilterRow">
             <th colspan="2">
@@ -199,6 +218,13 @@
       <h4>RITMO DO MES</h4>
       <div class="detail-drawer-canvas mag-chart-container mag-chart-sm"><canvas id="drawerDailyChart"></canvas></div>
     </div>
+    <!-- COM.R1.4 — Seção de Carteirização no Drawer -->
+    <div id="drawerOwnershipSection" style="display:none;margin-top:16px;">
+      <div class="detail-drawer-section">
+        <h4>CARTEIRIZAÇÃO</h4>
+        <div id="drawerOwnershipContent" style="font-size:0.82rem;color:var(--text-secondary);"></div>
+      </div>
+    </div>
     <div>
       <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">ITENS RECENTES</h4>
       <div id="drawerOrdersList" class="detail-drawer-list"></div>
@@ -209,6 +235,28 @@
 <script>
 (function () {
   'use strict';
+  // COM.R1.5 — inactive vendor toggle
+  window.BIomieVendorsIncludeInactive = false;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('vendorIncludeInactiveBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      window.BIomieVendorsIncludeInactive = !window.BIomieVendorsIncludeInactive;
+      btn.setAttribute('data-include-inactive', window.BIomieVendorsIncludeInactive ? '1' : '0');
+      if (window.BIomieVendorsIncludeInactive) {
+        btn.classList.add('nf-quick-filter-btn--active');
+        btn.style.color = '';
+      } else {
+        btn.classList.remove('nf-quick-filter-btn--active');
+        btn.style.color = 'var(--text-3)';
+      }
+      // Re-apply filters to reload data with updated active_only param
+      var applyBtn = document.getElementById('applyFilters');
+      if (applyBtn) applyBtn.click();
+    });
+  });
+
   var fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
   function currentYearMonth() {

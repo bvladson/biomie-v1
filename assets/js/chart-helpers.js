@@ -329,6 +329,19 @@
       warn('Falha ao criar grafico.', error);
       return null;
     }
+
+    // UX.CHARTS.R1 — apply governance layer after successful render
+    try {
+      if (window.BIOMIE_CHART_GOVERNANCE && typeof window.BIOMIE_CHART_GOVERNANCE.enhanceContainer === 'function') {
+        const govMeta = (normalizedConfig.options &&
+                         normalizedConfig.options.plugins &&
+                         normalizedConfig.options.plugins.biomieGovernance) || {};
+        window.BIOMIE_CHART_GOVERNANCE.enhanceContainer(canvas, normalizedConfig, govMeta);
+      }
+    } catch (_govErr) {
+      // Governance errors must never break chart rendering
+    }
+
     return chart;
   }
 

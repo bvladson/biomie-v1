@@ -3479,3 +3479,139 @@ body:is(.mag-page, .mag-clean-page) .kpi-card .sk-sub {
 /* Ensure decorative spinner icons are hidden from AT */
 .mag-loading-spinner { pointer-events: none; }
 
+/* ── UX.CHARTS.R1 — Chart Governance Visual Layer ───────────────────────────
+   Insight strip, external legend and chart meta annotations.
+   These classes are injected by chart-governance.js and must not affect
+   existing chart sizing or empty-state behavior.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Insight strip — gerencial reading below chart header */
+.mag-chart-insight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  margin: 0 0 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-2, #475569);
+  background: var(--surface-muted, #f8fafc);
+  border-left: 3px solid var(--border, #e2e8f0);
+  max-width: 100%;
+}
+.mag-chart-insight::before {
+  content: '';
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+.mag-chart-insight--success {
+  color: #166534;
+  background: #f0fdf4;
+  border-left-color: #16a34a;
+}
+.mag-chart-insight--success::before { background: #16a34a; opacity: 1; }
+
+.mag-chart-insight--warning {
+  color: #92400e;
+  background: #fffbeb;
+  border-left-color: #d97706;
+}
+.mag-chart-insight--warning::before { background: #d97706; opacity: 1; }
+
+.mag-chart-insight--danger {
+  color: #7f1d1d;
+  background: #fef2f2;
+  border-left-color: #dc2626;
+}
+.mag-chart-insight--danger::before { background: #dc2626; opacity: 1; }
+
+.mag-chart-insight--info {
+  color: #1e3a5f;
+  background: #eff6ff;
+  border-left-color: #3b82f6;
+}
+.mag-chart-insight--info::before { background: #3b82f6; opacity: 1; }
+
+.mag-chart-insight--neutral {
+  color: var(--text-3, #94a3b8);
+  background: var(--surface-muted, #f8fafc);
+  border-left-color: var(--border, #e2e8f0);
+}
+
+/* External legend row */
+.mag-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 4px 0 6px;
+  margin-bottom: 4px;
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: var(--text-2, #475569);
+}
+
+.mag-chart-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.mag-chart-legend__swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* For line datasets, show as horizontal bar */
+.mag-chart-legend__item[data-chart-type="line"] .mag-chart-legend__swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Chart question annotation (subtle, for context) */
+.mag-chart-question {
+  font-size: 0.72rem;
+  color: var(--text-3, #94a3b8);
+  font-style: italic;
+  margin: 0 0 6px;
+  padding: 0;
+  display: none; /* shown only when explicitly set via JS */
+}
+.mag-chart-question[data-visible="true"] { display: block; }
+
+/* KPI note below a chart */
+.mag-chart-kpi-note {
+  font-size: 0.72rem;
+  color: var(--text-3, #94a3b8);
+  margin-top: 4px;
+  padding: 0 2px;
+}
+
+/* Meta annotation (generated-by marker) */
+.mag-chart-meta {
+  display: none; /* internal use only */
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .mag-chart-insight {
+    font-size: 0.73rem;
+    padding: 4px 8px;
+  }
+  .mag-chart-legend {
+    gap: 6px 10px;
+    font-size: 0.70rem;
+  }
+}
+

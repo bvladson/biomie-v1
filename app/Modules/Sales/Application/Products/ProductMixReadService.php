@@ -13,11 +13,20 @@ final class ProductMixReadService
     public function __construct(private readonly ProductMixReadRepository $repo) {}
 
     /** @return array<string,mixed> */
-    public function build(string $start, string $end, int $limit = 100, string $productCode = '', int $breakdownLimit = 200): array
+    public function build(
+        string $start,
+        string $end,
+        int $limit = 100,
+        string $productCode = '',
+        int $breakdownLimit = 200,
+        string $scope = 'commercial'
+    ): array
     {
-        $summaryRaw = $this->repo->summary($start, $end);
-        $productsRaw = $this->repo->products($start, $end, $limit);
-        $breakdownRaw = $productCode !== '' ? $this->repo->breakdown($start, $end, $productCode, $breakdownLimit) : [];
+        $scope = $this->normalizeScope($scope);
+        $scopeLabel = $this->scopeLabel($scope);
+        $summaryRaw = $this->repo->summary($start, $end, $scope);
+        $productsRaw = $this->repo->products($start, $end, $limit, $scope);
+        $breakdownRaw = $productCode !== '' ? $this->repo->breakdown($start, $end, $productCode, $breakdownLimit, $scope) : [];
 
         $invoices = (int) ($summaryRaw['invoices_count'] ?? 0);
         $items = (int) ($summaryRaw['items_count'] ?? 0);
@@ -34,6 +43,8 @@ final class ProductMixReadService
                 'codigo_produto' => $code,
                 'description' => $description,
                 'product_name' => $description,
+                'scope' => (string) ($row['scope'] ?? 'commercial'),
+                'scope_label' => (string) ($row['scope_label'] ?? 'Orc-PD'),
                 'quantity' => Support::money((float) ($row['quantity'] ?? 0)),
                 'revenue' => Support::money($revenue),
                 'discount_total' => Support::money((float) ($row['discount_total'] ?? 0)),
@@ -48,7 +59,7 @@ final class ProductMixReadService
             ];
         }, $productsRaw);
 
-        $breakdown = array_map(static function (array $row): array {
+        $breakdown = array_map(static function (array $row) use ($scope, $scopeLabel): array {
             return [
                 'nota_key' => (string) ($row['nota_key'] ?? ''),
                 'chave_nfe' => (string) ($row['chave_nfe'] ?? ''),
@@ -62,6 +73,9 @@ final class ProductMixReadService
                 'customer_document' => (string) ($row['customer_document'] ?? ''),
                 'vendor_id' => (string) ($row['vendor_id'] ?? ''),
                 'vendor_name' => (string) ($row['vendor_name'] ?? 'Sem vendedor'),
+                'operation_scope' => (string) ($row['operation_scope'] ?? $scope),
+                'scope_label' => (string) ($row['scope_label'] ?? $scopeLabel),
+                'omie_operation_name' => (string) ($row['omie_operation_name'] ?? ''),
                 'product_code' => (string) ($row['product_code'] ?? ''),
                 'description' => (string) ($row['description'] ?? 'Produto sem descricao'),
                 'quantity' => Support::money((float) ($row['quantity'] ?? 0)),
@@ -81,6 +95,13 @@ final class ProductMixReadService
             'mode' => 'canonical_product_mix',
             'source' => $products !== [] ? 'canonical_items' : 'empty',
             'period' => ['start' => $start, 'end' => $end, 'period_basis' => 'data_competencia'],
+            'scope' => $scope,
+            'scope_label' => $scopeLabel,
+            'available_scopes' => [
+                ['value' => 'commercial', 'label' => 'Orc-PD'],
+                ['value' => 'remittance', 'label' => 'Remessas'],
+                ['value' => 'all', 'label' => 'Todas'],
+            ],
             'summary' => [
                 'revenue' => Support::money($revenue),
                 'gross_revenue' => Support::money($revenue),
@@ -118,6 +139,8 @@ final class ProductMixReadService
                 'served_from' => 'canonical_product_mix',
                 'period_basis' => 'data_competencia',
                 'realized_period_basis' => 'data_competencia',
+                'scope' => $scope,
+                'scope_label' => $scopeLabel,
                 'selected_product_code' => $productCode !== '' ? $productCode : null,
                 'product_breakdown' => [
                     'status' => $productCode !== '' ? 'available' : 'idle',
@@ -127,6 +150,21 @@ final class ProductMixReadService
                 ],
             ],
         ];
+    }
+
+    private function normalizeScope(string $scope): string
+    {
+        $scope = strtolower(trim($scope));
+        return in_array($scope, ['commercial', 'remittance', 'all'], true) ? $scope : 'commercial';
+    }
+
+    private function scopeLabel(string $scope): string
+    {
+        return match ($this->normalizeScope($scope)) {
+            'remittance' => 'Remessas',
+            'all' => 'Todas',
+            default => 'Orc-PD',
+        };
     }
 
     /** @return array<string,mixed> */

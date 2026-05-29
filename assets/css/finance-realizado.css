@@ -1590,6 +1590,18 @@ body.finance-page {
 .finance-trace-vendor-nodata { margin-bottom: 4px; }
 .finance-trace-vendor-alert:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
+/* FIN.R4.4 — gap hint no vendedor da fila de risco */
+.fin-gap-hint {
+  display: block;
+  font-size: 10px;
+  color: #b45309;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
 @media (max-width: 768px) {
   .finance-trace-nf-table-section .fin-table-wrap {
     overflow-x: auto;

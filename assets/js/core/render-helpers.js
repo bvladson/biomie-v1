@@ -416,7 +416,7 @@
     var productCode = row.product_code || '';
     var disabled    = !state.available;
     var hint        = B.productBreakdownPrimaryMessage(state, 'trigger');
-    var breakdownBtn = '<button type="button" class="product-breakdown-trigger" data-product-code="' + B.escapeHtml(productCode) + '" data-product-label="' + B.escapeHtml(description) + '"' + (disabled ? ' disabled aria-disabled="true" title="' + B.escapeHtml(hint) + '"' : '') + '><strong>' + B.escapeHtml(description) + '</strong><div class="small text-muted">' + B.escapeHtml(productCode || 'Sem SKU') + '</div><div class="product-breakdown-hint' + (disabled ? ' product-breakdown-hint--muted' : '') + '">' + B.escapeHtml(hint) + '</div></button>';
+    var breakdownBtn = '<button type="button" class="product-breakdown-trigger" data-product-code="' + B.escapeHtml(productCode) + '" data-product-label="' + B.escapeHtml(description) + '"' + (disabled ? ' disabled aria-disabled="true" title="' + B.escapeHtml(hint) + '"' : '') + ' title="' + B.escapeHtml(description) + '"><strong>' + B.escapeHtml(description) + '</strong><div class="small text-muted">' + B.escapeHtml(productCode || 'Sem SKU') + '</div><div class="product-breakdown-hint' + (disabled ? ' product-breakdown-hint--muted' : '') + '">' + B.escapeHtml(hint) + '</div></button>';
     var p360Btn = productCode
       ? '<button type="button" class="row-inline-link" style="margin-top:4px;font-size:0.72rem;" data-biomie-action="open-product" data-product-code="' + B.escapeHtml(productCode) + '" data-product-name="' + B.escapeHtml(description) + '" title="Product 360"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">open_in_new</span> Product 360</button>'
       : '';
@@ -452,7 +452,10 @@
       var clientCell = (clientId || docPayload)
         ? '<button type="button" class="row-inline-link" data-biomie-action="open-customer" data-codigo-cliente-omie="' + B.escapeHtml(clientId) + '" data-cliente-documento="' + B.escapeHtml(docPayload) + '" data-cliente-nome="' + B.escapeHtml(clientName) + '" data-pedido-codigo="' + B.escapeHtml(orderCode) + '">' + B.escapeHtml(clientName) + '</button>'
         : B.escapeHtml(clientName);
-      return '<tr><td><strong>' + nfCell + '</strong></td><td>' + orderCell + '</td><td>' + vendorCell + '</td><td>' + clientCell + '</td><td>' + B.formatMetaDate(row.competencia_date || row.issue_date || '') + '</td><td>' + B.formatNumber(row.quantity || 0) + '</td><td>' + B.formatCurrency(row.revenue || 0) + '</td><td>' + B.formatCurrency(row.discount || 0) + '</td></tr>';
+      var scopeLabel = String(row.scope_label || row.operation_scope || row.scope || 'Orc-PD').trim();
+      var value = row.revenue != null ? row.revenue : (row.product_total != null ? row.product_total : 0);
+      var discount = row.discount != null ? row.discount : (row.discount_total != null ? row.discount_total : 0);
+      return '<tr><td><strong>' + nfCell + '</strong></td><td>' + orderCell + '</td><td>' + vendorCell + '</td><td>' + clientCell + '</td><td>' + B.formatMetaDate(row.competencia_date || row.data_competencia || row.issue_date || '') + '</td><td>' + B.formatNumber(row.quantity || 0) + '</td><td>' + B.formatCurrency(value || 0) + '</td><td>' + B.formatCurrency(discount || 0) + '</td><td><span class="mag-status-chip mag-status-ok">' + B.escapeHtml(scopeLabel) + '</span></td></tr>';
     }).join('');
   };
 
@@ -635,7 +638,22 @@
       var badgeHtml  = B.renderGoalBadge(row);
       var achieved   = B.isGoalAchieved(row);
       var rowClass   = achieved ? 'mag-goal-row--achieved' : '';
-      return '<tr class="' + rowClass + '" ' + clickAttr + '><td><div style="display:flex;align-items:center;gap:6px;"><strong style="color:var(--page-accent);text-decoration:' + (vRef ? 'underline' : 'none') + '">' + B.escapeHtml(row.vendor_name) + '</strong>' + badgeHtml + '</div><div class="vendor-micro"><span class="vm-billed">' + B.formatNumber(row.billed_orders) + ' nf</span><span class="vm-auth">' + B.formatNumber(row.authorized_orders) + ' cart.</span><span class="vm-cancel">' + B.formatNumber(row.cancelled_orders) + ' canc.</span></div></td><td>' + B.formatCurrency(merc) + '</td><td>' + (target_ > 0 ? B.formatCurrency(target_) : '<span style="color:var(--text-3)">-</span>') + '</td><td>' + (target_ > 0 ? '<strong>' + attPct.toFixed(1) + '%</strong>' : '<span style="color:var(--text-3)">-</span>') + '</td><td><span class="' + B.vendorRiskClass(row.risk_status) + '">' + B.vendorRiskLabel(row.risk_status) + '</span></td><td>' + B.formatCurrency(row.authorized_value) + '</td><td>' + B.formatCurrency(row.cancelled_value) + '</td><td><span class="badge-status ' + conversionClass + '">' + row.conversion_rate + '%</span></td><td>' + B.formatCurrency(row.avg_ticket_billed) + '</td></tr>';
+      // COM.R1.4 — carteirização badge
+      var conflictsOut = Number(row.conflicts_out_of_portfolio || 0);
+      var conflictBadge = conflictsOut > 0
+        ? '<span title="' + conflictsOut + ' venda(s) fora da carteira neste período" style="display:inline-flex;align-items:center;gap:2px;font-size:10px;padding:1px 5px;border-radius:4px;background:var(--warning-bg-light,#fffbeb);color:var(--warning-text,#b45309);border:1px solid var(--warning-border,#fde68a);white-space:nowrap;">' + conflictsOut + ' fora</span>'
+        : '<span style="font-size:10px;color:var(--text-3);">—</span>';
+      // COM.R1.5 — channel badge + inactive badge
+      var isActive     = row.is_active !== false;
+      var channelLabel = { revenda: 'REV', varejo: 'VAR', representante: 'REP', licitacao: 'LIC' }[String(row.vendor_channel || '')];
+      var channelBadge = channelLabel
+        ? '<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px;text-transform:uppercase;background:var(--surface-muted);color:var(--text-2);margin-left:3px;">' + channelLabel + '</span>'
+        : '';
+      var inactiveBadge = !isActive
+        ? '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#f3f4f6;color:#9ca3af;margin-left:3px;" title="Vendedor inativo — histórico">Inativo</span>'
+        : '';
+      var rowStyle = !isActive ? ' style="opacity:0.6;"' : '';
+      return '<tr class="' + rowClass + '"' + rowStyle + ' ' + clickAttr + '><td><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><strong style="color:var(--page-accent);text-decoration:' + (vRef ? 'underline' : 'none') + '">' + B.escapeHtml(row.vendor_name) + '</strong>' + channelBadge + inactiveBadge + badgeHtml + '</div><div class="vendor-micro"><span class="vm-billed">' + B.formatNumber(row.billed_orders) + ' nf</span><span class="vm-auth">' + B.formatNumber(row.authorized_orders) + ' cart.</span><span class="vm-cancel">' + B.formatNumber(row.cancelled_orders) + ' canc.</span></div></td><td>' + B.formatCurrency(merc) + '</td><td>' + (target_ > 0 ? B.formatCurrency(target_) : '<span style="color:var(--text-3)">-</span>') + '</td><td>' + (target_ > 0 ? '<strong>' + attPct.toFixed(1) + '%</strong>' : '<span style="color:var(--text-3)">-</span>') + '</td><td><span class="' + B.vendorRiskClass(row.risk_status) + '">' + B.vendorRiskLabel(row.risk_status) + '</span></td><td>' + B.formatCurrency(row.authorized_value) + '</td><td>' + B.formatCurrency(row.cancelled_value) + '</td><td><span class="badge-status ' + conversionClass + '">' + row.conversion_rate + '%</span></td><td>' + B.formatCurrency(row.avg_ticket_billed) + '</td><td>' + conflictBadge + '</td></tr>';
     }).join('');
   };
 

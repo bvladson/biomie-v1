@@ -81,7 +81,10 @@ final class VendorShadowComparator
                 $start,
                 $end,
                 $lastSync,
-                (float) $config->get('flight_plan.saturday_weight', 0.33)
+                (float) $config->get('flight_plan.saturday_weight', 0.33),
+                50,
+                $pdo,
+                false
             );
             $payload = $freshness->attach('vendors', $payload);
 

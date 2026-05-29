@@ -255,9 +255,6 @@ final class OmieStatusService
             'fetched_at',
             'ingested_at',
             'created_at',
-            'data_competencia',
-            'data_emissao',
-            'data_vencimento',
         ]);
 
         if (($rows ?? 0) === 0) {

@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="assets/css/mag-clean.css?v=20260429-clean1" />
   <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
   <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
+  <link rel="stylesheet" href="assets/css/mercadorias.css?v=20260527-uxr12" />
   <script src="assets/js/chart.umd.js"></script>
   <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
 <script src="assets/js/shell.js?v=20260425-ui1"></script>
@@ -76,6 +77,17 @@
       </div>
 
       <div id="syncFeedback"></div>
+      <section class="product-scope-panel anim d2" aria-label="Escopo do mix faturado">
+        <div class="product-scope-panel__copy">
+          <strong>Escopo do mix</strong>
+          <span id="productScopeHint">Orc-PD exclui Licitacao e Remessas. Use os chips para investigar remessas separadamente.</span>
+        </div>
+        <div class="product-scope-switcher" id="productScopeSwitcher" role="group" aria-label="Selecionar escopo de produtos">
+          <button type="button" class="product-scope-chip product-scope-chip--active" data-product-scope="commercial" aria-pressed="true">Orc-PD</button>
+          <button type="button" class="product-scope-chip" data-product-scope="remittance" aria-pressed="false">Remessas</button>
+          <button type="button" class="product-scope-chip" data-product-scope="all" aria-pressed="false">Todas</button>
+        </div>
+      </section>
       <div id="pageError" class="d-none"></div>
       <div id="pageLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
         <div class="module-loading-grid cols-4">
@@ -108,10 +120,20 @@
       </section>
 
       <div class="section-label anim d3" id="graficos">Análises Orçamento-PD</div>
-      <section class="charts-grid">
-        <div class="chart-card anim d4">
+      <section class="charts-grid product-chart-grid product-donut-grid" data-product-donut-grid>
+        <div class="chart-card product-donut-card anim d4">
           <div class="chart-card-header"><div><h3>Produtos que mais geram receita <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;vertical-align:middle;">Orç-PD</span></h3><small>Receita e volume dos itens em destaque — remessas excluídas</small></div></div>
-          <div class="chart-body mag-chart-container mag-chart-md biomie-chart-h-md"><canvas id="productsRevenueChart"></canvas></div>
+          <div class="product-donut-layout">
+            <div class="product-donut-canvas"><canvas id="productsRevenueChart"></canvas></div>
+            <div id="productsRevenueLegend" class="product-donut-legend" aria-label="Legenda de receita por produto"></div>
+          </div>
+        </div>
+        <div class="chart-card product-donut-card anim d4">
+          <div class="chart-card-header"><div><h3>Participacao no mix <span class="mag-status-chip mag-status-ok" data-product-scope-label>Orc-PD</span></h3><small>Top 10 por volume + Outros.</small></div></div>
+          <div class="product-donut-layout">
+            <div class="product-donut-canvas"><canvas id="productsShareChart"></canvas></div>
+            <div id="productsShareLegend" class="product-donut-legend" aria-label="Legenda de participacao no mix"></div>
+          </div>
         </div>
       </section>
       <div class="section-label anim d4" id="tabelas">Mix de produtos faturados — Orçamento-PD</div>
@@ -164,10 +186,10 @@
         <div id="productPagination" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;flex-wrap:wrap;"></div>
       </section>
 
-      <section class="charts-grid mag-chart-below-table">
+      <section class="charts-grid mag-chart-below-table" hidden>
         <div class="chart-card anim d5">
           <div class="chart-card-header"><div><h3>Participação no mix Orç-PD</h3><small>Top itens por participação na receita comercial</small></div></div>
-          <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsShareChart"></canvas></div>
+          <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsShareChartLegacy"></canvas></div>
         </div>
       </section>
 
@@ -188,6 +210,23 @@
           <div id="productBreakdownMeta" class="product-breakdown-meta"></div>
         </div>
         <div id="productBreakdownLoading" class="product-breakdown-loading">Carregando detalhamento...</div>
+        <div id="productBreakdownSummary" class="product-breakdown-summary"></div>
+        <div class="product-breakdown-sections">
+          <section class="product-breakdown-section">
+            <div class="product-breakdown-section__head">
+              <h4>Clientes compradores</h4>
+              <span id="productBreakdownClientsCount">-</span>
+            </div>
+            <div id="productBreakdownClients" class="product-mini-list"></div>
+          </section>
+          <section class="product-breakdown-section">
+            <div class="product-breakdown-section__head">
+              <h4>Vendedores</h4>
+              <span id="productBreakdownVendorsCount">-</span>
+            </div>
+            <div id="productBreakdownVendors" class="product-mini-list"></div>
+          </section>
+        </div>
         <div class="product-breakdown-table-wrap">
           <table class="mag-table mag-table-clean">
             <thead>
@@ -200,6 +239,7 @@
                 <th>Qtd</th>
                 <th>Valor</th>
                 <th>Desconto</th>
+                <th>Tipo</th>
               </tr>
             </thead>
             <tbody id="productBreakdownTable"></tbody>

@@ -541,6 +541,7 @@
       renderWarnings((data.meta && data.meta.warnings) || [], (data.meta && data.meta.notes) || [], data.local_data_notice || '');
       if (window.BIomieFinance && window.BIomieFinance.renderCharts) window.BIomieFinance.renderCharts(data);
       renderTables(data);
+      document.dispatchEvent(new CustomEvent('biomie:finance-overview-loaded', { detail: { data: data } }));
     } catch (error) {
       if (error && error.name === 'AbortError') return;
       renderError((error && error.message) || 'Falha ao carregar o modulo financeiro.');

@@ -40,6 +40,12 @@ try {
     $productCode = trim((string) Http::query('product_code', ''));
     $productLabel = trim((string) Http::query('product_label', ''));
     $breakdownLimit = max(1, min(500, (int) Http::query('limit', '200')));
+    $scopeRaw = strtolower(trim((string) Http::query('scope', 'commercial')));
+    $scope = match ($scopeRaw) {
+        'remessa', 'remessas', 'remittance' => 'remittance',
+        'all', 'todas', 'todos' => 'all',
+        default => 'commercial',
+    };
 
     // Fase Arquitetura 10/10 — fonte preferencial do Mix Faturado.
     // A página mercadorias.php não deve depender do snapshot legado quando há NF + itens canônicos.
@@ -56,7 +62,8 @@ try {
                         $end,
                         100,
                         $productCode,
-                        $breakdownLimit
+                        $breakdownLimit,
+                        $scope
                     );
                     if (($mixPayload['summary']['invoices_count'] ?? 0) > 0 || ($mixPayload['summary']['items_count'] ?? 0) > 0) {
                         Http::json($mixPayload);
@@ -228,6 +235,8 @@ try {
         'snapshot_error' => $snapshotError,
         'request_id' => RequestContext::id(),
         'period_basis' => $canonicalSummary !== null ? 'data_competencia' : ($meta['period_basis'] ?? null),
+        'scope' => $scope,
+        'scope_label' => $scope === 'remittance' ? 'Remessas' : ($scope === 'all' ? 'Todas' : 'Orc-PD'),
         'selected_product_code' => $productCode !== '' ? $productCode : null,
         'selected_product_label' => $productLabel !== '' ? $productLabel : null,
         'product_breakdown' => productBreakdownMeta(

@@ -27,6 +27,14 @@
     return { start: (s && s.value) || '', end: (e && e.value) || '' };
   }
 
+  function getProductScope() {
+    var scope = window.BIomieProductScope || (new URLSearchParams(window.location.search)).get('scope') || 'commercial';
+    scope = String(scope || '').toLowerCase();
+    if (['remittance', 'remessa', 'remessas'].includes(scope)) return 'remittance';
+    if (['all', 'todas', 'todos'].includes(scope)) return 'all';
+    return 'commercial';
+  }
+
   // ── Filter state ──────────────────────────────────────────────────────────
 
   var currentSort = { field: 'revenue', dir: 'desc' };
@@ -47,6 +55,7 @@
     var state = B.FS.make({
       start:     range.start,
       end:       range.end,
+      scope:     getProductScope(),
       sortField: currentSort.field,
       sortDir:   currentSort.dir,
       page:      page || 1,
@@ -352,6 +361,11 @@
         var s = B.FS.setFilter(buildStateFromDOM(1), '_sort_active', 'eq', '1');
         table.trigger(s);
       });
+    });
+
+    document.addEventListener('biomie:product-scope-change', function () {
+      var s = buildStateFromDOM(1);
+      if (table.isActive()) table.trigger(s);
     });
 
     // ── URL restore on load ───────────────────────────────────────────────

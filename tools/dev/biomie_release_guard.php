@@ -1849,6 +1849,123 @@ $domains[] = [
     'issues'        => $d262Issues,
 ];
 
+// ── D27 — Commercial Semantics & Goals (COM.R1 umbrella) [informacional] ─────
+$d27Issues = [];
+
+$classifierFile      = $projectRoot . '/app/Support/CommercialPipelineClassifier.php';
+$goalCalcFile27      = $projectRoot . '/app/Support/SalesGoalPeriodCalculator.php';
+$portfolioResolver   = $projectRoot . '/app/Support/ClientPortfolioOwnershipResolver.php';
+$stageAuditFile      = $toolsDir   . '/commercial_stage_semantics_audit.php';
+$goalAuditFile27     = $toolsDir   . '/sales_goal_period_audit.php';
+$portfolioAuditFile  = $toolsDir   . '/client_portfolio_ownership_audit.php';
+
+// 1-6. Required files
+$d27Files = [
+    $classifierFile     => 'CommercialPipelineClassifier.php',
+    $goalCalcFile27     => 'SalesGoalPeriodCalculator.php',
+    $portfolioResolver  => 'ClientPortfolioOwnershipResolver.php',
+    $stageAuditFile     => 'commercial_stage_semantics_audit.php',
+    $goalAuditFile27    => 'sales_goal_period_audit.php',
+    $portfolioAuditFile => 'client_portfolio_ownership_audit.php',
+];
+foreach ($d27Files as $file => $label) {
+    if (!file_exists($file)) {
+        $d27Issues[] = "{$label} não encontrado";
+    }
+}
+
+// 7. No SELECT * in new files
+foreach ([$classifierFile, $goalCalcFile27, $portfolioResolver, $portfolioAuditFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    if (preg_match('/SELECT\s+\*/i', file_get_contents($chk))) {
+        $d27Issues[] = basename($chk) . ': contém SELECT *';
+    }
+}
+
+// 8. BiVisibilityScope preserved (not overridden by classifier/resolver)
+foreach ([$classifierFile, $portfolioResolver] as $chk) {
+    if (!file_exists($chk)) continue;
+    $src = file_get_contents($chk);
+    if (str_contains($src, 'is_biomie_commercial_visible = false')) {
+        $d27Issues[] = basename($chk) . ': sobrescreve BiVisibilityScope (proibido)';
+    }
+}
+
+// 9-10. Licitação and Remessa scopes exist in classifier
+if (file_exists($classifierFile)) {
+    $clf27 = file_get_contents($classifierFile);
+    if (!str_contains($clf27, 'licitacao') && !str_contains($clf27, 'licitação')) {
+        $d27Issues[] = 'CommercialPipelineClassifier: escopo licitacao ausente';
+    }
+    if (!str_contains($clf27, 'remessa')) {
+        $d27Issues[] = 'CommercialPipelineClassifier: escopo remessa ausente';
+    }
+}
+
+// 11. SalesGoalPeriodCalculator supports broken intervals (selfTest)
+if (file_exists($goalCalcFile27)) {
+    $gc27 = file_get_contents($goalCalcFile27);
+    if (!str_contains($gc27, 'selfTest') && !str_contains($gc27, 'dias_intersectados')) {
+        $d27Issues[] = 'SalesGoalPeriodCalculator: suporte a intervalo quebrado ausente';
+    }
+}
+
+// 12-13. Carteira and orçamento are NOT in realizado scope
+if (file_exists($classifierFile)) {
+    $clf27 = $clf27 ?? file_get_contents($classifierFile);
+    if (!str_contains($clf27, 'should_count_as_realized') && !str_contains($clf27, 'shouldCountAsRealized')) {
+        $d27Issues[] = 'CommercialPipelineClassifier: campo should_count_as_realized ausente';
+    }
+    if (!str_contains($clf27, 'should_count_as_portfolio') && !str_contains($clf27, 'shouldCountAsPortfolio')) {
+        $d27Issues[] = 'CommercialPipelineClassifier: campo should_count_as_portfolio ausente';
+    }
+}
+
+// 14. Faturado comes from NF autorizada (D1 already covers this — check redundantly)
+if (file_exists($projectRoot . '/tools/dev/fiscal_value_basis_guard.php')) {
+    // D1 covers this; no duplicated check needed
+}
+
+// 15. Portfolio out-of-portfolio is detectable
+if (file_exists($portfolioResolver)) {
+    $pr27 = file_get_contents($portfolioResolver);
+    if (!str_contains($pr27, 'is_out_of_portfolio')) {
+        $d27Issues[] = 'ClientPortfolioOwnershipResolver: campo is_out_of_portfolio ausente';
+    }
+}
+
+// No DDL in new files
+foreach ([$portfolioResolver, $portfolioAuditFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    $src = file_get_contents($chk);
+    if (str_contains($src, 'ALTER TABLE') || str_contains($src, 'CREATE TABLE')) {
+        $d27Issues[] = basename($chk) . ': contém DDL (proibido)';
+    }
+}
+
+// plano_voo.html has proportional goal label
+$planVooHtml = $projectRoot . '/views/plano_voo.html';
+if (file_exists($planVooHtml)) {
+    $pvHtml = file_get_contents($planVooHtml);
+    if (!str_contains($pvHtml, 'Meta proporcional') && !str_contains($pvHtml, 'meta_proporcional')) {
+        $d27Issues[] = 'views/plano_voo.html: label "Meta proporcional" ausente (FASE 4)';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D27 Commercial Semantics & Goals (COM.R1 umbrella)',
+    'guard'         => 'classifier + goal calc + portfolio resolver + audit tools + proportional meta + no DDL',
+    'pass'          => true,
+    'warn'          => count($d27Issues) > 0,
+    'informational' => true,
+    'summary'       => $d27Issues === []
+        ? 'COM.R1 presente: ClassifierPipeline + SalesGoalPeriodCalculator + ClientPortfolioOwnershipResolver + audits + plano_voo proporcional'
+        : count($d27Issues) . ' componente(s) COM.R1 ausente(s) [informacional]',
+    'issues'        => $d27Issues,
+];
+
+
+// ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
     $deleted   = 0;

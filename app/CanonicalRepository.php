@@ -197,9 +197,9 @@ final class CanonicalRepository
         return new CanonicalCoverageRepository(fn (): PDO => $this->pdo);
     }
 
-    public function upsertVendor(string $codigoOmie, string $nome, string $email, float $comissao): void
+    public function upsertVendor(string $codigoOmie, string $nome, string $email, float $comissao, bool $ativo = true): void
     {
-        $this->writeRepository()->upsertVendor($codigoOmie, $nome, $email, $comissao);
+        $this->writeRepository()->upsertVendor($codigoOmie, $nome, $email, $comissao, $ativo);
     }
 
     /**

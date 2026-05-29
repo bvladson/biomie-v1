@@ -9,6 +9,7 @@ use BIomie\RequestContext;
 use BIomie\Support\Filters\FilterNormalizer;
 use BIomie\Support\Filters\Pagination;
 use BIomie\Support\Filters\Presets\FinanceCollectionFilters;
+use BIomie\Support\FinanceReceivableIdentityResolver;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -86,7 +87,7 @@ try {
     // ── 1. Fetch Open Titles in Date Range ───────────────────────────────────
     // Date range filters titles by data_vencimento
     $titlesSql = "
-        SELECT 
+        SELECT
             titulo_key,
             numero_documento,
             nome_cliente,
@@ -101,17 +102,32 @@ try {
             documento_origem_ref,
             codigo_pedido_origem,
             pedido_id_omie,
-            data_emissao
+            data_emissao,
+            COALESCE(nota_key, '') AS titulo_nota_key,
+            COALESCE(chave_nfe, '') AS chave_nfe,
+            COALESCE(especie_documento, '') AS especie_documento,
+            COALESCE(forma_pagamento, '') AS forma_pagamento
         FROM biomie_titulos_financeiros_canonicos
         WHERE data_vencimento BETWEEN :start AND :end
-          AND status_titulo NOT IN ('liquidado','recebido','pago') 
+          AND status_titulo NOT IN ('liquidado','recebido','pago')
           AND COALESCE(valor_aberto, 0) > 0
     ";
     
     $titlesStmt = $pdo->prepare($titlesSql);
     $titlesStmt->execute(['start' => $start, 'end' => $end]);
     $allOpenTitles = $titlesStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    
+
+    // ── 1b. Batch-resolve identity (NF, Pedido, Vendedor, Cliente) ───────────
+    // The resolver lazy-loads all lookup tables once for O(1) access per title.
+    $identityResolver = new FinanceReceivableIdentityResolver($pdo);
+    $resolvedIdentity = [];
+    foreach ($allOpenTitles as $rawTitle) {
+        $tKey = (string) ($rawTitle['titulo_key'] ?? '');
+        if ($tKey !== '') {
+            $resolvedIdentity[$tKey] = $identityResolver->resolveTitle($rawTitle);
+        }
+    }
+
     // ── 2. Fetch Logs of type finance.collection_action ──────────────────────
     // To ensure a safe window, retrieve logs created in a window (e.g. from 180 days before start to end)
     $logStart = date('Y-m-d 00:00:00', strtotime($start . ' -180 days'));
@@ -272,6 +288,22 @@ try {
 
         $statusOperacional = $isNoVendor ? 'sem_vendedor' : ($level === 1 ? 'critico' : ($level === 2 ? 'atencao' : 'rotina'));
         
+        // Enrich with resolved identity (NF, pedido, cliente, vendedor resolvido)
+        $rid = $resolvedIdentity[$tkey] ?? null;
+        $numeroNf             = $rid ? (string) ($rid['nf']['numero_nf']              ?? '') : '';
+        $notaKey              = $rid ? (string) ($rid['nf']['nota_key']               ?? '') : '';
+        $nfChaveNfe           = $rid ? (string) ($rid['nf']['chave_nfe']              ?? '') : '';
+        $nfSource             = $rid ? (string) ($rid['nf']['source']                 ?? 'none') : 'none';
+        $nfLabel              = $numeroNf !== '' ? 'NF ' . $numeroNf : ($notaKey !== '' ? 'NF …' . substr($notaKey, -8) : '');
+        $pedidoId             = $rid ? (string) ($rid['pedido']['pedido_id_omie']     ?? '') : (string) ($title['pedido_id_omie'] ?? '');
+        $pedidoLabel          = $pedidoId !== '' && $pedidoId !== '0' ? 'Ped. ' . $pedidoId : '';
+        $vendorNomeResolvido  = $rid ? (string) ($rid['vendedor']['nome']             ?? $vDispName) : $vDispName;
+        $clienteNomeResolvido = $rid ? (string) ($rid['cliente']['nome']              ?? $title['nome_cliente']) : (string) ($title['nome_cliente'] ?? '');
+        $paymentMethodLabel   = $rid ? (string) ($rid['payment']['method_label']      ?? '') : '';
+        $gapReason            = $rid ? (string) ($rid['trace_quality']['gap_reason']  ?? '') : '';
+        $traceScore           = $rid ? (int)    ($rid['trace_quality']['score']        ?? 0) : 0;
+        $missingFields        = $rid ? (array)  ($rid['trace_quality']['missing']      ?? []) : [];
+
         $riskQueue[] = [
             'prioridade_nivel' => $level,
             'prioridade_label' => $label,
@@ -279,7 +311,7 @@ try {
             'acao_recomendada' => $rec,
             'titulo_key' => $tkey,
             'numero_documento' => (string) $title['numero_documento'],
-            'nome_cliente' => (string) $title['nome_cliente'],
+            'nome_cliente' => $clienteNomeResolvido ?: (string) $title['nome_cliente'],
             'documento_cliente' => (string) $title['documento_cliente'],
             'data_vencimento' => $venc,
             'valor_aberto' => $valAberto,
@@ -287,7 +319,7 @@ try {
             'valor_titulo' => (float) $title['valor_liquido'],
             'codigo_vendedor_omie' => $vCode,
             'codigo_cliente_omie' => (string) ($title['codigo_cliente_omie'] ?? ''),
-            'nome_vendedor' => $vDispName,
+            'nome_vendedor' => $vendorNomeResolvido,
             'vendedor_key' => $vKey,
             'dias_atraso' => $diasAtraso,
             'aging_bucket' => $agingBucket,
@@ -295,7 +327,7 @@ try {
             'status_titulo' => (string) $title['status_titulo'],
             'documento_origem_ref' => (string) $title['documento_origem_ref'],
             'codigo_pedido_origem' => (string) $title['codigo_pedido_origem'],
-            'pedido_id_omie' => (string) $title['pedido_id_omie'],
+            'pedido_id_omie' => $pedidoResolvido,
             'data_emissao' => (string) $title['data_emissao'],
             'ultima_acao' => $lastAct,
             'ultima_acao_at' => $lastAct['created_at'] ?? '',
@@ -304,6 +336,18 @@ try {
             'titulos_sem_acao' => $lastAct === null ? 1 : 0,
             'promessas_vencidas' => $isPromiseBroken ? 1 : 0,
             'retornos_atrasados' => $isReturnLate ? 1 : 0,
+            // FIN.R4.4 / FIN.R4.4.1 identity fields
+            'numero_nf'            => $numeroNf,
+            'nf_label'             => $nfLabel,
+            'nota_key'             => $notaKey,
+            'nf_chave_nfe'         => $nfChaveNfe,
+            'nf_source'            => $nfSource,
+            'pedido_label'         => $pedidoLabel,
+            'pedido_id_omie'       => $pedidoId !== '' && $pedidoId !== '0' ? $pedidoId : (string) ($title['pedido_id_omie'] ?? ''),
+            'payment_method_label' => $paymentMethodLabel,
+            'gap_reason'           => $gapReason,
+            'trace_quality_score'  => $traceScore,
+            'missing_fields'       => $missingFields,
         ];
     }
     
