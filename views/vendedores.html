@@ -149,6 +149,26 @@
         <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;margin-right:2px;">visibility_off</span>Incluir inativos
       </button>
     </div>
+
+    <!-- COM.R2 — Filtro de canal comercial -->
+    <div id="vendorChannelFilters" style="padding:4px 16px 6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
+      <span style="font-size:0.74rem;color:var(--text-3);font-weight:600;margin-right:2px;">Canal:</span>
+      <button type="button" class="nf-quick-filter-btn nf-quick-filter-btn--active" id="vendorChannelAll"
+        data-vendor-channel="" title="Orçamento-PD padrão: exclui Licitação e Remessa por padrão">Orç-PD</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="revenda"
+        title="Apenas vendedores do canal Revenda (sufixo REV)">Revenda</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="varejo"
+        title="Apenas vendedores do canal Varejo (sufixo VAR)">Varejo</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="representante"
+        title="Apenas representantes comerciais (sufixo REP)">Representante</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="licitacao"
+        title="Licitação: escopo separado do Orç-PD padrão" style="color:var(--text-3);">Licitação</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="remessa"
+        title="Remessa: escopo operacional separado — não entra no faturamento comercial" style="color:var(--text-3);">Remessa</button>
+      <span id="vendorChannelAllWarning" style="display:none;font-size:0.72rem;color:var(--warning-text,#b45309);padding:2px 6px;background:var(--warning-bg-light,#fffbeb);border-radius:4px;border:1px solid var(--warning-border,#fde68a);">
+        Visão combinada: inclui escopos separados. Use com cuidado.
+      </span>
+    </div>
     <div id="vendorFilterChips" style="display:none;padding:4px 16px 0;"></div>
     <div id="vendorFilterFeedback" style="display:none;padding:6px 16px;font-size:0.82rem;"></div>
     <div id="vendorSearchFeedback"></div>
@@ -203,31 +223,81 @@
     </div>
     <button class="btn-icon detail-drawer-close" id="closeDrawerBtn" aria-label="Fechar detalhamento"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
   </div>
+  <!-- COM.R2 — Tab navigation Vendor 360 -->
+  <div id="drawerTabNav" style="display:flex;border-bottom:1px solid var(--border);padding:0 16px;gap:0;overflow-x:auto;flex-shrink:0;">
+    <button type="button" class="v360-tab v360-tab--active" data-v360-tab="resumo" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--page-accent);color:var(--page-accent);">Resumo</button>
+    <button type="button" class="v360-tab" data-v360-tab="realizado" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Realizado NF</button>
+    <button type="button" class="v360-tab" data-v360-tab="carteira" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Carteira</button>
+    <button type="button" class="v360-tab" data-v360-tab="carteirizacao" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Carteirização</button>
+    <button type="button" class="v360-tab" data-v360-tab="escopos" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Escopos</button>
+  </div>
   <div class="detail-drawer-content" id="drawerContent">
-    <div class="detail-drawer-stats">
-      <div class="detail-drawer-stat"><small>Real.</small><strong id="drawerRealized">-</strong></div>
-      <div class="detail-drawer-stat"><small>Meta</small><strong id="drawerTarget">-</strong></div>
-      <div class="detail-drawer-stat"><small>Gap</small><strong id="drawerGap">-</strong></div>
-      <div class="detail-drawer-stat"><small>Ating.</small><strong id="drawerPct">-</strong></div>
-    </div>
-    <div class="detail-drawer-section">
-      <h4>FECHAMENTO</h4>
-      <div id="drawerForecastWrap" class="detail-drawer-panel"></div>
-    </div>
-    <div class="detail-drawer-section">
-      <h4>RITMO DO MES</h4>
-      <div class="detail-drawer-canvas mag-chart-container mag-chart-sm"><canvas id="drawerDailyChart"></canvas></div>
-    </div>
-    <!-- COM.R1.4 — Seção de Carteirização no Drawer -->
-    <div id="drawerOwnershipSection" style="display:none;margin-top:16px;">
+    <!-- ── Aba Resumo ───────────────────────────────────────────────── -->
+    <div id="drawerSection-resumo" class="v360-section">
+      <div class="detail-drawer-stats">
+        <div class="detail-drawer-stat"><small>Realizado NF</small><strong id="drawerRealized">-</strong></div>
+        <div class="detail-drawer-stat"><small>Meta prop.</small><strong id="drawerTarget">-</strong></div>
+        <div class="detail-drawer-stat"><small>Gap</small><strong id="drawerGap">-</strong></div>
+        <div class="detail-drawer-stat"><small>Ating.</small><strong id="drawerPct">-</strong></div>
+      </div>
       <div class="detail-drawer-section">
-        <h4>CARTEIRIZAÇÃO</h4>
-        <div id="drawerOwnershipContent" style="font-size:0.82rem;color:var(--text-secondary);"></div>
+        <h4>FECHAMENTO</h4>
+        <div id="drawerForecastWrap" class="detail-drawer-panel"></div>
+      </div>
+      <div class="detail-drawer-section">
+        <h4>RITMO DO MÊS</h4>
+        <div class="detail-drawer-canvas mag-chart-container mag-chart-sm"><canvas id="drawerDailyChart"></canvas></div>
       </div>
     </div>
-    <div>
-      <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">ITENS RECENTES</h4>
-      <div id="drawerOrdersList" class="detail-drawer-list"></div>
+    <!-- ── Aba Realizado NF ─────────────────────────────────────────── -->
+    <div id="drawerSection-realizado" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>REALIZADO POR NF AUTORIZADA</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Base Comercial NF. Exclui Licitação, Remessa e Entrega Finalizada.</p>
+        <div id="drawerNFList" class="detail-drawer-list"></div>
+      </div>
+    </div>
+    <!-- ── Aba Carteira ─────────────────────────────────────────────── -->
+    <div id="drawerSection-carteira" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>CARTEIRA ACEITA</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Pedidos aceitos ainda não faturados. Não entra no realizado.</p>
+        <div>
+          <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">ITENS RECENTES</h4>
+          <div id="drawerOrdersList" class="detail-drawer-list"></div>
+        </div>
+      </div>
+    </div>
+    <!-- ── Aba Carteirização ────────────────────────────────────────── -->
+    <div id="drawerSection-carteirizacao" class="v360-section" style="display:none;">
+      <div id="drawerOwnershipSection" style="margin-top:4px;">
+        <div class="detail-drawer-section">
+          <h4>CARTEIRIZAÇÃO</h4>
+          <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Clientes próprios e vendas fora da carteira.</p>
+          <div id="drawerOwnershipContent" style="font-size:0.82rem;color:var(--text-secondary);"></div>
+        </div>
+      </div>
+    </div>
+    <!-- ── Aba Escopos separados ────────────────────────────────────── -->
+    <div id="drawerSection-escopos" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>ESCOPOS SEPARADOS DO ORÇ-PD</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Licitação e Remessa são escopos separados — não entram no realizado ou metas comerciais.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:10px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Licitação</div>
+            <div id="drawerLicitacaoInfo" style="font-size:0.82rem;color:var(--text-secondary);">Escopo separado — não entra no Orç-PD padrão.</div>
+          </div>
+          <div style="padding:10px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Remessa</div>
+            <div id="drawerRemessaInfo" style="font-size:0.82rem;color:var(--text-secondary);">Escopo operacional — movimentação fiscal/logística.</div>
+          </div>
+          <div style="padding:10px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Entrega Finalizada</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);">Etapa pós-venda (etapa 60). Não duplica faturamento.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -328,6 +398,35 @@
   } else {
     loadMetaBand();
   }
+
+  // COM.R2 — Vendor 360 tab navigation
+  document.addEventListener('DOMContentLoaded', function () {
+    var tabNav = document.getElementById('drawerTabNav');
+    if (!tabNav) return;
+    tabNav.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-v360-tab]');
+      if (!btn) return;
+      var target = btn.getAttribute('data-v360-tab');
+      // Update tab active styles
+      tabNav.querySelectorAll('.v360-tab').forEach(function (t) {
+        var isActive = t === btn;
+        t.style.borderBottomColor = isActive ? 'var(--page-accent)' : 'transparent';
+        t.style.color = isActive ? 'var(--page-accent)' : 'var(--text-2)';
+      });
+      // Show/hide sections
+      document.querySelectorAll('.v360-section').forEach(function (s) {
+        s.style.display = s.id === 'drawerSection-' + target ? '' : 'none';
+      });
+    });
+  });
+
+  // Reset tabs when drawer opens
+  window.BIomieV360ResetTabs = function () {
+    var tabNav = document.getElementById('drawerTabNav');
+    if (!tabNav) return;
+    var first = tabNav.querySelector('[data-v360-tab]');
+    if (first) first.click();
+  };
 }());
 </script>
 </body>

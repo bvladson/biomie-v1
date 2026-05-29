@@ -365,6 +365,26 @@
       });
     });
 
+    // ── COM.R2 — Channel filter buttons ──────────────────────────────────
+    document.querySelectorAll('#vendorChannelFilters [data-vendor-channel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var channel = btn.getAttribute('data-vendor-channel') || '';
+        // Update active state
+        document.querySelectorAll('#vendorChannelFilters [data-vendor-channel]').forEach(function (b) {
+          b.classList.remove('nf-quick-filter-btn--active');
+        });
+        btn.classList.add('nf-quick-filter-btn--active');
+        // Show warning for "todos" / empty channel = all
+        var warn = document.getElementById('vendorChannelAllWarning');
+        if (warn) warn.style.display = (channel === 'todos') ? '' : 'none';
+        // Store channel globally so loadVendors picks it up
+        window.BIomieVendorsChannel = channel;
+        // Re-trigger load
+        var applyBtn = document.getElementById('applyFilters');
+        if (applyBtn) applyBtn.click();
+      });
+    });
+
     // ── URL restore on load ───────────────────────────────────────────────
     var urlState = B.FUrl ? B.FUrl.read() : null;
     if (urlState && B.FS.hasActive(urlState)) {

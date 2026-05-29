@@ -100,9 +100,11 @@
     <div class="table-card-header" style="flex-wrap:wrap;gap:8px;">
       <div><h3 id="nfScopeTitle">Faturamento Orçamento-PD</h3><small id="nfScopeSubtitle">Somente NFs Orçamento-PD faturadas. Remessas excluídas.</small></div>
       <div id="nfScopeTabs" class="mag-tab-bar" style="display:none;" role="tablist" aria-label="Tipo de operacao fiscal">
-        <button class="mag-tab mag-tab--active" role="tab" aria-selected="true"  data-nf-scope="commercial" id="nfTab-commercial"><span class="material-symbols-rounded biomie-icon-inline">shopping_bag</span> Orcamento-PD</button>
-        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="remittance" id="nfTab-remittance"><span class="material-symbols-rounded biomie-icon-inline">local_shipping</span> Remessa <span id="nfRemittanceBadge" class="mag-badge mag-badge--yellow" style="display:none;"></span></button>
-        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="all"        id="nfTab-all"       ><span class="material-symbols-rounded biomie-icon-inline">list_alt</span> Todas</button>
+        <button class="mag-tab mag-tab--active" role="tab" aria-selected="true"  data-nf-scope="commercial"  id="nfTab-commercial" ><span class="material-symbols-rounded biomie-icon-inline">shopping_bag</span> Orçamento-PD</button>
+        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="remittance"  id="nfTab-remittance" ><span class="material-symbols-rounded biomie-icon-inline">local_shipping</span> Remessa <span id="nfRemittanceBadge" class="mag-badge mag-badge--yellow" style="display:none;"></span></button>
+        <!-- COM.R2 — Tab Licitação separada -->
+        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="licitacao"   id="nfTab-licitacao"  title="Licitação: escopo separado — não entra no Orç-PD padrão"><span class="material-symbols-rounded biomie-icon-inline">account_balance</span> Licitação</button>
+        <button class="mag-tab"               role="tab" aria-selected="false" data-nf-scope="all"         id="nfTab-all"        title="Todos os escopos: use com cuidado"><span class="material-symbols-rounded biomie-icon-inline">list_alt</span> Todas</button>
       </div>
     </div>
     <div id="nfRemittanceAlert" style="display:none;flex-direction:column;gap:4px;" class="mag-alert mag-alert--yellow" role="alert">
@@ -111,6 +113,14 @@
         <strong>Remessa de Produto — movimentação fiscal/logística</strong>
       </div>
       <div style="font-size:12px;">Estas NFs registram movimentação de mercadoria <strong>sem transferência de propriedade</strong> e <strong>não compõem</strong> faturamento comercial, ticket médio, ranking, metas, Plano de Voo, Mix ou Geo.</div>
+    </div>
+    <!-- COM.R2 — Alerta Licitação -->
+    <div id="nfLicitacaoAlert" style="display:none;flex-direction:column;gap:4px;" class="mag-alert mag-alert--info" role="alert">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded">account_balance</span>
+        <strong>Licitação — escopo separado do Orç-PD padrão</strong>
+      </div>
+      <div style="font-size:12px;">NFs de Licitação <strong>não entram</strong> no ranking comercial padrão, metas Orç-PD, vendedores comerciais, Mix de Produtos ou dashboards executivos. Visíveis apenas nesta aba.</div>
     </div>
 
     <!-- Filtros rápidos (Fase Q.2) -->
@@ -183,6 +193,7 @@
             <option value="">Todos</option>
             <option value="commercial">Orç-PD</option>
             <option value="remittance">Remessa</option>
+            <option value="licitacao">Licitação</option>
           </select>
         </th>
         <th>
@@ -217,9 +228,33 @@
     </div>
   </section>
 
+  <!-- COM.R2 — Semântica Comercial: legenda de escopos e badges -->
+  <section class="table-card anim d5" style="margin:0 0 16px;" id="nfSemanticLegend">
+    <div class="table-card-header" style="padding-bottom:0;">
+      <div>
+        <h4 style="font-size:13px;font-weight:700;margin:0;">Semântica Comercial dos Escopos</h4>
+        <small style="color:var(--text-3);">Classificação BIomie por escopo. Apenas NFs Orç-PD entram no realizado e metas.</small>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px 14px;">
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface-muted);border:1px solid var(--border);color:var(--text-1);">
+        <span class="material-symbols-rounded" style="font-size:13px;">shopping_bag</span><strong>Orç-PD</strong> — Faturamento comercial padrão. Entra no realizado e metas.
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:4px;background:#fef3c7;border:1px solid #fde68a;color:#78350f;">
+        <span class="material-symbols-rounded" style="font-size:13px;">local_shipping</span><strong>Remessa</strong> — Movimentação fiscal/logística. Escopo separado.
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:4px;background:#e0e7ff;border:1px solid #c7d2fe;color:#3730a3;">
+        <span class="material-symbols-rounded" style="font-size:13px;">account_balance</span><strong>Licitação</strong> — Escopo separado. Não entra no Orç-PD padrão, ranking ou metas.
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:4px;background:#d1fae5;border:1px solid #a7f3d0;color:#065f46;">
+        <span class="material-symbols-rounded" style="font-size:13px;">inventory_2</span><strong>Entrega Finalizada</strong> — Etapa pós-venda (etapa 60). Não duplica faturamento.
+      </span>
+    </div>
+  </section>
+
   <section class="module-grid-2">
     <div class="table-card anim d5">
-      <div class="table-card-header"><h3>Pedidos em carteira</h3><small>Pedidos ainda fora do faturado.</small></div>
+      <div class="table-card-header"><h3>Pedidos em carteira</h3><small>Pedidos aceitos ainda não faturados (carteira aceita). Não entra no realizado.</small></div>
       <div class="biomie-table-wrap"><table class="mag-table mag-table-clean"><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Emissao</th><th>Total</th></tr></thead><tbody id="pendingOrdersTable" data-empty-title="Sem pedidos" data-empty-message="Nenhum pedido em carteira para o periodo." data-empty-icon="pending_actions"></tbody></table></div>
     </div>
     <div class="table-card anim d5">

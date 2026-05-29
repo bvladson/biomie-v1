@@ -184,6 +184,25 @@ function buildChecks(string $root): array
         checkContains('com_r15_channel_badge_js', file_exists($root . '/assets/js/core/render-helpers.js') ? (string)file_get_contents($root . '/assets/js/core/render-helpers.js') : '', 'vendor_channel', 'render-helpers.js exibe channel badge (COM.R1.5).'),
         checkContains('com_r15_vendor_alias_audit', file_exists($root . '/tools/dev/vendor_alias_audit.php') ? 'ok' : '', 'ok', 'vendor_alias_audit.php existe (COM.R1.5).'),
         checkContains('com_r15_vendor_active_audit', file_exists($root . '/tools/dev/vendor_active_status_audit.php') ? 'ok' : '', 'ok', 'vendor_active_status_audit.php existe (COM.R1.5).'),
+        // COM.R2 — Commercial visual channel separation
+        checkContains('com_r2_channel_presenter', file_exists($root . '/app/Support/CommercialChannelPresenter.php') ? 'ok' : '', 'ok', 'CommercialChannelPresenter.php existe (COM.R2 FASE 1).'),
+        checkContains('com_r2_vendor_channel_filter', file_exists($root . '/views/vendedores.html') ? (string)file_get_contents($root . '/views/vendedores.html') : '', 'data-vendor-channel', 'vendedores.html possui filtro de canal (COM.R2 FASE 3).'),
+        checkContains('com_r2_plano_voo_meta_prop', file_exists($root . '/views/plano_voo.html') ? (string)file_get_contents($root . '/views/plano_voo.html') : '', 'Meta proporcional', 'plano_voo.html usa label "Meta proporcional" (COM.R2 FASE 4).'),
+        checkContains('com_r2_plano_voo_escopos', file_exists($root . '/views/plano_voo.html') ? (string)file_get_contents($root . '/views/plano_voo.html') : '', 'fpScopesPanel', 'plano_voo.html possui painel de escopos separados (COM.R2 FASE 4).'),
+        checkNotContains('com_r2_plano_voo_no_meta_total', file_exists($root . '/views/plano_voo.html') ? (string)file_get_contents($root . '/views/plano_voo.html') : '', 'Meta Total', 'plano_voo.html não usa "Meta Total" ambíguo (COM.R2 FASE 4).'),
+        checkContains('com_r2_pedidos_licitacao_tab', file_exists($root . '/views/pedidos.html') ? (string)file_get_contents($root . '/views/pedidos.html') : '', 'licitacao', 'pedidos.html possui tab Licitação (COM.R2 FASE 5).'),
+        checkContains('com_r2_pedidos_remessa_tab', file_exists($root . '/views/pedidos.html') ? (string)file_get_contents($root . '/views/pedidos.html') : '', 'remittance', 'pedidos.html possui tab Remessa (COM.R2 FASE 5).'),
+        checkContains('com_r2_index_realizado_nf', file_exists($root . '/views/index.html') ? (string)file_get_contents($root . '/views/index.html') : '', 'Realizado NF', 'index.html possui label "Realizado NF" (COM.R2 FASE 7).'),
+        checkContains('com_r2_visual_scope_audit', file_exists($root . '/tools/dev/commercial_visual_scope_audit.php') ? 'ok' : '', 'ok', 'commercial_visual_scope_audit.php existe (COM.R2 FASE 0).'),
+        checkContains('com_r2_app_js_channel', file_exists($root . '/assets/js/app.js') ? (string)file_get_contents($root . '/assets/js/app.js') : '', 'BIomieVendorsChannel', 'app.js passa canal ao carregar vendedores (COM.R2 FASE 3).'),
+        // COM.R2 checks adicionais (FASE 2/3/5/6/7)
+        checkContains('com_r2_vendedores_remessa_filter', file_exists($root . '/views/vendedores.html') ? (string)file_get_contents($root . '/views/vendedores.html') : '', 'data-vendor-channel="remessa"', 'vendedores.html possui filtro Remessa no canal filter (COM.R2 FASE 2).'),
+        checkContains('com_r2_vendedores_drawer_tabs', file_exists($root . '/views/vendedores.html') ? (string)file_get_contents($root . '/views/vendedores.html') : '', 'drawerTabNav', 'vendedores.html possui tab nav Vendor 360 (COM.R2 FASE 3).'),
+        checkContains('com_r2_plano_voo_orcamentos', file_exists($root . '/views/plano_voo.html') ? (string)file_get_contents($root . '/views/plano_voo.html') : '', 'fpOrcamentosValue', 'plano_voo.html possui card Orçamentos no painel de escopos (COM.R2 FASE 4).'),
+        checkContains('com_r2_pedidos_licitacao_select', file_exists($root . '/views/pedidos.html') ? (string)file_get_contents($root . '/views/pedidos.html') : '', 'value="licitacao"', 'pedidos.html possui Licitação no filtro de tipo de NF (COM.R2 FASE 5/6).'),
+        checkContains('com_r2_pedidos_semantic_legend', file_exists($root . '/views/pedidos.html') ? (string)file_get_contents($root . '/views/pedidos.html') : '', 'nfSemanticLegend', 'pedidos.html possui bloco de semântica comercial (COM.R2 FASE 6).'),
+        checkContains('com_r2_index_carteira_kpi', file_exists($root . '/views/index.html') ? (string)file_get_contents($root . '/views/index.html') : '', 'summary-wallet', 'index.html possui KPI Carteira aceita (COM.R2 FASE 7).'),
+        checkContains('com_r2_index_orcamentos_kpi', file_exists($root . '/views/index.html') ? (string)file_get_contents($root . '/views/index.html') : '', 'summary-quotes', 'index.html possui KPI Orçamentos (COM.R2 FASE 7).'),
         checkNoNewMigration($root),
     ];
 }

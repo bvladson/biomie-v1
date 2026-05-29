@@ -42,6 +42,8 @@ declare(strict_types=1);
  *   D24 Commercial Goals and Pipeline Semantics (COM.R1.3)    [informacional — SalesGoalPeriodCalculator]
  *   D25 Customer Ownership and Goal Application (COM.R1.4)    [informacional — CustomerOwnershipResolver + conflict API]
  *   D26 Vendor Alias Channel + Active Status (COM.R1.5)       [informacional — VendorAliasResolver + ActiveVendorResolver + CAIO rule]
+ *   D27 Commercial Semantics & Goals (COM.R1 umbrella)        [informacional — CommercialPipelineClassifier + SalesGoalPeriodCalculator + ClientPortfolioOwnershipResolver]
+ *   D28 Commercial Visual Channel Separation (COM.R2)         [informacional — CommercialChannelPresenter + Remessa filter + Vendor360 tabs + Licitação select + KPIs]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -1962,6 +1964,178 @@ $domains[] = [
         ? 'COM.R1 presente: ClassifierPipeline + SalesGoalPeriodCalculator + ClientPortfolioOwnershipResolver + audits + plano_voo proporcional'
         : count($d27Issues) . ' componente(s) COM.R1 ausente(s) [informacional]',
     'issues'        => $d27Issues,
+];
+
+
+// ── D28 — Commercial Visual Channel Separation (COM.R2) [informacional] ──────
+$d28Issues = [];
+
+$channelPresenterFile = $projectRoot . '/app/Support/CommercialChannelPresenter.php';
+$visualAuditFile      = $toolsDir   . '/commercial_visual_scope_audit.php';
+$vendedoresHtml28     = $projectRoot . '/views/vendedores.html';
+$planVooHtml28        = $projectRoot . '/views/plano_voo.html';
+$pedidosHtml28        = $projectRoot . '/views/pedidos.html';
+$indexHtml28          = $projectRoot . '/views/index.html';
+
+// 1. CommercialChannelPresenter exists + constantes + interface
+if (!file_exists($channelPresenterFile)) {
+    $d28Issues[] = 'CommercialChannelPresenter.php não encontrado';
+} else {
+    $cp28 = file_get_contents($channelPresenterFile);
+    foreach (['CHANNEL_VAREJO', 'CHANNEL_REVENDA', 'CHANNEL_LICITACAO', 'CHANNEL_REMESSA'] as $const) {
+        if (!str_contains($cp28, $const)) $d28Issues[] = "CommercialChannelPresenter: constante {$const} ausente";
+    }
+    if (!str_contains($cp28, 'should_show_in_default_commercial_view')) {
+        $d28Issues[] = 'CommercialChannelPresenter: campo should_show_in_default_commercial_view ausente';
+    }
+    if (str_contains($cp28, 'SELECT *')) $d28Issues[] = 'CommercialChannelPresenter: contém SELECT *';
+    if (str_contains($cp28, 'ALTER TABLE') || str_contains($cp28, 'CREATE TABLE')) {
+        $d28Issues[] = 'CommercialChannelPresenter: contém DDL (proibido)';
+    }
+}
+
+// 2. visual audit tool exists
+if (!file_exists($visualAuditFile)) $d28Issues[] = 'commercial_visual_scope_audit.php não encontrado';
+
+// 3. vendedores.html tem filtro de canal (Orç-PD padrão)
+// 4. vendedores.html tem botão Remessa no filtro
+// 5. vendedores.html tem drawer Vendor 360 com tab nav
+if (file_exists($vendedoresHtml28)) {
+    $vh28 = file_get_contents($vendedoresHtml28);
+    if (!str_contains($vh28, 'vendorChannelFilters') && !str_contains($vh28, 'data-vendor-channel')) {
+        $d28Issues[] = 'views/vendedores.html: filtro de canal (data-vendor-channel) ausente';
+    }
+    if (!str_contains($vh28, 'data-vendor-channel="remessa"')) {
+        $d28Issues[] = 'views/vendedores.html: botão de filtro Remessa ausente no canal filter';
+    }
+    if (!str_contains($vh28, 'drawerTabNav') && !str_contains($vh28, 'v360-tab')) {
+        $d28Issues[] = 'views/vendedores.html: tab nav Vendor 360 (drawerTabNav) ausente';
+    }
+    // CAIO separation: render-helpers uses vendor_channel — checked in D26
+} else {
+    $d28Issues[] = 'views/vendedores.html não encontrado';
+}
+
+// 6. plano_voo.html usa "Meta proporcional" (não "Meta Total")
+// 7. plano_voo.html tem painel de escopos separados
+// 8. plano_voo.html tem card Orçamentos no painel de escopos
+if (file_exists($planVooHtml28)) {
+    $pv28 = file_get_contents($planVooHtml28);
+    if (!str_contains($pv28, 'Meta proporcional')) {
+        $d28Issues[] = 'views/plano_voo.html: label "Meta proporcional" ausente';
+    }
+    if (str_contains($pv28, 'Meta Total')) {
+        $d28Issues[] = 'views/plano_voo.html: label ambíguo "Meta Total" presente — deve ser "Meta proporcional"';
+    }
+    if (!str_contains($pv28, 'fpScopesPanel') && !str_contains($pv28, 'Escopos separados')) {
+        $d28Issues[] = 'views/plano_voo.html: painel de escopos separados (fpScopesPanel) ausente';
+    }
+    if (!str_contains($pv28, 'fpOrcamentosValue') && !str_contains($pv28, 'Orçamentos')) {
+        $d28Issues[] = 'views/plano_voo.html: card Orçamentos ausente no painel de escopos';
+    }
+} else {
+    $d28Issues[] = 'views/plano_voo.html não encontrado';
+}
+
+// 9. pedidos.html tem tab Remessa e tab Licitação
+// 10. pedidos.html tem Licitação no filtro de tipo de NF
+// 11. pedidos.html tem bloco de semântica comercial (legenda de escopos)
+if (file_exists($pedidosHtml28)) {
+    $pd28 = file_get_contents($pedidosHtml28);
+    if (!str_contains($pd28, 'nf-scope="remittance"') && !str_contains($pd28, 'data-nf-scope="remittance"')) {
+        $d28Issues[] = 'views/pedidos.html: tab Remessa ausente';
+    }
+    if (!str_contains($pd28, 'licitacao') && !str_contains($pd28, 'Licitação')) {
+        $d28Issues[] = 'views/pedidos.html: tab/filtro Licitação ausente';
+    }
+    if (!str_contains($pd28, 'value="licitacao"') && !str_contains($pd28, "data-nf-scope=\"licitacao\"")) {
+        $d28Issues[] = 'views/pedidos.html: Licitação ausente no filtro de tipo de NF (select/tab)';
+    }
+    if (!str_contains($pd28, 'nfSemanticLegend') && !str_contains($pd28, 'Semântica Comercial')) {
+        $d28Issues[] = 'views/pedidos.html: bloco de semântica comercial (nfSemanticLegend) ausente';
+    }
+} else {
+    $d28Issues[] = 'views/pedidos.html não encontrado';
+}
+
+// 12. index.html explica Realizado NF via tooltip/label
+// 13. index.html tem KPI Carteira aceita
+// 14. index.html tem KPI Orçamentos
+if (file_exists($indexHtml28)) {
+    $ix28 = file_get_contents($indexHtml28);
+    if (!str_contains($ix28, 'NF autorizada') && !str_contains($ix28, 'Realizado NF')) {
+        $d28Issues[] = 'views/index.html: tooltip/label "Realizado NF" ou "NF autorizada" ausente';
+    }
+    if (!str_contains($ix28, 'summary-wallet') && !str_contains($ix28, 'Carteira aceita')) {
+        $d28Issues[] = 'views/index.html: KPI Carteira aceita (summary-wallet) ausente';
+    }
+    if (!str_contains($ix28, 'summary-quotes') && !str_contains($ix28, 'Orçamentos')) {
+        $d28Issues[] = 'views/index.html: KPI Orçamentos (summary-quotes) ausente';
+    }
+} else {
+    $d28Issues[] = 'views/index.html não encontrado';
+}
+
+// 15. Licitação/Remessa separation via CommercialChannelPresenter
+if (file_exists($channelPresenterFile)) {
+    $cp28src = $cp28 ?? file_get_contents($channelPresenterFile);
+    if (!str_contains($cp28src, 'should_show_in_default_commercial_view')) {
+        $d28Issues[] = 'CommercialChannelPresenter não expõe should_show_in_default_commercial_view (separação Licitação/Remessa)';
+    }
+}
+
+// 16. No SELECT * in new COM.R2 files
+foreach ([$channelPresenterFile, $visualAuditFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    if (preg_match('/SELECT\s+\*/i', file_get_contents($chk))) {
+        $d28Issues[] = basename($chk) . ': contém SELECT *';
+    }
+}
+
+// 17. SalesGoalPeriodCalculator ainda referenciado nas APIs
+$sgpcUsed = false;
+foreach (glob($projectRoot . '/api/*.php') ?: [] as $apiFile) {
+    if (str_contains((string) file_get_contents($apiFile), 'SalesGoalPeriodCalculator')) {
+        $sgpcUsed = true;
+        break;
+    }
+}
+if (!$sgpcUsed) {
+    // Check app directory too
+    foreach (glob($projectRoot . '/app/**/*.php') ?: [] as $appFile) {
+        if (str_contains((string) file_get_contents($appFile), 'SalesGoalPeriodCalculator')) {
+            $sgpcUsed = true;
+            break;
+        }
+    }
+}
+if (!$sgpcUsed) $d28Issues[] = 'SalesGoalPeriodCalculator não encontrado em uso nas APIs [informacional]';
+
+// 18. BiVisibilityScope não foi removido
+$biVsFile = $projectRoot . '/app/Support/BiVisibilityScope.php';
+if (!file_exists($biVsFile)) {
+    $d28Issues[] = 'BiVisibilityScope.php não encontrado — pode ter sido removido indevidamente';
+}
+
+// 19. Sem migration aplicada nesta fase (CommercialChannelPresenter é read-only)
+// (já verificado no item 1 — sem DDL)
+
+// 20. D27 transitive: se D27 falhou, registrar aviso contextual
+$d27WasOk = count(array_filter($domains, static fn($d) => $d['label'] === 'D27 Commercial Semantics & Goals (COM.R1 umbrella)' && $d['warn'] === false)) > 0;
+if (!$d27WasOk) {
+    $d28Issues[] = 'D27 (COM.R1 umbrella) reportou warnings — verificar antes de release [informacional]';
+}
+
+$domains[] = [
+    'label'         => 'D28 Commercial Visual Channel Separation (COM.R2)',
+    'guard'         => 'CommercialChannelPresenter + Remessa filter + Vendor360 tabs + Licitação select + nfSemanticLegend + Carteira/Orçamentos KPIs',
+    'pass'          => true,
+    'warn'          => count($d28Issues) > 0,
+    'informational' => true,
+    'summary'       => $d28Issues === []
+        ? 'COM.R2 presente: 20/20 checks OK — CommercialChannelPresenter + filtros + tabs + badges + KPIs + legenda semântica'
+        : count($d28Issues) . ' componente(s) COM.R2 ausente(s)/pendente(s) [informacional]',
+    'issues'        => $d28Issues,
 ];
 
 

@@ -880,9 +880,10 @@
 
   async function loadVendors(force, options) {
     options = options || {};
-    // COM.R1.5 — pass include_inactive when user toggled the filter on vendedores page
+    // COM.R1.5 — pass include_inactive; COM.R2 — pass channel filter
     var vendorExtraParams = {};
     if (window.BIomieVendorsIncludeInactive) vendorExtraParams.include_inactive = '1';
+    if (window.BIomieVendorsChannel)         vendorExtraParams.channel           = window.BIomieVendorsChannel;
     const data          = await fetchJson(buildApiUrl('api/vendors.php', force, vendorExtraParams), options);
     const summaryStatus = data.summary_status || {};
     const vendorRoster  = data.meta && data.meta.vendor_roster ? data.meta.vendor_roster : {};

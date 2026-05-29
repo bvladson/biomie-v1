@@ -167,6 +167,41 @@
         </div>
       </div>
 
+      <!-- COM.R2 — Escopos separados (Licitação, Remessa, Entrega Finalizada) -->
+      <div id="fpScopesPanel" style="display:none;padding:0 0 8px;">
+        <details style="border:1px solid var(--border);border-radius:8px;padding:8px 14px;">
+          <summary style="font-size:0.78rem;font-weight:600;color:var(--text-2);cursor:pointer;user-select:none;">
+            <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">category</span>
+            Escopos separados do Orç-PD
+          </summary>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;">
+            <div class="biomie-kpi-card" style="min-width:140px;" title="Licitação: escopo separado — não entra no Orç-PD padrão">
+              <div class="biomie-kpi-card__label" style="font-size:0.72rem;">Licitação</div>
+              <div class="biomie-kpi-card__value" style="font-size:1rem;" id="fpLicitacaoValue">-</div>
+              <div class="biomie-kpi-card__sub" style="font-size:0.7rem;" id="fpLicitacaoSub">escopo separado</div>
+            </div>
+            <div class="biomie-kpi-card" style="min-width:140px;" title="Remessa: movimentação fiscal/logística — não entra no faturamento comercial">
+              <div class="biomie-kpi-card__label" style="font-size:0.72rem;">Remessa</div>
+              <div class="biomie-kpi-card__value" style="font-size:1rem;" id="fpRemessaValue">-</div>
+              <div class="biomie-kpi-card__sub" style="font-size:0.7rem;" id="fpRemessaSub">escopo separado</div>
+            </div>
+            <div class="biomie-kpi-card" style="min-width:140px;" title="Entrega Finalizada (etapa 60): pós-venda. Não duplica faturamento.">
+              <div class="biomie-kpi-card__label" style="font-size:0.72rem;">Entrega Finalizada</div>
+              <div class="biomie-kpi-card__value" style="font-size:1rem;" id="fpEntregaValue">-</div>
+              <div class="biomie-kpi-card__sub" style="font-size:0.7rem;">não duplica faturamento</div>
+            </div>
+            <div class="biomie-kpi-card" style="min-width:140px;" title="Orçamentos (etapa 10): propostas ainda não convertidas em pedido ou faturamento. Não entra no realizado nem na carteira firme.">
+              <div class="biomie-kpi-card__label" style="font-size:0.72rem;">Orçamentos</div>
+              <div class="biomie-kpi-card__value" style="font-size:1rem;" id="fpOrcamentosValue">-</div>
+              <div class="biomie-kpi-card__sub" style="font-size:0.7rem;" id="fpOrcamentosSub">propostas em aberto</div>
+            </div>
+          </div>
+          <p style="font-size:0.72rem;color:var(--text-3);margin:8px 0 0;">
+            Esses escopos são excluídos da visão Orç-PD padrão. Aparecem aqui apenas como contexto.
+          </p>
+        </details>
+      </div>
+
       <!-- Main Layout Grid -->
       <div class="fp-grid-layout anim d3">
         <!-- Left Column: Alerts & Table -->
@@ -187,17 +222,18 @@
                 <thead>
                   <tr>
                     <th>Vendedor</th>
+                    <th title="Canal comercial: Varejo, Revenda, Licitação, Representante" style="font-size:11px;">Canal</th>
                     <th>Status</th>
-                    <th>Realizado</th>
-                    <th>Meta</th>
-                    <th>Ating.</th>
-                    <th>Gap</th>
-                    <th>Projecao</th>
-                    <th data-mobile-skip>Carteira</th>
+                    <th title="Realizado por NF autorizada — Base Comercial NF">Realizado NF</th>
+                    <th title="Meta proporcional ao período (dias corridos). Fórmula: meta_mensal × dias_selecionados/dias_do_mês">Meta prop.</th>
+                    <th title="Atingimento: Realizado NF ÷ Meta proporcional">Ating.</th>
+                    <th title="Gap = Meta proporcional − Realizado NF">Gap</th>
+                    <th>Projeção</th>
+                    <th data-mobile-skip title="Pedidos aceitos não faturados (carteira aceita)">Carteira</th>
                     <th data-mobile-skip>NFs</th>
                     <th data-mobile-skip>Pedidos</th>
                     <th>Clientes</th>
-                    <th data-mobile-skip>Acao</th>
+                    <th data-mobile-skip>Ação</th>
                   </tr>
                 </thead>
                 <tbody id="flightVendorsTable"
