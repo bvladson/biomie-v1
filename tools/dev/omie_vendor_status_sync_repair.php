@@ -16,11 +16,12 @@ $apply = isset($opts['apply']) && !isset($opts['dry-run']);
 $jsonMode = isset($opts['json']);
 $pretty = isset($opts['pretty']) || !$jsonMode;
 $sample = max(1, min(1000, (int) ($opts['sample'] ?? 100)));
-// Trava histórica: aplica SOMENTE quando o plano tem exatamente este número de mudanças.
-// Valor original do primeiro repair: expectedDivergences = 10 (documentado em COM.R1.5.2).
-// Após aplicação parcial de 4 (pass 1), restaram 6 → pass 2 atualiza para 6.
-// Pass 2 concluído com sucesso: 19 ativos / 10 inativos / 0 divergências com Omie.
-$expectedDivergences = 6;
+// COM.R1.5.2 — Repair concluído. Histórico de passes:
+//   Pass 1: expectedDivergences = 10 (aplicados 4; sync sobrescreveu 6 antes do deploy do fix)
+//   Pass 2: expectedDivergences = 6  (aplicados 6; estado final: 19 ativos / 10 inativos / 0 divergências)
+// Estado atual esperado: 0 planned updates (repair completo; CommercialSyncCoordinator já corrigido).
+// Se no futuro o plan tiver exatamente N mudanças, atualizar $expectedDivergences para N antes de --apply.
+$expectedDivergences = 6; // pass 2 histórico; dry-run deve sempre retornar 0 neste estado
 $t0 = microtime(true);
 
 try {

@@ -1818,15 +1818,34 @@ foreach ([$commercialSyncCoordinatorFile, $fiscalSyncCoordinatorFile] as $syncFi
     }
 }
 
+// D26.2 runtime check: verify 0 divergences between Omie and BIomie right now
+if (file_exists($omieVendorStatusRepairFile)) {
+    $rRepair = rg_run($php, $omieVendorStatusRepairFile, ['--dry-run', '--json']);
+    $repairJson = json_decode($rRepair['output'], true);
+    if (!is_array($repairJson)) {
+        $d262Issues[] = 'omie_vendor_status_sync_repair.php --dry-run nao retornou JSON valido';
+    } else {
+        $plannedUpdates = (int) ($repairJson['summary']['planned_updates'] ?? -1);
+        $dbActive       = (int) ($repairJson['summary']['db_before']['active'] ?? -1);
+        $dbInactive     = (int) ($repairJson['summary']['db_before']['inactive'] ?? -1);
+        if ($plannedUpdates !== 0) {
+            $d262Issues[] = "D26.2 RUNTIME: repair dry-run tem {$plannedUpdates} planned update(s) — estado nao alinhado com Omie";
+        }
+        if ($dbActive !== 19 || $dbInactive !== 10) {
+            $d262Issues[] = "D26.2 RUNTIME: BIomie tem {$dbActive} ativos / {$dbInactive} inativos (esperado 19 / 10)";
+        }
+    }
+}
+
 $domains[] = [
     'label'         => 'D26.2 Vendor Status Sync Repair (COM.R1.5.2)',
-    'guard'         => 'sync maps Omie inativo S/N + dry-run/apply repair guarded to 10 changes',
+    'guard'         => 'sync maps Omie inativo S/N + repair dry-run must be 0 + BIomie must be 19 active / 10 inactive',
     'pass'          => true,
     'warn'          => count($d262Issues) > 0,
     'informational' => true,
     'summary'       => $d262Issues === []
-        ? 'COM.R1.5.2 presente: sync respeita inativo Omie e repair aplica apenas plano esperado'
-        : count($d262Issues) . ' componente(s) COM.R1.5.2 ausente(s) [informacional]',
+        ? 'COM.R1.5.2 presente: sync respeita inativo Omie, dry-run=0, BIomie 19 ativos / 10 inativos'
+        : count($d262Issues) . ' componente(s) COM.R1.5.2 ausente(s) ou divergencia detectada [informacional]',
     'issues'        => $d262Issues,
 ];
 
