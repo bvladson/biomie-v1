@@ -15,13 +15,24 @@ if [ "${BIOMIE_CA_BUNDLE:-}" != "" ] && [ "${OMIE_CA_BUNDLE:-}" = "" ]; then
   export OMIE_CA_BUNDLE="$BIOMIE_CA_BUNDLE"
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] sync_commercial start" >> "$LOG_FILE"
+SYNC_DATE="${BIOMIE_SYNC_DATE:-$(date '+%Y-%m-%d')}"
+SYNC_MODE="${BIOMIE_SYNC_MODE:-today-backfill}"
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] sync_commercial start mode=$SYNC_MODE date=$SYNC_DATE" >> "$LOG_FILE"
 
 if command -v flock >/dev/null 2>&1; then
-  flock -n "$LOCK_FILE" "$PHP_BIN" cron/sync_realtime_pipeline.php --domains=commercial --mode=delta --json >> "$LOG_FILE" 2>&1
+  if [ "$SYNC_MODE" = "delta" ]; then
+    flock -n "$LOCK_FILE" "$PHP_BIN" cron/sync_realtime_pipeline.php --domains=commercial --mode=delta --json >> "$LOG_FILE" 2>&1
+  else
+    flock -n "$LOCK_FILE" "$PHP_BIN" cron/sync_realtime_pipeline.php --domains=commercial --mode=backfill --start="$SYNC_DATE" --end="$SYNC_DATE" --json >> "$LOG_FILE" 2>&1
+  fi
   code=$?
 else
-  "$PHP_BIN" cron/sync_realtime_pipeline.php --domains=commercial --mode=delta --json >> "$LOG_FILE" 2>&1
+  if [ "$SYNC_MODE" = "delta" ]; then
+    "$PHP_BIN" cron/sync_realtime_pipeline.php --domains=commercial --mode=delta --json >> "$LOG_FILE" 2>&1
+  else
+    "$PHP_BIN" cron/sync_realtime_pipeline.php --domains=commercial --mode=backfill --start="$SYNC_DATE" --end="$SYNC_DATE" --json >> "$LOG_FILE" 2>&1
+  fi
   code=$?
 fi
 
