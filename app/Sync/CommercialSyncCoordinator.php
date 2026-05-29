@@ -9,6 +9,7 @@ use BIomie\GoldMartBuilder;
 use BIomie\Logger;
 use BIomie\OmieRepository;
 use BIomie\Support;
+use BIomie\Support\OmieVendorStatusMapper;
 use Throwable;
 
 /**
@@ -96,6 +97,7 @@ final class CommercialSyncCoordinator
     {
         $vendors = $this->omie->listVendors();
         $count   = 0;
+        $statusMapper = new OmieVendorStatusMapper();
 
         $this->vendorMap = [];
         foreach ($vendors as $vendor) {
@@ -111,8 +113,9 @@ final class CommercialSyncCoordinator
 
             $email    = trim((string) ($vendor['email'] ?? ''));
             $comissao = Support::toFloat($vendor['comissao'] ?? 0);
+            $ativo    = $statusMapper->isActive($vendor, true);
 
-            $this->canonical->upsertVendor($codigo, $nome, $email, $comissao);
+            $this->canonical->upsertVendor($codigo, $nome, $email, $comissao, $ativo);
             $this->vendorMap[$codigo] = $nome;
             $count++;
         }
@@ -273,10 +276,20 @@ final class CommercialSyncCoordinator
         ];
     }
 
+    /**
+     * Classifica etapa/status em valor ENUM ('faturado','autorizado','cancelado','outro').
+     *
+     * COM.R1.2: etapa 60 (Entrega Finalizada) retorna 'outro', NÃO 'faturado'.
+     * Para classificação semântica estendida use CommercialPipelineClassifier.
+     */
     private function classifyStatus(string $etapa, string $statusPedido): string
     {
         if ($etapa !== '' && ctype_digit($etapa)) {
             $code = (int) $etapa;
+            // etapa 60 = Entrega Finalizada — pós-venda, NÃO novo faturamento
+            if ($code === 60) {
+                return 'outro';
+            }
             if ($code >= 50 && $code <= 69) {
                 return 'faturado';
             }
@@ -296,7 +309,11 @@ final class CommercialSyncCoordinator
             return 'outro';
         }
 
-        if (str_contains($n, 'faturad') || str_contains($n, 'entregue') || str_contains($n, 'conclu')) {
+        // entregue/entrega finalizada → 'outro' (pós-venda, não faturamento novo)
+        if (str_contains($n, 'entregue') || str_contains($n, 'entrega finalizada') || str_contains($n, 'conclu')) {
+            return 'outro';
+        }
+        if (str_contains($n, 'faturad')) {
             return 'faturado';
         }
         if (str_contains($n, 'autoriz') || str_contains($n, 'aprovad') || str_contains($n, 'separ') || str_contains($n, 'pedido')) {

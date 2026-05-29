@@ -12,6 +12,7 @@ use BIomie\FiscalSync\FiscalSupport;
 use BIomie\Logger;
 use BIomie\OmieRepository;
 use BIomie\Support;
+use BIomie\Support\OmieVendorStatusMapper;
 
 /**
  * Coordenador de sincronização do domínio fiscal (NF-e + carteira de pedidos).
@@ -91,6 +92,7 @@ final class FiscalSyncCoordinator
     {
         $vendors = $this->omie->listVendors();
         $count   = 0;
+        $statusMapper = new OmieVendorStatusMapper();
 
         $this->vendorMap = [];
         foreach ($vendors as $vendor) {
@@ -106,8 +108,9 @@ final class FiscalSyncCoordinator
 
             $email    = trim((string) ($vendor['email'] ?? ''));
             $comissao = Support::toFloat($vendor['comissao'] ?? 0);
+            $ativo    = $statusMapper->isActive($vendor, true);
 
-            $this->canonical->upsertVendor($codigo, $nome, $email, $comissao);
+            $this->canonical->upsertVendor($codigo, $nome, $email, $comissao, $ativo);
             $this->vendorMap[$codigo] = $nome;
             $count++;
         }

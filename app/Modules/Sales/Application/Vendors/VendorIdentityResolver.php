@@ -45,12 +45,43 @@ class VendorIdentityResolver
             }
         }
 
-        // 3. Alias match (remove " - REV", " - VAR")
-        $cleanedRef = $this->cleanAlias($normalized);
-        foreach ($this->vendorMap as $id => $v) {
-            $name = trim((string) ($v['nome'] ?? ''));
-            if ($this->cleanAlias($this->normalize($name)) === $cleanedRef) {
-                return $this->buildMatch('alias', (string)$id, $name, [$cleanedRef]);
+        // 3. Alias match — channel-aware: only match within same channel (REV ≠ VAR)
+        $refChannel = $this->extractChannel($normalized);
+        $refBase    = $this->stripChannel($normalized);
+        if ($refBase !== '') {
+            foreach ($this->vendorMap as $id => $v) {
+                $name      = trim((string) ($v['nome'] ?? ''));
+                $normName  = $this->normalize($name);
+                if ($this->extractChannel($normName) !== $refChannel) continue;
+                if ($this->stripChannel($normName) === $refBase) {
+                    return $this->buildMatch('alias', (string)$id, $name, [$refBase]);
+                }
+            }
+        }
+
+        // 3b. Ambiguous lookup: ref has no channel suffix but vendorMap has multiple channel variants
+        if ($refChannel === '') {
+            $candidates = [];
+            foreach ($this->vendorMap as $id => $v) {
+                $name     = trim((string) ($v['nome'] ?? ''));
+                $normName = $this->normalize($name);
+                if ($this->stripChannel($normName) === $refBase && $this->extractChannel($normName) !== '') {
+                    $candidates[] = ['id' => (string)$id, 'name' => $name];
+                }
+            }
+            if (count($candidates) === 1) {
+                return $this->buildMatch('alias_no_channel', $candidates[0]['id'], $candidates[0]['name'], [$refBase]);
+            }
+            if (count($candidates) > 1) {
+                return [
+                    'resolved'    => false,
+                    'resolved_by' => 'ambiguous_channel',
+                    'vendor_id'   => $ref,
+                    'vendor_name' => $ref,
+                    'aliases'     => array_column($candidates, 'name'),
+                    'warnings'    => ['ambiguous_caio_channel'],
+                    'is_generic'  => false,
+                ];
             }
         }
 
@@ -117,9 +148,47 @@ class VendorIdentityResolver
         return preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
     }
 
+    // Returns the channel suffix found in the normalized name ('rev', 'var', 'representante', 'licitacao', '')
+    public function extractChannel(string $normalized): string
+    {
+        $channelMap = [
+            ' - rev'          => 'rev',
+            ' rev'            => 'rev',
+            ' - revenda'      => 'rev',
+            ' revenda'        => 'rev',
+            ' - var'          => 'var',
+            ' var'            => 'var',
+            ' - varejo'       => 'var',
+            ' varejo'         => 'var',
+            ' - representante'=> 'representante',
+            ' representante'  => 'representante',
+        ];
+        foreach ($channelMap as $suffix => $channel) {
+            if (str_ends_with($normalized, $suffix)) return $channel;
+        }
+        if (str_contains($normalized, 'licitac')) return 'licitacao';
+        return '';
+    }
+
+    // Strips the channel suffix from a normalized name, returning only the base name
+    public function stripChannel(string $normalized): string
+    {
+        $suffixes = [
+            ' - rev', ' rev', ' - revenda', ' revenda',
+            ' - var', ' var', ' - varejo', ' varejo',
+            ' - representante', ' representante',
+        ];
+        foreach ($suffixes as $s) {
+            if (str_ends_with($normalized, $s)) {
+                return trim(substr($normalized, 0, strlen($normalized) - strlen($s)));
+            }
+        }
+        return $normalized;
+    }
+
     private function cleanAlias(string $normalized): string
     {
-        $cleaned = str_replace([' - rev', ' - var'], '', $normalized);
-        return trim($cleaned);
+        // Legacy method kept for compatibility; no longer strips channel suffixes.
+        return trim(preg_replace('/\s+/', ' ', $normalized) ?? $normalized);
     }
 }

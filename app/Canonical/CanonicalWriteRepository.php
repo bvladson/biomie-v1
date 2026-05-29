@@ -40,16 +40,16 @@ final class CanonicalWriteRepository
 
     // ── Vendedores ───────────────────────────────────────────────────────────
 
-    public function upsertVendor(string $codigoOmie, string $nome, string $email, float $comissao): void
+    public function upsertVendor(string $codigoOmie, string $nome, string $email, float $comissao, bool $ativo = true): void
     {
         $sql = <<<'SQL'
             INSERT INTO biomie_vendedores_omie (codigo_omie, nome, email, comissao, ativo, sincronizado_em)
-            VALUES (:codigo, :nome, :email, :comissao, 1, NOW())
+            VALUES (:codigo, :nome, :email, :comissao, :ativo, NOW())
             ON DUPLICATE KEY UPDATE
                 nome = VALUES(nome),
                 email = VALUES(email),
                 comissao = VALUES(comissao),
-                ativo = 1,
+                ativo = VALUES(ativo),
                 sincronizado_em = NOW()
         SQL;
 
@@ -59,6 +59,7 @@ final class CanonicalWriteRepository
             'nome' => $nome,
             'email' => $email,
             'comissao' => $comissao,
+            'ativo' => $ativo ? 1 : 0,
         ]);
     }
 

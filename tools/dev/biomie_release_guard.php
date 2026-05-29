@@ -36,6 +36,12 @@ declare(strict_types=1);
  *   D18 Finance Receivable Traceability   (finance_receivable_trace_audit + FIN.R4.1 static audit)
  *   D19 Finance Payment Method Enrichment [informacional — FIN.R4.2 static audit]
  *   D20 Finance Receivable 360 (FIN.R4.3)  [informacional — UI/builder static audit]
+ *   D21 Finance Receivable Identity (FIN.R4.4) [informacional — resolver + audit + governance]
+ *   D22 Finance Collection Resolver + NF-Bridge (FIN.R4.4.1) [informacional — 6-path resolver + by_vendor + visual]
+ *   D23 Commercial Semantics Classifier (COM.R1.2)            [informacional — etapa 60 fix + stage audit]
+ *   D24 Commercial Goals and Pipeline Semantics (COM.R1.3)    [informacional — SalesGoalPeriodCalculator]
+ *   D25 Customer Ownership and Goal Application (COM.R1.4)    [informacional — CustomerOwnershipResolver + conflict API]
+ *   D26 Vendor Alias Channel + Active Status (COM.R1.5)       [informacional — VendorAliasResolver + ActiveVendorResolver + CAIO rule]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -1040,7 +1046,790 @@ $domains[] = [
 ];
 
 
+// ── D21 — Finance Receivable Identity (FIN.R4.4) [informacional] ─────────────
+$d21Issues = [];
+
+$resolverFile = $projectRoot . '/app/Support/FinanceReceivableIdentityResolver.php';
+$auditFile    = $toolsDir . '/finance_receivable_identity_audit.php';
+
+if (!file_exists($resolverFile)) {
+    $d21Issues[] = 'FinanceReceivableIdentityResolver.php não encontrado';
+} else {
+    if (!str_contains(file_get_contents($resolverFile), 'resolveTitle')) {
+        $d21Issues[] = 'FinanceReceivableIdentityResolver: método resolveTitle ausente';
+    }
+    if (!str_contains(file_get_contents($resolverFile), 'resolveMany')) {
+        $d21Issues[] = 'FinanceReceivableIdentityResolver: método resolveMany ausente';
+    }
+    if (!str_contains(file_get_contents($resolverFile), 'makeIdentityKey')) {
+        $d21Issues[] = 'FinanceReceivableIdentityResolver: método makeIdentityKey ausente';
+    }
+    if (!str_contains(file_get_contents($resolverFile), 'explainGap')) {
+        $d21Issues[] = 'FinanceReceivableIdentityResolver: método explainGap ausente';
+    }
+    if (!str_contains(file_get_contents($resolverFile), 'batch') && !str_contains(file_get_contents($resolverFile), 'ensureLookups')) {
+        $d21Issues[] = 'FinanceReceivableIdentityResolver: batch loading (ensureLookups) ausente';
+    }
+}
+
+if (!file_exists($auditFile)) {
+    $d21Issues[] = 'finance_receivable_identity_audit.php não encontrado';
+}
+
+$govFile = $projectRoot . '/api/finance_collection_governance.php';
+if (file_exists($govFile)) {
+    $govContent = file_get_contents($govFile);
+    if (!str_contains($govContent, 'FinanceReceivableIdentityResolver')) {
+        $d21Issues[] = 'finance_collection_governance.php não usa FinanceReceivableIdentityResolver';
+    }
+    if (!str_contains($govContent, 'numero_nf')) {
+        $d21Issues[] = 'finance_collection_governance.php não retorna numero_nf no risk_queue';
+    }
+    if (!str_contains($govContent, 'gap_reason')) {
+        $d21Issues[] = 'finance_collection_governance.php não retorna gap_reason';
+    }
+} else {
+    $d21Issues[] = 'finance_collection_governance.php não encontrado';
+}
+
+// JS: riskNfCell e gap_reason no collection-governance.js
+$govJsFile = $projectRoot . '/assets/js/modules/finance/collection-governance.js';
+if (file_exists($govJsFile)) {
+    $govJs = file_get_contents($govJsFile);
+    if (!str_contains($govJs, 'riskNfCell')) {
+        $d21Issues[] = 'collection-governance.js: função riskNfCell ausente (NF na fila de risco)';
+    }
+    if (!str_contains($govJs, 'gap_reason')) {
+        $d21Issues[] = 'collection-governance.js: gap_reason não renderizado';
+    }
+    if (!str_contains($govJs, 'colspan="11"')) {
+        $d21Issues[] = 'collection-governance.js: colspan da fila de risco deve ser 11 (coluna NF adicionada)';
+    }
+} else {
+    $d21Issues[] = 'collection-governance.js não encontrado';
+}
+
+$domains[] = [
+    'label'         => 'D21 Finance Receivable Identity (FIN.R4.4)',
+    'guard'         => 'FinanceReceivableIdentityResolver + identity_audit + governance integration',
+    'pass'          => true,
+    'warn'          => count($d21Issues) > 0,
+    'informational' => true,
+    'summary'       => $d21Issues === []
+        ? 'FIN.R4.4 presente: resolver + audit + governance enrichment + risk queue NF/gap_reason'
+        : count($d21Issues) . ' componente(s) FIN.R4.4 ausente(s) [informacional]',
+    'issues'        => $d21Issues,
+];
+
+
+// ── D22 — Finance Receivable Resolver + NF-Bridge (FIN.R4.4.1) [informacional] ─
+$d22Issues = [];
+
+// Tools
+$gapDrillFile   = $toolsDir . '/finance_receivable_identity_gap_drilldown.php';
+$bridgeAudit    = $toolsDir . '/finance_nf_title_bridge_rebuild_audit.php';
+if (!file_exists($gapDrillFile)) {
+    $d22Issues[] = 'finance_receivable_identity_gap_drilldown.php não encontrado';
+}
+if (!file_exists($bridgeAudit)) {
+    $d22Issues[] = 'finance_nf_title_bridge_rebuild_audit.php não encontrado';
+}
+
+// Resolver: 6-path NF resolution
+$resolverContent = file_exists($resolverFile) ? file_get_contents($resolverFile) : '';
+if ($resolverContent !== '') {
+    if (!str_contains($resolverContent, 'nfByNumeroNf')) {
+        $d22Issues[] = 'FinanceReceivableIdentityResolver: índice nfByNumeroNf (Path 6) ausente';
+    }
+    if (!str_contains($resolverContent, 'title_nota_key_as_chave_nfe')) {
+        $d22Issues[] = 'FinanceReceivableIdentityResolver: Path 2 (nota_key como chave_nfe 44-char) ausente';
+    }
+    if (!str_contains($resolverContent, 'numero_documento_nf')) {
+        $d22Issues[] = 'FinanceReceivableIdentityResolver: Path 6 (numero_documento) ausente';
+    }
+} else {
+    $d22Issues[] = 'FinanceReceivableIdentityResolver.php não encontrado';
+}
+
+// API: finance_collection_by_vendor.php — resolver integration
+$byVendorFile = $projectRoot . '/api/finance_collection_by_vendor.php';
+if (file_exists($byVendorFile)) {
+    $byVendorContent = file_get_contents($byVendorFile);
+    if (!str_contains($byVendorContent, 'FinanceReceivableIdentityResolver')) {
+        $d22Issues[] = 'api/finance_collection_by_vendor.php não usa FinanceReceivableIdentityResolver';
+    }
+    if (!str_contains($byVendorContent, 'nf_label')) {
+        $d22Issues[] = 'api/finance_collection_by_vendor.php não retorna nf_label';
+    }
+    if (!str_contains($byVendorContent, 'pedido_label')) {
+        $d22Issues[] = 'api/finance_collection_by_vendor.php não retorna pedido_label';
+    }
+    if (!str_contains($byVendorContent, 'trace_quality_score')) {
+        $d22Issues[] = 'api/finance_collection_by_vendor.php não retorna trace_quality_score';
+    }
+    if (!str_contains($byVendorContent, 'unresolved_vendor_bucket')) {
+        $d22Issues[] = 'api/finance_collection_by_vendor.php não retorna unresolved_vendor_bucket';
+    }
+} else {
+    $d22Issues[] = 'api/finance_collection_by_vendor.php não encontrado';
+}
+
+// API: finance_collection_governance.php — nf_label + pedido_label in risk_queue
+if (file_exists($govFile)) {
+    $govContent2 = file_get_contents($govFile);
+    if (!str_contains($govContent2, 'nf_label')) {
+        $d22Issues[] = 'api/finance_collection_governance.php não retorna nf_label no risk_queue';
+    }
+    if (!str_contains($govContent2, 'pedido_label')) {
+        $d22Issues[] = 'api/finance_collection_governance.php não retorna pedido_label no risk_queue';
+    }
+} else {
+    $d22Issues[] = 'api/finance_collection_governance.php não encontrado';
+}
+
+// JS: collection-by-vendor.js — renderUnresolvedVendorAlert + nf_label + pedido_label
+$byVendorJs = $projectRoot . '/assets/js/modules/finance/collection-by-vendor.js';
+if (file_exists($byVendorJs)) {
+    $byVendorJsContent = file_get_contents($byVendorJs);
+    if (!str_contains($byVendorJsContent, 'renderUnresolvedVendorAlert')) {
+        $d22Issues[] = 'collection-by-vendor.js: renderUnresolvedVendorAlert ausente';
+    }
+    if (!str_contains($byVendorJsContent, 'nf_label')) {
+        $d22Issues[] = 'collection-by-vendor.js: nf_label não usado em renderOriginRef';
+    }
+    if (!str_contains($byVendorJsContent, 'pedido_label')) {
+        $d22Issues[] = 'collection-by-vendor.js: pedido_label não usado em renderOriginRef';
+    }
+} else {
+    $d22Issues[] = 'collection-by-vendor.js não encontrado';
+}
+
+// JS: collection-governance.js — riskNfCell prefers nf_label
+if (file_exists($govJsFile)) {
+    $govJs2 = file_get_contents($govJsFile);
+    if (!str_contains($govJs2, 'nf_label')) {
+        $d22Issues[] = 'collection-governance.js: riskNfCell não usa nf_label';
+    }
+    if (!str_contains($govJs2, 'pedido_label')) {
+        $d22Issues[] = 'collection-governance.js: riskNfCell não usa pedido_label';
+    }
+} else {
+    $d22Issues[] = 'collection-governance.js não encontrado';
+}
+
+$domains[] = [
+    'label'         => 'D22 Finance Collection Resolver + NF-Bridge (FIN.R4.4.1)',
+    'guard'         => 'gap drilldown + bridge audit + resolver 6-path + by_vendor integration + nf_label/pedido_label + unresolved_bucket',
+    'pass'          => true,
+    'warn'          => count($d22Issues) > 0,
+    'informational' => true,
+    'summary'       => $d22Issues === []
+        ? 'FIN.R4.4.1 presente: resolver 6-path + drilldown + bridge audit + nf_label/pedido_label + unresolved_bucket + visual'
+        : count($d22Issues) . ' componente(s) FIN.R4.4.1 ausente(s) [informacional]',
+    'issues'        => $d22Issues,
+];
+
+
+// ── D23 — Commercial Semantics Classifier (COM.R1.2) [informacional] ─────────
+$d23Issues = [];
+
+$classifierFile    = $projectRoot . '/app/Support/CommercialPipelineClassifier.php';
+$salesSupportFile  = $projectRoot . '/app/SalesAnalytics/SalesSupport.php';
+$syncFile          = $projectRoot . '/app/Sync/CommercialSyncCoordinator.php';
+$stageCatalogTool  = $toolsDir   . '/omie_stage_catalog_audit.php';
+$staleAuditTool    = $toolsDir   . '/commercial_stage_stale_audit.php';
+$staleRepairTool   = $toolsDir   . '/commercial_stage_stale_repair.php';
+
+// 1. CommercialPipelineClassifier exists
+if (!file_exists($classifierFile)) {
+    $d23Issues[] = 'CommercialPipelineClassifier.php não encontrado';
+} else {
+    $clf = file_get_contents($classifierFile);
+    if (!str_contains($clf, 'SCOPE_ENTREGA_FINALIZADA')) {
+        $d23Issues[] = 'CommercialPipelineClassifier: constante SCOPE_ENTREGA_FINALIZADA ausente';
+    }
+    if (!str_contains($clf, 'SCOPE_ORCAMENTO')) {
+        $d23Issues[] = 'CommercialPipelineClassifier: constante SCOPE_ORCAMENTO ausente';
+    }
+    if (!str_contains($clf, 'SCOPE_CARTEIRA_ACEITA')) {
+        $d23Issues[] = 'CommercialPipelineClassifier: constante SCOPE_CARTEIRA_ACEITA ausente';
+    }
+    if (!str_contains($clf, "case 60:") || !str_contains($clf, 'entrega_finalizada_NOT_new_revenue')) {
+        $d23Issues[] = 'CommercialPipelineClassifier: etapa 60 não classificada como entrega_finalizada';
+    }
+    if (!str_contains($clf, 'classifyEtapa')) {
+        $d23Issues[] = 'CommercialPipelineClassifier: método classifyEtapa ausente';
+    }
+    if (str_contains($clf, 'SELECT *')) {
+        $d23Issues[] = 'CommercialPipelineClassifier: contém SELECT * (proibido)';
+    }
+}
+
+// 2. SalesSupport::classifyStatus does NOT classify etapa 60 as faturado
+if (file_exists($salesSupportFile)) {
+    $ss = file_get_contents($salesSupportFile);
+    // etapa 60 fix: check the code has the explicit === 60 check before the 50-69 range
+    if (!str_contains($ss, '$code === 60')) {
+        $d23Issues[] = 'SalesSupport::classifyStatus: sem verificação explícita de etapa 60';
+    }
+    if (!str_contains($ss, 'classifyStatusExtended')) {
+        $d23Issues[] = 'SalesSupport: método classifyStatusExtended ausente';
+    }
+} else {
+    $d23Issues[] = 'SalesAnalytics/SalesSupport.php não encontrado';
+}
+
+// 3. CommercialSyncCoordinator classifyStatus: etapa 60 NOT returning faturado
+if (file_exists($syncFile)) {
+    $sync = file_get_contents($syncFile);
+    if (!str_contains($sync, '$code === 60')) {
+        $d23Issues[] = 'CommercialSyncCoordinator::classifyStatus: sem verificação explícita de etapa 60';
+    }
+} else {
+    $d23Issues[] = 'CommercialSyncCoordinator.php não encontrado';
+}
+
+// 4. Diagnostic tools exist
+if (!file_exists($stageCatalogTool)) {
+    $d23Issues[] = 'omie_stage_catalog_audit.php não encontrado';
+}
+if (!file_exists($staleAuditTool)) {
+    $d23Issues[] = 'commercial_stage_stale_audit.php não encontrado';
+}
+if (!file_exists($staleRepairTool)) {
+    $d23Issues[] = 'commercial_stage_stale_repair.php não encontrado';
+} else {
+    $repair = file_get_contents($staleRepairTool);
+    // 5. repair is dry-run by default
+    if (!str_contains($repair, '$dryRun   = !isset($opts[\'apply\'])')) {
+        $d23Issues[] = 'commercial_stage_stale_repair.php: dry-run não é o padrão';
+    }
+    // 6. apply is blocked
+    if (!str_contains($repair, 'BLOQUEADO') || !str_contains($repair, 'apply_blocked')) {
+        $d23Issues[] = 'commercial_stage_stale_repair.php: --apply não está explicitamente bloqueado';
+    }
+}
+
+// 7. No SELECT * in new files
+foreach ([$classifierFile, $stageCatalogTool, $staleAuditTool, $staleRepairTool] as $chkFile) {
+    if (file_exists($chkFile) && str_contains(file_get_contents($chkFile), 'SELECT *')) {
+        $d23Issues[] = basename($chkFile) . ': contém SELECT * (proibido)';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D23 Commercial Semantics Classifier (COM.R1.2)',
+    'guard'         => 'CommercialPipelineClassifier + classifyStatus fixes (etapa 60) + stage audit tools',
+    'pass'          => true,
+    'warn'          => count($d23Issues) > 0,
+    'informational' => true,
+    'summary'       => $d23Issues === []
+        ? 'COM.R1.2 presente: classifier + etapa-60 fix + stage catalog + stale audit + repair dry-run'
+        : count($d23Issues) . ' componente(s) COM.R1.2 ausente(s) [informacional]',
+    'issues'        => $d23Issues,
+];
+
+
+// ── D24 — Commercial Goals and Pipeline Semantics (COM.R1.3) [informacional] ──
+$d24Issues = [];
+
+$goalCalcFile       = $projectRoot . '/app/Support/SalesGoalPeriodCalculator.php';
+$dashImpactTool     = $toolsDir   . '/commercial_dashboard_semantics_impact_audit.php';
+$goalAuditTool      = $toolsDir   . '/sales_goal_period_audit.php';
+$ownershipTool      = $toolsDir   . '/customer_ownership_source_audit.php';
+
+// 1. SalesGoalPeriodCalculator exists
+if (!file_exists($goalCalcFile)) {
+    $d24Issues[] = 'SalesGoalPeriodCalculator.php não encontrado';
+} else {
+    $gcContent = file_get_contents($goalCalcFile);
+    // 8. self-test for broken periods
+    if (!str_contains($gcContent, 'selfTest')) {
+        $d24Issues[] = 'SalesGoalPeriodCalculator: método selfTest para períodos quebrados ausente';
+    }
+    if (!str_contains($gcContent, 'dias_intersectados') && !str_contains($gcContent, 'overlapStart') && !str_contains($gcContent, 'dias_considerados')) {
+        $d24Issues[] = 'SalesGoalPeriodCalculator: lógica de dias intersectados ausente';
+    }
+    if (str_contains($gcContent, 'SELECT *')) {
+        $d24Issues[] = 'SalesGoalPeriodCalculator: contém SELECT * (proibido)';
+    }
+}
+
+// 2-4. Diagnostic tools exist
+foreach ([$dashImpactTool => 'commercial_dashboard_semantics_impact_audit.php',
+          $goalAuditTool  => 'sales_goal_period_audit.php',
+          $ownershipTool  => 'customer_ownership_source_audit.php'] as $file => $label) {
+    if (!file_exists($file)) {
+        $d24Issues[] = "{$label} não encontrado";
+    } else {
+        // 9. No SELECT * in new files
+        if (str_contains(file_get_contents($file), 'SELECT *')) {
+            $d24Issues[] = "{$label}: contém SELECT *";
+        }
+    }
+}
+
+// 5. CommercialPipelineClassifier is used in diagnostics
+if (file_exists($dashImpactTool)) {
+    if (!str_contains(file_get_contents($dashImpactTool), 'CommercialPipelineClassifier')) {
+        $d24Issues[] = 'commercial_dashboard_semantics_impact_audit.php não usa CommercialPipelineClassifier';
+    }
+}
+
+// 6. etapa 60 still not faturado in classifier
+if (file_exists($classifierFile)) {
+    $clf2 = file_get_contents($classifierFile);
+    if (!str_contains($clf2, 'entrega_finalizada_NOT_new_revenue')) {
+        $d24Issues[] = 'CommercialPipelineClassifier: etapa 60 como entrega_finalizada ausente';
+    }
+}
+
+// 7. Base Comercial NF preserved — check dashboard impact tool doesn't write NF table
+if (file_exists($dashImpactTool)) {
+    $dat = file_get_contents($dashImpactTool);
+    if (str_contains($dat, 'UPDATE') || str_contains($dat, 'INSERT') || str_contains($dat, 'DELETE')) {
+        $d24Issues[] = 'commercial_dashboard_semantics_impact_audit.php contém escrita no banco (proibido)';
+    }
+}
+
+// 10-12. No migration, no ENUM write, Base NF preserved (static checks)
+foreach ([$goalCalcFile, $dashImpactTool, $goalAuditTool, $ownershipTool] as $chk) {
+    if (!file_exists($chk)) continue;
+    $content = file_get_contents($chk);
+    if (str_contains($content, 'ALTER TABLE') || str_contains($content, 'CREATE TABLE')) {
+        $d24Issues[] = basename($chk) . ': contém DDL (ALTER/CREATE TABLE — proibido)';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D24 Commercial Goals and Pipeline Semantics (COM.R1.3)',
+    'guard'         => 'SalesGoalPeriodCalculator + dashboard impact + goal audit + ownership audit',
+    'pass'          => true,
+    'warn'          => count($d24Issues) > 0,
+    'informational' => true,
+    'summary'       => $d24Issues === []
+        ? 'COM.R1.3 presente: proporcional calculator + dashboard impact + goal audit + ownership audit'
+        : count($d24Issues) . ' componente(s) COM.R1.3 ausente(s) [informacional]',
+    'issues'        => $d24Issues,
+];
+
+
+// ── D25 — Customer Ownership and Goal Application (COM.R1.4) [informacional] ──
+$d25Issues = [];
+
+$ownershipResolverFile  = $projectRoot . '/app/Support/CustomerOwnershipResolver.php';
+$conflictAuditTool      = $toolsDir   . '/customer_ownership_conflict_audit.php';
+$conflictApiFile        = $projectRoot . '/api/customer_ownership_conflicts.php';
+$canonicalVendorsFile   = $projectRoot . '/api/canonical_vendors.php';
+
+// 1. CustomerOwnershipResolver exists
+if (!file_exists($ownershipResolverFile)) {
+    $d25Issues[] = 'CustomerOwnershipResolver.php não encontrado';
+} else {
+    $orContent = file_get_contents($ownershipResolverFile);
+    if (!str_contains($orContent, 'is_out_of_portfolio')) {
+        $d25Issues[] = 'CustomerOwnershipResolver: campo is_out_of_portfolio ausente';
+    }
+    if (!str_contains($orContent, 'CONFLICT_SOLD_BY_OTHER')) {
+        $d25Issues[] = 'CustomerOwnershipResolver: constante CONFLICT_SOLD_BY_OTHER ausente';
+    }
+    if (str_contains($orContent, 'SELECT *')) {
+        $d25Issues[] = 'CustomerOwnershipResolver: contém SELECT *';
+    }
+}
+
+// 2. Conflict audit tool exists
+if (!file_exists($conflictAuditTool)) {
+    $d25Issues[] = 'customer_ownership_conflict_audit.php não encontrado';
+}
+
+// 3. Conflict API exists
+if (!file_exists($conflictApiFile)) {
+    $d25Issues[] = 'api/customer_ownership_conflicts.php não encontrado';
+} else {
+    $cac = file_get_contents($conflictApiFile);
+    if (str_contains($cac, 'SELECT *')) {
+        $d25Issues[] = 'api/customer_ownership_conflicts.php contém SELECT *';
+    }
+    // 10. Conflict does not block sale
+    if (!str_contains($cac, 'Não bloqueia') && !str_contains($cac, 'nao bloqueia') && !str_contains($cac, 'not block')) {
+        $d25Issues[] = 'api/customer_ownership_conflicts.php: missing "não bloqueia" note';
+    }
+}
+
+// 3. SalesGoalPeriodCalculator still exists
+if (!file_exists($goalCalcFile)) {
+    $d25Issues[] = 'SalesGoalPeriodCalculator.php não encontrado (regressão)';
+}
+
+// 4-5. canonical_vendors.php uses SalesGoalPeriodCalculator and CommercialPlanning
+if (file_exists($canonicalVendorsFile)) {
+    $cvContent = file_get_contents($canonicalVendorsFile);
+    if (!str_contains($cvContent, 'SalesGoalPeriodCalculator')) {
+        $d25Issues[] = 'canonical_vendors.php não usa SalesGoalPeriodCalculator';
+    }
+    if (!str_contains($cvContent, 'target_period')) {
+        $d25Issues[] = 'canonical_vendors.php não expõe target_period por vendedor';
+    }
+    if (!str_contains($cvContent, 'conflicts_out_of_portfolio')) {
+        $d25Issues[] = 'canonical_vendors.php não expõe conflicts_out_of_portfolio';
+    }
+} else {
+    $d25Issues[] = 'api/canonical_vendors.php não encontrado';
+}
+
+// 6. Realized still by NF (app.js check)
+$appJs = $projectRoot . '/assets/js/app.js';
+if (file_exists($appJs)) {
+    $aj = file_get_contents($appJs);
+    if (!str_contains($aj, 'goal_period')) {
+        $d25Issues[] = 'app.js não processa goal_period (meta proporcional)';
+    }
+    if (!str_contains($aj, 'ownership_summary') && !str_contains($aj, 'kpiConflict')) {
+        $d25Issues[] = 'app.js não processa ownership_summary (carteirização)';
+    }
+}
+
+// 7-8. Carteira and entrega_finalizada not in realizado — checked via classifier (D23 covers this)
+
+// 9. biomie_clientes_dim.vendedor_responsavel_nome as primary source
+if (file_exists($ownershipResolverFile)) {
+    if (!str_contains(file_get_contents($ownershipResolverFile), 'clientes_dim')) {
+        $d25Issues[] = 'CustomerOwnershipResolver: biomie_clientes_dim não é fonte primária';
+    }
+}
+
+// 11-13. No SELECT *, no migration, no schema change
+foreach ([$ownershipResolverFile, $conflictAuditTool, $conflictApiFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    $content = file_get_contents($chk);
+    if (str_contains($content, 'ALTER TABLE') || str_contains($content, 'CREATE TABLE')) {
+        $d25Issues[] = basename($chk) . ': contém DDL (proibido)';
+    }
+}
+
+// 14. Base Comercial NF preserved — vendas NF check in conflict API
+if (file_exists($conflictApiFile) && !str_contains(file_get_contents($conflictApiFile), 'biomie_notas_fiscais_canonicas')) {
+    $d25Issues[] = 'api/customer_ownership_conflicts.php não usa biomie_notas_fiscais_canonicas';
+}
+
+// 15. BiVisibilityScope preserved — no override
+if (file_exists($ownershipResolverFile) && str_contains(file_get_contents($ownershipResolverFile), 'is_biomie_commercial_visible')) {
+    $d25Issues[] = 'CustomerOwnershipResolver altera BiVisibilityScope (proibido)';
+}
+
+$domains[] = [
+    'label'         => 'D25 Customer Ownership and Goal Application (COM.R1.4)',
+    'guard'         => 'CustomerOwnershipResolver + conflict audit + conflict API + canonical_vendors targets + carteirização KPIs',
+    'pass'          => true,
+    'warn'          => count($d25Issues) > 0,
+    'informational' => true,
+    'summary'       => $d25Issues === []
+        ? 'COM.R1.4 presente: ownership resolver + conflict API + targets em canonical_vendors + KPIs de carteirização'
+        : count($d25Issues) . ' componente(s) COM.R1.4 ausente(s) [informacional]',
+    'issues'        => $d25Issues,
+];
+
+
+// ── D26 — Vendor Alias Channel + Active Status (COM.R1.5) [informacional] ────
+$d26Issues = [];
+
+$vendorAliasResolverFile  = $projectRoot . '/app/Support/VendorAliasResolver.php';
+$activeVendorResolverFile = $projectRoot . '/app/Support/ActiveVendorResolver.php';
+$vendorAliasAuditFile     = $toolsDir   . '/vendor_alias_audit.php';
+$vendorActiveAuditFile    = $toolsDir   . '/vendor_active_status_audit.php';
+$vendedoresHtml           = $projectRoot . '/views/vendedores.html';
+$appJsFile                = $projectRoot . '/assets/js/app.js';
+$conflictAuditToolD26     = $toolsDir   . '/customer_ownership_conflict_audit.php';
+
+// 1. VendorAliasResolver exists and does NOT treat REV=VAR
+if (!file_exists($vendorAliasResolverFile)) {
+    $d26Issues[] = 'VendorAliasResolver.php não encontrado';
+} else {
+    $var = file_get_contents($vendorAliasResolverFile);
+    if (!str_contains($var, 'CHANNEL_REV') || !str_contains($var, 'CHANNEL_VAR')) {
+        $d26Issues[] = 'VendorAliasResolver: constantes CHANNEL_REV e CHANNEL_VAR ausentes';
+    }
+    if (!str_contains($var, 'areEquivalent')) {
+        $d26Issues[] = 'VendorAliasResolver: método areEquivalent() ausente';
+    }
+    if (!str_contains($var, 'isCrossChannelConflict')) {
+        $d26Issues[] = 'VendorAliasResolver: método isCrossChannelConflict() ausente';
+    }
+    // Ensure REV and VAR are never resolved as equivalent in the default map
+    if (str_contains($var, "' - rev', ' - var'], '', ") || str_contains($var, '"- rev", "- var"')) {
+        $d26Issues[] = 'VendorAliasResolver: strip de sufixos REV/VAR detectado (proibido)';
+    }
+    if (str_contains($var, 'SELECT *')) {
+        $d26Issues[] = 'VendorAliasResolver: contém SELECT *';
+    }
+}
+
+// 2. ActiveVendorResolver exists
+if (!file_exists($activeVendorResolverFile)) {
+    $d26Issues[] = 'ActiveVendorResolver.php não encontrado';
+} else {
+    $avr = file_get_contents($activeVendorResolverFile);
+    if (!str_contains($avr, 'biomie_vendedores_omie')) {
+        $d26Issues[] = 'ActiveVendorResolver: não referencia biomie_vendedores_omie';
+    }
+    if (!str_contains($avr, 'is_active')) {
+        $d26Issues[] = 'ActiveVendorResolver: campo is_active ausente';
+    }
+    if (!str_contains($avr, 'getActiveVendorNames')) {
+        $d26Issues[] = 'ActiveVendorResolver: método getActiveVendorNames() ausente';
+    }
+}
+
+// 3. canonical_vendors.php usa active_only por padrão
+if (file_exists($canonicalVendorsFile)) {
+    $cvD26 = file_get_contents($canonicalVendorsFile);
+    if (!str_contains($cvD26, 'active_only') || !str_contains($cvD26, 'ActiveVendorResolver')) {
+        $d26Issues[] = 'canonical_vendors.php não usa active_only/ActiveVendorResolver';
+    }
+    if (!str_contains($cvD26, 'is_active') || !str_contains($cvD26, 'vendor_channel')) {
+        $d26Issues[] = 'canonical_vendors.php não expõe is_active/vendor_channel por vendedor';
+    }
+} else {
+    $d26Issues[] = 'api/canonical_vendors.php não encontrado';
+}
+
+// 4. vendedores.html tem filtro "Incluir inativos"
+if (file_exists($vendedoresHtml)) {
+    $vhD26 = file_get_contents($vendedoresHtml);
+    if (!str_contains($vhD26, 'Incluir inativos') || !str_contains($vhD26, 'vendorIncludeInactiveBtn')) {
+        $d26Issues[] = 'vendedores.html sem toggle "Incluir inativos" (vendorIncludeInactiveBtn)';
+    }
+    if (!str_contains($vhD26, 'BIomieVendorsIncludeInactive')) {
+        $d26Issues[] = 'vendedores.html sem flag BIomieVendorsIncludeInactive';
+    }
+} else {
+    $d26Issues[] = 'views/vendedores.html não encontrado';
+}
+
+// 5. app.js passa include_inactive para api/vendors.php
+if (file_exists($appJsFile)) {
+    $ajD26 = file_get_contents($appJsFile);
+    if (!str_contains($ajD26, 'BIomieVendorsIncludeInactive') || !str_contains($ajD26, 'include_inactive')) {
+        $d26Issues[] = 'app.js não passa include_inactive ao carregar vendedores';
+    }
+}
+
+// 6. CustomerOwnershipResolver tem novos tipos de conflito inativo e cross-channel
+if (file_exists($ownershipResolverFile)) {
+    $corD26 = file_get_contents($ownershipResolverFile);
+    if (!str_contains($corD26, 'CONFLICT_OWNER_INACTIVE_REVIEW')) {
+        $d26Issues[] = 'CustomerOwnershipResolver: CONFLICT_OWNER_INACTIVE_REVIEW ausente';
+    }
+    if (!str_contains($corD26, 'CONFLICT_CROSS_CHANNEL')) {
+        $d26Issues[] = 'CustomerOwnershipResolver: CONFLICT_CROSS_CHANNEL ausente';
+    }
+    if (!str_contains($corD26, 'isCrossChannelConflict')) {
+        $d26Issues[] = 'CustomerOwnershipResolver: isCrossChannelConflict() ausente';
+    }
+}
+
+// 7. customer_ownership_conflict_audit.php classifica owner_inactive_review
+if (file_exists($conflictAuditToolD26)) {
+    $catD26 = file_get_contents($conflictAuditToolD26);
+    if (!str_contains($catD26, 'owner_inactive_review') && !str_contains($catD26, 'CONFLICT_OWNER_INACTIVE_REVIEW')) {
+        $d26Issues[] = 'customer_ownership_conflict_audit.php não classifica owner_inactive_review';
+    }
+    if (!str_contains($catD26, 'cross_channel')) {
+        $d26Issues[] = 'customer_ownership_conflict_audit.php não classifica cross_channel_conflicts';
+    }
+}
+
+// 8. Audit tools exist
+if (!file_exists($vendorAliasAuditFile))  $d26Issues[] = 'vendor_alias_audit.php não encontrado';
+if (!file_exists($vendorActiveAuditFile)) $d26Issues[] = 'vendor_active_status_audit.php não encontrado';
+
+// 9. No migration, no schema change, no Base NF alteration
+foreach ([$vendorAliasResolverFile, $activeVendorResolverFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    $c = file_get_contents($chk);
+    if (str_contains($c, 'ALTER TABLE') || str_contains($c, 'CREATE TABLE')) {
+        $d26Issues[] = basename($chk) . ': contém DDL (proibido)';
+    }
+}
+
+// 10. VendorIdentityResolver fix: cleanAlias does NOT strip ' - rev'/' - var' cross-channel
+$vendorIdentityResolver = $projectRoot . '/app/Modules/Sales/Application/Vendors/VendorIdentityResolver.php';
+if (file_exists($vendorIdentityResolver)) {
+    $vir = file_get_contents($vendorIdentityResolver);
+    // Check the old broken pattern is gone
+    if (str_contains($vir, "str_replace([' - rev', ' - var'], '', \$normalized)")) {
+        $d26Issues[] = 'VendorIdentityResolver: ainda remove REV/VAR cross-channel (bug não corrigido)';
+    }
+    if (!str_contains($vir, 'extractChannel') || !str_contains($vir, 'stripChannel')) {
+        $d26Issues[] = 'VendorIdentityResolver: métodos extractChannel/stripChannel ausentes';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D26 Vendor Alias Channel + Active Status (COM.R1.5)',
+    'guard'         => 'VendorAliasResolver + ActiveVendorResolver + active_only + CAIO channel separation',
+    'pass'          => true,
+    'warn'          => count($d26Issues) > 0,
+    'informational' => true,
+    'summary'       => $d26Issues === []
+        ? 'COM.R1.5 presente: VendorAliasResolver + ActiveVendorResolver + CAIO-REV≠CAIO-VAR + active_only + inactive toggle'
+        : count($d26Issues) . ' componente(s) COM.R1.5 ausente(s) [informacional]',
+    'issues'        => $d26Issues,
+];
+
+
 // ── D9 — Cache clear [apenas com --clear-cache] ───────────────────────────────
+// D26.1 - Vendor Master Sync & Status Fidelity (COM.R1.5.1) [informational]
+$d261Issues = [];
+$omieVendorPayloadAuditFile = $toolsDir . '/omie_vendor_payload_audit.php';
+$vendorMasterReconAuditFile = $toolsDir . '/vendor_master_reconciliation_audit.php';
+
+if (!file_exists($omieVendorPayloadAuditFile)) {
+    $d261Issues[] = 'omie_vendor_payload_audit.php nao encontrado';
+}
+if (!file_exists($vendorMasterReconAuditFile)) {
+    $d261Issues[] = 'vendor_master_reconciliation_audit.php nao encontrado';
+}
+
+if (file_exists($activeVendorResolverFile)) {
+    $avr261 = file_get_contents($activeVendorResolverFile);
+    foreach (['vendor_status_source_untrusted', 'active_status_mapping_gap', 'ghost_vendor'] as $needle) {
+        if (!str_contains($avr261, $needle)) {
+            $d261Issues[] = 'ActiveVendorResolver nao sinaliza ' . $needle;
+        }
+    }
+}
+
+if (file_exists($vendorAliasResolverFile)) {
+    $var261 = file_get_contents($vendorAliasResolverFile);
+    foreach (['caio bruno', 'requires_manual_approval', 'channel_match', 'CAIO - REV'] as $needle) {
+        if (!str_contains($var261, $needle)) {
+            $d261Issues[] = 'VendorAliasResolver sem marcador esperado: ' . $needle;
+        }
+    }
+}
+
+if (file_exists($canonicalVendorsFile)) {
+    $cv261 = file_get_contents($canonicalVendorsFile);
+    foreach (['active_status_confidence', 'active_status_warning', 'ghost_vendor', 'vendor_channel'] as $needle) {
+        if (!str_contains($cv261, $needle)) {
+            $d261Issues[] = 'canonical_vendors.php nao expoe ' . $needle;
+        }
+    }
+}
+
+if (file_exists($vendedoresHtml)) {
+    $vh261 = file_get_contents($vendedoresHtml);
+    if (!str_contains($vh261, 'Status de vendedores em valida')) {
+        $d261Issues[] = 'vendedores.html sem alerta de status em validacao';
+    }
+}
+
+foreach ([$omieVendorPayloadAuditFile, $vendorMasterReconAuditFile, $vendorActiveAuditFile] as $auditFile) {
+    if (!file_exists($auditFile)) {
+        continue;
+    }
+    $content = file_get_contents($auditFile);
+    foreach (['ALTER TABLE', 'CREATE TABLE', 'DROP TABLE', 'TRUNCATE TABLE', 'UPDATE ', 'INSERT ', 'DELETE '] as $needle) {
+        if (str_contains($content, $needle)) {
+            $d261Issues[] = basename($auditFile) . ': contem escrita/DDL proibida (' . trim($needle) . ')';
+        }
+    }
+}
+
+$domains[] = [
+    'label'         => 'D26.1 Vendor Master Sync & Status Fidelity (COM.R1.5.1)',
+    'guard'         => 'payload audit + reconciliation audit + resolver confidence + ghost vendor checks',
+    'pass'          => true,
+    'warn'          => count($d261Issues) > 0,
+    'informational' => true,
+    'summary'       => $d261Issues === []
+        ? 'COM.R1.5.1 presente: payload audit + reconciliacao + status confidence + ghost vendors'
+        : count($d261Issues) . ' componente(s) COM.R1.5.1 ausente(s) [informacional]',
+    'issues'        => $d261Issues,
+];
+
+// D26.2 - Vendor Status Sync Repair (COM.R1.5.2) [informational]
+$d262Issues = [];
+$omieVendorStatusMapperFile = $projectRoot . '/app/Support/OmieVendorStatusMapper.php';
+$omieVendorStatusRepairFile = $toolsDir . '/omie_vendor_status_sync_repair.php';
+$canonicalWriteRepositoryFile = $projectRoot . '/app/Canonical/CanonicalWriteRepository.php';
+$canonicalRepositoryFile = $projectRoot . '/app/CanonicalRepository.php';
+$commercialSyncCoordinatorFile = $projectRoot . '/app/Sync/CommercialSyncCoordinator.php';
+$fiscalSyncCoordinatorFile = $projectRoot . '/app/Sync/FiscalSyncCoordinator.php';
+
+if (!file_exists($omieVendorStatusMapperFile)) {
+    $d262Issues[] = 'OmieVendorStatusMapper.php nao encontrado';
+} else {
+    $mapper262 = file_get_contents($omieVendorStatusMapperFile);
+    foreach (['inativo', 'statusValueToActive', 'isActive'] as $needle) {
+        if (!str_contains($mapper262, $needle)) {
+            $d262Issues[] = 'OmieVendorStatusMapper sem marcador esperado: ' . $needle;
+        }
+    }
+}
+
+if (!file_exists($omieVendorStatusRepairFile)) {
+    $d262Issues[] = 'omie_vendor_status_sync_repair.php nao encontrado';
+} else {
+    $repair262 = file_get_contents($omieVendorStatusRepairFile);
+    // Needles que devem sempre estar presentes
+    foreach (['apply_requires_exact_10_active_to_inactive', 'UPDATE biomie_vendedores_omie SET ativo'] as $needle) {
+        if (!str_contains($repair262, $needle)) {
+            $d262Issues[] = 'omie_vendor_status_sync_repair.php sem trava esperada: ' . $needle;
+        }
+    }
+    // expectedDivergences: aceitar 10 (pass1) ou 6 (pass2 concluído) como referência histórica
+    if (!str_contains($repair262, 'expectedDivergences = 10') && !str_contains($repair262, 'expectedDivergences = 6')) {
+        $d262Issues[] = 'omie_vendor_status_sync_repair.php sem referencia expectedDivergences (10 ou 6)';
+    }
+    foreach (['DELETE ', 'TRUNCATE TABLE', 'DROP TABLE', 'ALTER TABLE', 'CREATE TABLE'] as $needle) {
+        if (str_contains($repair262, $needle)) {
+            $d262Issues[] = 'omie_vendor_status_sync_repair.php contem operacao proibida: ' . trim($needle);
+        }
+    }
+}
+
+if (file_exists($canonicalWriteRepositoryFile)) {
+    $cwr262 = file_get_contents($canonicalWriteRepositoryFile);
+    if (!str_contains($cwr262, ':ativo') || !str_contains($cwr262, 'ativo = VALUES(ativo)')) {
+        $d262Issues[] = 'CanonicalWriteRepository::upsertVendor nao persiste ativo dinamico';
+    }
+} else {
+    $d262Issues[] = 'CanonicalWriteRepository.php nao encontrado';
+}
+
+if (file_exists($canonicalRepositoryFile)) {
+    $cr262 = file_get_contents($canonicalRepositoryFile);
+    if (!str_contains($cr262, 'bool $ativo = true') || !str_contains($cr262, '$comissao, $ativo')) {
+        $d262Issues[] = 'CanonicalRepository::upsertVendor nao repassa ativo';
+    }
+}
+
+foreach ([$commercialSyncCoordinatorFile, $fiscalSyncCoordinatorFile] as $syncFile) {
+    if (!file_exists($syncFile)) {
+        $d262Issues[] = basename($syncFile) . ' nao encontrado';
+        continue;
+    }
+    $sync262 = file_get_contents($syncFile);
+    if (!str_contains($sync262, 'OmieVendorStatusMapper') || !str_contains($sync262, '$statusMapper->isActive') || !str_contains($sync262, '$comissao, $ativo')) {
+        $d262Issues[] = basename($syncFile) . ' nao mapeia inativo Omie para ativo BIomie';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D26.2 Vendor Status Sync Repair (COM.R1.5.2)',
+    'guard'         => 'sync maps Omie inativo S/N + dry-run/apply repair guarded to 10 changes',
+    'pass'          => true,
+    'warn'          => count($d262Issues) > 0,
+    'informational' => true,
+    'summary'       => $d262Issues === []
+        ? 'COM.R1.5.2 presente: sync respeita inativo Omie e repair aplica apenas plano esperado'
+        : count($d262Issues) . ' componente(s) COM.R1.5.2 ausente(s) [informacional]',
+    'issues'        => $d262Issues,
+];
+
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
     $deleted   = 0;
@@ -1074,7 +1863,7 @@ $passCount = count(array_filter($domains, fn($d) => $d['pass']));
 if ($jsonMode) {
     echo json_encode([
         'biomie_release_guard' => [
-            'version'   => 'AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3',
+            'version'   => 'AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3+FIN.R4.4+FIN.R4.4.1+COM.R1.2+COM.R1.3+COM.R1.4',
             'period'    => ['start' => $start, 'end' => $end],
             'overall'   => $allPass ? 'PASS' : 'FAIL',
             'elapsed_s' => $elapsed,
@@ -1096,7 +1885,7 @@ $hr2 = str_repeat('─', 72);
 
 echo PHP_EOL;
 echo $hr . PHP_EOL;
-echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3]
+echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3+FIN.R4.4+FIN.R4.4.1+COM.R1.2+COM.R1.3+COM.R1.4]
   Período : ' . $start . ' → ' . $end . PHP_EOL;
 echo $hr . PHP_EOL . PHP_EOL;
 
