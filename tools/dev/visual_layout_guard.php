@@ -284,6 +284,23 @@ function buildChecks(string $root): array
         checkContains('prod_r2_opportunity_audit',    file_exists($root . '/tools/dev/product_action_opportunity_audit.php') ? 'ok' : '', 'ok', 'product_action_opportunity_audit.php existe (PROD.R2).'),
         checkContains('prod_r2_repurchase_audit',     file_exists($root . '/tools/dev/product_customer_repurchase_audit.php') ? 'ok' : '', 'ok', 'product_customer_repurchase_audit.php existe (PROD.R2).'),
         checkContains('prod_r2_affinity_audit',       file_exists($root . '/tools/dev/product_vendor_affinity_audit.php') ? 'ok' : '', 'ok', 'product_vendor_affinity_audit.php existe (PROD.R2).'),
+
+        // PROD.R2.1 — Product Action Explainability
+        checkContains('prod_r2_1_manager_explanation',  readFileSafe($root . '/app/Product/ProductActionIntelligenceBuilder.php'), 'buildManagerExplanation',  'Builder tem buildManagerExplanation (PROD.R2.1).'),
+        checkContains('prod_r2_1_data_basis',           readFileSafe($root . '/app/Product/ProductActionIntelligenceBuilder.php'), 'buildDataBasis',            'Builder tem buildDataBasis (PROD.R2.1).'),
+        checkContains('prod_r2_1_friendly_name',        readFileSafe($root . '/app/Product/ProductActionIntelligenceBuilder.php'), 'friendlyName',              'Builder tem friendlyName (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_manager_card',  readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-manager-card',  'tabs.js tem action-manager-card (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_meaning',       readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-meaning',        'tabs.js tem action-meaning (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_rec_action',    readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-recommended-action', 'tabs.js tem action-recommended-action (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_next_step',     readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-next-step',      'tabs.js tem action-next-step (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_score_reasons', readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-score-reasons',  'tabs.js tem action-score-reasons (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_data_basis',    readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-data-basis',     'tabs.js tem action-data-basis (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_risk_note',     readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-risk-note',      'tabs.js tem action-risk-note (PROD.R2.1).'),
+        checkContains('prod_r2_1_action_kpi_grid',      readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-kpi-grid',       'tabs.js tem action-kpi-grid (PROD.R2.1).'),
+        checkContains('prod_r2_1_empty_repurchase',     readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'action-empty-repurchase-explanation', 'tabs.js tem action-empty-repurchase-explanation (PROD.R2.1).'),
+        checkContains('prod_r2_1_legenda',              readFileSafe($root . '/views/mercadorias.html'), 'prodR2Legenda', 'mercadorias.html tem legenda PROD.R2.1.'),
+        checkContains('prod_r2_1_score_tooltip',        readFileSafe($root . '/views/mercadorias.html'), 'Como o score é calculado', 'mercadorias.html tem tooltip "Como o score é calculado" (PROD.R2.1).'),
+        checkContains('prod_r2_1_explainability_audit', file_exists($root . '/tools/dev/product_action_explainability_audit.php') ? 'ok' : '', 'ok', 'product_action_explainability_audit.php existe (PROD.R2.1).'),
     ];
 }
 

@@ -161,7 +161,10 @@ final class ProductActionIntelligenceBuilder
                 'score_acao'            => $score,
                 'score_breakdown'       => $this->buildScoreBreakdown($r, $months, $avgQty, $conc['pct']),
                 'categoria'             => $categoria,
+                'friendly_name'         => self::friendlyName($categoria),
                 'acao_sugerida'         => $this->suggestAction($categoria, $r, $conc['pct']),
+                'manager_explanation'   => $this->buildManagerExplanation($categoria, $r, $conc['pct'], $score),
+                'data_basis'            => self::buildDataBasis($r),
                 'source'                => 'omie_canonical',
             ];
         }, $rows);
@@ -498,6 +501,136 @@ final class ProductActionIntelligenceBuilder
             ];
         }
         return $result;
+    }
+
+    // ── Explainability (PROD.R2.1) ────────────────────────────────────────────
+
+    /**
+     * Nome amigável da categoria para exibição ao gestor.
+     */
+    public static function friendlyName(string $categoria): string
+    {
+        return match ($categoria) {
+            'Produto campeão'              => 'Manter e expandir',
+            'Campanha para clientes antigos' => 'Reativar compradores',
+            'Acompanhar concentração'      => 'Reduzir dependência',
+            'Reativar produto'             => 'Produto parado com histórico',
+            'Cross-sell com vendedores fortes' => 'Oferta complementar',
+            'Baixo giro'                   => 'Baixa prioridade',
+            'Produto sazonal'              => 'Venda sazonal',
+            default                        => 'Em observação',
+        };
+    }
+
+    /**
+     * Explicação em linguagem de gestor — o que é, por que apareceu, o que fazer.
+     *
+     * @param array<string,mixed> $r
+     * @return array<string,mixed>
+     */
+    private function buildManagerExplanation(string $categoria, array $r, float $concentrationPct, int $score): array
+    {
+        $dias    = (int) ($r['dias_sem_venda']   ?? 0);
+        $meses   = (int) ($r['meses_ativos']     ?? 0);
+        $clientes = (int) ($r['clientes_periodo'] ?? 0);
+
+        $confidence = $score >= 70 ? 'Alta' : ($score >= 40 ? 'Média' : 'Baixa');
+
+        $riskNote = null;
+        if ($concentrationPct >= 80) {
+            $riskNote = "Venda muito concentrada: {$concentrationPct}% vem de um cliente. Se ele parar de comprar, o produto perde tração imediatamente.";
+        } elseif ($concentrationPct >= 60) {
+            $riskNote = "Atenção: {$concentrationPct}% da venda está em um cliente. Diversifique compradores para reduzir a dependência.";
+        }
+
+        return match ($categoria) {
+            'Produto campeão' => [
+                'headline'           => 'Produto com alta tração comercial',
+                'meaning'            => 'Este produto está vendendo bem no período, teve venda recente e conta com uma base de clientes ativa. Ele representa o mix comercial mais forte.',
+                'recommended_action' => 'Manter presença comercial e replicar para clientes parecidos com os compradores atuais.',
+                'manager_decision'   => 'Expandir venda',
+                'next_step'          => 'Orientar vendedores a ofertarem este produto como item principal. Usar compradores atuais como referência para prospectar clientes similares.',
+                'risk_note'          => $riskNote,
+                'confidence_label'   => $confidence,
+            ],
+            'Campanha para clientes antigos' => [
+                'headline'           => 'Produto indicado para recompra',
+                'meaning'            => "Este produto já teve {$clientes} compradores, mas parte deles está sem recompra há mais de 30 dias. Há uma janela clara de reativação.",
+                'recommended_action' => 'Criar campanha de recompra direcionada para os clientes que compraram antes e estão sem atividade.',
+                'manager_decision'   => 'Reativar clientes',
+                'next_step'          => 'Gerar lista de clientes com mais de 30 dias sem compra deste produto e distribuir para os vendedores responsáveis pela carteira.',
+                'risk_note'          => $riskNote ?? 'Sem ação, a base compradora pode esfriar e o produto perder posição no mix.',
+                'confidence_label'   => $confidence,
+            ],
+            'Acompanhar concentração' => [
+                'headline'           => 'Produto dependente de poucos clientes',
+                'meaning'            => "A maior parte da venda deste produto ({$concentrationPct}%) está concentrada em um único cliente. O produto tem potencial, mas o risco de dependência é alto.",
+                'recommended_action' => 'Reduzir a dependência buscando novos compradores com perfil semelhante ao cliente principal.',
+                'manager_decision'   => 'Diversificar carteira',
+                'next_step'          => 'Usar o histórico do maior comprador como perfil-alvo para prospectar clientes similares. Priorizar vendedores com acesso a outros segmentos.',
+                'risk_note'          => "Se o cliente principal reduzir pedidos, o desempenho do produto cai imediatamente. Concentração atual: {$concentrationPct}%.",
+                'confidence_label'   => $confidence,
+            ],
+            'Reativar produto' => [
+                'headline'           => 'Produto com histórico, mas sem venda recente',
+                'meaning'            => "O produto já vendeu antes, mas está sem saída há {$dias} dias. Ainda existe histórico comercial que pode ser reativado.",
+                'recommended_action' => 'Reativar demanda com clientes históricos e vendedores que já venderam este produto.',
+                'manager_decision'   => 'Testar reativação',
+                'next_step'          => 'Selecionar clientes que compraram antes e criar abordagem de retorno — reposição, upgrade ou nova necessidade.',
+                'risk_note'          => $riskNote ?? 'Quanto mais tempo sem venda, mais difícil é a reativação. Priorize a ação antes de completar 180 dias parado.',
+                'confidence_label'   => $confidence,
+            ],
+            'Cross-sell com vendedores fortes' => [
+                'headline'           => 'Produto com potencial de venda complementar',
+                'meaning'            => "O produto tem bom histórico em alguns vendedores, mas ainda pode crescer com outros. Ele funciona bem como complemento em projetos e orçamentos.",
+                'recommended_action' => 'Usar como complemento em orçamentos e propostas existentes.',
+                'manager_decision'   => 'Ofertar junto',
+                'next_step'          => 'Identificar os vendedores que mais vendem este produto e usar o padrão deles como referência para os outros. Adicionar sugestão de cross-sell nas propostas.',
+                'risk_note'          => $riskNote,
+                'confidence_label'   => $confidence,
+            ],
+            'Produto sazonal' => [
+                'headline'           => 'Produto com padrão sazonal de venda',
+                'meaning'            => "O produto vendeu em {$meses} meses do período, o que sugere sazonalidade. O desempenho varia conforme o ciclo do negócio.",
+                'recommended_action' => 'Monitorar sazonalidade e antecipar oferta nos períodos de maior demanda.',
+                'manager_decision'   => 'Planejar sazonalidade',
+                'next_step'          => 'Identificar os meses de pico e garantir ação comercial antecipada. Evitar esforço fora da janela de demanda natural.',
+                'risk_note'          => $riskNote,
+                'confidence_label'   => $confidence,
+            ],
+            default => [
+                'headline'           => 'Produto de baixa prioridade comercial',
+                'meaning'            => 'O produto teve baixa venda, baixa recorrência ou pouca diversidade de clientes no período analisado.',
+                'recommended_action' => 'Não priorizar em campanhas principais sem análise adicional.',
+                'manager_decision'   => 'Monitorar',
+                'next_step'          => 'Manter visível no mix, mas direcionar esforço comercial para produtos com melhor score.',
+                'risk_note'          => 'Não confundir baixo giro com falta de estoque físico. Esta leitura é comercial, baseada em documentos Omie.',
+                'confidence_label'   => $confidence,
+            ],
+        };
+    }
+
+    /**
+     * Lista de bases de dados utilizadas para gerar a recomendação.
+     *
+     * @param array<string,mixed> $r
+     * @return list<string>
+     */
+    public static function buildDataBasis(array $r): array
+    {
+        $basis = [
+            'NFs autorizadas do período',
+            'Itens de NF vinculados ao produto',
+            'Clientes compradores distintos',
+            'Vendedores das NFs',
+            'Última data de competência (COALESCE data_competencia/emissao)',
+        ];
+        if ((int) ($r['meses_ativos'] ?? 0) >= 2) {
+            $basis[] = 'Histórico mensal de vendas';
+        }
+        $basis[] = 'Concentração do maior cliente (NF items)';
+        $basis[] = 'Score calculado: recorrência + recência + diversidade + volume';
+        return $basis;
     }
 
     private function classifyOpportunity(array $r, int $score, float $concentrationPct): string

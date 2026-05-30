@@ -3028,6 +3028,81 @@ $domains[] = [
     'issues'        => $d36Issues,
 ];
 
+// ── D37 — PROD.R2.1 Product Action Explainability [informacional] ────────────
+
+$d37Issues = [];
+
+// Builder tem manager_explanation e data_basis
+if (is_file($projectRoot . '/app/Product/ProductActionIntelligenceBuilder.php')) {
+    $src37 = (string) file_get_contents($projectRoot . '/app/Product/ProductActionIntelligenceBuilder.php');
+    foreach (['buildManagerExplanation', 'buildDataBasis', 'friendlyName', 'manager_explanation', 'friendly_name', 'data_basis'] as $sym) {
+        if (!str_contains($src37, $sym)) $d37Issues[] = "Builder sem '{$sym}'";
+    }
+} else {
+    $d37Issues[] = 'ProductActionIntelligenceBuilder.php ausente';
+}
+
+// tabs.js tem blocos de explicabilidade
+$tabs37 = $projectRoot . '/assets/js/modules/product-detail/tabs.js';
+if (is_file($tabs37)) {
+    $src37js = (string) file_get_contents($tabs37);
+    foreach ([
+        'action-manager-card', 'action-meaning', 'action-recommended-action', 'action-next-step',
+        'action-score-reasons', 'action-data-basis', 'action-risk-note', 'action-kpi-grid',
+        'action-empty-repurchase-explanation',
+        'O que significa', 'Por que apareceu', 'Ação recomendada', 'Base de cálculo',
+        'manager_explanation', 'friendly_name', 'data_basis',
+    ] as $needle) {
+        if (!str_contains($src37js, $needle)) $d37Issues[] = "tabs.js sem '{$needle}'";
+    }
+} else {
+    $d37Issues[] = 'assets/js/modules/product-detail/tabs.js ausente';
+}
+
+// mercadorias.html tem legenda
+$merc37 = $projectRoot . '/views/mercadorias.html';
+if (is_file($merc37)) {
+    $src37html = (string) file_get_contents($merc37);
+    foreach (['prodR2Legenda', 'Como o score é calculado', 'Esta seção prioriza produtos com base em vendas reais do Omie'] as $needle) {
+        if (!str_contains($src37html, $needle)) $d37Issues[] = "mercadorias.html sem '{$needle}'";
+    }
+}
+
+// api/product_detail.php expõe manager_explanation (via buildProductOpportunities que o inclui no $found)
+$pd37 = $projectRoot . '/api/product_detail.php';
+if (is_file($pd37)) {
+    $src37pd = (string) file_get_contents($pd37);
+    if (!str_contains($src37pd, 'manager_explanation') && !str_contains($src37pd, 'buildProductOpportunities')) {
+        $d37Issues[] = 'api/product_detail.php não expõe manager_explanation nem usa buildProductOpportunities';
+    }
+}
+
+// api/product_action_intelligence.php expõe manager_explanation
+$api37 = $projectRoot . '/api/product_action_intelligence.php';
+if (is_file($api37)) {
+    $src37api = (string) file_get_contents($api37);
+    if (!str_contains($src37api, 'manager_explanation') && !str_contains($src37api, 'buildProductOpportunities')) {
+        $d37Issues[] = 'api/product_action_intelligence.php não usa buildProductOpportunities (que inclui manager_explanation)';
+    }
+}
+
+// Audit tool existe
+if (!is_file($projectRoot . '/tools/dev/product_action_explainability_audit.php')) {
+    $d37Issues[] = 'product_action_explainability_audit.php ausente';
+}
+
+$domains[] = [
+    'label'         => 'D37 PROD.R2.1 Product Action Explainability',
+    'guard'         => 'manager_explanation + data_basis + friendly_name + legenda + tabs.js blocks',
+    'pass'          => true,
+    'warn'          => count($d37Issues) > 0,
+    'informational' => true,
+    'summary'       => $d37Issues === []
+        ? 'PROD.R2.1 presente: manager_explanation + data_basis + legenda + 9 blocos UI'
+        : count($d37Issues) . ' item(ns) PROD.R2.1 ausente(s) [informacional]',
+    'issues'        => $d37Issues,
+];
+
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';

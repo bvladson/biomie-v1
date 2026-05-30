@@ -306,69 +306,111 @@
 
     var cat      = prod.categoria      || '';
     var score    = prod.score_acao     || 0;
-    var acao     = prod.acao_sugerida  || 'Sem recomendação disponível para este período.';
     var catColor = CAT_COLORS[cat] || '#9ca3af';
     var scColor  = score >= 75 ? '#16a34a' : score >= 40 ? '#2563eb' : '#9ca3af';
+    var mgr      = prod.manager_explanation || {};
+    var breakdown= prod.score_breakdown || {};
+    var dataBasis= Array.isArray(prod.data_basis) ? prod.data_basis : [];
+    var motivos  = Array.isArray(breakdown.motivos) ? breakdown.motivos : [];
+    var friendly = prod.friendly_name || cat;
 
     if (!prod.product_code && !prod.receita_periodo) {
       return T.empty('Sem dados de ação comercial para este produto no período selecionado. Tente ampliar o recorte de datas.', 'lightbulb');
     }
 
-    // Score card with breakdown
-    var breakdown = prod.score_breakdown || {};
-    var motivos   = Array.isArray(breakdown.motivos) ? breakdown.motivos : [];
-    var scoreHtml = '<div style="padding:14px 16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:14px;">'
-      + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">'
-      + '<div><div style="font-size:2rem;font-weight:800;color:' + scColor + '">' + score + '<span style="font-size:1rem;color:var(--text-3)">/100</span></div>'
-      + '<div style="font-size:0.72rem;color:var(--text-3)">Score de ação</div></div>'
+    // ── A. Decisão rápida ──────────────────────────────────────────────────
+    var decisionHtml = '<div class="action-manager-card" style="padding:16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:14px;">'
+      // Score + badge
+      + '<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:12px;">'
+      + '<div style="flex-shrink:0;text-align:center;">'
+      + '<div style="font-size:2.2rem;font-weight:800;color:' + scColor + ';line-height:1">' + score + '</div>'
+      + '<div style="font-size:0.65rem;color:var(--text-3);text-transform:uppercase;">/100</div>'
+      + '</div>'
       + '<div style="flex:1;">'
-      + '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;color:#fff;background:' + catColor + '">' + T.esc(cat) + '</span>'
-      + '<div style="margin-top:8px;font-size:0.83rem;color:#1e40af;background:#eff6ff;border-radius:6px;padding:8px 10px;border:1px solid #bfdbfe;">'
-      + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:4px;">bolt</span>' + T.esc(acao) + '</div>'
+      + '<div style="margin-bottom:6px;">'
+      + '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.76rem;font-weight:700;color:#fff;background:' + catColor + '">' + T.esc(friendly) + '</span>'
+      + (mgr.confidence_label ? '<span style="margin-left:6px;font-size:0.72rem;color:var(--text-3)">Confiança: ' + T.esc(mgr.confidence_label) + '</span>' : '')
+      + '</div>'
+      + '<div class="action-meaning" style="font-size:0.88rem;font-weight:600;color:var(--text-1,#111);margin-bottom:4px;">' + T.esc(mgr.headline || cat) + '</div>'
+      + '<div style="font-size:0.7rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-top:6px;margin-bottom:2px;">O que significa</div>'
+      + '<div style="font-size:0.82rem;color:var(--text-2,#374151);">' + T.esc(mgr.meaning || '') + '</div>'
       + '</div></div>'
-      + (motivos.length > 0
-          ? '<div style="border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">'
-            + '<div style="font-size:0.72rem;color:var(--text-3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;">Motivos do score</div>'
-            + motivos.map(function(m) {
-                var mColor = m.startsWith('+') ? '#16a34a' : m.startsWith('−') ? '#dc2626' : '#6b7280';
-                return '<div style="font-size:0.8rem;color:' + mColor + ';margin-bottom:3px;">' + T.esc(m) + '</div>';
-              }).join('')
-            + '</div>'
-          : '')
-      + (breakdown.total != null
-          ? '<div style="display:flex;gap:8px;margin-top:10px;font-size:0.72rem;color:var(--text-3);">'
-            + '<span title="Recorrência">Recorr. ' + (breakdown.recorrencia||0) + '</span>'
-            + '<span title="Recência">Recência ' + (breakdown.recencia||0) + '</span>'
-            + '<span title="Diversidade">Diverse. ' + (breakdown.diversidade||0) + '</span>'
-            + '<span title="Volume">Volume ' + (breakdown.volume||0) + '</span>'
-            + (breakdown.penalidade < 0 ? '<span style="color:#dc2626">Penalidade ' + (breakdown.penalidade||0) + '</span>' : '')
+      // Decisão + próximo passo
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + _acaoBlock('rocket_launch', 'Decisão', mgr.manager_decision || '', '#1e40af', '#eff6ff', '#bfdbfe')
+      + _acaoBlock('bolt', 'Ação recomendada', mgr.recommended_action || '', '#065f46', '#f0fdf4', '#bbf7d0')
+      + '</div>'
+      + '<div class="action-recommended-action" style="padding:10px 12px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;font-size:0.82rem;color:var(--text-2);">'
+      + '<span style="font-size:0.72rem;color:var(--text-3);display:block;margin-bottom:3px;">Próximo passo</span>'
+      + '<span class="action-next-step">' + T.esc(mgr.next_step || '') + '</span>'
+      + '</div>'
+      // Risk note
+      + (mgr.risk_note
+          ? '<div class="action-risk-note" style="margin-top:10px;padding:8px 12px;border-radius:6px;background:#fff7ed;border:1px solid #fed7aa;font-size:0.8rem;color:#9a3412;">'
+            + '<span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;margin-right:4px;">warning</span>'
+            + '<strong>Atenção do gestor: </strong>' + T.esc(mgr.risk_note)
             + '</div>'
           : '')
       + '</div>';
 
-    // KPI summary
+    // ── B. KPI grid legível ────────────────────────────────────────────────
+    var lastSaleLabel = prod.dias_sem_venda === 0 ? 'Hoje'
+      : prod.dias_sem_venda === 1 ? 'Ontem'
+      : 'há ' + (prod.dias_sem_venda || 0) + ' dias';
     var kpis = [
-      ['Receita', T.fmt(prod.receita_periodo), 'Período'],
-      ['Qtd', T.fmtN(prod.qtd_periodo) + ' un', ''],
-      ['Clientes', T.fmtN(prod.clientes_periodo), 'Distintos'],
-      ['Meses ativos', prod.meses_ativos || 0, 'Com venda'],
-      ['Dias parado', prod.dias_sem_venda || 0, 'Desde última NF'],
-      ['Concentração', (prod.top_cliente_share_pct || 0) + '%', prod.top_cliente_nome || ''],
+      { l: 'Receita no período',    v: T.fmt(prod.receita_periodo),              s: 'Total vendido deste produto' },
+      { l: 'Quantidade vendida',    v: T.fmtN(prod.qtd_periodo) + ' un',         s: 'Volume comercial' },
+      { l: 'Clientes compradores',  v: T.fmtN(prod.clientes_periodo),             s: 'Compradores distintos' },
+      { l: 'Meses ativos',          v: (prod.meses_ativos || 0) + ' meses',       s: 'Com NF no período' },
+      { l: 'Última venda',          v: lastSaleLabel,                             s: prod.ultima_venda || '' },
+      { l: 'Concentração',          v: (prod.top_cliente_share_pct || 0) + '%',   s: prod.top_cliente_nome ? 'Top: ' + prod.top_cliente_nome.substring(0,20) : 'Maior cliente' },
     ];
-    var kpiHtml = '<div class="pd-kpi-grid" style="margin-bottom:14px;">'
-      + kpis.map(function (k) {
-          return '<div class="pd-kpi-item"><span class="pd-kpi-label">' + T.esc(k[0]) + '</span>'
-            + '<strong class="pd-kpi-value">' + k[1] + '</strong>'
-            + (k[2] ? '<span class="pd-kpi-sub">' + T.esc(String(k[2])) + '</span>' : '')
+    var kpiHtml = '<div class="action-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;">'
+      + kpis.map(function(k) {
+          return '<div style="background:var(--surface-muted,#f3f4f6);border-radius:6px;padding:8px 10px;">'
+            + '<div style="font-size:0.7rem;color:var(--text-3);margin-bottom:2px;">' + T.esc(k.l) + '</div>'
+            + '<div style="font-size:1rem;font-weight:700;">' + k.v + '</div>'
+            + '<div style="font-size:0.68rem;color:var(--text-3);">' + T.esc(k.s) + '</div>'
             + '</div>';
         }).join('')
       + '</div>';
 
-    // Repurchase list
-    var repurchaseHtml = '';
+    // ── C. Por que apareceu (score motivos) ───────────────────────────────
+    var motivosHtml = '';
+    if (motivos.length > 0) {
+      motivosHtml = '<details style="margin-bottom:12px;" open>'
+        + '<summary style="cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--text-2);padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;">'
+        + '<span class="material-symbols-rounded" style="font-size:15px;">info</span>'
+        + '<span class="action-score-reasons">Por que apareceu nesta categoria</span></summary>'
+        + '<div style="padding:8px 0 0 20px;">'
+        + motivos.map(function(m) {
+            var mColor = m.startsWith('+') ? '#16a34a' : m.startsWith('−') ? '#dc2626' : '#6b7280';
+            return '<div style="font-size:0.8rem;color:' + mColor + ';margin-bottom:4px;">' + T.esc(m) + '</div>';
+          }).join('')
+        + '<div style="margin-top:8px;font-size:0.72rem;color:var(--text-3);">'
+        + 'Score = recorrência (' + (breakdown.recorrencia||0) + ') + recência (' + (breakdown.recencia||0) + ') + diversidade (' + (breakdown.diversidade||0) + ') + volume (' + (breakdown.volume||0) + ')'
+        + ((breakdown.penalidade||0) < 0 ? ' − concentração (' + Math.abs(breakdown.penalidade||0) + ')' : '')
+        + '</div>'
+        + '</div></details>';
+    }
+
+    // ── D. Base de cálculo ────────────────────────────────────────────────
+    var basisHtml = '';
+    if (dataBasis.length > 0) {
+      basisHtml = '<div class="action-data-basis" style="margin-bottom:12px;">'
+        + '<div style="font-size:0.72rem;color:var(--text-3);margin-bottom:5px;">Base de cálculo</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
+        + dataBasis.map(function(b) {
+            return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.7rem;background:#f1f5f9;color:var(--text-2);border:1px solid #e2e8f0;">' + T.esc(b) + '</span>';
+          }).join('')
+        + '</div></div>';
+    }
+
+    // ── E. Clientes para recompra ─────────────────────────────────────────
+    var repurchaseHtml = '<h4 class="pd-section-title" style="margin:14px 0 6px;">Clientes para recompra</h4>';
     if (repurchase.length > 0) {
-      repurchaseHtml = '<h4 class="pd-section-title" style="margin:14px 0 6px;">Clientes para recompra</h4>'
-        + '<p style="font-size:0.78rem;color:var(--text-3);margin-bottom:8px;">' + repurchase.length + ' cliente(s) sem compra há 30+ dias</p>'
+      repurchaseHtml += '<p style="font-size:0.78rem;color:var(--text-3);margin-bottom:8px;">'
+        + repurchase.length + ' cliente(s) sem compra há 30+ dias — priorizar pelos de maior score</p>'
         + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
         + '<thead><tr><th>Cliente</th><th>Score</th><th>Compras</th><th>Dias</th><th>Vendedor</th></tr></thead>'
         + '<tbody>' + repurchase.slice(0, 8).map(function (c) {
@@ -377,17 +419,33 @@
             return '<tr><td class="truncate">' + T.esc((c.cliente_nome || '').substring(0, 25)) + '</td>'
               + '<td><strong style="color:' + scC + '">' + sc + '</strong></td>'
               + '<td>' + (c.n_compras || 0) + '</td>'
-              + '<td>' + (c.dias_desde_ultima || 0) + '</td>'
+              + '<td>' + (c.dias_desde_ultima || 0) + 'd</td>'
               + '<td class="truncate">' + T.esc((c.vendedor_ultima_venda || '').substring(0, 18)) + '</td></tr>';
           }).join('') + '</tbody></table></div>';
     } else {
-      repurchaseHtml = '<div style="margin-top:12px;padding:12px;border-radius:6px;background:var(--surface-muted,#f3f4f6);font-size:0.82rem;color:var(--text-3);">'
+      // Smart empty state based on category
+      var emptyMsg = cat === 'Produto campeão'
+        ? 'Não há recompra atrasada neste recorte. Como o produto está ativo, a ação recomendada é prospectar clientes semelhantes aos compradores atuais.'
+        : cat === 'Campanha para clientes antigos'
+        ? 'Nenhum cliente com compra há 30+ dias neste recorte. Amplie o período ou verifique a sincronização das NFs.'
+        : cat === 'Reativar produto'
+        ? 'Sem clientes mapeados no recorte. Amplie o período para encontrar histórico de compradores anteriores.'
+        : 'Sem clientes para recompra identificados neste recorte de datas.';
+      repurchaseHtml += '<div class="action-empty-repurchase-explanation" style="padding:12px;border-radius:6px;background:var(--surface-muted,#f3f4f6);font-size:0.82rem;color:var(--text-3);">'
         + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:4px;">info</span>'
-        + 'Nenhum cliente com histórico identificado para recompra no recorte selecionado.</div>';
+        + T.esc(emptyMsg) + '</div>';
     }
 
-    return '<div class="pd-acao-comercial">' + scoreHtml + kpiHtml + repurchaseHtml + '</div>';
+    return '<div class="pd-acao-comercial" style="padding-bottom:8px;">' + decisionHtml + kpiHtml + motivosHtml + basisHtml + repurchaseHtml + '</div>';
   };
+
+  function _acaoBlock(icon, label, value, textColor, bgColor, borderColor) {
+    return '<div style="padding:10px 12px;border-radius:6px;background:' + bgColor + ';border:1px solid ' + borderColor + ';">'
+      + '<div style="font-size:0.68rem;color:var(--text-3);margin-bottom:2px;display:flex;align-items:center;gap:3px;">'
+      + '<span class="material-symbols-rounded" style="font-size:12px;">' + icon + '</span>' + label + '</div>'
+      + '<div style="font-size:0.85rem;font-weight:600;color:' + textColor + ';">' + T.esc(value) + '</div>'
+      + '</div>';
+  }
 
   // ── Giro & Risco (Estoque operacional) ───────────────────────────────────
 
