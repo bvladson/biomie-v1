@@ -132,6 +132,23 @@ function rg_col(string $c, string $s): string
     return isset($map[$c]) ? "\033[{$map[$c]}m{$s}\033[0m" : $s;
 }
 
+/**
+ * Strip PHP comments (T_COMMENT, T_DOC_COMMENT) from source before scanning.
+ * Returns only the concatenated non-comment tokens.
+ */
+function rg_strip_php_comments(string $src): string
+{
+    $tokens = @token_get_all($src);
+    $out    = '';
+    foreach ($tokens as $tok) {
+        if (is_array($tok) && in_array($tok[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+        $out .= is_array($tok) ? $tok[1] : $tok;
+    }
+    return $out;
+}
+
 // ── D1 — Fase O: Base Comercial NF ───────────────────────────────────────────
 $r    = rg_run($php, $toolsDir . '/fiscal_value_basis_guard.php', ['--pretty']);
 $fail = rg_failed($r);
@@ -2708,13 +2725,14 @@ if (is_file($resolverFile)) {
     }
 }
 
-// Document ledger não usa CSV/manual
+// Document ledger não usa CSV/manual — varre apenas código executável (ignora docblocks/comentários)
 $ledgerFile = $projectRoot . '/app/Stock/OmieDocumentStockLedgerBuilder.php';
 if (is_file($ledgerFile)) {
-    $src = (string) file_get_contents($ledgerFile);
+    $src     = (string) file_get_contents($ledgerFile);
+    $srcCode = rg_strip_php_comments($src);
     foreach (['csv', 'manual', 'planilha', 'upload'] as $forbidden) {
-        if (stripos($src, $forbidden) !== false) {
-            $d33Issues[] = "OmieDocumentStockLedgerBuilder contém referência proibida: {$forbidden}";
+        if (stripos($srcCode, $forbidden) !== false) {
+            $d33Issues[] = "OmieDocumentStockLedgerBuilder contém referência proibida em código executável: {$forbidden}";
         }
     }
     if (!str_contains($src, 'omie_document_ledger')) {
