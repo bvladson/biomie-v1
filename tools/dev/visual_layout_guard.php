@@ -251,6 +251,23 @@ function buildChecks(string $root): array
         checkContains('com_r3_stock_source_audit', file_exists($root . '/tools/dev/product_360_stock_source_audit.php') ? 'ok' : '', 'ok', 'product_360_stock_source_audit.php existe (COM.R3 Fase 0).'),
         checkContains('com_r3_nf_perf_audit', file_exists($root . '/tools/dev/nf_periodo_performance_audit.php') ? 'ok' : '', 'ok', 'nf_periodo_performance_audit.php existe (COM.R3 Fase 0).'),
         checkNoNewMigration($root),
+
+        // EST.R1.3 — Product 360 Polish & Temporal Semantics
+        checkContains('est_r13_identity_resolver',    file_exists($root . '/app/Support/ProductCommercialIdentityResolver.php') ? 'ok' : '', 'ok', 'ProductCommercialIdentityResolver existe (EST.R1.3).'),
+        checkContains('est_r13_bucket_resolver',      file_exists($root . '/app/Support/ProductTemporalBucketResolver.php') ? 'ok' : '', 'ok', 'ProductTemporalBucketResolver existe (EST.R1.3).'),
+        checkContains('est_r13_repo_trim',            readFileSafe($root . '/app/Modules/Sales/Infrastructure/Product360ReadRepository.php'), 'TRIM(i.codigo_produto)', 'Product360ReadRepository usa TRIM no código (EST.R1.3).'),
+        checkContains('est_r13_repo_coalesce_date',   readFileSafe($root . '/app/Modules/Sales/Infrastructure/Product360ReadRepository.php'), 'COALESCE(n.data_competencia, n.data_emissao)', 'Product360ReadRepository usa COALESCE para datas (EST.R1.3).'),
+        checkContains('est_r13_timeline_bucket_mode', readFileSafe($root . '/app/Modules/Sales/Infrastructure/Product360ReadRepository.php'), 'bucket_mode', 'Product360ReadRepository::timeline retorna bucket_mode (EST.R1.3).'),
+        checkContains('est_r13_service_resolver',     readFileSafe($root . '/app/Modules/Sales/Application/Products/Product360ReadService.php'), 'ProductCommercialIdentityResolver', 'Product360ReadService usa resolver (EST.R1.3).'),
+        checkContains('est_r13_service_identity_block', readFileSafe($root . '/app/Modules/Sales/Application/Products/Product360ReadService.php'), "'identity'", "Product360ReadService retorna bloco 'identity' (EST.R1.3)."),
+        checkContains('est_r13_vendors_qty_pct',      readFileSafe($root . '/app/Modules/Sales/Application/Products/Product360ReadService.php'), 'participation_qty_pct', 'mapVendors retorna participation_qty_pct (EST.R1.3).'),
+        checkContains('est_r13_js_placeholder_guard', readFileSafe($root . '/assets/js/modules/product-detail/index.js'), 'PLACEHOLDER_NAMES', 'index.js tem guard de placeholder (EST.R1.3).'),
+        checkContains('est_r13_tabs_vendor_qty',      readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'participation_qty_pct', 'tabs.js renderVendors usa qty participation (EST.R1.3).'),
+        checkContains('est_r13_tabs_source_note',     readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'pd-source-note', 'tabs.js renderEstoque tem semantic source note (EST.R1.3).'),
+        checkContains('est_r13_tabs_identity_note',   readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'pd-identity-note', 'tabs.js renderResumo tem identity badge (EST.R1.3).'),
+        checkContains('est_r13_tabs_empty_specific',  readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'Sem NFs neste recorte', 'tabs.js tem empty state específico sem contradição (EST.R1.3).'),
+        checkContains('est_r13_identity_audit',       file_exists($root . '/tools/dev/product_360_identity_consistency_audit.php') ? 'ok' : '', 'ok', 'product_360_identity_consistency_audit.php existe (EST.R1.3).'),
+        checkContains('est_r13_bucket_audit',         file_exists($root . '/tools/dev/product_360_temporal_bucket_audit.php') ? 'ok' : '', 'ok', 'product_360_temporal_bucket_audit.php existe (EST.R1.3).'),
     ];
 }
 

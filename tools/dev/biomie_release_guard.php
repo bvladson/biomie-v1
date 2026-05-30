@@ -50,6 +50,7 @@ declare(strict_types=1);
  *   D32 EST.R1 Product Stock Sync                                   [informacional — OmieStockClient + StockSyncCoordinator + Product360 tab estoque + nf_periodo_table filters + biomie-drawer.css]
  *   D33 EST.R1.1 Omie API-only Stock Intelligence                   [informacional — OmieStockSourceResolver + OmieDocumentStockLedgerBuilder + product_stock_intelligence.php + sem fonte manual]
  *   D34 EST.R1.2 Giro e Risco Operacional                          [informacional — buildTopVendors+buildRecurrence+buildConcentration+buildDormant + tab=estoque + 5-tab mercadorias]
+ *   D35 EST.R1.3 Product 360 Polish & Temporal Semantics           [informacional — IdentityResolver + BucketResolver + TRIM/COALESCE + timeline_meta + JS placeholder fix]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2835,6 +2836,101 @@ $domains[] = [
         ? 'EST.R1.2 presente: 4 builder methods + tab=estoque product_detail + 5 tabs mercadorias + Product 360 drawer'
         : count($d34Issues) . ' item(ns) EST.R1.2 ausente(s) [informacional]',
     'issues'        => $d34Issues,
+];
+
+// ── D35 — EST.R1.3 Product 360 Polish & Temporal Semantics [informacional] ───
+
+$d35Issues = [];
+
+// Resolvers existem
+$identityResolverFile = $projectRoot . '/app/Support/ProductCommercialIdentityResolver.php';
+if (!is_file($identityResolverFile)) {
+    $d35Issues[] = 'ProductCommercialIdentityResolver.php ausente';
+} else {
+    $src     = (string) file_get_contents($identityResolverFile);
+    $srcCode = rg_strip_php_comments($src);
+    if (!str_contains($src, 'function resolve')) $d35Issues[] = 'ProductCommercialIdentityResolver sem método resolve()';
+    if (!str_contains($src, 'TRIM')) $d35Issues[] = 'ProductCommercialIdentityResolver não usa TRIM';
+    if (str_contains($srcCode, "'Produto sem descricao'") || str_contains($srcCode, '"Produto sem descricao"')) $d35Issues[] = 'ProductCommercialIdentityResolver retorna literal "Produto sem descricao" em código executável';
+}
+
+$bucketResolverFile = $projectRoot . '/app/Support/ProductTemporalBucketResolver.php';
+if (!is_file($bucketResolverFile)) {
+    $d35Issues[] = 'ProductTemporalBucketResolver.php ausente';
+} else {
+    $src = (string) file_get_contents($bucketResolverFile);
+    foreach (['MODE_DAY', 'MODE_WEEK', 'MODE_MONTH', 'generateEmptyBuckets', 'mergeIntoBuckets'] as $sym) {
+        if (!str_contains($src, $sym)) $d35Issues[] = "ProductTemporalBucketResolver sem {$sym}";
+    }
+}
+
+// Repository usa TRIM e COALESCE
+$repoFile = $projectRoot . '/app/Modules/Sales/Infrastructure/Product360ReadRepository.php';
+if (is_file($repoFile)) {
+    $src = (string) file_get_contents($repoFile);
+    if (!str_contains($src, 'TRIM(i.codigo_produto)'))   $d35Issues[] = 'Product360ReadRepository: falta TRIM no codigo_produto';
+    if (!str_contains($src, 'COALESCE(n.data_competencia, n.data_emissao)')) $d35Issues[] = 'Product360ReadRepository: falta COALESCE date';
+    if (!str_contains($src, 'ProductTemporalBucketResolver')) $d35Issues[] = 'Product360ReadRepository não usa ProductTemporalBucketResolver';
+    if (!str_contains($src, 'bucket_mode')) $d35Issues[] = 'Product360ReadRepository::timeline não retorna bucket_mode';
+}
+
+// Service usa resolver
+$serviceFile = $projectRoot . '/app/Modules/Sales/Application/Products/Product360ReadService.php';
+if (is_file($serviceFile)) {
+    $src = (string) file_get_contents($serviceFile);
+    if (!str_contains($src, 'ProductCommercialIdentityResolver')) $d35Issues[] = 'Product360ReadService não usa ProductCommercialIdentityResolver';
+    if (!str_contains($src, 'identity')) $d35Issues[] = 'Product360ReadService não retorna identity block';
+    if (!str_contains($src, 'participation_qty_pct')) $d35Issues[] = 'Product360ReadService::mapVendors sem participation_qty_pct';
+}
+
+// api/product_detail.php instancia resolver
+$pdApiFile = $projectRoot . '/api/product_detail.php';
+if (is_file($pdApiFile)) {
+    $src = (string) file_get_contents($pdApiFile);
+    if (!str_contains($src, 'ProductCommercialIdentityResolver')) $d35Issues[] = 'api/product_detail.php não instancia ProductCommercialIdentityResolver';
+}
+
+// JS fixes
+$indexJsFile = $projectRoot . '/assets/js/modules/product-detail/index.js';
+if (is_file($indexJsFile)) {
+    $src = (string) file_get_contents($indexJsFile);
+    if (!str_contains($src, 'PLACEHOLDER_NAMES'))   $d35Issues[] = 'index.js sem PLACEHOLDER_NAMES guard';
+    if (!str_contains($src, 'isPlaceholder'))        $d35Issues[] = 'index.js sem isPlaceholder()';
+}
+
+$tabsJsFile = $projectRoot . '/assets/js/modules/product-detail/tabs.js';
+if (is_file($tabsJsFile)) {
+    $src = (string) file_get_contents($tabsJsFile);
+    if (!str_contains($src, 'participation_qty_pct')) $d35Issues[] = 'tabs.js sem participation_qty_pct em renderVendors';
+    if (!str_contains($src, 'pd-source-note'))         $d35Issues[] = 'tabs.js sem pd-source-note em renderEstoque';
+    if (!str_contains($src, 'pd-identity-note'))       $d35Issues[] = 'tabs.js sem pd-identity-note em renderResumo';
+    if (!str_contains($src, 'Sem NFs neste recorte'))  $d35Issues[] = 'tabs.js sem empty state específico "Sem NFs neste recorte"';
+}
+
+// Audit tools existem
+foreach ([
+    'tools/dev/product_360_identity_consistency_audit.php',
+    'tools/dev/product_360_temporal_bucket_audit.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d35Issues[] = "Arquivo ausente: {$f}";
+}
+
+// Sem migration nova (fase read-only)
+$migrationCount35 = count(glob($projectRoot . '/database/migrations/Version2026053*.php') ?: []);
+if ($migrationCount35 > 3) {
+    $d35Issues[] = "EST.R1.3 gerou {$migrationCount35} migrations — esperado ≤ 3 (apenas EST.R1)";
+}
+
+$domains[] = [
+    'label'         => 'D35 EST.R1.3 Product 360 Polish & Temporal Semantics',
+    'guard'         => 'IdentityResolver + BucketResolver + Repository TRIM/COALESCE + timeline_meta + JS placeholder fix + 2 audits',
+    'pass'          => true,
+    'warn'          => count($d35Issues) > 0,
+    'informational' => true,
+    'summary'       => $d35Issues === []
+        ? 'EST.R1.3 presente: identity/bucket resolvers + TRIM/COALESCE fixes + JS guard + audit tools'
+        : count($d35Issues) . ' item(ns) EST.R1.3 ausente(s) [informacional]',
+    'issues'        => $d35Issues,
 ];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────

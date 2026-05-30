@@ -13,6 +13,7 @@
     renderTimeline: function (data) {
       var T       = B.ProductDetail.Tabs;
       var rows    = (data && data.timeline) || [];
+      var tmeta   = (data && data.timeline_meta) || {};
       var es      = (data && data.empty_states && data.empty_states.sales) || {};
 
       if (!rows.length) {
@@ -21,9 +22,11 @@
           : '<div class="biomie-drawer__empty">Sem dados de evolucao temporal para este produto.</div>';
       }
 
+      var bucketTitle = tmeta.bucket_title || 'Evolução';
       var canvasId = 'pd-timeline-chart-' + Date.now();
-      var html = '<div class="pd-chart-wrap"><canvas id="' + canvasId + '" height="220"></canvas></div>' +
-        '<div class="pd-chart-note" style="font-size:0.75rem;color:var(--text-3);margin-top:8px;">Base: data_competencia</div>';
+      var html = '<h4 class="pd-section-title" style="margin:0 0 8px;">' + B.ProductDetail.Tabs.esc(bucketTitle) + '</h4>' +
+        '<div class="pd-chart-wrap"><canvas id="' + canvasId + '" height="220"></canvas></div>' +
+        '<div class="pd-chart-note" style="font-size:0.75rem;color:var(--text-3);margin-top:8px;">Base: COALESCE(data_competencia, data_emissao)</div>';
 
       // Defer chart render until after DOM insertion
       window.setTimeout(function () {

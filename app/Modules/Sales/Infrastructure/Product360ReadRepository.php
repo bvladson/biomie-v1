@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie\Modules\Sales\Infrastructure;
 
+use BIomie\Support\ProductTemporalBucketResolver;
 use PDO;
 use Throwable;
 
@@ -19,6 +20,7 @@ final class Product360ReadRepository
 
     /**
      * Resumo agregado do produto no período.
+     * Usa TRIM no código e COALESCE(data_competencia, data_emissao) para datas.
      *
      * @return array<string,mixed>|null
      */
@@ -28,7 +30,7 @@ final class Product360ReadRepository
             $stmt = $this->pdo->prepare(<<<'SQL'
                 SELECT
                     i.codigo_produto                                                     AS product_code,
-                    COALESCE(NULLIF(TRIM(MAX(i.descricao_produto)), ''), 'Produto sem descricao') AS product_description,
+                    COALESCE(NULLIF(TRIM(MAX(i.descricao_produto)), ''), '')             AS product_description,
                     SUM(i.quantidade)                                                   AS quantity_total,
                     SUM(i.valor_total)                                                  AS realized_total,
                     SUM(i.valor_desconto)                                               AS discount_total,
@@ -36,17 +38,17 @@ final class Product360ReadRepository
                     COUNT(DISTINCT n.nota_key)                                          AS invoices_count,
                     COUNT(DISTINCT n.codigo_cliente_omie)                               AS customers_count,
                     COUNT(DISTINCT n.codigo_vendedor_omie)                              AS vendors_count,
-                    MIN(n.data_competencia)                                             AS first_sale_at,
-                    MAX(n.data_competencia)                                             AS last_sale_at,
+                    MIN(COALESCE(n.data_competencia, n.data_emissao))                   AS first_sale_at,
+                    MAX(COALESCE(n.data_competencia, n.data_emissao))                   AS last_sale_at,
                     SUM(CASE WHEN i.valor_mercadorias IS NULL THEN 1 ELSE 0 END)        AS items_without_merchandise
                 FROM biomie_notas_fiscais_itens_canonicos i
                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                 WHERE n.status_fiscal = 'autorizada'
-                  AND n.data_competencia BETWEEN :start AND :end
-                  AND i.codigo_produto = :product_code
+                  AND COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end
+                  AND TRIM(i.codigo_produto) = TRIM(:product_code)
                 GROUP BY i.codigo_produto
             SQL);
-            $stmt->bindValue('product_code', $productCode);
+            $stmt->bindValue('product_code', trim($productCode));
             $stmt->bindValue('start', $start);
             $stmt->bindValue('end', $end);
             $stmt->execute();
@@ -86,9 +88,9 @@ final class Product360ReadRepository
                 FROM biomie_notas_fiscais_itens_canonicos i
                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                 WHERE n.status_fiscal = 'autorizada'
-                  AND n.data_competencia BETWEEN :start AND :end
-                  AND i.codigo_produto = :product_code
-                ORDER BY n.data_competencia DESC, n.numero_nf DESC
+                  AND COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end
+                  AND TRIM(i.codigo_produto) = TRIM(:product_code)
+                ORDER BY COALESCE(n.data_competencia, n.data_emissao) DESC, n.numero_nf DESC
                 LIMIT :limit
             SQL);
             $stmt->bindValue('product_code', $productCode);
@@ -121,13 +123,13 @@ final class Product360ReadRepository
                     CASE WHEN COUNT(DISTINCT n.nota_key) > 0
                          THEN SUM(i.valor_total) / COUNT(DISTINCT n.nota_key)
                          ELSE 0 END                                                AS ticket_avg,
-                    MIN(n.data_competencia)                                         AS first_purchase_at,
-                    MAX(n.data_competencia)                                         AS last_purchase_at
+                    MIN(COALESCE(n.data_competencia, n.data_emissao))               AS first_purchase_at,
+                    MAX(COALESCE(n.data_competencia, n.data_emissao))               AS last_purchase_at
                 FROM biomie_notas_fiscais_itens_canonicos i
                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                 WHERE n.status_fiscal = 'autorizada'
-                  AND n.data_competencia BETWEEN :start AND :end
-                  AND i.codigo_produto = :product_code
+                  AND COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end
+                  AND TRIM(i.codigo_produto) = TRIM(:product_code)
                 GROUP BY n.codigo_cliente_omie, n.nome_cliente, n.documento_cliente
                 ORDER BY revenue DESC
                 LIMIT :limit
@@ -159,13 +161,13 @@ final class Product360ReadRepository
                     SUM(i.quantidade)                                               AS quantity,
                     COUNT(DISTINCT n.nota_key)                                      AS invoices_count,
                     COUNT(DISTINCT n.codigo_cliente_omie)                           AS customers_count,
-                    MIN(n.data_competencia)                                         AS first_sale_at,
-                    MAX(n.data_competencia)                                         AS last_sale_at
+                    MIN(COALESCE(n.data_competencia, n.data_emissao))               AS first_sale_at,
+                    MAX(COALESCE(n.data_competencia, n.data_emissao))               AS last_sale_at
                 FROM biomie_notas_fiscais_itens_canonicos i
                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                 WHERE n.status_fiscal = 'autorizada'
-                  AND n.data_competencia BETWEEN :start AND :end
-                  AND i.codigo_produto = :product_code
+                  AND COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end
+                  AND TRIM(i.codigo_produto) = TRIM(:product_code)
                 GROUP BY n.codigo_vendedor_omie, n.nome_vendedor
                 ORDER BY revenue DESC
                 LIMIT :limit
@@ -209,8 +211,8 @@ final class Product360ReadRepository
                 INNER JOIN biomie_notas_fiscais_itens_canonicos i ON i.nota_key = b.nota_key
                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                 WHERE n.status_fiscal = 'autorizada'
-                  AND n.data_competencia BETWEEN :start AND :end
-                  AND i.codigo_produto = :product_code
+                  AND COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end
+                  AND TRIM(i.codigo_produto) = TRIM(:product_code)
                 ORDER BY COALESCE(b.data_competencia_nfe, b.data_faturamento, b.data_emissao) DESC
                 LIMIT :limit
             SQL);
@@ -226,59 +228,61 @@ final class Product360ReadRepository
     }
 
     /**
-     * Evolução temporal: por dia se período ≤ 45 dias, por mês se > 45 dias.
+     * Evolução temporal com bucket adaptativo:
+     *   ≤ 45 dias → diário | 46–180 dias → semanal | > 180 dias → mensal
      *
-     * @return list<array<string,mixed>>
+     * Usa COALESCE(data_competencia, data_emissao) para não perder NFs sem competência.
+     * Buckets sem venda preenchidos com zero para o gráfico não quebrar.
+     *
+     * @return array{bucket_mode:string,bucket_title:string,rows:list<array<string,mixed>>}
      */
-    public function timeline(string $productCode, string $start, string $end): array
+    public function timeline(string $productCode, string $start, string $end, ?string $granularity = null): array
     {
-        $days = (int) round((strtotime($end) - strtotime($start)) / 86400);
-        $byDay = $days <= 45;
+        $mode       = ProductTemporalBucketResolver::resolveMode($start, $end, $granularity);
+        $dateExpr   = 'COALESCE(n.data_competencia, n.data_emissao)';
+        $bucketExpr = ProductTemporalBucketResolver::bucketSql('n', $mode);
 
         try {
-            if ($byDay) {
-                $stmt = $this->pdo->prepare(<<<'SQL'
-                    SELECT
-                        n.data_competencia                                          AS bucket,
-                        n.data_competencia                                          AS label,
-                        SUM(i.valor_total)                                          AS revenue,
-                        SUM(i.quantidade)                                           AS quantity,
-                        COUNT(DISTINCT n.nota_key)                                  AS invoices_count,
-                        COUNT(DISTINCT n.codigo_cliente_omie)                       AS customers_count
-                    FROM biomie_notas_fiscais_itens_canonicos i
-                    INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
-                    WHERE n.status_fiscal = 'autorizada'
-                      AND n.data_competencia BETWEEN :start AND :end
-                      AND i.codigo_produto = :product_code
-                    GROUP BY n.data_competencia
-                    ORDER BY n.data_competencia ASC
-                SQL);
-            } else {
-                $stmt = $this->pdo->prepare(<<<'SQL'
-                    SELECT
-                        DATE_FORMAT(n.data_competencia, '%Y-%m')                    AS bucket,
-                        DATE_FORMAT(n.data_competencia, '%Y-%m')                    AS label,
-                        SUM(i.valor_total)                                          AS revenue,
-                        SUM(i.quantidade)                                           AS quantity,
-                        COUNT(DISTINCT n.nota_key)                                  AS invoices_count,
-                        COUNT(DISTINCT n.codigo_cliente_omie)                       AS customers_count
-                    FROM biomie_notas_fiscais_itens_canonicos i
-                    INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
-                    WHERE n.status_fiscal = 'autorizada'
-                      AND n.data_competencia BETWEEN :start AND :end
-                      AND i.codigo_produto = :product_code
-                    GROUP BY DATE_FORMAT(n.data_competencia, '%Y-%m')
-                    ORDER BY bucket ASC
-                SQL);
-            }
-            $stmt->bindValue('product_code', $productCode);
-            $stmt->bindValue('start', $start);
-            $stmt->bindValue('end', $end);
+            $stmt = $this->pdo->prepare(
+                "SELECT
+                    {$bucketExpr}                                                    AS bucket,
+                    SUM(i.valor_total)                                              AS revenue,
+                    SUM(i.quantidade)                                               AS quantity,
+                    COUNT(DISTINCT n.nota_key)                                      AS invoices_count,
+                    COUNT(DISTINCT n.codigo_cliente_omie)                           AS customers_count
+                 FROM biomie_notas_fiscais_itens_canonicos i
+                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
+                 WHERE n.status_fiscal = 'autorizada'
+                   AND {$dateExpr} BETWEEN :start AND :end
+                   AND TRIM(i.codigo_produto) = TRIM(:product_code)
+                 GROUP BY {$bucketExpr}
+                 ORDER BY bucket ASC"
+            );
+            $stmt->bindValue(':product_code', trim($productCode));
+            $stmt->bindValue(':start', $start);
+            $stmt->bindValue(':end',   $end);
             $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Throwable) {
-            return [];
+            $rows = [];
         }
+
+        // Add revenue_raw and label to each row
+        $rows = array_map(static function (array $r): array {
+            $r['revenue_raw'] = (float) ($r['revenue'] ?? 0);
+            $r['label']       = (string) ($r['bucket'] ?? '');
+            return $r;
+        }, $rows);
+
+        // Fill empty buckets and merge
+        $empty  = ProductTemporalBucketResolver::generateEmptyBuckets($start, $end, $mode);
+        $filled = ProductTemporalBucketResolver::mergeIntoBuckets($empty, $rows, $mode);
+
+        return [
+            'bucket_mode'  => $mode,
+            'bucket_title' => ProductTemporalBucketResolver::bucketTitle($mode),
+            'rows'         => $filled,
+        ];
     }
 
     /**
@@ -300,9 +304,9 @@ final class Product360ReadRepository
                 FROM biomie_notas_fiscais_itens_canonicos i
                 INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                 WHERE n.status_fiscal = 'autorizada'
-                  AND i.codigo_produto = :product_code
+                  AND TRIM(i.codigo_produto) = TRIM(:product_code)
             SQL);
-            $stmt->bindValue('product_code', $productCode);
+            $stmt->bindValue('product_code', trim($productCode));
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row === false) {
@@ -317,12 +321,12 @@ final class Product360ReadRepository
                     FROM biomie_notas_fiscais_itens_canonicos i
                     INNER JOIN biomie_notas_fiscais_canonicas n ON n.nota_key = i.nota_key
                     WHERE n.status_fiscal = 'autorizada'
-                      AND i.codigo_produto = :product_code
+                      AND TRIM(i.codigo_produto) = TRIM(:product_code)
                     GROUP BY n.codigo_cliente_omie
                     HAVING COUNT(DISTINCT n.nota_key) >= 2
                 ) AS repeat_sub
             SQL);
-            $repeatStmt->bindValue('product_code', $productCode);
+            $repeatStmt->bindValue('product_code', trim($productCode));
             $repeatStmt->execute();
             $repeatRow = $repeatStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -340,9 +344,9 @@ final class Product360ReadRepository
     {
         try {
             $stmt = $this->pdo->prepare(
-                'SELECT COUNT(*) FROM mart_produto_periodo WHERE codigo_produto = :product_code'
+                'SELECT COUNT(*) FROM mart_produto_periodo WHERE TRIM(codigo_produto) = TRIM(:product_code)'
             );
-            $stmt->bindValue('product_code', $productCode);
+            $stmt->bindValue('product_code', trim($productCode));
             $stmt->execute();
             return (int) $stmt->fetchColumn();
         } catch (Throwable) {

@@ -415,7 +415,8 @@
   };
 
   B.renderProductBreakdownTrigger = function (row, state) {
-    var description = row.description || 'Produto sem descricao';
+    var rawDesc = row.description || '';
+    var description = (rawDesc && rawDesc !== 'Produto sem descricao') ? rawDesc : (row.product_code || 'Produto sem descricao');
     var productCode = row.product_code || '';
     var disabled    = !state.available;
     var hint        = B.productBreakdownPrimaryMessage(state, 'trigger');

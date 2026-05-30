@@ -293,12 +293,24 @@
     }
   }
 
+  var PLACEHOLDER_NAMES = ['Produto sem descricao', 'Produto sem descrição', 'Produto sem descricão', ''];
+
+  function isPlaceholder(s) {
+    return !s || PLACEHOLDER_NAMES.indexOf(String(s).trim()) !== -1;
+  }
+
   function updateHeader() {
     var titleEl    = document.getElementById('pd-title');
     var subtitleEl = document.getElementById('pd-subtitle');
     if (titleEl) {
-      var desc = (state.data && state.data.summary && state.data.summary.product_description) || state.productName || state.productCode;
-      titleEl.textContent = desc || 'Product 360';
+      // Priority: identity.display_name > productName (from table click) > product_description > product_code
+      var identity = state.data && state.data.identity;
+      var apiIdentity = identity && !isPlaceholder(identity.display_name) ? identity.display_name : null;
+      var apiDesc     = state.data && state.data.summary && !isPlaceholder(state.data.summary.product_description)
+                        ? state.data.summary.product_description : null;
+      var cleanName   = !isPlaceholder(state.productName) ? state.productName : null;
+      var desc = apiIdentity || cleanName || apiDesc || state.productCode || 'Product 360';
+      titleEl.textContent = desc;
     }
     if (subtitleEl) {
       subtitleEl.textContent = state.productCode || '';

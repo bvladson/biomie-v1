@@ -7,6 +7,7 @@ namespace BIomie\Modules\Sales\Application\Products;
 use BIomie\Modules\Sales\Infrastructure\Product360ReadRepository;
 use BIomie\RequestContext;
 use BIomie\Support;
+use BIomie\Support\ProductCommercialIdentityResolver;
 use PDO;
 
 /**
@@ -15,7 +16,10 @@ use PDO;
  */
 final class Product360ReadService
 {
-    public function __construct(private readonly Product360ReadRepository $repo) {}
+    public function __construct(
+        private readonly Product360ReadRepository $repo,
+        private readonly ?ProductCommercialIdentityResolver $identityResolver = null,
+    ) {}
 
     /**
      * @return array<string,mixed>
@@ -35,8 +39,24 @@ final class Product360ReadService
         $goldStatus       = $freshnessStatus($lastGold);
         $isStale          = $canonicalStatus === 'critical';
 
+        // Resolve product identity (handles TRIM mismatch between API and DB)
+        $identity = $this->identityResolver !== null
+            ? $this->identityResolver->resolve($productCode, $start, $end)
+            : [
+                'product_code'       => $productCode,
+                'db_code'            => $productCode,
+                'display_name'       => $productCode,
+                'description_source' => 'none',
+                'matched_by'         => 'passthrough',
+                'confidence'         => 'low',
+                'warnings'           => [],
+            ];
+
+        // Use the resolved DB code for all queries (may differ from URL code by whitespace)
+        $resolvedCode = $identity['db_code'];
+
         // Summary is always loaded (needed for empty states + tab Resumo)
-        $summaryRaw = $this->repo->summary($productCode, $start, $end);
+        $summaryRaw = $this->repo->summary($resolvedCode, $start, $end);
 
         $invoicesCount    = (int) ($summaryRaw['invoices_count'] ?? 0);
         $realizedTotal    = (float) ($summaryRaw['realized_total'] ?? 0.0);
@@ -44,16 +64,22 @@ final class Product360ReadService
         $customersCount   = (int) ($summaryRaw['customers_count'] ?? 0);
         $vendorsCount     = (int) ($summaryRaw['vendors_count'] ?? 0);
         $itemsWithoutMerch = (int) ($summaryRaw['items_without_merchandise'] ?? 0);
-        $martRowCount     = $this->repo->martRowCount($productCode);
+        $martRowCount     = $this->repo->martRowCount($resolvedCode);
 
         $merchandiseTotal = (float) ($summaryRaw['merchandise_total'] ?? $realizedTotal);
         $discountTotal    = (float) ($summaryRaw['discount_total'] ?? 0.0);
         $ticketAvg        = $invoicesCount > 0 ? $realizedTotal / $invoicesCount : 0.0;
         $avgUnitPrice     = $quantityTotal > 0 ? $realizedTotal / $quantityTotal : 0.0;
 
+        // Display name: resolver result > API description > code-based fallback (never "Produto sem descricao")
+        $rawDesc    = trim((string) ($summaryRaw['product_description'] ?? ''));
+        $displayName = $identity['display_name'] !== '' && $identity['display_name'] !== "Produto {$productCode}"
+            ? $identity['display_name']
+            : ($rawDesc !== '' ? $rawDesc : $identity['display_name']);
+
         $summary = [
             'product_code'           => $productCode,
-            'product_description'    => $summaryRaw['product_description'] ?? 'Produto sem descricao',
+            'product_description'    => $displayName,
             'realized_total'         => Support::money($realizedTotal),
             'merchandise_total'      => Support::money($merchandiseTotal),
             'quantity_total'         => (float) $quantityTotal,
@@ -67,21 +93,22 @@ final class Product360ReadService
             'first_sale_at'          => $summaryRaw['first_sale_at'] ?? null,
             'last_sale_at'           => $summaryRaw['last_sale_at'] ?? null,
             'source'                 => $invoicesCount > 0 ? 'canonical' : 'empty',
-            'realized_period_basis'  => 'data_competencia',
+            'realized_period_basis'  => 'data_competencia_coalesce',
         ];
 
         // Load tab-specific data (or all if tab is null)
         $loadAll = $tab === null;
 
-        $invoices      = ($loadAll || $tab === 'nfs')       ? $this->mapInvoices($this->repo->invoices($productCode, $start, $end, $limit))      : [];
-        $customers     = ($loadAll || $tab === 'clientes')  ? $this->mapCustomers($this->repo->customers($productCode, $start, $end, $limit))     : [];
-        $vendors       = ($loadAll || $tab === 'vendedores') ? $this->mapVendors($this->repo->vendors($productCode, $start, $end, $limit), $realizedTotal) : [];
-        $linkedOrders  = ($loadAll || $tab === 'pedidos')   ? $this->repo->linkedOrders($productCode, $start, $end, $limit) : [];
-        $timeline      = ($loadAll || $tab === 'evolucao')  ? $this->mapTimeline($this->repo->timeline($productCode, $start, $end)) : [];
-        $ltv           = ($loadAll || $tab === 'ltv')       ? $this->mapLtv($this->repo->ltv($productCode), $realizedTotal)      : [];
+        $invoices      = ($loadAll || $tab === 'nfs')       ? $this->mapInvoices($this->repo->invoices($resolvedCode, $start, $end, $limit))      : [];
+        $customers     = ($loadAll || $tab === 'clientes')  ? $this->mapCustomers($this->repo->customers($resolvedCode, $start, $end, $limit))     : [];
+        $vendorRows    = ($loadAll || $tab === 'vendedores') ? $this->repo->vendors($resolvedCode, $start, $end, $limit) : [];
+        $vendors       = ($loadAll || $tab === 'vendedores') ? $this->mapVendors($vendorRows, $realizedTotal) : [];
+        $linkedOrders  = ($loadAll || $tab === 'pedidos')   ? $this->repo->linkedOrders($resolvedCode, $start, $end, $limit) : [];
+        $timelineData  = ($loadAll || $tab === 'evolucao')  ? $this->repo->timeline($resolvedCode, $start, $end) : ['bucket_mode' => 'day', 'bucket_title' => 'Evolução', 'rows' => []];
+        $ltv           = ($loadAll || $tab === 'ltv')       ? $this->mapLtv($this->repo->ltv($resolvedCode), $realizedTotal)      : [];
         // EST.R1 — stock tab (lazy-loaded; never blocks other tabs)
-        $stockData     = ($loadAll || $tab === 'estoque')   ? $this->repo->stockByLocation($productCode)                     : null;
-        $stockMovs     = ($loadAll || $tab === 'estoque')   ? $this->repo->stockMovements($productCode, $start, $end, min($limit, 50)) : null;
+        $stockData     = ($loadAll || $tab === 'estoque')   ? $this->repo->stockByLocation($resolvedCode)                     : null;
+        $stockMovs     = ($loadAll || $tab === 'estoque')   ? $this->repo->stockMovements($resolvedCode, $start, $end, min($limit, 50)) : null;
 
         $summary['linked_orders_count'] = count($linkedOrders);
 
@@ -94,7 +121,12 @@ final class Product360ReadService
             'freshness_status'         => $canonicalStatus,
             'last_canonical_nf_at'     => $lastCanonical,
             'last_gold_materialized_at' => $lastGold,
-            'warnings'                 => $this->buildWarnings($itemsWithoutMerch, $isStale, $invoicesCount, count($linkedOrders)),
+            'identity_matched_by'      => $identity['matched_by'],
+            'identity_confidence'      => $identity['confidence'],
+            'warnings'                 => array_merge(
+                $this->buildWarnings($itemsWithoutMerch, $isStale, $invoicesCount, count($linkedOrders)),
+                $identity['warnings']
+            ),
         ];
 
         $emptyStates = $this->buildEmptyStates(
@@ -112,14 +144,15 @@ final class Product360ReadService
             'source'      => $sourceLabel,
             'product'     => [
                 'code'        => $productCode,
-                'description' => $summary['product_description'],
+                'description' => $displayName,
             ],
+            'identity'    => $identity,
             'period'      => [
                 'start' => $start,
                 'end'   => $end,
             ],
             'period_basis' => [
-                'realized'      => 'data_competencia',
+                'realized'      => 'data_competencia_coalesce',
                 'linked_orders' => 'data_competencia_nfe',
                 'wallet'        => 'data_emissao',
             ],
@@ -128,7 +161,11 @@ final class Product360ReadService
             'customers'     => $customers,
             'vendors'       => $vendors,
             'linked_orders' => $linkedOrders,
-            'timeline'      => $timeline,
+            'timeline'      => $timelineData['rows'],
+            'timeline_meta' => [
+                'bucket_mode'  => $timelineData['bucket_mode'],
+                'bucket_title' => $timelineData['bucket_title'],
+            ],
             'ltv'           => $ltv,
             'stock'         => $stockData,
             'stock_movements' => $stockMovs,
@@ -137,7 +174,7 @@ final class Product360ReadService
             'meta'         => [
                 'request_id'         => RequestContext::id(),
                 'generated_at'       => date(DATE_ATOM),
-                'realized_period_basis' => 'data_competencia',
+                'realized_period_basis' => 'data_competencia_coalesce',
                 'product_code'       => $productCode,
                 'limit'              => $limit,
                 'tab'                => $tab,
@@ -203,40 +240,30 @@ final class Product360ReadService
      */
     private function mapVendors(array $rows, float $totalRevenue): array
     {
-        return array_map(static function (array $row) use ($totalRevenue): array {
-            $revenue = (float) ($row['revenue'] ?? 0);
+        // Compute totals from the rows themselves (guards against summary mismatch)
+        $rowRevenueTotal = array_sum(array_map(fn($r) => (float) ($r['revenue'] ?? 0), $rows));
+        $rowQtyTotal     = array_sum(array_map(fn($r) => (float) ($r['quantity'] ?? 0), $rows));
+        $effectiveRev    = max($totalRevenue, $rowRevenueTotal);
+
+        return array_map(static function (array $row) use ($effectiveRev, $rowQtyTotal): array {
+            $revenue  = (float) ($row['revenue']  ?? 0);
+            $quantity = (float) ($row['quantity'] ?? 0);
             return [
-                'vendor_id'         => (string) ($row['vendor_id'] ?? ''),
-                'vendor_name'       => (string) ($row['vendor_name'] ?? ''),
-                'revenue'           => Support::money($revenue),
-                'quantity'          => (float) ($row['quantity'] ?? 0),
-                'invoices_count'    => (int) ($row['invoices_count'] ?? 0),
-                'customers_count'   => (int) ($row['customers_count'] ?? 0),
-                'participation_pct' => $totalRevenue > 0 ? round(($revenue / $totalRevenue) * 100, 2) : 0.0,
-                'first_sale_at'     => (string) ($row['first_sale_at'] ?? ''),
-                'last_sale_at'      => (string) ($row['last_sale_at'] ?? ''),
+                'vendor_id'               => (string) ($row['vendor_id'] ?? ''),
+                'vendor_name'             => (string) ($row['vendor_name'] ?? ''),
+                'revenue'                 => Support::money($revenue),
+                'quantity'                => $quantity,
+                'invoices_count'          => (int) ($row['invoices_count'] ?? 0),
+                'customers_count'         => (int) ($row['customers_count'] ?? 0),
+                'participation_pct'       => $effectiveRev > 0 ? round(($revenue  / $effectiveRev) * 100, 2) : 0.0,
+                'participation_qty_pct'   => $rowQtyTotal   > 0 ? round(($quantity / $rowQtyTotal)  * 100, 2) : 0.0,
+                'first_sale_at'           => (string) ($row['first_sale_at'] ?? ''),
+                'last_sale_at'            => (string) ($row['last_sale_at']  ?? ''),
             ];
         }, $rows);
     }
 
-    /**
-     * @param list<array<string,mixed>> $rows
-     * @return list<array<string,mixed>>
-     */
-    private function mapTimeline(array $rows): array
-    {
-        return array_map(static function (array $row): array {
-            return [
-                'bucket'         => (string) ($row['bucket'] ?? ''),
-                'label'          => (string) ($row['label'] ?? ''),
-                'revenue'        => Support::money((float) ($row['revenue'] ?? 0)),
-                'revenue_raw'    => (float) ($row['revenue'] ?? 0),
-                'quantity'       => (float) ($row['quantity'] ?? 0),
-                'invoices_count' => (int) ($row['invoices_count'] ?? 0),
-                'customers_count' => (int) ($row['customers_count'] ?? 0),
-            ];
-        }, $rows);
-    }
+    // mapTimeline removed — repository returns structured data with bucket_mode and filled zeros
 
     /**
      * @param array<string,mixed> $row

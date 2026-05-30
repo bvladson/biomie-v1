@@ -27,6 +27,7 @@ use BIomie\Modules\Sales\Infrastructure\Product360ReadRepository;
 use BIomie\RequestContext;
 use BIomie\Stock\OmieDocumentStockLedgerBuilder;
 use BIomie\Stock\OmieStockSourceResolver;
+use BIomie\Support\ProductCommercialIdentityResolver;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -85,8 +86,9 @@ try {
         ]);
     }
 
-    $repository = new Product360ReadRepository($pdo);
-    $service    = new Product360ReadService($repository);
+    $repository      = new Product360ReadRepository($pdo);
+    $identityResolver = new ProductCommercialIdentityResolver($pdo);
+    $service         = new Product360ReadService($repository, $identityResolver);
 
     $payload = $service->build($productCode, $start, $end, $limit, $tab);
 
