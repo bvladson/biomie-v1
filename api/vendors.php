@@ -99,7 +99,23 @@ try {
     ];
     $sourceAttempted = 'builder';
 
-    Http::json($builder->build($request));
+    $data = $builder->build($request);
+
+    // COM.R3 phase 0.2 — apply channel post-filter if requested
+    if ($request->channel !== '' && $request->channel !== 'todos') {
+        $ch = $request->channel;
+        foreach (['vendor_status_matrix', 'vendors'] as $key) {
+            if (isset($data[$key]) && is_array($data[$key])) {
+                $data[$key] = array_values(array_filter(
+                    $data[$key],
+                    static fn(array $v) => ($v['vendor_channel'] ?? '') === $ch
+                ));
+            }
+        }
+        $data['meta']['active_filter'] = ($data['meta']['active_filter'] ?? []) + ['channel' => $ch];
+    }
+
+    Http::json($data);
 } catch (InvalidArgumentException $exception) {
     Http::json([
         'ok' => false,

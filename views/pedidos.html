@@ -247,6 +247,10 @@
     const start = getParam('start', window.biomieStartDate);
     const end   = getParam('end',   window.biomieEndDate);
 
+    // ── Show scope tabs unconditionally (server-side table always uses them) ──
+    const tabsEl = document.getElementById('nfScopeTabs');
+    if (tabsEl) tabsEl.style.display = '';
+
     // ── Init with active scope tab ────────────────────────────────────────
     const activeTab = document.querySelector('.mag-tab.mag-tab--active[data-nf-scope]');
     const scope = activeTab ? activeTab.dataset.nfScope : 'commercial';

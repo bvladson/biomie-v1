@@ -28,10 +28,9 @@ declare(strict_types=1);
  * Permission: sales.view
  */
 
-require_once dirname(__DIR__) . '/app/Bootstrap.php';
-\BIomie\Bootstrap::init();
+require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
-use BIomie\Auth\SessionGuard;
 use BIomie\Config;
 use BIomie\Database;
 use BIomie\Http;
@@ -39,14 +38,6 @@ use BIomie\Support\BiVisibilityScope;
 use BIomie\Support\SecretMask;
 
 header('Content-Type: application/json; charset=utf-8');
-
-// ── Auth ──────────────────────────────────────────────────────────────────────
-
-if (!SessionGuard::hasCapability('sales.view')) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'Permissão negada.'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
 
 // ── DB ────────────────────────────────────────────────────────────────────────
 
@@ -62,18 +53,22 @@ try {
 
 // ── Params ────────────────────────────────────────────────────────────────────
 
-[$startDate, $endDate] = Http::resolveDateRange($_GET);
+$range     = Http::resolveDateRange();
+[$startDate, $endDate] = [$range['start'], $range['end']];
 $draw      = max(1, (int) Http::query('draw', '1'));
 $offset    = max(0, (int) Http::query('offset', '0'));
-$length    = min(200, max(1, (int) Http::query('length', '25')));
+$length    = min(100, max(1, (int) Http::query('length', '25')));
 $search    = trim(Http::query('search', ''));
 $orderCol  = Http::query('order_col', 'data_ref');
 $orderDir  = strtolower(Http::query('order_dir', 'desc')) === 'asc' ? 'ASC' : 'DESC';
 $scopeRaw  = Http::query('scope', 'commercial');
 $vendedor  = trim(Http::query('vendedor', ''));
 $cliente   = trim(Http::query('cliente', ''));
-$hasFrete  = Http::query('has_frete', '') === '1';
-$semPedido = Http::query('sem_pedido', '') === '1';
+$hasFrete   = Http::query('has_frete',    '') === '1';
+$semPedido  = Http::query('sem_pedido',  '') === '1';
+$hasOutras  = Http::query('has_outras',  '') === '1';
+$hasSeguro  = Http::query('has_seguro',  '') === '1';
+$comDesconto = Http::query('com_desconto', '') === '1';
 
 // Column whitelist for ORDER BY
 $colMap = [
@@ -102,8 +97,11 @@ match ($scopeRaw) {
 
 // Text search
 if ($search !== '') {
-    $conditions[] = "(nf.numero_nf LIKE :search OR nf.nome_cliente LIKE :search OR nf.nome_vendedor LIKE :search OR nf.pedido_id_omie LIKE :search)";
-    $params[':search'] = '%' . $search . '%';
+    $conditions[] = "(nf.numero_nf LIKE :search1 OR nf.nome_cliente LIKE :search2 OR nf.nome_vendedor LIKE :search3)";
+    $sval = '%' . $search . '%';
+    $params[':search1'] = $sval;
+    $params[':search2'] = $sval;
+    $params[':search3'] = $sval;
 }
 
 // Column filters
@@ -115,12 +113,11 @@ if ($cliente !== '') {
     $conditions[] = 'nf.nome_cliente LIKE :cliente';
     $params[':cliente'] = '%' . $cliente . '%';
 }
-if ($hasFrete) {
-    $conditions[] = 'nf.valor_frete > 0';
-}
-if ($semPedido) {
-    $conditions[] = '(nf.pedido_id_omie IS NULL OR nf.pedido_id_omie = 0)';
-}
+if ($hasFrete)    $conditions[] = 'COALESCE(nf.valor_frete, 0) > 0';
+if ($semPedido)   $conditions[] = '(nf.pedido_id_omie IS NULL OR nf.pedido_id_omie = 0)';
+if ($hasOutras)   $conditions[] = 'COALESCE(nf.valor_outras_despesas, 0) > 0';
+if ($hasSeguro)   $conditions[] = 'COALESCE(nf.valor_seguro, 0) > 0';
+if ($comDesconto) $conditions[] = 'COALESCE(nf.valor_desconto, 0) > 0';
 
 $whereStr = 'WHERE ' . implode("\n  AND ", $conditions);
 

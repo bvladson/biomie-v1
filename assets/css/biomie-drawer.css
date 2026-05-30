@@ -1,0 +1,190 @@
+/**
+ * assets/css/biomie-drawer.css — EST.R1 Fase 0.3
+ *
+ * Padrão global de drawers do BIomie.
+ * Aplicar .biomie-drawer em todos os drawers principais para consistência.
+ *
+ * Classes:
+ *   .biomie-drawer          — largura padrão clamp(640px, 58vw, 1080px)
+ *   .biomie-drawer--wide    — largura ampla   clamp(760px, 64vw, 1180px)
+ *   .biomie-drawer--xl      — largura máxima  clamp(900px, 72vw, 1320px)
+ *   .biomie-drawer__header  — header sticky com título + botão fechar
+ *   .biomie-drawer__tabs    — tabs sticky abaixo do header
+ *   .biomie-drawer__body    — área de scroll do conteúdo
+ *   .biomie-drawer__table-wrap — tabelas internas com overflow-x
+ */
+
+/* ── Base drawer (sobrescreve max-width: 450px do detail-drawer legado) ─── */
+
+.detail-drawer,
+.biomie-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh;
+  width: clamp(640px, 58vw, 1080px);
+  max-width: 100vw;
+  background: var(--drawer-bg, #fff);
+  z-index: 999;
+  box-shadow: var(--shadow-xl, -4px 0 32px rgba(0,0,0,.18));
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--drawer-card-border, #e5e7eb);
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(.4, 0, .2, 1);
+  overflow: hidden;
+}
+
+/* Legacy right:-450px pattern — override to transform */
+.detail-drawer[style*="right: 0"],
+.detail-drawer.open,
+.biomie-drawer.open {
+  transform: translateX(0);
+  display: flex;
+}
+
+/* ── Variant widths ─────────────────────────────────────────────────────── */
+
+.biomie-drawer--wide,
+.detail-drawer--wide {
+  width: clamp(760px, 64vw, 1180px);
+}
+
+.biomie-drawer--xl,
+.detail-drawer--xl {
+  width: clamp(900px, 72vw, 1320px);
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .detail-drawer,
+  .biomie-drawer,
+  .biomie-drawer--wide,
+  .biomie-drawer--xl {
+    width: 100vw;
+    max-width: 100vw;
+    border-left: none;
+  }
+}
+
+/* ── Header — sticky, never scrolls away ────────────────────────────────── */
+
+.biomie-drawer__header,
+.detail-drawer-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--drawer-bg, #fff);
+  border-bottom: 1px solid var(--drawer-card-border, #e5e7eb);
+  flex-shrink: 0;
+}
+
+/* ── Tabs — sticky below header ─────────────────────────────────────────── */
+
+.biomie-drawer__tabs,
+.v360-tab-nav,
+.v360-tab-nav.sticky-drawer-tabs {
+  position: sticky;
+  top: 57px;       /* alinha com a altura do header */
+  z-index: 1;
+  background: var(--drawer-bg, #fff);
+  border-bottom: 1px solid var(--drawer-card-border, #e5e7eb);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  gap: 0;
+}
+
+.biomie-drawer__tabs::-webkit-scrollbar,
+.v360-tab-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Body — fills remaining height, scrolls internally ─────────────────── */
+
+.biomie-drawer__body,
+.detail-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  min-height: 0;     /* critical: allows flex child to shrink below content height */
+}
+
+/* ── Table wrap — horizontal scroll for dense tables ───────────────────── */
+
+.biomie-drawer__table-wrap,
+.drawer-table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e5e7eb);
+}
+
+.biomie-drawer__table-wrap table,
+.drawer-table-wrap table {
+  min-width: 560px;
+  width: 100%;
+}
+
+/* ── Backdrop ────────────────────────────────────────────────────────────── */
+
+.detail-drawer-backdrop,
+.biomie-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  z-index: 998;
+  backdrop-filter: blur(1px);
+}
+
+/* ── Tab buttons (standardize across drawers) ───────────────────────────── */
+
+.biomie-drawer__tab,
+.v360-tab {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-3, #6b7280);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+
+.biomie-drawer__tab:hover,
+.v360-tab:hover {
+  color: var(--text-1, #111827);
+}
+
+.biomie-drawer__tab--active,
+.v360-tab--active,
+.v360-tab.active {
+  color: var(--primary, #4f8ef7);
+  border-bottom-color: var(--primary, #4f8ef7);
+}
+
+/* ── Mobile tab safety ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .biomie-drawer__body,
+  .detail-drawer-content {
+    padding: 12px 14px;
+  }
+  .biomie-drawer__header,
+  .detail-drawer-head {
+    padding: 12px 14px;
+  }
+}

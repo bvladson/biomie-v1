@@ -379,4 +379,101 @@ final class Product360ReadRepository
             return null;
         }
     }
+
+    // ── EST.R1 — Stock methods ────────────────────────────────────────────────
+
+    /**
+     * Saldo de estoque por local para um produto.
+     *
+     * @return array{available:bool,data:list<array<string,mixed>>,empty_state:string|null,total_atual:float,total_minimo:float,has_low_stock:bool}
+     */
+    public function stockByLocation(string $productCode): array
+    {
+        if (!$this->tableExists('biomie_produtos_estoque_saldos')) {
+            return ['available' => false, 'data' => [], 'empty_state' => 'Estoque ainda não sincronizado. Execute EST.R1 sync.', 'total_atual' => 0.0, 'total_minimo' => 0.0, 'has_low_stock' => false];
+        }
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT codigo_produto, codigo_local, descricao_produto, nome_local,
+                        estoque_atual, estoque_minimo, estoque_inicial, unidade, custo_medio, atualizado_em
+                 FROM biomie_produtos_estoque_saldos
+                 WHERE codigo_produto = :code
+                 ORDER BY nome_local ASC"
+            );
+            $stmt->execute([':code' => $productCode]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable) {
+            return ['available' => false, 'data' => [], 'empty_state' => 'Erro ao carregar estoque', 'total_atual' => 0.0, 'total_minimo' => 0.0, 'has_low_stock' => false];
+        }
+
+        if (empty($rows)) {
+            return ['available' => true, 'data' => [], 'empty_state' => 'Produto sem saldo de estoque — sincronizar via Omie', 'total_atual' => 0.0, 'total_minimo' => 0.0, 'has_low_stock' => false];
+        }
+
+        $totalAtual  = (float) array_sum(array_column($rows, 'estoque_atual'));
+        $totalMinimo = (float) array_sum(array_column($rows, 'estoque_minimo'));
+        $hasLow      = !empty(array_filter($rows, fn($r) => (float)($r['estoque_minimo'] ?? 0) > 0 && (float)($r['estoque_atual'] ?? 0) <= (float)($r['estoque_minimo'] ?? 0)));
+
+        $data = array_map(function (array $r): array {
+            $atual  = (float)($r['estoque_atual']  ?? 0);
+            $minimo = (float)($r['estoque_minimo'] ?? 0);
+            return [
+                'codigo_local'    => (string)($r['codigo_local']   ?? ''),
+                'nome_local'      => (string)($r['nome_local']      ?? ''),
+                'estoque_atual'   => round($atual, 4),
+                'estoque_minimo'  => round($minimo, 4),
+                'estoque_inicial' => round((float)($r['estoque_inicial'] ?? 0), 4),
+                'unidade'         => (string)($r['unidade']         ?? ''),
+                'custo_medio'     => round((float)($r['custo_medio'] ?? 0), 2),
+                'atualizado_em'   => substr((string)($r['atualizado_em'] ?? ''), 0, 19),
+                'status'          => $atual <= 0 ? 'sem_estoque' : ($minimo > 0 && $atual <= $minimo ? 'baixo' : 'ok'),
+            ];
+        }, $rows);
+
+        return ['available' => true, 'data' => $data, 'empty_state' => null, 'total_atual' => round($totalAtual, 4), 'total_minimo' => round($totalMinimo, 4), 'has_low_stock' => $hasLow];
+    }
+
+    /**
+     * Movimentos de estoque de um produto em um período (paginado).
+     *
+     * @return array{available:bool,data:list<array<string,mixed>>,empty_state:string|null}
+     */
+    public function stockMovements(string $productCode, string $start, string $end, int $limit = 50): array
+    {
+        if (!$this->tableExists('biomie_produtos_estoque_movimentos')) {
+            return ['available' => false, 'data' => [], 'empty_state' => 'Histórico de movimentos não sincronizado — disponível após EST.R1 sync.'];
+        }
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT data_movimento, codigo_local, tipo_movimento, quantidade,
+                        valor, documento, nota_key, pedido_id_omie, cliente_fornecedor
+                 FROM biomie_produtos_estoque_movimentos
+                 WHERE codigo_produto = :code
+                   AND data_movimento BETWEEN :start AND :end
+                 ORDER BY data_movimento DESC, id DESC
+                 LIMIT :lim"
+            );
+            $stmt->bindValue(':code',  $productCode);
+            $stmt->bindValue(':start', $start);
+            $stmt->bindValue(':end',   $end);
+            $stmt->bindValue(':lim',   $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable) {
+            return ['available' => false, 'data' => [], 'empty_state' => 'Erro ao carregar movimentos'];
+        }
+
+        return ['available' => true, 'data' => $rows, 'empty_state' => empty($rows) ? 'Sem movimentos no período' : null];
+    }
+
+    private function tableExists(string $table): bool
+    {
+        try {
+            $st = $this->pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t LIMIT 1');
+            $st->execute([':t' => $table]);
+            return ((int) $st->fetchColumn()) > 0;
+        } catch (Throwable) {
+            return false;
+        }
+    }
 }

@@ -10,6 +10,7 @@ use BIomie\Http;
 use BIomie\Modules\Sales\Application\Products\ProductMixReadService;
 use BIomie\Modules\Sales\Infrastructure\ProductMixReadRepository;
 use BIomie\RequestContext;
+use BIomie\Stock\StockReadRepository;
 use BIomie\Support;
 
 require __DIR__ . '/bootstrap.php';
@@ -30,6 +31,30 @@ function productBreakdownMeta(bool $available, ?string $source, int $limit, ?str
 }
 
 try {
+    // EST.R1 — stock_stats early return (lazy load for mercadorias.html stock panel)
+    if (Http::query('mode', '') === 'stock_stats') {
+        $conn = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+        $stockPdo  = Database::connect($config, $conn);
+        $stockRepo = new StockReadRepository($stockPdo);
+        $stats     = $stockRepo->statsGerais();
+        $totais    = $stockRepo->totaisPorProduto(50);
+        $rows = array_map(static function (array $r): array {
+            $atual  = (float)($r['estoque_total']  ?? 0);
+            $minimo = (float)($r['minimo_total']   ?? 0);
+            return [
+                'codigo_produto'     => (string)($r['codigo_produto'] ?? ''),
+                'descricao_produto'  => (string)($r['descricao_produto'] ?? ''),
+                'estoque_total'      => round($atual, 4),
+                'minimo_total'       => round($minimo, 4),
+                'n_locais'           => (int)($r['n_locais'] ?? 0),
+                'ultima_atualizacao' => substr((string)($r['ultima_atualizacao'] ?? ''), 0, 19),
+                'status'             => $atual <= 0 ? 'ruptura' : ($minimo > 0 && $atual <= $minimo ? 'baixo' : 'ok'),
+                'unidade'            => (string)($r['unidade'] ?? ''),
+            ];
+        }, $totais);
+        Http::json(['ok' => true, 'stock_stats' => $stats, 'stock_rows' => $rows]);
+    }
+
     $range = Http::resolveDateRangeOrCompetencia();
     Http::validateDateRange($range['start'], $range['end']);
     $freshness = DatasetFreshnessService::boot($config, $logger);

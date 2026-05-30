@@ -73,12 +73,15 @@ final class Product360ReadService
         // Load tab-specific data (or all if tab is null)
         $loadAll = $tab === null;
 
-        $invoices      = ($loadAll || $tab === 'nfs')      ? $this->mapInvoices($this->repo->invoices($productCode, $start, $end, $limit))      : [];
-        $customers     = ($loadAll || $tab === 'clientes') ? $this->mapCustomers($this->repo->customers($productCode, $start, $end, $limit))     : [];
+        $invoices      = ($loadAll || $tab === 'nfs')       ? $this->mapInvoices($this->repo->invoices($productCode, $start, $end, $limit))      : [];
+        $customers     = ($loadAll || $tab === 'clientes')  ? $this->mapCustomers($this->repo->customers($productCode, $start, $end, $limit))     : [];
         $vendors       = ($loadAll || $tab === 'vendedores') ? $this->mapVendors($this->repo->vendors($productCode, $start, $end, $limit), $realizedTotal) : [];
-        $linkedOrders  = ($loadAll || $tab === 'pedidos')  ? $this->repo->linkedOrders($productCode, $start, $end, $limit) : [];
-        $timeline      = ($loadAll || $tab === 'evolucao') ? $this->mapTimeline($this->repo->timeline($productCode, $start, $end)) : [];
-        $ltv           = ($loadAll || $tab === 'ltv')      ? $this->mapLtv($this->repo->ltv($productCode), $realizedTotal)      : [];
+        $linkedOrders  = ($loadAll || $tab === 'pedidos')   ? $this->repo->linkedOrders($productCode, $start, $end, $limit) : [];
+        $timeline      = ($loadAll || $tab === 'evolucao')  ? $this->mapTimeline($this->repo->timeline($productCode, $start, $end)) : [];
+        $ltv           = ($loadAll || $tab === 'ltv')       ? $this->mapLtv($this->repo->ltv($productCode), $realizedTotal)      : [];
+        // EST.R1 — stock tab (lazy-loaded; never blocks other tabs)
+        $stockData     = ($loadAll || $tab === 'estoque')   ? $this->repo->stockByLocation($productCode)                     : null;
+        $stockMovs     = ($loadAll || $tab === 'estoque')   ? $this->repo->stockMovements($productCode, $start, $end, min($limit, 50)) : null;
 
         $summary['linked_orders_count'] = count($linkedOrders);
 
@@ -121,12 +124,14 @@ final class Product360ReadService
                 'wallet'        => 'data_emissao',
             ],
             'summary'      => $summary,
-            'invoices'     => $invoices,
-            'customers'    => $customers,
-            'vendors'      => $vendors,
+            'invoices'      => $invoices,
+            'customers'     => $customers,
+            'vendors'       => $vendors,
             'linked_orders' => $linkedOrders,
-            'timeline'     => $timeline,
-            'ltv'          => $ltv,
+            'timeline'      => $timeline,
+            'ltv'           => $ltv,
+            'stock'         => $stockData,
+            'stock_movements' => $stockMovs,
             'data_quality' => $dataQuality,
             'empty_states' => $emptyStates,
             'meta'         => [

@@ -30,10 +30,9 @@ declare(strict_types=1);
  * Permission: sales.view
  */
 
-require_once dirname(__DIR__) . '/app/Bootstrap.php';
-\BIomie\Bootstrap::init();
+require __DIR__ . '/bootstrap.php';
+\BIomie\Auth::requireCapability('sales.view', true);
 
-use BIomie\Auth\SessionGuard;
 use BIomie\Commercial\ClientPortfolio360Resolver;
 use BIomie\Config;
 use BIomie\Database;
@@ -41,14 +40,6 @@ use BIomie\Http;
 use BIomie\Support\SecretMask;
 
 header('Content-Type: application/json; charset=utf-8');
-
-// ── Auth ──────────────────────────────────────────────────────────────────────
-
-if (!SessionGuard::hasCapability('sales.view')) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'Permissão negada.'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
 
 // ── DB ────────────────────────────────────────────────────────────────────────
 
@@ -64,7 +55,8 @@ try {
 
 // ── Params ────────────────────────────────────────────────────────────────────
 
-[$startDate, $endDate] = Http::resolveDateRange($_GET);
+$range      = Http::resolveDateRange();
+[$startDate, $endDate] = [$range['start'], $range['end']];
 $mode       = Http::query('mode', 'summary');
 $vendorName = Http::query('vendor', '');
 $clientId   = (int) Http::query('client', '0');

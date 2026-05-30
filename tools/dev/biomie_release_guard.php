@@ -47,6 +47,7 @@ declare(strict_types=1);
  *   D29 Commercial Period Scope Consistency (COM.R2.1)        [informacional — CommercialPeriodScopeContext + COALESCE date fix + customers_count + renderPanelState guard]
  *   D30 Commercial Historical Coverage & Portfolio (COM.R2.2) [informacional — CommercialTimeBucket + monthly_coverage_audit + Product360 fix + wallet/quotes KPIs]
  *   D31 Commercial 360 Period, Portfolio and Product Stock (COM.R3) [informacional — CommercialPeriodBucket + CommercialMetricsAggregator + Portfolio360 + Product360Builder + NF paginada + chart-helpers + stock migrations]
+ *   D32 EST.R1 Product Stock Sync                                   [informacional — OmieStockClient + StockSyncCoordinator + Product360 tab estoque + nf_periodo_table filters + biomie-drawer.css]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2558,6 +2559,127 @@ $domains[] = [
     'issues'        => $d31Issues,
 ];
 
+
+// ── D32 — EST.R1 Product Stock Sync [informacional] ──────────────────────────
+
+$d32Issues = [];
+
+// 1. Tabelas de estoque
+$stockTables = ['biomie_estoque_locais_dim', 'biomie_produtos_estoque_saldos', 'biomie_produtos_estoque_movimentos'];
+foreach ($stockTables as $tbl) {
+    try {
+        $st = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t LIMIT 1');
+        $st->execute([':t' => $tbl]);
+        if ((int) $st->fetchColumn() === 0) {
+            $d32Issues[] = "Tabela {$tbl} não existe — executar migrations EST.R1";
+        }
+    } catch (\Throwable) {
+        $d32Issues[] = "Erro ao verificar tabela {$tbl}";
+    }
+}
+
+// 2. Serviços app/Stock/
+$stockServices = [
+    'app/Stock/OmieStockClient.php',
+    'app/Stock/StockPayloadMapper.php',
+    'app/Stock/StockSyncCoordinator.php',
+    'app/Stock/StockReadRepository.php',
+    'app/Stock/ProductStockResolver.php',
+];
+foreach ($stockServices as $svc) {
+    if (!is_file($projectRoot . '/' . $svc)) {
+        $d32Issues[] = "Serviço ausente: {$svc}";
+    }
+}
+
+// 3. CLI sync
+if (!is_file($toolsDir . '/sync_stock_omie.php')) {
+    $d32Issues[] = 'CLI sync ausente: tools/dev/sync_stock_omie.php';
+}
+
+// 4. Product360ReadRepository tem stock methods
+$p360repoFile = $projectRoot . '/app/Modules/Sales/Infrastructure/Product360ReadRepository.php';
+if (is_file($p360repoFile)) {
+    $p360repoSrc = file_get_contents($p360repoFile);
+    if (!str_contains((string) $p360repoSrc, 'stockByLocation')) {
+        $d32Issues[] = 'Product360ReadRepository sem método stockByLocation';
+    }
+    if (!str_contains((string) $p360repoSrc, 'stockMovements')) {
+        $d32Issues[] = 'Product360ReadRepository sem método stockMovements';
+    }
+} else {
+    $d32Issues[] = 'Product360ReadRepository não encontrado';
+}
+
+// 5. Product360ReadService expõe tab=estoque
+$p360svcFile = $projectRoot . '/app/Modules/Sales/Application/Products/Product360ReadService.php';
+if (is_file($p360svcFile)) {
+    $p360svcSrc = file_get_contents($p360svcFile);
+    if (!str_contains((string) $p360svcSrc, "'estoque'")) {
+        $d32Issues[] = 'Product360ReadService não inclui tab estoque';
+    }
+} else {
+    $d32Issues[] = 'Product360ReadService não encontrado';
+}
+
+// 6. products.php expõe stock_stats
+$productsApi = $projectRoot . '/api/products.php';
+if (is_file($productsApi)) {
+    $prodSrc = file_get_contents($productsApi);
+    if (!str_contains((string) $prodSrc, 'stock_stats')) {
+        $d32Issues[] = 'api/products.php não expõe mode=stock_stats';
+    }
+} else {
+    $d32Issues[] = 'api/products.php não encontrado';
+}
+
+// 7. Sem SELECT * em arquivos novos de stock (ignora comentários)
+$stockSrcFiles = glob($projectRoot . '/app/Stock/*.php') ?: [];
+foreach ($stockSrcFiles as $sf) {
+    // Remove comment lines before checking for wildcard selects
+    $content = preg_replace('/\/\*.*?\*\//s', '', (string) file_get_contents($sf)) ?? '';
+    $content = preg_replace('/\/\/[^\n]*/', '', $content) ?? '';
+    if (preg_match('/\bSELECT\s+\*/i', $content)) {
+        $d32Issues[] = 'SELECT * encontrado em ' . basename($sf);
+    }
+}
+
+// 8. Nf_periodo_table.php tem filtros extras
+$nfPTable = $projectRoot . '/api/nf_periodo_table.php';
+if (is_file($nfPTable)) {
+    $nfSrc = (string) file_get_contents($nfPTable);
+    if (!str_contains($nfSrc, 'has_outras') || !str_contains($nfSrc, 'has_seguro') || !str_contains($nfSrc, 'com_desconto')) {
+        $d32Issues[] = 'nf_periodo_table.php sem filtros has_outras/has_seguro/com_desconto';
+    }
+    if (!str_contains($nfSrc, 'search1') || !str_contains($nfSrc, 'search2')) {
+        $d32Issues[] = 'nf_periodo_table.php com parâmetros de busca PDO duplicados (bug 500)';
+    }
+} else {
+    $d32Issues[] = 'api/nf_periodo_table.php não encontrado';
+}
+
+// 9. biomie-drawer.css existe
+if (!is_file($projectRoot . '/assets/css/biomie-drawer.css')) {
+    $d32Issues[] = 'assets/css/biomie-drawer.css ausente';
+}
+
+// 10. PageAssetRegistry inclui biomie-drawer.css
+$parFile = $projectRoot . '/app/PageAssetRegistry.php';
+if (is_file($parFile) && !str_contains((string) file_get_contents($parFile), 'biomie-drawer.css')) {
+    $d32Issues[] = 'PageAssetRegistry não inclui biomie-drawer.css no BASE_CSS';
+}
+
+$domains[] = [
+    'label'         => 'D32 EST.R1 Product Stock Sync (EST.R1)',
+    'guard'         => 'OmieStockClient + StockSyncCoordinator + Product360 estoque tab + nf_periodo filters + drawer css',
+    'pass'          => true,
+    'warn'          => count($d32Issues) > 0,
+    'informational' => true,
+    'summary'       => $d32Issues === []
+        ? 'EST.R1 presente: 5 Stock services + 3 migrations + tab estoque + drawer css + nf_periodo filters'
+        : count($d32Issues) . ' item(ns) EST.R1 ausente(s) [informacional]',
+    'issues'        => $d32Issues,
+];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {

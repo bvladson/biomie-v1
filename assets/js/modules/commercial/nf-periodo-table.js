@@ -31,6 +31,9 @@ export const NfPeriodoTable = (() => {
     containerId: '',
     hasFrete: false,
     semPedido: false,
+    hasOutras: false,
+    hasSeguro: false,
+    comDesconto: false,
   };
 
   let _abortController = null;
@@ -194,8 +197,11 @@ export const NfPeriodoTable = (() => {
     if (_state.search)    params.set('search',   _state.search);
     if (_state.vendedor)  params.set('vendedor',  _state.vendedor);
     if (_state.cliente)   params.set('cliente',   _state.cliente);
-    if (_state.hasFrete)  params.set('has_frete', '1');
-    if (_state.semPedido) params.set('sem_pedido','1');
+    if (_state.hasFrete)   params.set('has_frete',    '1');
+    if (_state.semPedido)  params.set('sem_pedido',   '1');
+    if (_state.hasOutras)  params.set('has_outras',   '1');
+    if (_state.hasSeguro)  params.set('has_seguro',   '1');
+    if (_state.comDesconto) params.set('com_desconto', '1');
 
     _abortController = new AbortController();
 
@@ -364,8 +370,11 @@ export const NfPeriodoTable = (() => {
   }
 
   function updateQuickFilter(key, value, active) {
-    if (key === 'has_frete')  _state.hasFrete  = !!active;
-    if (key === 'sem_pedido') _state.semPedido = !!active;
+    if (key === 'has_frete')   _state.hasFrete   = !!active;
+    if (key === 'sem_pedido')  _state.semPedido  = !!active;
+    if (key === 'has_outras')  _state.hasOutras  = !!active;
+    if (key === 'has_seguro')  _state.hasSeguro  = !!active;
+    if (key === 'com_desconto') _state.comDesconto = !!active;
     _state.page = 0;
     _fetch();
   }

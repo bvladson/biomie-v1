@@ -27,6 +27,7 @@ final class PageAssetRegistry
         'assets/css/mag-mobile.css',
         'assets/css/mag-mobile-premium.css', // Fase R — visual premium mobile
         'assets/css/filters.css',          // Fase Q — motor global de filtros
+        'assets/css/biomie-drawer.css',    // EST.R1 Fase 0.3 — padrão global de drawers
     ];
 
     /** JS utilitário core — carregado em todas as páginas antes do </body> */

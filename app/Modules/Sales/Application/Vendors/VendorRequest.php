@@ -10,6 +10,8 @@ use InvalidArgumentException;
 
 final class VendorRequest
 {
+    private const ALLOWED_CHANNELS = ['varejo', 'revenda', 'representante', 'licitacao', 'remessa', 'todos', ''];
+
     /**
      * @param array{start:string,end:string,label:string,competencia:?string} $range
      */
@@ -18,6 +20,7 @@ final class VendorRequest
         public readonly bool $forceRefresh,
         public readonly int $vendorLimit,
         public readonly bool $includeInactive,
+        public readonly string $channel = '',
     ) {
     }
 
@@ -27,8 +30,12 @@ final class VendorRequest
         $forceRefresh = Http::boolQuery('force', false);
         $vendorLimit = min(100, max(10, (int) (Http::query('limit') ?? '50')));
         $includeInactive = Http::boolQuery('include_inactive', false);
+        $channel = trim((string) (Http::query('channel') ?? ''));
+        if (!in_array($channel, self::ALLOWED_CHANNELS, true)) {
+            $channel = '';
+        }
 
-        return new self($range, $forceRefresh, $vendorLimit, $includeInactive);
+        return new self($range, $forceRefresh, $vendorLimit, $includeInactive, $channel);
     }
 
     public function start(): string
