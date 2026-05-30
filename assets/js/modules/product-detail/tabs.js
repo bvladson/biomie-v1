@@ -314,14 +314,36 @@
       return T.empty('Sem dados de ação comercial para este produto no período selecionado. Tente ampliar o recorte de datas.', 'lightbulb');
     }
 
-    // Score card
-    var scoreHtml = '<div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;'
-      + 'padding:14px 16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:14px;">'
+    // Score card with breakdown
+    var breakdown = prod.score_breakdown || {};
+    var motivos   = Array.isArray(breakdown.motivos) ? breakdown.motivos : [];
+    var scoreHtml = '<div style="padding:14px 16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:14px;">'
+      + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">'
       + '<div><div style="font-size:2rem;font-weight:800;color:' + scColor + '">' + score + '<span style="font-size:1rem;color:var(--text-3)">/100</span></div>'
       + '<div style="font-size:0.72rem;color:var(--text-3)">Score de ação</div></div>'
-      + '<div><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;color:#fff;background:' + catColor + '">' + T.esc(cat) + '</span>'
+      + '<div style="flex:1;">'
+      + '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;color:#fff;background:' + catColor + '">' + T.esc(cat) + '</span>'
       + '<div style="margin-top:8px;font-size:0.83rem;color:#1e40af;background:#eff6ff;border-radius:6px;padding:8px 10px;border:1px solid #bfdbfe;">'
-      + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:4px;">bolt</span>' + T.esc(acao) + '</div></div>'
+      + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:4px;">bolt</span>' + T.esc(acao) + '</div>'
+      + '</div></div>'
+      + (motivos.length > 0
+          ? '<div style="border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">'
+            + '<div style="font-size:0.72rem;color:var(--text-3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;">Motivos do score</div>'
+            + motivos.map(function(m) {
+                var mColor = m.startsWith('+') ? '#16a34a' : m.startsWith('−') ? '#dc2626' : '#6b7280';
+                return '<div style="font-size:0.8rem;color:' + mColor + ';margin-bottom:3px;">' + T.esc(m) + '</div>';
+              }).join('')
+            + '</div>'
+          : '')
+      + (breakdown.total != null
+          ? '<div style="display:flex;gap:8px;margin-top:10px;font-size:0.72rem;color:var(--text-3);">'
+            + '<span title="Recorrência">Recorr. ' + (breakdown.recorrencia||0) + '</span>'
+            + '<span title="Recência">Recência ' + (breakdown.recencia||0) + '</span>'
+            + '<span title="Diversidade">Diverse. ' + (breakdown.diversidade||0) + '</span>'
+            + '<span title="Volume">Volume ' + (breakdown.volume||0) + '</span>'
+            + (breakdown.penalidade < 0 ? '<span style="color:#dc2626">Penalidade ' + (breakdown.penalidade||0) + '</span>' : '')
+            + '</div>'
+          : '')
       + '</div>';
 
     // KPI summary

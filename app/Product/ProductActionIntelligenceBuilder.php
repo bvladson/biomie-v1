@@ -159,6 +159,7 @@ final class ProductActionIntelligenceBuilder
                 'top_cliente_share_pct' => $conc['pct'],
                 'top_cliente_nome'      => $conc['top_client'],
                 'score_acao'            => $score,
+                'score_breakdown'       => $this->buildScoreBreakdown($r, $months, $avgQty, $conc['pct']),
                 'categoria'             => $categoria,
                 'acao_sugerida'         => $this->suggestAction($categoria, $r, $conc['pct']),
                 'source'                => 'omie_canonical',
@@ -381,6 +382,17 @@ final class ProductActionIntelligenceBuilder
      */
     public function buildActionScore(array $r, int $periodMonths, float $avgQty, float $concentrationPct): int
     {
+        return $this->buildScoreBreakdown($r, $periodMonths, $avgQty, $concentrationPct)['total'];
+    }
+
+    /**
+     * Score completo com breakdown explicável para o drawer.
+     *
+     * @param array<string,mixed> $r
+     * @return array{total:int,recorrencia:int,recencia:int,diversidade:int,volume:int,penalidade:int,motivos:list<string>}
+     */
+    public function buildScoreBreakdown(array $r, int $periodMonths, float $avgQty, float $concentrationPct): array
+    {
         $mesesAtivos    = (int) ($r['meses_ativos']   ?? 0);
         $diasSemVenda   = (int) ($r['dias_sem_venda'] ?? 999);
         $nClientes      = (int) ($r['clientes_periodo'] ?? $r['clientes'] ?? 0);
@@ -391,13 +403,47 @@ final class ProductActionIntelligenceBuilder
         $diversidade = min(1.0, $nClientes / 5.0);
         $volume      = $avgQty > 0 ? min(1.0, $qtd / ($avgQty * 2)) : 0;
 
-        $raw = ($recorrencia * 40) + ($recencia * 30) + ($diversidade * 15) + ($volume * 15);
+        $pts_rec = (int) round($recorrencia * 40);
+        $pts_ren = (int) round($recencia    * 30);
+        $pts_div = (int) round($diversidade * 15);
+        $pts_vol = (int) round($volume      * 15);
 
-        // Concentration penalty
-        if ($concentrationPct >= 80) $raw -= 10;
-        elseif ($concentrationPct >= 60) $raw -= 5;
+        $penalidade = 0;
+        if ($concentrationPct >= 80) $penalidade = -10;
+        elseif ($concentrationPct >= 60) $penalidade = -5;
 
-        return max(0, min(100, (int) round($raw)));
+        $total = max(0, min(100, $pts_rec + $pts_ren + $pts_div + $pts_vol + $penalidade));
+
+        // Human-readable motivos
+        $motivos = [];
+        if ($pts_rec >= 30) $motivos[] = "+ Recorrente em {$mesesAtivos} de {$periodMonths} meses possíveis";
+        elseif ($pts_rec > 0) $motivos[] = "± Vendido em {$mesesAtivos} meses (pouco recorrente)";
+        else $motivos[] = "− Sem recorrência no período";
+
+        if ($pts_ren >= 25) $motivos[] = "+ Venda recente (há {$diasSemVenda} dias)";
+        elseif ($pts_ren > 0) $motivos[] = "± Última venda há {$diasSemVenda} dias";
+        else $motivos[] = "− Sem venda nos últimos 180 dias";
+
+        if ($pts_div >= 12) $motivos[] = "+ {$nClientes} clientes compradores (base diversificada)";
+        elseif ($pts_div > 0) $motivos[] = "± {$nClientes} cliente(s) — base ainda pequena";
+        else $motivos[] = "− Sem clientes no período";
+
+        if ($pts_vol >= 10) $motivos[] = "+ Volume acima da média do período";
+        else $motivos[] = "± Volume abaixo ou na média do período";
+
+        if ($penalidade < 0) {
+            $motivos[] = "− Concentração em top cliente ({$concentrationPct}%) penaliza o score";
+        }
+
+        return [
+            'total'       => $total,
+            'recorrencia' => $pts_rec,
+            'recencia'    => $pts_ren,
+            'diversidade' => $pts_div,
+            'volume'      => $pts_vol,
+            'penalidade'  => $penalidade,
+            'motivos'     => $motivos,
+        ];
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
