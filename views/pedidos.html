@@ -96,7 +96,7 @@
     </div>
   </section>
 
-  <section class="table-card mag-orders-panel anim d5" id="nfScopeSection">
+  <section class="table-card mag-orders-panel anim d5" id="nfScopeSection" data-server-side="true">
     <div class="table-card-header" style="flex-wrap:wrap;gap:8px;">
       <div><h3 id="nfScopeTitle">Faturamento Orçamento-PD</h3><small id="nfScopeSubtitle">Somente NFs Orçamento-PD faturadas. Remessas excluídas.</small></div>
       <div id="nfScopeTabs" class="mag-tab-bar" style="display:none;" role="tablist" aria-label="Tipo de operacao fiscal">
@@ -170,55 +170,26 @@
     <!-- Feedback de erro (não esconde a tabela) -->
     <div id="nfSearchFeedback" style="display:none;"></div>
 
-    <!-- Tabela NF (compartilhada: app.js view normal + resultados de busca) -->
-    <div class="biomie-table-wrap"><table class="mag-table mag-table-clean" data-mobile-card-table><thead>
-      <tr>
-        <th id="th-nf"      data-filter-header>NF</th>
-        <th id="th-tipo"    data-filter-header>Tipo</th>
-        <th id="th-cliente" data-filter-header>Cliente</th>
-        <th id="th-vendedor" data-filter-header>Vendedor</th>
-        <th class="nf-th-sortable" data-sort-field="emissao">Emissão<span class="nf-sort-icon"></span></th>
-        <th class="nf-th-sortable" data-sort-field="mercadoria">Mercadoria<span class="nf-sort-icon"></span></th>
-        <th>Desconto</th>
-        <th id="th-base" data-filter-header class="nf-th-sortable" data-sort-field="base_comercial">Base Comercial<span class="nf-sort-icon"></span></th>
-        <th id="th-pedido" data-filter-header>Pedido</th>
-      </tr>
-      <!-- Filtros por coluna (Fase Q.2) — ocultos em mobile via CSS -->
-      <tr class="nf-filter-row" id="nfFilterRow">
-        <th>
-          <input type="search" id="f_col_nf" class="nf-col-filter" placeholder="Buscar NF…" autocomplete="off" />
-        </th>
-        <th>
-          <select id="f_col_tipo" class="nf-col-filter nf-col-filter--select">
-            <option value="">Todos</option>
-            <option value="commercial">Orç-PD</option>
-            <option value="remittance">Remessa</option>
-            <option value="licitacao">Licitação</option>
-          </select>
-        </th>
-        <th>
-          <input type="search" id="f_col_cliente" class="nf-col-filter" placeholder="Cliente…" autocomplete="off" />
-        </th>
-        <th>
-          <input type="search" id="f_col_vendedor" class="nf-col-filter" placeholder="Vendedor…" autocomplete="off" />
-        </th>
-        <th></th>
-        <th></th>
-        <th></th>
-        <th>
-          <div class="nf-col-filter-range">
-            <input type="number" id="f_col_bc_min" class="nf-col-filter" placeholder="Min" step="0.01" min="0" title="Base Comercial mínima" />
-            <input type="number" id="f_col_bc_max" class="nf-col-filter" placeholder="Max" step="0.01" min="0" title="Base Comercial máxima" />
-          </div>
-        </th>
-        <th>
-          <input type="search" id="f_col_pedido" class="nf-col-filter" placeholder="Pedido…" autocomplete="off" />
-        </th>
-      </tr>
-    </thead><tbody id="ordersTable" data-empty-title="Sem notas fiscais" data-empty-message="Nenhuma NF para o periodo ou filtro selecionado." data-empty-icon="receipt_long"></tbody></table></div>
+    <!-- COM.R3 — Tabela server-side paginada (substitui renderização DOM completa) -->
+    <div id="nfPeriodoTableContainer"
+         style="max-height:520px;overflow-y:auto;overflow-x:hidden;"
+         aria-label="Tabela de NFs do período — paginação server-side">
+      <div class="empty-state" style="padding:32px;text-align:center;color:var(--text-muted,#888);">
+        <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">receipt_long</span>
+        Carregando NFs…
+      </div>
+    </div>
 
-    <!-- Paginação da busca (oculta fora do modo busca) -->
+    <!-- Paginação server-side (gerenciada por NfPeriodoTable) -->
     <div id="nfSearchPagination" class="mag-orders-pagination" style="display:none;"></div>
+
+    <!-- tbody legado oculto — mantido para compatibilidade com app.js -->
+    <div class="biomie-table-wrap" style="display:none;" aria-hidden="true">
+      <table class="mag-table mag-table-clean">
+        <thead><tr><th>NF</th><th>Cliente</th><th>Vendedor</th></tr></thead>
+        <tbody id="ordersTable" data-empty-title="Sem notas fiscais" data-empty-message="Nenhuma NF para o periodo ou filtro selecionado." data-empty-icon="receipt_long"></tbody>
+      </table>
+    </div>
   </section>
 
   <section class="charts-grid mag-chart-below-table">
@@ -262,6 +233,69 @@
       <div class="biomie-table-wrap"><table class="mag-table mag-table-clean" data-mobile-card-table><thead><tr><th>NF</th><th>Cliente</th><th>Vendedor</th><th>Data</th><th>Total</th></tr></thead><tbody id="cancelledOrdersTable" data-empty-title="Sem cancelamentos" data-empty-message="Nenhuma nota cancelada no periodo." data-empty-icon="check_circle"></tbody></table></div>
     </div>
   </section>
+  <!-- COM.R3 — NF Período server-side wiring -->
+  <script type="module">
+    import { NfPeriodoTable } from '/biomie/assets/js/modules/commercial/nf-periodo-table.js';
+
+    // ── Expose globally so legacy app.js callbacks can call updatePeriod ──
+    window.NfPeriodoTable = NfPeriodoTable;
+
+    function getParam(name, fallback) {
+      return new URLSearchParams(window.location.search).get(name) || fallback || '';
+    }
+
+    const start = getParam('start', window.biomieStartDate);
+    const end   = getParam('end',   window.biomieEndDate);
+
+    // ── Init with active scope tab ────────────────────────────────────────
+    const activeTab = document.querySelector('.mag-tab.mag-tab--active[data-nf-scope]');
+    const scope = activeTab ? activeTab.dataset.nfScope : 'commercial';
+
+    NfPeriodoTable.init('#nfPeriodoTableContainer', { start, end, scope });
+
+    // ── Wire scope tabs ───────────────────────────────────────────────────
+    document.querySelectorAll('[data-nf-scope]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-nf-scope]').forEach(b => {
+          b.classList.remove('mag-tab--active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('mag-tab--active');
+        btn.setAttribute('aria-selected', 'true');
+
+        const newScope = btn.dataset.nfScope;
+        // Toggle scope-specific alerts
+        const remAlert  = document.getElementById('nfRemittanceAlert');
+        const licAlert  = document.getElementById('nfLicitacaoAlert');
+        if (remAlert) remAlert.style.display = newScope === 'remittance' ? 'flex' : 'none';
+        if (licAlert) licAlert.style.display = newScope === 'licitacao'  ? 'flex' : 'none';
+
+        NfPeriodoTable.updateScope(newScope === 'licitacao' ? 'commercial' : newScope);
+      });
+    });
+
+    // ── Wire quick filter buttons ─────────────────────────────────────────
+    document.querySelectorAll('[data-quick-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const isActive = btn.classList.toggle('nf-quick-filter-btn--active');
+        NfPeriodoTable.updateQuickFilter(
+          btn.dataset.quickFilter,
+          btn.dataset.quickValue || '1',
+          isActive
+        );
+      });
+    });
+
+    // ── Wire date range apply button ──────────────────────────────────────
+    const applyBtn = document.getElementById('applyFilters');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => {
+        const s = document.getElementById('dateStart')?.value || start;
+        const e = document.getElementById('dateEnd')?.value   || end;
+        NfPeriodoTable.updatePeriod(s, e);
+      });
+    }
+  </script>
 </main>
 </body>
 </html>

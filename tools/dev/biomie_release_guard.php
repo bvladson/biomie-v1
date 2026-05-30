@@ -46,6 +46,7 @@ declare(strict_types=1);
  *   D28 Commercial Visual Channel Separation (COM.R2)         [informacional — CommercialChannelPresenter + Remessa filter + Vendor360 tabs + Licitação select + KPIs]
  *   D29 Commercial Period Scope Consistency (COM.R2.1)        [informacional — CommercialPeriodScopeContext + COALESCE date fix + customers_count + renderPanelState guard]
  *   D30 Commercial Historical Coverage & Portfolio (COM.R2.2) [informacional — CommercialTimeBucket + monthly_coverage_audit + Product360 fix + wallet/quotes KPIs]
+ *   D31 Commercial 360 Period, Portfolio and Product Stock (COM.R3) [informacional — CommercialPeriodBucket + CommercialMetricsAggregator + Portfolio360 + Product360Builder + NF paginada + chart-helpers + stock migrations]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2368,6 +2369,196 @@ $domains[] = [
     'issues'        => $d30Issues,
 ];
 
+// ── D31 — Commercial 360 Period, Portfolio and Product Stock (COM.R3) [informacional] ──
+$d31Issues = [];
+
+// 1. CommercialMetricDate exists
+if (!file_exists($projectRoot . '/app/Commercial/CommercialMetricDate.php')) {
+    $d31Issues[] = 'CommercialMetricDate.php não encontrado';
+}
+
+// 2. CommercialPeriodBucket exists
+$cpBucketFile = $projectRoot . '/app/Commercial/CommercialPeriodBucket.php';
+if (!file_exists($cpBucketFile)) {
+    $d31Issues[] = 'CommercialPeriodBucket.php não encontrado';
+} else {
+    $cpb = file_get_contents($cpBucketFile);
+    if (!str_contains($cpb, 'DAILY_MAX_DAYS') && !str_contains($cpb, '45')) {
+        $d31Issues[] = 'CommercialPeriodBucket: threshold ≤45 dias ausente';
+    }
+    if (!str_contains($cpb, 'buildBuckets')) {
+        $d31Issues[] = 'CommercialPeriodBucket: método buildBuckets() ausente';
+    }
+}
+
+// 3. CommercialMetricsAggregator exists
+$cmaFile = $projectRoot . '/app/Commercial/CommercialMetricsAggregator.php';
+if (!file_exists($cmaFile)) {
+    $d31Issues[] = 'CommercialMetricsAggregator.php não encontrado';
+} else {
+    $cma = file_get_contents($cmaFile);
+    foreach (['summary', 'timeSeries', 'vendorRanking', 'productTop', 'clientTop', 'pipelineScope', 'goalsSummary'] as $m) {
+        if (!str_contains($cma, $m)) {
+            $d31Issues[] = "CommercialMetricsAggregator: método {$m}() ausente";
+        }
+    }
+}
+
+// 4. sales_goal_broken_period_audit passes for 15/02→15/03
+$sgbpAudit = $toolsDir . '/sales_goal_broken_period_audit.php';
+if (!file_exists($sgbpAudit)) {
+    $d31Issues[] = 'sales_goal_broken_period_audit.php não encontrado';
+} else {
+    $r = rg_run($php, $sgbpAudit, ['--start=2026-02-15', '--end=2026-03-15', '--json']);
+    $decoded = json_decode($r['output'], true);
+    if (!is_array($decoded)) {
+        $d31Issues[] = 'sales_goal_broken_period_audit.php não retornou JSON válido';
+    } elseif (!($decoded['calculator_selftest']['passed'] ?? false)) {
+        $d31Issues[] = 'SalesGoalPeriodCalculator selfTest falhou: ' . implode('; ', $decoded['calculator_selftest']['failures'] ?? []);
+    }
+}
+
+// 5. commercial_360_period_audit exists
+$c360Audit = $toolsDir . '/commercial_360_period_audit.php';
+if (!file_exists($c360Audit)) {
+    $d31Issues[] = 'commercial_360_period_audit.php não encontrado';
+}
+
+// 6. client_portfolio_360_audit exists
+$cp360Audit = $toolsDir . '/client_portfolio_360_audit.php';
+if (!file_exists($cp360Audit)) {
+    $d31Issues[] = 'client_portfolio_360_audit.php não encontrado';
+}
+
+// 7. client_portfolio_360.php exists with required modes
+$cp360Api = $projectRoot . '/api/client_portfolio_360.php';
+if (!file_exists($cp360Api)) {
+    $d31Issues[] = 'api/client_portfolio_360.php não encontrado';
+} else {
+    $cp360src = file_get_contents($cp360Api);
+    foreach (['summary', 'by_vendor', 'clients', 'conflicts', 'drawer'] as $mode) {
+        if (!str_contains($cp360src, "'$mode'")) {
+            $d31Issues[] = "api/client_portfolio_360.php: modo '{$mode}' ausente";
+        }
+    }
+    if (preg_match('/SELECT\s+\*\s+FROM/i', $cp360src)) {
+        $d31Issues[] = 'api/client_portfolio_360.php: contém SELECT * FROM (proibido)';
+    }
+}
+
+// 8. product_360_stock_source_audit exists
+if (!file_exists($toolsDir . '/product_360_stock_source_audit.php')) {
+    $d31Issues[] = 'product_360_stock_source_audit.php não encontrado';
+}
+
+// 9. product_detail.php robusto (sem erro 500 em sample) — checked by D16
+// Re-use existing product_360_audit if exists
+$prod360Audit = $toolsDir . '/product_360_audit.php';
+if (!file_exists($prod360Audit)) {
+    $d31Issues[] = 'product_360_audit.php não encontrado';
+}
+
+// 10. Product360Builder exists
+$prod360Builder = $projectRoot . '/app/Support/Product360Builder.php';
+if (!file_exists($prod360Builder)) {
+    $d31Issues[] = 'Product360Builder.php não encontrado';
+} else {
+    $p360b = file_get_contents($prod360Builder);
+    foreach (['summary', 'invoices', 'clients', 'vendors', 'stock', 'stockMovements'] as $m) {
+        if (!str_contains($p360b, $m)) {
+            $d31Issues[] = "Product360Builder: método {$m}() ausente";
+        }
+    }
+    if (!str_contains($p360b, 'empty_state')) {
+        $d31Issues[] = 'Product360Builder: graceful empty_state para estoque ausente';
+    }
+}
+
+// 11. nf_periodo_table.php exists with LIMIT/OFFSET
+$nfPeriodoApi = $projectRoot . '/api/nf_periodo_table.php';
+if (!file_exists($nfPeriodoApi)) {
+    $d31Issues[] = 'api/nf_periodo_table.php não encontrado';
+} else {
+    $nfpt = file_get_contents($nfPeriodoApi);
+    if (!str_contains($nfpt, 'LIMIT') || !str_contains($nfpt, 'OFFSET')) {
+        $d31Issues[] = 'api/nf_periodo_table.php não usa LIMIT/OFFSET (paginação ausente)';
+    }
+    if (preg_match('/SELECT\s+\*\s+FROM/i', $nfpt)) {
+        $d31Issues[] = 'api/nf_periodo_table.php: contém SELECT * FROM (proibido)';
+    }
+    if (!str_contains($nfpt, 'recordsFiltered')) {
+        $d31Issues[] = 'api/nf_periodo_table.php: não retorna recordsFiltered (formato DataTables)';
+    }
+}
+
+// 12. nf_periodo_performance_audit exists
+if (!file_exists($toolsDir . '/nf_periodo_performance_audit.php')) {
+    $d31Issues[] = 'nf_periodo_performance_audit.php não encontrado';
+}
+
+// 13. chart-helpers.js exists with key features
+$chartHelpers = $projectRoot . '/assets/js/core/chart-helpers.js';
+if (!file_exists($chartHelpers)) {
+    $d31Issues[] = 'assets/js/core/chart-helpers.js não encontrado';
+} else {
+    $ch = file_get_contents($chartHelpers);
+    foreach (['resolveBucketMode', 'createTimeSeriesBar', 'destroyChart', 'decimation', 'animation'] as $needle) {
+        if (!str_contains($ch, $needle)) {
+            $d31Issues[] = "chart-helpers.js: {$needle} ausente";
+        }
+    }
+}
+
+// 14. No SELECT * in new files
+$newFilesD31 = [$cp360Api, $nfPeriodoApi, $prod360Builder, $cmaFile, $cpBucketFile];
+foreach ($newFilesD31 as $f) {
+    if (!file_exists($f)) continue;
+    if (preg_match('/SELECT\s+\*\s+FROM/i', file_get_contents($f))) {
+        $d31Issues[] = basename($f) . ': contém SELECT * FROM (proibido)';
+    }
+}
+
+// 15. Stock migrations exist (DDL in migrations is OK)
+$stockMigrations = [
+    'Version20260530000001_EstoqueLocaisDim.php',
+    'Version20260530000002_ProdutosEstoqueSaldos.php',
+    'Version20260530000003_ProdutosEstoqueMovimentos.php',
+];
+foreach ($stockMigrations as $mig) {
+    if (!file_exists($projectRoot . '/database/migrations/' . $mig)) {
+        $d31Issues[] = "Migration {$mig} ausente";
+    }
+}
+
+// 16. Base Comercial NF intacta — CommercialMetricsAggregator não altera
+if (file_exists($cmaFile)) {
+    $cmaChk = file_get_contents($cmaFile);
+    if (str_contains($cmaChk, 'UPDATE ') || str_contains($cmaChk, 'INSERT ') || str_contains($cmaChk, 'DELETE ')) {
+        $d31Issues[] = 'CommercialMetricsAggregator: contém escrita (deve ser read-only)';
+    }
+}
+
+// 17. BiVisibilityScope intacto
+if (!file_exists($projectRoot . '/app/Support/BiVisibilityScope.php')) {
+    $d31Issues[] = 'BiVisibilityScope.php removido — regressão';
+}
+
+// 18. Healthz (already checked in main flow via $config/$pdo)
+// We consider it passing if we got here
+
+$domains[] = [
+    'label'         => 'D31 Commercial 360 Period, Portfolio and Product Stock (COM.R3)',
+    'guard'         => 'CommercialPeriodBucket + CommercialMetricsAggregator + client_portfolio_360 + Product360Builder + nf_periodo_table + chart-helpers + stock migrations',
+    'pass'          => true,
+    'warn'          => count($d31Issues) > 0,
+    'informational' => true,
+    'summary'       => $d31Issues === []
+        ? 'COM.R3 presente: CommercialPeriodBucket + MetricsAggregator + Portfolio360 + Product360Builder + NF paginada + chart-helpers + 3 stock migrations'
+        : count($d31Issues) . ' componente(s) COM.R3 ausente(s) [informacional]',
+    'issues'        => $d31Issues,
+];
+
+
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
@@ -2424,7 +2615,7 @@ $hr2 = str_repeat('─', 72);
 
 echo PHP_EOL;
 echo $hr . PHP_EOL;
-echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4.1+FIN.R4.2+FIN.R4.3+FIN.R4.4+FIN.R4.4.1+COM.R1.2+COM.R1.3+COM.R1.4]
+echo '  BIomie Comercial — Release Guard  [AUTO.R1.1+ADMIN.R1.1+FIN.R4+COM.R1+COM.R2+COM.R3]
   Período : ' . $start . ' → ' . $end . PHP_EOL;
 echo $hr . PHP_EOL . PHP_EOL;
 
