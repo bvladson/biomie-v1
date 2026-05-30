@@ -107,6 +107,40 @@ try {
     $ticketMedio      = $nfsCount > 0 ? $baseComercial / $nfsCount : 0.0;
     $naoComissionavel = $freteTotal + $outrasTotal + $seguroTotal;
 
+    // ── Carteira aceita (etapa 20) e Orçamentos (etapa 10) ───────────────────
+    $walletValue = 0.0; $walletOrders = 0;
+    $quotesValue = 0.0; $quotesOrders = 0;
+    try {
+        $pedTbl = 'biomie_pedidos_canonicos';
+        $pdParams = [':pdstart' => $start, ':pdend' => $end];
+        $pdWhere  = "COALESCE(data_faturamento, data_emissao) BETWEEN :pdstart AND :pdend";
+        if ($fVendedor !== '') {
+            $pdWhere             .= ' AND nome_vendedor LIKE :pdvend';
+            $pdParams[':pdvend']  = '%' . $fVendedor . '%';
+        }
+        $stmtWallet = $pdo->prepare(
+            "SELECT COUNT(*) AS cnt, COALESCE(SUM(valor_mercadorias), 0) AS val
+             FROM {$pedTbl}
+             WHERE status_comercial = 'autorizado' AND {$pdWhere} LIMIT 1"
+        );
+        $stmtWallet->execute($pdParams);
+        $wRow = $stmtWallet->fetch(\PDO::FETCH_ASSOC) ?: [];
+        $walletValue  = (float) ($wRow['val'] ?? 0);
+        $walletOrders = (int)   ($wRow['cnt'] ?? 0);
+
+        $stmtQuotes = $pdo->prepare(
+            "SELECT COUNT(*) AS cnt, COALESCE(SUM(valor_mercadorias), 0) AS val
+             FROM {$pedTbl}
+             WHERE (etapa_omie = '10' OR etapa_omie = 10) AND {$pdWhere} LIMIT 1"
+        );
+        $stmtQuotes->execute($pdParams);
+        $qRow = $stmtQuotes->fetch(\PDO::FETCH_ASSOC) ?: [];
+        $quotesValue  = (float) ($qRow['val'] ?? 0);
+        $quotesOrders = (int)   ($qRow['cnt'] ?? 0);
+    } catch (\Throwable) {
+        // biomie_pedidos_canonicos pode estar indisponível — KPIs ficam em 0
+    }
+
     // ── Series diária ────────────────────────────────────────────────────────
     $stmtDia = $pdo->prepare(
         "SELECT
@@ -230,6 +264,10 @@ try {
             'outras_despesas'    => round($outrasTotal, 2),
             'seguro'             => round($seguroTotal, 2),
             'nao_comissionavel'  => round($naoComissionavel, 2),
+            'wallet_value'       => round($walletValue, 2),
+            'wallet_orders'      => $walletOrders,
+            'quotes_value'       => round($quotesValue, 2),
+            'quotes_orders'      => $quotesOrders,
         ],
         'series' => [
             'evolucao_diaria'  => array_map(static fn (array $r): array => [

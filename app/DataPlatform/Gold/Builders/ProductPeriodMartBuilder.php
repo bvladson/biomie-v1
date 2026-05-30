@@ -38,7 +38,7 @@ final class ProductPeriodMartBuilder extends AbstractMartBuilder
                 SELECT
                     :competencia,
                     COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU'),
-                    COALESCE(NULLIF(TRIM(i.descricao_produto), ''), 'Produto sem descricao'),
+                    MAX(COALESCE(NULLIF(TRIM(i.descricao_produto), ''), 'Produto sem descricao')),
                     COUNT(DISTINCT i.nota_key),
                     SUM(i.quantidade),
                     SUM(i.valor_total),
@@ -48,7 +48,7 @@ final class ProductPeriodMartBuilder extends AbstractMartBuilder
                 JOIN biomie_notas_fiscais_canonicas n
                   ON n.nota_key = i.nota_key AND n.status_fiscal = 'autorizada'
                 WHERE COALESCE(n.data_competencia, n.data_emissao) BETWEEN :start AND :end{$scopeFilter}{$visibilityFilter}
-                GROUP BY i.codigo_produto, i.descricao_produto
+                GROUP BY COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU')
             SQL;
 
             $inserted = $this->exec(

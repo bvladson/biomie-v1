@@ -161,4 +161,29 @@
     setBusy: setBusy,
     renderTableEmptyState: renderTableEmptyState
   };
+
+  // Safety guard: ensure window.renderPanelState is always defined early.
+  // app.js and render-helpers.js provide the full implementation (with diagnostics).
+  // This minimal fallback prevents ReferenceError on any page where those are deferred.
+  if (typeof window.renderPanelState === 'undefined') {
+    window.renderPanelState = function (container, state) {
+      if (!container) return;
+      state = state || {};
+      var target = container.querySelector('.dashboard-panel__body') || container;
+      var empty = target.querySelector('.dashboard-empty-state');
+      if (!empty) {
+        empty = document.createElement('div');
+        empty.className = 'dashboard-empty-state';
+        target.appendChild(empty);
+      }
+      empty.hidden = false;
+      var icon  = state.state === 'error' ? 'error_outline' : 'info';
+      var title = String(state.title   || 'Dados indisponíveis');
+      var msg   = String(state.message || 'Não foi possível carregar este painel.');
+      empty.innerHTML =
+        '<span class="material-symbols-rounded">' + icon + '</span>' +
+        '<strong>' + title + '</strong>' +
+        '<p>' + msg + '</p>';
+    };
+  }
 })();

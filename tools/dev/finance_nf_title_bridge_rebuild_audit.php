@@ -24,10 +24,12 @@ require_once dirname(__DIR__, 2) . '/app/Bootstrap.php';
 use BIomie\Config;
 use BIomie\Database;
 
-$opts    = getopt('', ['start:', 'end:', 'dry-run', 'pretty', 'json', 'sample:', 'help']);
+$opts    = getopt('', ['start:', 'end:', 'dry-run', 'apply', 'pretty', 'json', 'sample:', 'help']);
 if (isset($opts['help'])) {
-    echo "Usage: php finance_nf_title_bridge_rebuild_audit.php --start=YYYY-MM-DD --end=YYYY-MM-DD [--dry-run] [--pretty] [--sample=30]\n";
-    echo "  --dry-run  Apenas simula, não aplica nada (padrão e comportamento seguro)\n";
+    echo "Usage: php finance_nf_title_bridge_rebuild_audit.php --start=YYYY-MM-DD --end=YYYY-MM-DD [--dry-run|--apply] [--pretty] [--sample=30]\n";
+    echo "  (sem flag)  Apenas simula (padrão seguro)\n";
+    echo "  --dry-run   Apenas simula, não aplica nada\n";
+    echo "  --apply     Executa simulação e depois delega ao bridge_nf_titulo_build.php\n";
     exit(0);
 }
 
@@ -36,7 +38,8 @@ $end     = (string) ($opts['end']     ?? date('Y-m-d'));
 $pretty  = isset($opts['pretty']);
 $asJson  = isset($opts['json']);
 $sample  = max(1, min(100, (int) ($opts['sample'] ?? 30)));
-$dryRun  = true; // always dry-run; apply requires bridge_nf_titulo_build.php
+$applyMode = isset($opts['apply']) && !isset($opts['dry-run']);
+$dryRun  = true; // audit always simulates; apply delegates to bridge_nf_titulo_build.php
 
 // ── Connect ───────────────────────────────────────────────────────────────────
 try {
@@ -260,15 +263,19 @@ $result = [
         'potential_duplicates'             => $potentialDuplicates,
     ],
     'examples'    => $examples,
-    'next_action' => $hasBuilder
-        ? 'Para aplicar: php tools/dev/bridge_nf_titulo_build.php (roda ambas as estratégias com segurança)'
-        : 'Builder não encontrado — criar bridge_nf_titulo_build.php antes de aplicar.',
-    'diagnostics' => ['source' => 'finance_nf_title_bridge_rebuild_audit'],
+    'next_action' => $applyMode
+        ? 'Modo --apply: delegando ao bridge_nf_titulo_build.php'
+        : ($hasBuilder
+            ? 'Para aplicar: php tools/dev/finance_nf_title_bridge_rebuild_audit.php --apply --start=... --end=...'
+            : 'Builder não encontrado — criar bridge_nf_titulo_build.php antes de aplicar.'),
+    'diagnostics' => ['source' => 'finance_nf_title_bridge_rebuild_audit', 'apply_mode' => $applyMode],
 ];
 
 if ($asJson || !$pretty) {
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
-    exit(0);
+    if (!$applyMode) {
+        exit(0);
+    }
 }
 
 // ── Pretty output ─────────────────────────────────────────────────────────────
@@ -303,7 +310,11 @@ echo "  Resolução Vendedor : " . ($s['would_resolve_vendedor']['count'] > 0 ? 
 echo "  Resolução Cliente  : " . ($s['would_resolve_cliente']['count'] > 0 ? $ok("{$s['would_resolve_cliente']['count']} ({$s['would_resolve_cliente']['pct']}%)") : $warn("0%")) . "\n";
 
 echo "\n{$bold}PRÓXIMA AÇÃO{$D}\n";
-echo "  {$Y}→{$D} {$result['next_action']}\n";
+if ($applyMode) {
+    echo "  {$G}→ Modo --apply: delegando para bridge_nf_titulo_build.php{$D}\n";
+} else {
+    echo "  {$Y}→{$D} {$result['next_action']}\n";
+}
 
 if ($examples !== []) {
     echo "\n{$bold}EXEMPLOS{$D}\n";
@@ -312,6 +323,58 @@ if ($examples !== []) {
         echo "  {$ex['titulo_key']} | NF={$ex['numero_nf']} | strategy={$ex['match_strategy']} | {$inBridge}\n";
         echo "    vendedor={$ex['codigo_vendedor_omie']} | cliente={$ex['codigo_cliente_omie']} | pedido={$ex['pedido_id_omie']}\n";
     }
+}
+
+// ── Delegate to builder when --apply ─────────────────────────────────────────
+if ($applyMode) {
+    $builderPath = dirname(__DIR__, 2) . '/tools/dev/bridge_nf_titulo_build.php';
+
+    if (!file_exists($builderPath)) {
+        echo "\n{$R}✖ ERRO: bridge_nf_titulo_build.php não encontrado — não é possível aplicar.{$D}\n";
+        exit(1);
+    }
+
+    if ($potentialTotal === 0 && $currentItemRows > 0) {
+        echo "\n{$Y}⚠ Nenhuma nova oportunidade de match detectada. Bridge já está atualizada para o período.{$D}\n";
+        echo "  Sem ação necessária via builder.\n\n";
+        exit(0);
+    }
+
+    echo "\n{$bold}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{$D}\n";
+    echo "{$bold}  Executando bridge_nf_titulo_build.php --start={$start} --end={$end}{$D}\n";
+    echo "{$bold}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{$D}\n\n";
+
+    $php = PHP_BINARY;
+    $cmd = escapeshellarg($php)
+        . ' ' . escapeshellarg($builderPath)
+        . ' --start=' . escapeshellarg($start)
+        . ' --end='   . escapeshellarg($end)
+        . ($pretty ? ' --pretty' : '');
+
+    $ds = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+    $process = proc_open($cmd, $ds, $pipes);
+    if (!is_resource($process)) {
+        echo "{$R}✖ Falha ao iniciar bridge_nf_titulo_build.php via proc_open.{$D}\n";
+        exit(1);
+    }
+    fclose($pipes[0]);
+    $builderOut = stream_get_contents($pipes[1]);
+    $builderErr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $builderExit = proc_close($process);
+
+    echo $builderOut;
+    if ($builderErr !== '') {
+        fwrite(STDERR, $builderErr);
+    }
+
+    if ($builderExit !== 0) {
+        echo "\n{$R}✖ bridge_nf_titulo_build.php saiu com código {$builderExit}.{$D}\n";
+    } else {
+        echo "\n{$G}✔ bridge_nf_titulo_build.php concluído. Execute materialize_marts.php para atualizar summary.{$D}\n";
+    }
+    exit($builderExit);
 }
 
 echo "\n";

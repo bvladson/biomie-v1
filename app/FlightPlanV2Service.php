@@ -89,15 +89,17 @@ final class FlightPlanV2Service
             }
 
             $bucket = $invoicedByVendor[$vendorKey] ?? [
-                'notes_count' => 0,
+                'notes_count'      => 0,
+                'customers_count'  => 0,
                 'merchandise_total' => 0.0,
-                'invoice_total' => 0.0,
-                'discount_total' => 0.0,
+                'invoice_total'    => 0.0,
+                'discount_total'   => 0.0,
             ];
-            $bucket['notes_count'] += (int) ($row['notes_count'] ?? 0);
+            $bucket['notes_count']       += (int) ($row['notes_count']      ?? 0);
+            $bucket['customers_count']   += (int) ($row['customers_count']  ?? 0);
             $bucket['merchandise_total'] += Support::toFloat($row['merchandise_total'] ?? 0);
-            $bucket['invoice_total'] += Support::toFloat($row['invoice_total'] ?? 0);
-            $bucket['discount_total'] += Support::toFloat($row['discount_total'] ?? 0);
+            $bucket['invoice_total']     += Support::toFloat($row['invoice_total']     ?? 0);
+            $bucket['discount_total']    += Support::toFloat($row['discount_total']    ?? 0);
             $invoicedByVendor[$vendorKey] = $bucket;
         }
 
@@ -196,12 +198,18 @@ final class FlightPlanV2Service
             $identity = $resolver->resolve($vendorId !== '' ? $vendorId : $vendorName);
             $official = $officialMap[$identity['vendor_id']] ?? null;
 
+            $customersCount = (int) ($invoiced['customers_count'] ?? 0);
+
             if ($official !== null) {
                 $realized = Support::money((float) ($official['realized'] ?? 0));
                 $invoiceTotal = Support::money((float) ($invoiced['invoice_total'] ?? 0));
                 $merchandiseTotal = Support::money((float) ($official['merchandise_total'] ?? 0));
                 $discountTotal = Support::money((float) ($invoiced['discount_total'] ?? 0));
                 $notesCount = (int) ($official['invoices_count'] ?? 0);
+                // customers_count comes from canonical invoiced rows (distinct per vendor code)
+                if ($customersCount === 0 && isset($official['customers_count'])) {
+                    $customersCount = (int) $official['customers_count'];
+                }
             } else {
                 $realized = Support::money((float) ($invoiced['merchandise_total'] ?? 0)); // fallback
                 $invoiceTotal = Support::money((float) ($invoiced['invoice_total'] ?? 0));
@@ -245,8 +253,9 @@ final class FlightPlanV2Service
                 'invoice_total' => $invoiceTotal,
                 'merchandise_total' => $merchandiseTotal,
                 'discount_total' => $discountTotal,
-                'notes_count' => $notesCount,
-                'orders' => $notesCount,
+                'notes_count'          => $notesCount,
+                'customers_count'      => $customersCount,
+                'orders'               => $notesCount,
                 'pipeline_orders_count' => $pipelineOrders,
                 'pipeline_value' => $pipelineValue,
                 'backlog_value' => $pipelineValue,

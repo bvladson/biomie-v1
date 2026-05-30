@@ -77,6 +77,9 @@
     B.setText('[data-bind="summary-top5-clients"]',      Number(summary.top5_client_concentration_pct || 0).toFixed(1) + '%');
     B.setText('[data-bind="summary-pending-orders"]',    B.formatNumber(summary.pending_orders));
     B.setText('[data-bind="summary-pending-value"]',     B.formatCurrency(summary.pending_value));
+    // COM.R2.2 — Carteira aceita e Orçamentos (mapeados de pending_value e wallet_value)
+    B.setText('[data-bind="summary-wallet"]',  B.formatCurrency(summary.wallet_value != null ? summary.wallet_value : summary.pending_value));
+    B.setText('[data-bind="summary-quotes"]',  B.formatCurrency(summary.quotes_value != null ? summary.quotes_value : 0));
     B.setText('[data-bind="summary-cancelled-orders"]',  B.formatNumber(summary.cancelled_orders));
     B.setText('[data-bind="summary-cancelled-value"]',   B.formatCurrency(summary.cancelled_value));
     B.setText('[data-bind="summary-target"]',            B.formatCurrency(summary.target));

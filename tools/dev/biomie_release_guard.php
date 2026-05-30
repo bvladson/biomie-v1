@@ -44,6 +44,8 @@ declare(strict_types=1);
  *   D26 Vendor Alias Channel + Active Status (COM.R1.5)       [informacional — VendorAliasResolver + ActiveVendorResolver + CAIO rule]
  *   D27 Commercial Semantics & Goals (COM.R1 umbrella)        [informacional — CommercialPipelineClassifier + SalesGoalPeriodCalculator + ClientPortfolioOwnershipResolver]
  *   D28 Commercial Visual Channel Separation (COM.R2)         [informacional — CommercialChannelPresenter + Remessa filter + Vendor360 tabs + Licitação select + KPIs]
+ *   D29 Commercial Period Scope Consistency (COM.R2.1)        [informacional — CommercialPeriodScopeContext + COALESCE date fix + customers_count + renderPanelState guard]
+ *   D30 Commercial Historical Coverage & Portfolio (COM.R2.2) [informacional — CommercialTimeBucket + monthly_coverage_audit + Product360 fix + wallet/quotes KPIs]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2138,6 +2140,233 @@ $domains[] = [
     'issues'        => $d28Issues,
 ];
 
+// ── D29 — Commercial Period Scope Consistency (COM.R2.1) [informacional] ─────
+$d29Issues = [];
+
+$periodContextFile = $projectRoot . '/app/Commercial/CommercialPeriodScopeContext.php';
+$scopeFilterFile   = $projectRoot . '/app/Commercial/CommercialScopeSqlFilter.php';
+$ownerResolverFile = $projectRoot . '/app/Commercial/ClientCommercialOwnershipResolver.php';
+$periodAuditFile   = $toolsDir   . '/commercial_period_consistency_audit.php';
+$goalAuditFile     = $toolsDir   . '/sales_goal_period_consistency_audit.php';
+$clientAuditFile   = $toolsDir   . '/client_commercial_ownership_audit.php';
+$queryPerfFile     = $toolsDir   . '/commercial_query_performance_audit.php';
+$biomieStatesFile  = $projectRoot . '/assets/js/biomie-states.js';
+$fiscalRepoFile    = $projectRoot . '/app/Modules/Fiscal/Infrastructure/FiscalReadRepository.php';
+$fpServiceFile     = $projectRoot . '/app/FlightPlanV2Service.php';
+
+// 1. CommercialPeriodScopeContext exists
+if (!file_exists($periodContextFile)) {
+    $d29Issues[] = 'CommercialPeriodScopeContext.php não encontrado';
+} else {
+    $ctx29 = file_get_contents($periodContextFile);
+    foreach (['SCOPE_ORC_PD', 'SCOPE_REMESSA', 'SCOPE_LICITACAO', 'monthBreakdown', 'proportionalTarget'] as $sym) {
+        if (!str_contains($ctx29, $sym)) $d29Issues[] = "CommercialPeriodScopeContext: símbolo {$sym} ausente";
+    }
+}
+
+// 2. CommercialScopeSqlFilter exists
+if (!file_exists($scopeFilterFile)) {
+    $d29Issues[] = 'CommercialScopeSqlFilter.php não encontrado';
+} else {
+    $sf29 = file_get_contents($scopeFilterFile);
+    if (!str_contains($sf29, 'COALESCE(') || !str_contains($sf29, 'data_competencia')) {
+        $d29Issues[] = 'CommercialScopeSqlFilter: não usa COALESCE(data_competencia, data_emissao)';
+    }
+}
+
+// 3. ClientCommercialOwnershipResolver exists
+if (!file_exists($ownerResolverFile)) {
+    $d29Issues[] = 'ClientCommercialOwnershipResolver.php não encontrado';
+} else {
+    $or29 = file_get_contents($ownerResolverFile);
+    if (!str_contains($or29, 'is_out_of_portfolio')) {
+        $d29Issues[] = 'ClientCommercialOwnershipResolver: is_out_of_portfolio ausente';
+    }
+}
+
+// 4-7. Audit tools exist
+foreach ([
+    $periodAuditFile  => 'commercial_period_consistency_audit.php',
+    $goalAuditFile    => 'sales_goal_period_consistency_audit.php',
+    $clientAuditFile  => 'client_commercial_ownership_audit.php',
+    $queryPerfFile    => 'commercial_query_performance_audit.php',
+] as $file => $name) {
+    if (!file_exists($file)) $d29Issues[] = "{$name} não encontrado";
+}
+
+// 8. FiscalReadRepository uses COALESCE for period (not bare data_competencia)
+if (file_exists($fiscalRepoFile)) {
+    $fr29 = file_get_contents($fiscalRepoFile);
+    // Positive check: aggregateInvoicedByVendorCommercial must use COALESCE(data_competencia, data_emissao)
+    // (Other methods may legitimately use bare data_competencia for sync/reconciliation purposes)
+    if (!str_contains($fr29, 'COALESCE(data_competencia, data_emissao) BETWEEN')) {
+        $d29Issues[] = 'FiscalReadRepository: aggregateInvoicedByVendorCommercial não usa COALESCE(data_competencia, data_emissao) BETWEEN';
+    }
+    if (!str_contains($fr29, 'customers_count')) {
+        $d29Issues[] = 'FiscalReadRepository: customers_count ausente em aggregateInvoicedByVendorCommercial';
+    }
+}
+
+// 9. FlightPlanV2Service includes customers_count in vendor row
+if (file_exists($fpServiceFile)) {
+    $fp29 = file_get_contents($fpServiceFile);
+    if (!str_contains($fp29, 'customers_count')) {
+        $d29Issues[] = 'FlightPlanV2Service: customers_count não incluído no vendor row';
+    }
+}
+
+// 10. biomie-states.js has renderPanelState safety guard
+if (file_exists($biomieStatesFile)) {
+    $bs29 = file_get_contents($biomieStatesFile);
+    if (!str_contains($bs29, 'window.renderPanelState')) {
+        $d29Issues[] = 'biomie-states.js: safety guard window.renderPanelState ausente';
+    }
+}
+
+// 11. No SELECT * in new COM.R2.1 PHP files
+foreach ([$periodContextFile, $scopeFilterFile, $ownerResolverFile, $periodAuditFile, $goalAuditFile, $clientAuditFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    if (preg_match('/SELECT\s+\*/i', file_get_contents($chk))) {
+        $d29Issues[] = basename($chk) . ': contém SELECT *';
+    }
+}
+
+// 12. BiVisibilityScope still present
+if (!file_exists($projectRoot . '/app/Support/BiVisibilityScope.php')) {
+    $d29Issues[] = 'BiVisibilityScope.php não encontrado — pode ter sido removido indevidamente';
+}
+
+// 13. No DDL in new files
+foreach ([$periodContextFile, $scopeFilterFile, $ownerResolverFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    $src = file_get_contents($chk);
+    if (str_contains($src, 'ALTER TABLE') || str_contains($src, 'CREATE TABLE')) {
+        $d29Issues[] = basename($chk) . ': contém DDL (proibido nesta fase)';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D29 Commercial Period Scope Consistency (COM.R2.1)',
+    'guard'         => 'CommercialPeriodScopeContext + CommercialScopeSqlFilter + ClientCommercialOwnershipResolver + COALESCE date fix + customers_count + renderPanelState guard',
+    'pass'          => true,
+    'warn'          => count($d29Issues) > 0,
+    'informational' => true,
+    'summary'       => $d29Issues === []
+        ? 'COM.R2.1 presente: CommercialPeriodScopeContext + COALESCE date + customers_count + renderPanelState guard + 4 audit tools'
+        : count($d29Issues) . ' componente(s) COM.R2.1 ausente(s)/pendente(s) [informacional]',
+    'issues'        => $d29Issues,
+];
+
+// ── D30 — Commercial Historical Coverage & Portfolio (COM.R2.2) [informacional] ──
+$d30Issues = [];
+
+$coverageAuditFile  = $toolsDir . '/commercial_monthly_coverage_audit.php';
+$goalExamplesFile   = $toolsDir . '/sales_goal_broken_period_examples_audit.php';
+$stockAuditFile     = $toolsDir . '/omie_stock_capability_audit.php';
+$recoverFile        = $toolsDir . '/recover_commercial_range.php';
+$timeBucketFile     = $projectRoot . '/app/Commercial/CommercialTimeBucket.php';
+$product360File     = $projectRoot . '/api/product_detail.php';
+$portfolioFile      = $projectRoot . '/app/Commercial/ClientCommercialPortfolioResolver.php';
+
+// 1-4. Audit tools exist
+foreach ([
+    $coverageAuditFile => 'commercial_monthly_coverage_audit.php',
+    $goalExamplesFile  => 'sales_goal_broken_period_examples_audit.php',
+    $stockAuditFile    => 'omie_stock_capability_audit.php',
+    $recoverFile       => 'recover_commercial_range.php',
+] as $file => $name) {
+    if (!file_exists($file)) $d30Issues[] = "{$name} não encontrado";
+}
+
+// 5. CommercialTimeBucket exists com granularidade automática
+if (!file_exists($timeBucketFile)) {
+    $d30Issues[] = 'CommercialTimeBucket.php não encontrado';
+} else {
+    $tb30 = file_get_contents($timeBucketFile);
+    foreach (['resolveGranularity', 'buildBuckets', 'bucketSqlExpr', 'GRANULARITY_DAY', 'GRANULARITY_WEEK', 'GRANULARITY_MONTH'] as $sym) {
+        if (!str_contains($tb30, $sym)) $d30Issues[] = "CommercialTimeBucket: símbolo {$sym} ausente";
+    }
+}
+
+// 6. Product 360 endpoint exists e não tem type error (Http::query default como string)
+if (!file_exists($product360File)) {
+    $d30Issues[] = 'api/product_detail.php não encontrado';
+} else {
+    $p360 = file_get_contents($product360File);
+    // Check that Http::query('limit', '50') uses string default (not int)
+    if (preg_match('/Http::query\([\'"]limit[\'"]\s*,\s*(?![\'"]\d)[^\'"]?\d/', $p360)) {
+        $d30Issues[] = 'api/product_detail.php: Http::query limit default pode ser int (deve ser string)';
+    }
+}
+
+// 7. commercial_dashboard.php expõe wallet_value e quotes_value
+$dashboardFile30 = $projectRoot . '/api/commercial_dashboard.php';
+if (file_exists($dashboardFile30)) {
+    $dash30 = file_get_contents($dashboardFile30);
+    if (!str_contains($dash30, 'wallet_value')) {
+        $d30Issues[] = 'api/commercial_dashboard.php: wallet_value (Carteira aceita) não exposto';
+    }
+    if (!str_contains($dash30, 'quotes_value')) {
+        $d30Issues[] = 'api/commercial_dashboard.php: quotes_value (Orçamentos) não exposto';
+    }
+}
+
+// 8. render-helpers.js binds summary-wallet e summary-quotes
+$renderHelpers30 = $projectRoot . '/assets/js/core/render-helpers.js';
+if (file_exists($renderHelpers30)) {
+    $rh30 = file_get_contents($renderHelpers30);
+    if (!str_contains($rh30, 'summary-wallet')) {
+        $d30Issues[] = 'render-helpers.js: binding summary-wallet ausente';
+    }
+    if (!str_contains($rh30, 'summary-quotes')) {
+        $d30Issues[] = 'render-helpers.js: binding summary-quotes ausente';
+    }
+}
+
+// 9. No SELECT * in new COM.R2.2 files
+foreach ([$coverageAuditFile, $goalExamplesFile, $stockAuditFile, $recoverFile, $timeBucketFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    if (preg_match('/SELECT\s+\*/i', file_get_contents($chk))) {
+        $d30Issues[] = basename($chk) . ': contém SELECT *';
+    }
+}
+
+// 10. CommercialTimeBucket sem acesso a banco (read-only utility)
+if (file_exists($timeBucketFile)) {
+    $tb30src = file_get_contents($timeBucketFile);
+    if (str_contains($tb30src, '->prepare(') || str_contains($tb30src, 'Database::')) {
+        $d30Issues[] = 'CommercialTimeBucket: contém acesso a banco (deve ser read-only)';
+    }
+}
+
+// 11. BiVisibilityScope still present (D2 transitive)
+if (!file_exists($projectRoot . '/app/Support/BiVisibilityScope.php')) {
+    $d30Issues[] = 'BiVisibilityScope.php não encontrado — pode ter sido removido';
+}
+
+// 12. No DDL in new files
+foreach ([$coverageAuditFile, $goalExamplesFile, $stockAuditFile, $recoverFile] as $chk) {
+    if (!file_exists($chk)) continue;
+    $src = file_get_contents($chk);
+    if (str_contains($src, 'ALTER TABLE') || str_contains($src, 'CREATE TABLE')) {
+        // recover_commercial_range intentionally documents table creation as dry-run output — allow
+        if (basename($chk) !== 'recover_commercial_range.php') {
+            $d30Issues[] = basename($chk) . ': contém DDL (proibido)';
+        }
+    }
+}
+
+$domains[] = [
+    'label'         => 'D30 Commercial Historical Coverage & Portfolio (COM.R2.2)',
+    'guard'         => 'CommercialTimeBucket + monthly_coverage_audit + goal_examples_audit + stock_audit + recover_range + Product360 fix + dashboard wallet/quotes',
+    'pass'          => true,
+    'warn'          => count($d30Issues) > 0,
+    'informational' => true,
+    'summary'       => $d30Issues === []
+        ? 'COM.R2.2 presente: CommercialTimeBucket + 4 audit tools + Product360 fix + wallet/quotes KPIs'
+        : count($d30Issues) . ' componente(s) COM.R2.2 ausente(s) [informacional]',
+    'issues'        => $d30Issues,
+];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {

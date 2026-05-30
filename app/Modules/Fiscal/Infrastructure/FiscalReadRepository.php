@@ -71,12 +71,13 @@ final class FiscalReadRepository
             SELECT
                 codigo_vendedor_omie, nome_vendedor,
                 COUNT(*) AS notes_count,
+                COUNT(DISTINCT COALESCE(NULLIF(codigo_cliente_omie, 0), NULL)) AS customers_count,
                 COALESCE(SUM(valor_mercadorias), 0) AS merchandise_total,
                 COALESCE(SUM(valor_total), 0) AS invoice_total,
                 COALESCE(SUM(valor_descontos), 0) AS discount_total
             FROM biomie_notas_fiscais_canonicas
             WHERE status_fiscal = 'autorizada'
-              AND data_competencia BETWEEN :start AND :end
+              AND COALESCE(data_competencia, data_emissao) BETWEEN :start AND :end
         SQL . $this->readSupport()->commercialScopeFilter() . <<<'SQL'
 
             GROUP BY codigo_vendedor_omie, nome_vendedor

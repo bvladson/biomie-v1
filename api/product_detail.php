@@ -40,7 +40,7 @@ try {
     $monthStart = date('Y-m-01');
     $start     = trim((string) Http::query('start'));
     $end       = trim((string) Http::query('end'));
-    $limitRaw  = (int) Http::query('limit', 50);
+    $limitRaw  = (int) Http::query('limit', '50');
     $limit     = max(1, min($limitRaw, 200));
     $tab       = trim((string) Http::query('tab'));
     $tab       = $tab !== '' ? $tab : null;
