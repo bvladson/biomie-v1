@@ -77,7 +77,7 @@ $merFile = $root . '/views/mercadorias.html';
 if (is_file($merFile)) {
     $src = (string) file_get_contents($merFile);
     p360Check($checks, $failed, 'mercadorias.html #estoquePanel', str_contains($src, 'estoquePanel'), '#estoquePanel presente');
-    p360Check($checks, $failed, 'mercadorias.html stock_stats fetch', str_contains($src, 'stock_stats'), 'Fetch de stock_stats');
+    p360Check($checks, $failed, 'mercadorias.html stock_intelligence', str_contains($src, 'stock_intelligence'), 'Fetch de stock_intelligence (EST.R1.1)');
 } else {
     p360Check($checks, $failed, 'mercadorias.html', false, 'Arquivo não encontrado');
 }

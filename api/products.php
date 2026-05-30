@@ -10,6 +10,8 @@ use BIomie\Http;
 use BIomie\Modules\Sales\Application\Products\ProductMixReadService;
 use BIomie\Modules\Sales\Infrastructure\ProductMixReadRepository;
 use BIomie\RequestContext;
+use BIomie\Stock\OmieDocumentStockLedgerBuilder;
+use BIomie\Stock\OmieStockSourceResolver;
 use BIomie\Stock\StockReadRepository;
 use BIomie\Support;
 
@@ -31,28 +33,48 @@ function productBreakdownMeta(bool $available, ?string $source, int $limit, ?str
 }
 
 try {
-    // EST.R1 — stock_stats early return (lazy load for mercadorias.html stock panel)
-    if (Http::query('mode', '') === 'stock_stats') {
-        $conn = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
+    // EST.R1 — stock_stats (legacy compat) / stock_intelligence (EST.R1.1)
+    $stockMode = Http::query('mode', '');
+    if ($stockMode === 'stock_stats' || $stockMode === 'stock_intelligence') {
+        $conn      = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
         $stockPdo  = Database::connect($config, $conn);
-        $stockRepo = new StockReadRepository($stockPdo);
-        $stats     = $stockRepo->statsGerais();
-        $totais    = $stockRepo->totaisPorProduto(50);
-        $rows = array_map(static function (array $r): array {
-            $atual  = (float)($r['estoque_total']  ?? 0);
-            $minimo = (float)($r['minimo_total']   ?? 0);
-            return [
-                'codigo_produto'     => (string)($r['codigo_produto'] ?? ''),
-                'descricao_produto'  => (string)($r['descricao_produto'] ?? ''),
-                'estoque_total'      => round($atual, 4),
-                'minimo_total'       => round($minimo, 4),
-                'n_locais'           => (int)($r['n_locais'] ?? 0),
-                'ultima_atualizacao' => substr((string)($r['ultima_atualizacao'] ?? ''), 0, 19),
-                'status'             => $atual <= 0 ? 'ruptura' : ($minimo > 0 && $atual <= $minimo ? 'baixo' : 'ok'),
-                'unidade'            => (string)($r['unidade'] ?? ''),
-            ];
-        }, $totais);
-        Http::json(['ok' => true, 'stock_stats' => $stats, 'stock_rows' => $rows]);
+        $resolver  = new OmieStockSourceResolver($stockPdo);
+        $source    = $resolver->resolve();
+        $diag      = $resolver->diagnostics();
+        $rawStart  = trim((string) ($_GET['start'] ?? date('Y-01-01')));
+        $rawEnd    = trim((string) ($_GET['end']   ?? date('Y-m-d')));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawStart)) $rawStart = date('Y-01-01');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawEnd))   $rawEnd   = date('Y-m-d');
+        $stockLimit = max(1, min(100, (int) ($_GET['limit'] ?? '50')));
+
+        if ($source['source'] === OmieStockSourceResolver::SOURCE_OFFICIAL) {
+            // Official stock
+            $stockRepo = new StockReadRepository($stockPdo);
+            $stats     = $stockRepo->statsGerais();
+            $totais    = $stockRepo->totaisPorProduto($stockLimit);
+            $rows = array_map(static function (array $r): array {
+                $atual  = (float)($r['estoque_total'] ?? 0);
+                $minimo = (float)($r['minimo_total']  ?? 0);
+                return ['codigo_produto' => (string)($r['codigo_produto'] ?? ''), 'descricao_produto' => (string)($r['descricao_produto'] ?? ''), 'estoque_total' => round($atual,4), 'minimo_total' => round($minimo,4), 'n_locais' => (int)($r['n_locais']??0), 'ultima_atualizacao' => substr((string)($r['ultima_atualizacao']??''),0,19), 'status' => $atual<=0?'ruptura':($minimo>0&&$atual<=$minimo?'baixo':'ok'), 'source' => OmieStockSourceResolver::SOURCE_OFFICIAL];
+            }, $totais);
+            Http::json(['ok'=>true,'stock_source'=>$source,'diagnostics'=>$diag,'stock_stats'=>$stats,'stock_rows'=>$rows]);
+        }
+
+        // Document ledger (EST.R1.1)
+        $ledger   = new OmieDocumentStockLedgerBuilder($stockPdo);
+        $velocity = $ledger->buildVelocityRanking($rawStart, $rawEnd, $stockLimit);
+        $risk     = $ledger->buildRuptureRiskList($rawStart, $rawEnd, min($stockLimit, 30));
+        $stats    = $ledger->statsGerais($rawStart, $rawEnd);
+        Http::json([
+            'ok'           => true,
+            'stock_source' => $source,
+            'diagnostics'  => $diag,
+            'period'       => ['start' => $rawStart, 'end' => $rawEnd],
+            'stats'        => $stats,
+            'velocity_ranking' => $velocity,
+            'rupture_risk_list' => $risk,
+            'stock_stats'  => ['total' => 0, 'com_saldo' => 0, 'sem_saldo' => 0, 'abaixo_minimo' => 0, 'ruptura' => 0],
+        ]);
     }
 
     $range = Http::resolveDateRangeOrCompetencia();

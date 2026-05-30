@@ -248,108 +248,172 @@
         </div>
       </aside>
 
-      <!-- EST.R1 — Seção estoque (recolhível, lazy) -->
+      <!-- EST.R1.1 — Inteligência de Estoque Omie API-only (recolhível, lazy) -->
       <div class="section-label anim d5" id="estoqueSection" style="cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="document.getElementById('estoquePanel').hidden=!document.getElementById('estoquePanel').hidden;this.querySelector('.estoque-toggle-icon').textContent=document.getElementById('estoquePanel').hidden?'expand_more':'expand_less';">
-        <span class="material-symbols-rounded">inventory</span>Estoque e Ruptura
+        <span class="material-symbols-rounded">inventory</span>Estoque e Inteligência Operacional
+        <span id="estoqueSourceBadge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface-muted);color:var(--text-3);margin-left:4px;font-weight:600;"></span>
         <span class="material-symbols-rounded estoque-toggle-icon" style="font-size:18px;margin-left:auto;color:var(--text-3)">expand_more</span>
       </div>
       <section id="estoquePanel" hidden class="anim d5">
+        <!-- Source note — honestidade semântica obrigatória -->
+        <div id="estoqueSourceNote" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:6px;background:var(--surface-muted,#f3f4f6);border:1px solid var(--border,#e5e7eb);font-size:0.82rem;color:var(--text-2,#374151);display:flex;align-items:flex-start;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;color:var(--text-3,#6b7280)">info</span>
+          <div>
+            <strong id="estoqueSourceLabel">Carregando…</strong><br>
+            <span id="estoqueSourceDesc" style="color:var(--text-3,#6b7280)"></span>
+          </div>
+        </div>
+
+        <!-- KPIs — adapta ao tipo de fonte -->
         <div class="biomie-kpi-grid" id="estoqueKpiGrid" style="margin-bottom:12px;">
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi1Label">Produtos distintos</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi1">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi1Sub">Faturados no período</div>
+          </article>
           <article class="biomie-kpi-card biomie-kpi-card--info">
-            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Com estoque</span><span class="material-symbols-rounded biomie-kpi-card__icon">check_circle</span></div>
-            <div class="biomie-kpi-card__value" id="estoqueComSaldo">—</div>
-            <div class="biomie-kpi-card__sub">Produtos com saldo sincronizado</div>
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi2Label">Qtd. vendida</span><span class="material-symbols-rounded biomie-kpi-card__icon">shopping_bag</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi2">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi2Sub">Total de unidades NF comercial</div>
           </article>
           <article class="biomie-kpi-card biomie-kpi-card--warning">
-            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Abaixo do mínimo</span><span class="material-symbols-rounded biomie-kpi-card__icon">trending_down</span></div>
-            <div class="biomie-kpi-card__value" id="estoqueAbaixoMin">—</div>
-            <div class="biomie-kpi-card__sub">Produtos abaixo do mínimo</div>
-          </article>
-          <article class="biomie-kpi-card biomie-kpi-card--danger">
-            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ruptura</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning</span></div>
-            <div class="biomie-kpi-card__value" id="estoqueRuptura">—</div>
-            <div class="biomie-kpi-card__sub">Saldo zero ou negativo</div>
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi3Label">Risco operacional</span><span class="material-symbols-rounded biomie-kpi-card__icon">trending_up</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi3">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi3Sub">Com alto giro nos últimos 30 dias</div>
           </article>
           <article class="biomie-kpi-card">
-            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem estoque sync</span><span class="material-symbols-rounded biomie-kpi-card__icon">sync_problem</span></div>
-            <div class="biomie-kpi-card__value" id="estoqueSemSaldo">—</div>
-            <div class="biomie-kpi-card__sub">Produtos sem dado de estoque</div>
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi4Label">Última venda</span><span class="material-symbols-rounded biomie-kpi-card__icon">schedule</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi4">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi4Sub">Data da NF mais recente</div>
           </article>
         </div>
 
-        <div class="table-card">
-          <div class="table-card-header" style="flex-wrap:wrap;gap:8px;">
-            <div><h3>Estoque por produto</h3><small>Saldos sincronizados via EST.R1. Detalhes no Product 360.</small></div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-estoque-filter="all">Todos</button>
-              <button class="nf-quick-filter-btn" data-estoque-filter="ok">OK</button>
-              <button class="nf-quick-filter-btn" data-estoque-filter="baixo">Abaixo do mínimo</button>
-              <button class="nf-quick-filter-btn" data-estoque-filter="ruptura">Ruptura</button>
-              <button class="nf-quick-filter-btn" data-estoque-filter="sem_sync">Sem sync</button>
-            </div>
+        <!-- Tabela de giro (document ledger ou official stock) -->
+        <div class="table-card" style="margin-bottom:12px;">
+          <div class="table-card-header">
+            <div><h3 id="estoqueTableTitle">Produtos por volume vendido</h3><small id="estoqueTableSub">Top produtos por quantidade de saídas no período via NF autorizadas.</small></div>
+          </div>
+          <div id="estoqueLoadingState" style="padding:24px;text-align:center;color:var(--text-muted);">
+            <span style="font-size:13px;">Carregando inteligência de estoque…</span>
           </div>
           <div id="estoqueEmptyState" style="display:none;padding:32px;text-align:center;color:var(--text-muted);">
             <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">inventory</span>
-            <strong>Estoque ainda não sincronizado.</strong><br>
-            Execute <code>php tools/dev/sync_stock_omie.php --apply --balances --pretty</code> para popular.
+            <strong id="estoqueEmptyMsg">Sem dados de estoque para o período.</strong>
           </div>
-          <div class="biomie-table-wrap" id="estoqueTableWrap" style="display:none;">
+          <div class="drawer-table-wrap" id="estoqueTableWrap" style="display:none;">
             <table class="mag-table mag-table-clean">
-              <thead>
-                <tr>
-                  <th>Produto</th>
-                  <th>SKU</th>
-                  <th>Saldo total</th>
-                  <th>Mínimo</th>
-                  <th>Locais</th>
-                  <th>Último sync</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
+              <thead id="estoqueTableHead"><tr></tr></thead>
               <tbody id="estoqueTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Risco operacional (document ledger) -->
+        <div class="table-card" id="estoqueRiskCard" style="display:none;">
+          <div class="table-card-header">
+            <div><h3>Risco Operacional por Giro</h3><small>Produtos com alta saída recente — sem evidência de reposição disponível. Estimativa, não saldo físico.</small></div>
+          </div>
+          <div class="drawer-table-wrap">
+            <table class="mag-table mag-table-clean">
+              <thead><tr><th>Produto</th><th>Qtd 30d</th><th>Qtd total</th><th>NFs</th><th>Última venda</th><th>Risco</th></tr></thead>
+              <tbody id="estoqueRiskBody"></tbody>
             </table>
           </div>
         </div>
       </section>
       <script>
       (function() {
-        // EST.R1 — Carrega stats de estoque da StockReadRepository via api/products.php?mode=stock_stats
-        // Executa apenas quando o painel é expandido pela primeira vez
-        var loaded = false;
-        var panel  = document.getElementById('estoquePanel');
+        var loaded  = false;
+        var panel   = document.getElementById('estoquePanel');
         var section = document.getElementById('estoqueSection');
         if (!section) return;
+
+        function _esc(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function fmtN(n) { return (parseFloat(n)||0).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+
+        function renderDocumentLedger(d) {
+          var src = d.stock_source || 'omie_document_ledger';
+          var conf= {'official_stock_api':'Alta — saldo físico real','product_snapshot':'Média — cadastro de produto','omie_document_ledger':'Operacional — documentos Omie','unavailable':'Indisponível'}[src] || src;
+
+          // Source badge
+          var badge = document.getElementById('estoqueSourceBadge');
+          if (badge) {
+            var lbl = {'official_stock_api':'Estoque oficial','product_snapshot':'Snapshot','omie_document_ledger':'Documentos Omie','unavailable':'Indisponível'}[src] || src;
+            badge.textContent = lbl;
+            badge.style.background = src==='official_stock_api' ? '#d1fae5' : src==='omie_document_ledger' ? '#e0e7ff' : '#f3f4f6';
+            badge.style.color = src==='official_stock_api' ? '#065f46' : src==='omie_document_ledger' ? '#3730a3' : '#374151';
+          }
+
+          // Source note
+          var noteEl = document.getElementById('estoqueSourceNote');
+          if (noteEl) {
+            noteEl.style.display = 'flex';
+            document.getElementById('estoqueSourceLabel').textContent = d.stock_source?.label || (d.stock_source?.source_label ?? 'Documentos fiscais/comerciais Omie');
+            document.getElementById('estoqueSourceDesc').textContent  = d.stock_source?.note  || (d.stock_source?.source_note  ?? 'Visão operacional calculada por NFs, pedidos, remessas e devoluções Omie. Não é saldo físico real.');
+          }
+
+          var stats = d.stats || {};
+          document.getElementById('estoqueKpi1').textContent = fmtN(stats.produtos_distintos ?? 0);
+          document.getElementById('estoqueKpi2').textContent = fmtN(stats.qty_total ?? 0);
+
+          var risk   = (d.rupture_risk_list || []).filter(function(r){ return r.rupture_risk === 'high'; });
+          document.getElementById('estoqueKpi3').textContent = risk.length;
+          document.getElementById('estoqueKpi4').textContent = (stats.last_sale || '—').substring(0,10);
+
+          // Velocity table
+          var velocity = d.velocity_ranking || [];
+          document.getElementById('estoqueLoadingState').style.display = 'none';
+
+          if (velocity.length === 0) {
+            document.getElementById('estoqueEmptyMsg').textContent = 'Sem NFs de produto no período. Verifique o filtro de datas.';
+            document.getElementById('estoqueEmptyState').style.display = '';
+          } else {
+            document.getElementById('estoqueTableTitle').textContent = 'Top produtos por volume vendido';
+            document.getElementById('estoqueTableSub').textContent   = 'Saídas via NF comercial autorizada no período. Fonte: documentos Omie.';
+            document.getElementById('estoqueTableHead').innerHTML = '<tr><th>Produto</th><th>SKU</th><th>Qtd vendida</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th><th>Meses ativos</th></tr>';
+            document.getElementById('estoqueTableWrap').style.display = '';
+            document.getElementById('estoqueTableBody').innerHTML = velocity.map(function(r) {
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.nfs_count)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="font-mono">R$'+fmtN(r.value_total)+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+                +'<td>'+r.active_months+'</td></tr>';
+            }).join('');
+          }
+
+          // Risk table
+          var riskRows = d.rupture_risk_list || [];
+          if (riskRows.length > 0) {
+            document.getElementById('estoqueRiskCard').style.display = '';
+            document.getElementById('estoqueRiskBody').innerHTML = riskRows.map(function(r){
+              var rb = r.rupture_risk==='high' ? '<span style="color:#dc2626;font-weight:700">Alto</span>'
+                     : r.rupture_risk==='medium' ? '<span style="color:#d97706">Médio</span>'
+                     : '<span style="color:#6b7280">Baixo</span>';
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_30d)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_period)+'</td>'
+                +'<td>'+r.nfs_count+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+                +'<td>'+rb+'</td></tr>';
+            }).join('');
+          }
+        }
+
         section.addEventListener('click', function() {
           if (!loaded && !panel.hidden) {
             loaded = true;
-            fetch('/biomie/api/products.php?mode=stock_stats')
-              .then(function(r) { return r.ok ? r.json() : Promise.reject('HTTP ' + r.status); })
-              .then(function(d) {
-                var s = d.stock_stats || {};
-                document.getElementById('estoqueComSaldo').textContent    = (s.com_saldo    ?? '—');
-                document.getElementById('estoqueAbaixoMin').textContent   = (s.abaixo_minimo ?? '—');
-                document.getElementById('estoqueRuptura').textContent     = (s.ruptura       ?? '—');
-                document.getElementById('estoqueSemSaldo').textContent    = (s.sem_saldo     ?? '—');
-                var rows = d.stock_rows || [];
-                if (rows.length === 0) {
-                  document.getElementById('estoqueEmptyState').style.display = '';
-                } else {
-                  document.getElementById('estoqueTableWrap').style.display = '';
-                  var html = rows.map(function(r) {
-                    var st = r.status || 'ok';
-                    var badge = st === 'ruptura' ? '<span style="color:#dc2626">Ruptura</span>'
-                              : st === 'baixo'   ? '<span style="color:#d97706">Abaixo min.</span>'
-                              : st === 'sem_sync' ? '<span style="color:#9ca3af">Sem sync</span>'
-                              : '<span style="color:#16a34a">OK</span>';
-                    return '<tr><td>' + (r.descricao_produto||'—') + '</td><td>' + (r.codigo_produto||'—') + '</td>'
-                      + '<td>' + (r.estoque_total ?? '—') + '</td><td>' + (r.minimo_total ?? '—') + '</td>'
-                      + '<td>' + (r.n_locais ?? '—') + '</td><td>' + (r.ultima_atualizacao||'—').substring(0,10) + '</td>'
-                      + '<td>' + badge + '</td></tr>';
-                  }).join('');
-                  document.getElementById('estoqueTableBody').innerHTML = html;
-                }
-              })
-              .catch(function() {
+            var p = new URLSearchParams(window.location.search);
+            var start = p.get('start') || new Date().getFullYear() + '-01-01';
+            var end   = p.get('end')   || new Date().toISOString().substring(0,10);
+            fetch('/biomie/api/products.php?mode=stock_intelligence&start='+start+'&end='+end+'&limit=50')
+              .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
+              .then(renderDocumentLedger)
+              .catch(function(){
+                document.getElementById('estoqueLoadingState').style.display = 'none';
+                document.getElementById('estoqueEmptyMsg').textContent = 'Erro ao carregar inteligência de estoque.';
                 document.getElementById('estoqueEmptyState').style.display = '';
               });
           }

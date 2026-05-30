@@ -48,6 +48,7 @@ declare(strict_types=1);
  *   D30 Commercial Historical Coverage & Portfolio (COM.R2.2) [informacional — CommercialTimeBucket + monthly_coverage_audit + Product360 fix + wallet/quotes KPIs]
  *   D31 Commercial 360 Period, Portfolio and Product Stock (COM.R3) [informacional — CommercialPeriodBucket + CommercialMetricsAggregator + Portfolio360 + Product360Builder + NF paginada + chart-helpers + stock migrations]
  *   D32 EST.R1 Product Stock Sync                                   [informacional — OmieStockClient + StockSyncCoordinator + Product360 tab estoque + nf_periodo_table filters + biomie-drawer.css]
+ *   D33 EST.R1.1 Omie API-only Stock Intelligence                   [informacional — OmieStockSourceResolver + OmieDocumentStockLedgerBuilder + product_stock_intelligence.php + sem fonte manual]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2679,6 +2680,74 @@ $domains[] = [
         ? 'EST.R1 presente: 5 Stock services + 3 migrations + tab estoque + drawer css + nf_periodo filters'
         : count($d32Issues) . ' item(ns) EST.R1 ausente(s) [informacional]',
     'issues'        => $d32Issues,
+];
+
+// ── D33 — EST.R1.1 Omie API-only Stock Intelligence [informacional] ──────────
+
+$d33Issues = [];
+
+$stockNewFiles = [
+    'app/Stock/OmieStockSourceResolver.php',
+    'app/Stock/OmieDocumentStockLedgerBuilder.php',
+    'api/product_stock_intelligence.php',
+    'tools/dev/omie_stock_capability_probe.php',
+];
+foreach ($stockNewFiles as $f) {
+    if (!is_file($projectRoot . '/' . $f)) {
+        $d33Issues[] = "Arquivo ausente: {$f}";
+    }
+}
+
+// Source resolver existe e tem as 3 constantes de fonte
+$resolverFile = $projectRoot . '/app/Stock/OmieStockSourceResolver.php';
+if (is_file($resolverFile)) {
+    $src = (string) file_get_contents($resolverFile);
+    foreach (['SOURCE_OFFICIAL', 'SOURCE_SNAPSHOT', 'SOURCE_DOCUMENT', 'SOURCE_UNAVAILABLE'] as $const) {
+        if (!str_contains($src, $const)) $d33Issues[] = "OmieStockSourceResolver sem constante {$const}";
+    }
+}
+
+// Document ledger não usa CSV/manual
+$ledgerFile = $projectRoot . '/app/Stock/OmieDocumentStockLedgerBuilder.php';
+if (is_file($ledgerFile)) {
+    $src = (string) file_get_contents($ledgerFile);
+    foreach (['csv', 'manual', 'planilha', 'upload'] as $forbidden) {
+        if (stripos($src, $forbidden) !== false) {
+            $d33Issues[] = "OmieDocumentStockLedgerBuilder contém referência proibida: {$forbidden}";
+        }
+    }
+    if (!str_contains($src, 'omie_document_ledger')) {
+        $d33Issues[] = 'OmieDocumentStockLedgerBuilder não declara source=omie_document_ledger';
+    }
+}
+
+// product_stock_intelligence.php declara source_confidence e source_note
+$intelligenceFile = $projectRoot . '/api/product_stock_intelligence.php';
+if (is_file($intelligenceFile)) {
+    $src = (string) file_get_contents($intelligenceFile);
+    if (!str_contains($src, 'source_confidence')) $d33Issues[] = 'product_stock_intelligence.php sem source_confidence';
+    if (!str_contains($src, 'source_note'))       $d33Issues[] = 'product_stock_intelligence.php sem source_note';
+    if (!str_contains($src, 'official_unavailable_reason')) $d33Issues[] = 'product_stock_intelligence.php sem official_unavailable_reason';
+}
+
+// mercadorias.html usa stock_intelligence (não stock_stats legado)
+$mercFile = $projectRoot . '/views/mercadorias.html';
+if (is_file($mercFile)) {
+    $src = (string) file_get_contents($mercFile);
+    if (!str_contains($src, 'stock_intelligence')) $d33Issues[] = 'mercadorias.html não usa stock_intelligence';
+    if (!str_contains($src, 'estoqueSourceNote'))  $d33Issues[] = 'mercadorias.html sem estoqueSourceNote (honestidade semântica)';
+}
+
+$domains[] = [
+    'label'         => 'D33 EST.R1.1 Omie API-only Stock Intelligence',
+    'guard'         => 'OmieStockSourceResolver + OmieDocumentStockLedgerBuilder + product_stock_intelligence + sem fonte manual',
+    'pass'          => true,
+    'warn'          => count($d33Issues) > 0,
+    'informational' => true,
+    'summary'       => $d33Issues === []
+        ? 'EST.R1.1 presente: OmieStockSourceResolver + DocumentLedgerBuilder + product_stock_intelligence + mercadorias com honestidade semântica'
+        : count($d33Issues) . ' item(ns) EST.R1.1 ausente(s) [informacional]',
+    'issues'        => $d33Issues,
 ];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
