@@ -301,6 +301,30 @@ function buildChecks(string $root): array
         checkContains('prod_r2_1_legenda',              readFileSafe($root . '/views/mercadorias.html'), 'prodR2Legenda', 'mercadorias.html tem legenda PROD.R2.1.'),
         checkContains('prod_r2_1_score_tooltip',        readFileSafe($root . '/views/mercadorias.html'), 'Como o score é calculado', 'mercadorias.html tem tooltip "Como o score é calculado" (PROD.R2.1).'),
         checkContains('prod_r2_1_explainability_audit', file_exists($root . '/tools/dev/product_action_explainability_audit.php') ? 'ok' : '', 'ok', 'product_action_explainability_audit.php existe (PROD.R2.1).'),
+
+        // GEO.R1 — Same-Map Ceará/RMF Expansion
+        checkContains('geo_r1_layer_registry',     file_exists($root . '/app/Geo/GeoMapLayerRegistry.php') ? 'ok' : '', 'ok', 'GeoMapLayerRegistry.php existe (GEO.R1).'),
+        checkContains('geo_r1_territory_resolver',  file_exists($root . '/app/Geo/GeoTerritoryResolver.php') ? 'ok' : '', 'ok', 'GeoTerritoryResolver.php existe (GEO.R1).'),
+        checkContains('geo_r1_sales_builder',       file_exists($root . '/app/Geo/GeoSalesLayerBuilder.php') ? 'ok' : '', 'ok', 'GeoSalesLayerBuilder.php existe (GEO.R1).'),
+        checkContains('geo_r1_api_sales_layer',     file_exists($root . '/api/geo_sales_layer.php') ? 'ok' : '', 'ok', 'api/geo_sales_layer.php existe (GEO.R1).'),
+        checkContains('geo_r1_api_territory_detail',file_exists($root . '/api/geo_territory_detail.php') ? 'ok' : '', 'ok', 'api/geo_territory_detail.php existe (GEO.R1).'),
+        checkContains('geo_r1_migration',           file_exists($root . '/database/migrations/Version20260530200000_GeoTerritoryCe.php') ? 'ok' : '', 'ok', 'Migration GeoTerritoryCe.php existe (GEO.R1).'),
+        checkContains('geo_r1_geojson_fortaleza',   file_exists($root . '/assets/geo/fortaleza_bairros.json') ? 'ok' : '', 'ok', 'fortaleza_bairros.json existe — camada original preservada (GEO.R1).'),
+        checkContains('geo_r1_geojson_rmf',         file_exists($root . '/assets/geo/rmf_municipios.json') ? 'ok' : '', 'ok', 'rmf_municipios.json existe (GEO.R1).'),
+        checkContains('geo_r1_geojson_ceara_mun',   file_exists($root . '/assets/geo/ceara_mun.json') ? 'ok' : '', 'ok', 'ceara_mun.json existe (GEO.R1).'),
+        checkContains('geo_r1_geojson_ceara_reg',   file_exists($root . '/assets/geo/ceara_regioes.json') ? 'ok' : '', 'ok', 'ceara_regioes.json existe (GEO.R1).'),
+        checkContains('geo_r1_layer_selector',      readFileSafe($root . '/views/mapa_vendas.html'), 'geoLayerSelector', 'mapa_vendas.html tem geoLayerSelector (GEO.R1).'),
+        checkContains('geo_r1_scope_selector',      readFileSafe($root . '/views/mapa_vendas.html'), 'geoScopeSelector', 'mapa_vendas.html tem geoScopeSelector (GEO.R1).'),
+        checkContains('geo_r1_metric_selector',     readFileSafe($root . '/views/mapa_vendas.html'), 'geoMetricSelector', 'mapa_vendas.html tem geoMetricSelector (GEO.R1).'),
+        checkContains('geo_r1_geometry_missing_el', readFileSafe($root . '/views/mapa_vendas.html'), 'geoGeometryMissing', 'mapa_vendas.html tem empty state geoGeometryMissing (GEO.R1).'),
+        checkContains('geo_r1_js_geo_layers',       readFileSafe($root . '/assets/js/biomie-map.js'), 'GEO_LAYERS', 'biomie-map.js tem GEO_LAYERS registry (GEO.R1).'),
+        checkContains('geo_r1_js_apply_layer',      readFileSafe($root . '/assets/js/biomie-map.js'), 'applyGeoLayer', 'biomie-map.js tem applyGeoLayer (GEO.R1).'),
+        checkContains('geo_r1_js_active_layer',     readFileSafe($root . '/assets/js/biomie-map.js'), '_activeLayer', 'biomie-map.js tem _activeLayer state (GEO.R1).'),
+        checkContains('geo_r1_js_fortaleza_intact', readFileSafe($root . '/assets/js/biomie-map.js'), 'fortaleza_bairros', 'biomie-map.js referencia fortaleza_bairros — camada preservada (GEO.R1).'),
+        checkNotContains('geo_r1_no_viacep_api',    readFileSafe($root . '/api/geo_sales_layer.php'), 'viacep', 'geo_sales_layer.php sem ViaCEP em runtime (GEO.R1).'),
+        checkContains('geo_r1_geometry_audit',      file_exists($root . '/tools/dev/geo_geometry_audit.php') ? 'ok' : '', 'ok', 'geo_geometry_audit.php existe (GEO.R1).'),
+        checkContains('geo_r1_consistency_audit',   file_exists($root . '/tools/dev/geo_layer_consistency_audit.php') ? 'ok' : '', 'ok', 'geo_layer_consistency_audit.php existe (GEO.R1).'),
+        checkContains('geo_r1_current_audit',       file_exists($root . '/tools/dev/geo_current_map_audit.php') ? 'ok' : '', 'ok', 'geo_current_map_audit.php existe (GEO.R1).'),
     ];
 }
 

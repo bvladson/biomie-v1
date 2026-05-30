@@ -35,6 +35,46 @@
       </section>
 
       <section class="dashboard-controls">
+        <!-- GEO.R1 — Seletores de camada e escopo -->
+        <div class="filter-bar biomie-map-toolbar anim d1" style="margin-bottom:6px;">
+          <div class="filter-group">
+            <label class="filter-label" for="geoLayerSelector">Camada territorial</label>
+            <select id="geoLayerSelector" class="filter-input" aria-label="Selecionar camada do mapa">
+              <option value="fortaleza_bairros" selected>Fortaleza · Bairros</option>
+              <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros disponíveis</option>
+              <option value="rmf_municipios">RMF · Municípios</option>
+              <option value="ceara_municipios">Ceará · Municípios</option>
+              <option value="ceara_regioes">Ceará · Regiões IPECE</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="geoScopeSelector">Escopo comercial</label>
+            <select id="geoScopeSelector" class="filter-input" aria-label="Selecionar escopo comercial">
+              <option value="orc_pd" selected>Orç-PD (padrão)</option>
+              <option value="remessa">Remessa</option>
+              <option value="licitacao">Licitação</option>
+              <option value="todas">Todas (investigativo)</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="geoMetricSelector">Métrica de cor</label>
+            <select id="geoMetricSelector" class="filter-input" aria-label="Selecionar métrica do mapa">
+              <option value="receita" selected>Faturamento</option>
+              <option value="nfs">NFs</option>
+              <option value="clientes">Clientes</option>
+              <option value="ticket_medio">Ticket médio</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="vendedorFilterGeo">Vendedor</label>
+            <input id="vendedorFilterGeo" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
+          </div>
+          <div class="filter-actions">
+            <button id="applyGeoLayer" type="button" class="btn-primary">
+              <span class="material-symbols-rounded">layers</span>Aplicar camada
+            </button>
+          </div>
+        </div>
         <div class="filter-bar biomie-map-toolbar anim d1" data-mobile-filter-sheet>
           <div class="filter-group">
             <label class="filter-label" for="dateStart">Periodo inicial</label>
@@ -124,15 +164,20 @@
         <article class="wallboard-card biomie-map-card geo-map-card">
           <div class="biomie-map-card__head">
             <div>
-              <h2>Fortaleza por bairros</h2>
-              <p>Cor por faturamento, tooltip no hover e clique para detalhar o bairro.</p>
+              <h2 id="geoMapTitle">Fortaleza por bairros</h2>
+              <p id="geoMapSubtitle">Cor por faturamento, tooltip no hover e clique para detalhar o território.</p>
             </div>
             <button id="clearSelection" type="button" class="btn-secondary">
               <span class="material-symbols-rounded">close</span>Limpar selecao
             </button>
           </div>
           <div class="biomie-map-canvas-wrap">
-            <div id="map-container" aria-label="Mapa comercial de Fortaleza por bairros"></div>
+            <div id="geoLayerBadge" style="display:none;position:absolute;top:8px;left:8px;z-index:900;padding:3px 8px;border-radius:12px;background:rgba(30,64,175,0.85);color:#fff;font-size:0.7rem;font-weight:600;pointer-events:none;"></div>
+            <div id="geoGeometryMissing" style="display:none;position:absolute;inset:0;z-index:800;background:rgba(255,255,255,0.93);display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;padding:24px;">
+              <span class="material-symbols-rounded" style="font-size:40px;color:var(--text-3)">map_off</span>
+              <p id="geoGeometryMissingMsg" style="font-size:0.88rem;color:var(--text-2);max-width:320px;">Geometria não disponível para esta camada. Os dados comerciais estão calculados — importe o arquivo GeoJSON para visualizar no mapa.</p>
+            </div>
+            <div id="map-container" aria-label="Mapa comercial territorial BIomie"></div>
             <div id="mapLegend" class="biomie-map-legend" aria-label="Legenda do mapa"></div>
           </div>
         </article>
@@ -140,8 +185,8 @@
         <article class="wallboard-card geo-ranking-card" aria-label="Ranking de bairros">
           <div class="wallboard-card-header geo-ranking-card__header">
             <div>
-              <h3>Ranking de bairros</h3>
-              <small>Lista navegavel por faturamento, clientes, NFs ou ticket.</small>
+              <h3 id="geoRankingTitle">Ranking de bairros</h3>
+              <small id="geoRankingSubtitle">Lista navegável por faturamento, clientes, NFs ou ticket médio.</small>
             </div>
           </div>
           <div class="geo-ranking-toolbar">
@@ -155,7 +200,7 @@
                 <option value="name_asc">A-Z</option>
               </select>
             </div>
-            <span id="geoRankingCount" class="geo-ranking-count">0 de 0 bairros</span>
+            <span id="geoRankingCount" class="geo-ranking-count">0 de 0 territórios</span>
           </div>
           <div class="geo-ranking-scroll">
             <div id="scopeRankingTable" class="geo-ranking-list" role="listbox" aria-label="Ranking de bairros" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></div>

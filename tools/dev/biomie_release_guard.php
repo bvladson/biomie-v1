@@ -3028,6 +3028,100 @@ $domains[] = [
     'issues'        => $d36Issues,
 ];
 
+// ── D38 — GEO.R1 Same-Map Ceará / RMF Expansion [informacional] ─────────────
+
+$d38Issues = [];
+
+// Core classes
+foreach ([
+    'app/Geo/GeoMapLayerRegistry.php',
+    'app/Geo/GeoTerritoryResolver.php',
+    'app/Geo/GeoSalesLayerBuilder.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d38Issues[] = "Ausente: {$f}";
+}
+
+// APIs
+foreach ([
+    'api/geo_sales_layer.php',
+    'api/geo_territory_detail.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d38Issues[] = "Ausente: {$f}";
+}
+
+// GeoJSONs
+foreach ([
+    'assets/geo/fortaleza_bairros.json',
+    'assets/geo/rmf_municipios.json',
+    'assets/geo/ceara_mun.json',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d38Issues[] = "GeoJSON ausente: {$f}";
+}
+
+// Migration
+if (!is_file($projectRoot . '/database/migrations/Version20260530200000_GeoTerritoryCe.php')) {
+    $d38Issues[] = 'Migration GeoTerritoryCe ausente';
+}
+
+// Audit tools
+foreach ([
+    'tools/dev/geo_current_map_audit.php',
+    'tools/dev/geo_geometry_audit.php',
+    'tools/dev/geo_layer_consistency_audit.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d38Issues[] = "Audit ausente: {$f}";
+}
+
+// Sem ViaCEP nas APIs de mapa
+foreach (['api/geo_sales_layer.php','api/geo_territory_detail.php'] as $f) {
+    $src = is_file($projectRoot.'/'.$f) ? (string)file_get_contents($projectRoot.'/'.$f) : '';
+    if (stripos($src,'viacep') !== false) $d38Issues[] = "ViaCEP detectado em {$f} (proibido em request web)";
+}
+
+// Fortaleza preservada
+$fortalezaJs = $projectRoot . '/assets/js/biomie-map.js';
+if (is_file($fortalezaJs)) {
+    $jsSrc = (string)file_get_contents($fortalezaJs);
+    if (!str_contains($jsSrc,'fortaleza_bairros')) $d38Issues[] = 'biomie-map.js não referencia camada fortaleza_bairros';
+    if (!str_contains($jsSrc,'GEO_LAYERS')) $d38Issues[] = 'biomie-map.js não tem GEO_LAYERS (registry de camadas)';
+    if (!str_contains($jsSrc,'applyGeoLayer')) $d38Issues[] = 'biomie-map.js sem applyGeoLayer (layer switcher)';
+}
+
+// Layer selector no HTML
+$mapHtml = $projectRoot . '/views/mapa_vendas.html';
+if (is_file($mapHtml)) {
+    $htmlSrc = (string)file_get_contents($mapHtml);
+    if (!str_contains($htmlSrc,'geoLayerSelector')) $d38Issues[] = 'mapa_vendas.html sem geoLayerSelector';
+    if (!str_contains($htmlSrc,'geoScopeSelector')) $d38Issues[] = 'mapa_vendas.html sem geoScopeSelector';
+}
+
+// GeoSalesLayerBuilder usa mart_compradores_por_geo
+$builderSrc38 = is_file($projectRoot.'/app/Geo/GeoSalesLayerBuilder.php')
+    ? (string)file_get_contents($projectRoot.'/app/Geo/GeoSalesLayerBuilder.php') : '';
+if ($builderSrc38 && !str_contains($builderSrc38,'mart_compradores_por_geo')) {
+    $d38Issues[] = 'GeoSalesLayerBuilder não usa mart_compradores_por_geo';
+}
+if ($builderSrc38 && preg_match('/SELECT\s+\*/i', rg_strip_php_comments($builderSrc38))) {
+    $d38Issues[] = 'GeoSalesLayerBuilder usa SELECT *';
+}
+
+// Sem tabela de vendas paralela mencionada
+if ($builderSrc38 && stripos($builderSrc38,"'vendas'") !== false) {
+    $d38Issues[] = "GeoSalesLayerBuilder menciona tabela 'vendas' paralela";
+}
+
+$domains[] = [
+    'label'         => 'D38 GEO.R1 Same-Map Ceará/RMF Expansion',
+    'guard'         => 'GeoMapLayerRegistry + GeoSalesLayerBuilder + geo_sales_layer.php + layer selector + GeoJSONs',
+    'pass'          => true,
+    'warn'          => count($d38Issues) > 0,
+    'informational' => true,
+    'summary'       => $d38Issues === []
+        ? 'GEO.R1 presente: Registry + Resolver + Builder + 2 APIs + 3 GeoJSONs + migration + 3 audits'
+        : count($d38Issues) . ' item(ns) GEO.R1 ausente(s) [informacional]',
+    'issues'        => $d38Issues,
+];
+
 // ── D37 — PROD.R2.1 Product Action Explainability [informacional] ────────────
 
 $d37Issues = [];

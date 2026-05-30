@@ -1,8 +1,22 @@
 (function () {
   'use strict';
 
-  const GEOJSON_URL = 'assets/geo/fortaleza_bairros.json';
+  // GEO.R1 — Configuração de camadas territoriais
+  const GEO_LAYERS = {
+    fortaleza_bairros:        { geojson: 'assets/geo/fortaleza_bairros.json',  bounds: [[-3.92,-38.68],[-3.67,-38.36]], matchProp: 'Nome',           scopeLabel: 'bairro',     title: 'Fortaleza · Bairros' },
+    grande_fortaleza_bairros: { geojson: 'assets/geo/grande_fortaleza_bairros.json', bounds: [[-4.30,-38.80],[-3.30,-38.20]], matchProp: 'bairro_nome', scopeLabel: 'bairro',     title: 'Grande Fortaleza · Bairros' },
+    rmf_municipios:           { geojson: 'assets/geo/rmf_municipios.json',     bounds: [[-4.50,-39.50],[-3.20,-37.80]], matchProp: 'municipio_ibge',  scopeLabel: 'município',  title: 'RMF · Municípios' },
+    ceara_municipios:         { geojson: 'assets/geo/ceara_mun.json',          bounds: [[-7.80,-41.50],[-2.80,-37.20]], matchProp: 'municipio_ibge',  scopeLabel: 'município',  title: 'Ceará · Municípios' },
+    ceara_regioes:            { geojson: 'assets/geo/ceara_regioes.json',      bounds: [[-7.80,-41.50],[-2.80,-37.20]], matchProp: 'regiao_id',       scopeLabel: 'região',     title: 'Ceará · Regiões IPECE' },
+  };
+  const DEFAULT_LAYER = 'fortaleza_bairros';
   const FORTALEZA_BOUNDS = [[-3.92, -38.68], [-3.67, -38.36]];
+
+  // Layer ativo (pode ser alterado pelo seletor)
+  let _activeLayer = (new URLSearchParams(window.location.search).get('layer')) || DEFAULT_LAYER;
+  if (!GEO_LAYERS[_activeLayer]) _activeLayer = DEFAULT_LAYER;
+
+  const GEOJSON_URL = GEO_LAYERS[_activeLayer].geojson;
   const GEO_NAME_CANDIDATES = [
     'Nome',
     'nome',
@@ -625,11 +639,12 @@
 
   async function loadGeoJson() {
     if (state.geoJson) return state.geoJson;
-    updateDiagnostics({ geoLoaded: 'Nao', geoUrl: GEOJSON_URL, mapState: 'carregando GeoJSON' });
+    const geoUrl = getCurrentGeoJsonUrl(); // GEO.R1 — usa URL dinâmica
+    updateDiagnostics({ geoLoaded: 'Nao', geoUrl, mapState: 'carregando GeoJSON' });
 
     let response;
     try {
-      response = await fetch(GEOJSON_URL, { cache: 'force-cache' });
+      response = await fetch(geoUrl, { cache: 'force-cache' });
     } catch (fetchError) {
       updateDiagnostics({ geoLoaded: 'Nao', geoProperty: 'erro ao carregar', geoNoName: '-', mapState: 'erro', error: 'geojson_fetch_error' });
       fetchError.isGeoJsonError = true;
@@ -700,13 +715,18 @@
 
   function initMap() {
     if (state.map || !window.L || !$('map-container')) return;
+    const bounds = getCurrentBounds(); // GEO.R1 — bounds dinâmico
+    const center = [(bounds[0][0]+bounds[1][0])/2, (bounds[0][1]+bounds[1][1])/2];
+    const zoom = _activeLayer === 'fortaleza_bairros' ? 12
+               : _activeLayer.includes('rmf') ? 10
+               : 7;
     state.map = L.map('map-container', {
-      minZoom: 10,
+      minZoom: 5,
       maxZoom: 15,
-      maxBounds: FORTALEZA_BOUNDS,
-      maxBoundsViscosity: 0.8,
+      maxBounds: [[-8.5,-42.0],[-2.5,-37.0]], // CE completo
+      maxBoundsViscosity: 0.5,
       zoomControl: true,
-    }).setView([-3.755, -38.53], 12);
+    }).setView(center, zoom);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
@@ -723,13 +743,13 @@
     if (buckets && buckets.length) {
       for (var i = 1; i < buckets.length; i++) {
         var b = buckets[i];
-        var max = b.max != null ? b.max : Infinity;
-        if (revenue <= max) return i;
+        var bucketMax = b.max != null ? b.max : Infinity;
+        if (revenue <= bucketMax) return i;
       }
       return buckets.length - 1;
     }
     // Fallback: percentile-based 4 tiers
-    const max = Number(state.scale && state.scale.max || 0);
+    var max = Number(state.scale && state.scale.max || 0);
     if (max <= 0) return 0;
     const pct = revenue / max;
     if (pct >= 0.66) return 4;
@@ -1577,8 +1597,75 @@
     container.querySelector('.biomie-filter-chip-clear')?.addEventListener('click', clearFilters);
   }
 
+  // GEO.R1 — retorna a camada ativa
+  function activeLayerDef() {
+    return GEO_LAYERS[_activeLayer] || GEO_LAYERS[DEFAULT_LAYER];
+  }
+
+  // GEO.R1 — aplica a camada selecionada: recarrega GeoJSON + dados
+  function applyGeoLayer() {
+    const sel = $('geoLayerSelector');
+    const newLayer = sel ? sel.value : DEFAULT_LAYER;
+    if (!GEO_LAYERS[newLayer]) return;
+    _activeLayer = newLayer;
+
+    const def = activeLayerDef();
+
+    // Atualiza título e subtítulo
+    const titleEl = $('geoMapTitle');
+    if (titleEl) titleEl.textContent = def.title || newLayer;
+    const subEl = $('geoMapSubtitle');
+    if (subEl) subEl.textContent = 'Cor por ' + ($('geoMetricSelector')?.options[$('geoMetricSelector')?.selectedIndex]?.text || 'faturamento') + ' · clique no território para detalhar.';
+    const rankTitle = $('geoRankingTitle');
+    if (rankTitle) rankTitle.textContent = 'Ranking de ' + (def.scopeLabel || 'territórios');
+
+    // Layer badge
+    const badge = $('geoLayerBadge');
+    if (badge) { badge.textContent = def.title; badge.style.display = 'block'; }
+
+    // Atualiza URL sem reload
+    try {
+      const up = new URLSearchParams(window.location.search);
+      up.set('layer', newLayer);
+      const scope = $('geoScopeSelector')?.value || 'orc_pd';
+      up.set('scope', scope);
+      history.replaceState(null, '', '?' + up.toString());
+    } catch(e) {}
+
+    // Reset map state
+    state.selectedKey = '';
+    if (state.geoLayer && state.map) { state.map.removeLayer(state.geoLayer); state.geoLayer = null; }
+    state.geoJson = null;
+    state.rows = [];
+    state.rowsByKey.clear();
+    state.revenueByNeighborhoodKey.clear();
+
+    // Reload GeoJSON e dados
+    loadCommercialData();
+  }
+
+  function getCurrentGeoJsonUrl() {
+    return activeLayerDef().geojson;
+  }
+
+  function getCurrentBounds() {
+    return activeLayerDef().bounds || FORTALEZA_BOUNDS;
+  }
+
   function initFiltersFromUrl() {
     const params = new URLSearchParams(window.location.search);
+    // Restore layer from URL
+    const layerFromUrl = params.get('layer');
+    if (layerFromUrl && GEO_LAYERS[layerFromUrl]) {
+      _activeLayer = layerFromUrl;
+      const sel = $('geoLayerSelector');
+      if (sel) sel.value = layerFromUrl;
+    }
+    const scopeFromUrl = params.get('scope');
+    if (scopeFromUrl) {
+      const scopeSel = $('geoScopeSelector');
+      if (scopeSel) scopeSel.value = scopeFromUrl;
+    }
     applyPresetMonth();
     const dateStart = $('dateStart');
     const dateEnd = $('dateEnd');
@@ -1595,6 +1682,15 @@
   }
 
   function bindEvents() {
+    // GEO.R1 — layer switcher
+    $('applyGeoLayer')?.addEventListener('click', applyGeoLayer);
+    $('geoLayerSelector')?.addEventListener('change', applyGeoLayer);
+    $('geoScopeSelector')?.addEventListener('change', applyGeoLayer);
+    $('geoMetricSelector')?.addEventListener('change', () => {
+      // Recolore o mapa com a nova métrica sem recarregar dados
+      if (state.geoLayer && state.geoJson) renderMap();
+    });
+
     $('applyFilters')?.addEventListener('click', () => {
       state.selectedKey = '';
       loadCommercialData();
