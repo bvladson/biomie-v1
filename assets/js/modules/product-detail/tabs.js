@@ -287,6 +287,86 @@
       '</div>';
   };
 
+  // ── Ação Comercial (PROD.R2) ─────────────────────────────────────────────
+
+  T.renderAcaoComercial = function (data) {
+    var prod       = (data && data.product)    || {};
+    var repurchase = (data && data.repurchase) || [];
+
+    var CAT_COLORS = {
+      'Produto campeão':              '#16a34a',
+      'Reativar produto':             '#dc2626',
+      'Acompanhar concentração':      '#d97706',
+      'Campanha para clientes antigos': '#2563eb',
+      'Cross-sell com vendedores fortes': '#7c3aed',
+      'Produto sazonal':              '#db2777',
+      'Baixo giro':                   '#6b7280',
+      'Monitorar':                    '#9ca3af',
+    };
+
+    var cat      = prod.categoria      || '';
+    var score    = prod.score_acao     || 0;
+    var acao     = prod.acao_sugerida  || 'Sem recomendação disponível para este período.';
+    var catColor = CAT_COLORS[cat] || '#9ca3af';
+    var scColor  = score >= 75 ? '#16a34a' : score >= 40 ? '#2563eb' : '#9ca3af';
+
+    if (!prod.product_code && !prod.receita_periodo) {
+      return T.empty('Sem dados de ação comercial para este produto no período selecionado. Tente ampliar o recorte de datas.', 'lightbulb');
+    }
+
+    // Score card
+    var scoreHtml = '<div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;'
+      + 'padding:14px 16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:14px;">'
+      + '<div><div style="font-size:2rem;font-weight:800;color:' + scColor + '">' + score + '<span style="font-size:1rem;color:var(--text-3)">/100</span></div>'
+      + '<div style="font-size:0.72rem;color:var(--text-3)">Score de ação</div></div>'
+      + '<div><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;color:#fff;background:' + catColor + '">' + T.esc(cat) + '</span>'
+      + '<div style="margin-top:8px;font-size:0.83rem;color:#1e40af;background:#eff6ff;border-radius:6px;padding:8px 10px;border:1px solid #bfdbfe;">'
+      + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:4px;">bolt</span>' + T.esc(acao) + '</div></div>'
+      + '</div>';
+
+    // KPI summary
+    var kpis = [
+      ['Receita', T.fmt(prod.receita_periodo), 'Período'],
+      ['Qtd', T.fmtN(prod.qtd_periodo) + ' un', ''],
+      ['Clientes', T.fmtN(prod.clientes_periodo), 'Distintos'],
+      ['Meses ativos', prod.meses_ativos || 0, 'Com venda'],
+      ['Dias parado', prod.dias_sem_venda || 0, 'Desde última NF'],
+      ['Concentração', (prod.top_cliente_share_pct || 0) + '%', prod.top_cliente_nome || ''],
+    ];
+    var kpiHtml = '<div class="pd-kpi-grid" style="margin-bottom:14px;">'
+      + kpis.map(function (k) {
+          return '<div class="pd-kpi-item"><span class="pd-kpi-label">' + T.esc(k[0]) + '</span>'
+            + '<strong class="pd-kpi-value">' + k[1] + '</strong>'
+            + (k[2] ? '<span class="pd-kpi-sub">' + T.esc(String(k[2])) + '</span>' : '')
+            + '</div>';
+        }).join('')
+      + '</div>';
+
+    // Repurchase list
+    var repurchaseHtml = '';
+    if (repurchase.length > 0) {
+      repurchaseHtml = '<h4 class="pd-section-title" style="margin:14px 0 6px;">Clientes para recompra</h4>'
+        + '<p style="font-size:0.78rem;color:var(--text-3);margin-bottom:8px;">' + repurchase.length + ' cliente(s) sem compra há 30+ dias</p>'
+        + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+        + '<thead><tr><th>Cliente</th><th>Score</th><th>Compras</th><th>Dias</th><th>Vendedor</th></tr></thead>'
+        + '<tbody>' + repurchase.slice(0, 8).map(function (c) {
+            var sc = c.score_recompra || 0;
+            var scC = sc >= 70 ? '#16a34a' : sc >= 40 ? '#2563eb' : '#9ca3af';
+            return '<tr><td class="truncate">' + T.esc((c.cliente_nome || '').substring(0, 25)) + '</td>'
+              + '<td><strong style="color:' + scC + '">' + sc + '</strong></td>'
+              + '<td>' + (c.n_compras || 0) + '</td>'
+              + '<td>' + (c.dias_desde_ultima || 0) + '</td>'
+              + '<td class="truncate">' + T.esc((c.vendedor_ultima_venda || '').substring(0, 18)) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+    } else {
+      repurchaseHtml = '<div style="margin-top:12px;padding:12px;border-radius:6px;background:var(--surface-muted,#f3f4f6);font-size:0.82rem;color:var(--text-3);">'
+        + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:4px;">info</span>'
+        + 'Nenhum cliente com histórico identificado para recompra no recorte selecionado.</div>';
+    }
+
+    return '<div class="pd-acao-comercial">' + scoreHtml + kpiHtml + repurchaseHtml + '</div>';
+  };
+
   // ── Giro & Risco (Estoque operacional) ───────────────────────────────────
 
   T.renderEstoque = function (data) {

@@ -24,6 +24,7 @@ use BIomie\Database;
 use BIomie\Http;
 use BIomie\Modules\Sales\Application\Products\Product360ReadService;
 use BIomie\Modules\Sales\Infrastructure\Product360ReadRepository;
+use BIomie\Product\ProductActionIntelligenceBuilder;
 use BIomie\RequestContext;
 use BIomie\Stock\OmieDocumentStockLedgerBuilder;
 use BIomie\Stock\OmieStockSourceResolver;
@@ -83,6 +84,32 @@ try {
             'document_ledger'  => $ledger,
             'top_vendors'      => $vendors,
             'meta'             => ['request_id' => RequestContext::id(), 'generated_at' => date(DATE_ATOM)],
+        ]);
+    }
+
+    // PROD.R2 — tab=acao via ProductActionIntelligenceBuilder
+    if ($tab === 'acao') {
+        $actionBuilder = new ProductActionIntelligenceBuilder($pdo, new ProductCommercialIdentityResolver($pdo));
+        $opps          = $actionBuilder->buildProductOpportunities($start, $end, 500);
+        $found         = null;
+        foreach ($opps as $o) {
+            if ($o['product_code'] === $productCode) { $found = $o; break; }
+        }
+        if ($found === null) {
+            $found = [
+                'product_code' => $productCode, 'product_name' => $productCode,
+                'score_acao' => 0, 'categoria' => 'Sem dados no período',
+                'acao_sugerida' => 'Ampliar o período de análise ou verificar NFs.',
+            ];
+        }
+        $repurchase = $actionBuilder->buildRepurchaseCandidates($productCode, $start, $end, 15);
+        Http::json([
+            'ok'           => true,
+            'product_code' => $productCode,
+            'period'       => ['start' => $start, 'end' => $end],
+            'product'      => $found,
+            'repurchase'   => $repurchase,
+            'meta'         => ['request_id' => RequestContext::id(), 'generated_at' => date(DATE_ATOM), 'tab' => 'acao'],
         ]);
     }
 

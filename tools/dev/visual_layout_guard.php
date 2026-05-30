@@ -268,6 +268,22 @@ function buildChecks(string $root): array
         checkContains('est_r13_tabs_empty_specific',  readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'Sem NFs neste recorte', 'tabs.js tem empty state específico sem contradição (EST.R1.3).'),
         checkContains('est_r13_identity_audit',       file_exists($root . '/tools/dev/product_360_identity_consistency_audit.php') ? 'ok' : '', 'ok', 'product_360_identity_consistency_audit.php existe (EST.R1.3).'),
         checkContains('est_r13_bucket_audit',         file_exists($root . '/tools/dev/product_360_temporal_bucket_audit.php') ? 'ok' : '', 'ok', 'product_360_temporal_bucket_audit.php existe (EST.R1.3).'),
+
+        // PROD.R2 — Product Action Intelligence
+        checkContains('prod_r2_builder',              file_exists($root . '/app/Product/ProductActionIntelligenceBuilder.php') ? 'ok' : '', 'ok', 'ProductActionIntelligenceBuilder existe (PROD.R2).'),
+        checkContains('prod_r2_api',                  file_exists($root . '/api/product_action_intelligence.php') ? 'ok' : '', 'ok', 'product_action_intelligence.php existe (PROD.R2).'),
+        checkContains('prod_r2_api_modes',            readFileSafe($root . '/api/product_action_intelligence.php'), 'repurchase', 'API tem mode=repurchase (PROD.R2).'),
+        checkContains('prod_r2_builder_prepared',     readFileSafe($root . '/app/Product/ProductActionIntelligenceBuilder.php'), '$this->pdo->prepare(', 'Builder usa prepared statements (PROD.R2).'),
+        checkContains('prod_r2_product_detail_tab',   readFileSafe($root . '/api/product_detail.php'), "tab === 'acao'", "product_detail.php tem tab=acao (PROD.R2)."),
+        checkContains('prod_r2_mercadorias_section',  readFileSafe($root . '/views/mercadorias.html'), 'prodR2Section', 'mercadorias.html tem seção Inteligência comercial (PROD.R2).'),
+        checkContains('prod_r2_mercadorias_drawer',   readFileSafe($root . '/views/mercadorias.html'), 'prodR2DrawerBody', 'mercadorias.html tem drawer de ação (PROD.R2).'),
+        checkContains('prod_r2_mercadorias_lazy',     readFileSafe($root . '/views/mercadorias.html'), 'prodR2Panel', 'mercadorias.html carrega seção lazy (PROD.R2).'),
+        checkContains('prod_r2_product360_tab',       readFileSafe($root . '/assets/js/modules/product-detail/index.js'), "'acao'", "Product 360 index.js tem tab 'acao' (PROD.R2)."),
+        checkContains('prod_r2_tabs_render_acao',     readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'renderAcaoComercial', 'tabs.js tem renderAcaoComercial (PROD.R2).'),
+        checkContains('prod_r2_tabs_score_acao',      readFileSafe($root . '/assets/js/modules/product-detail/tabs.js'), 'score_acao', 'tabs.js renderAcaoComercial usa score_acao (PROD.R2).'),
+        checkContains('prod_r2_opportunity_audit',    file_exists($root . '/tools/dev/product_action_opportunity_audit.php') ? 'ok' : '', 'ok', 'product_action_opportunity_audit.php existe (PROD.R2).'),
+        checkContains('prod_r2_repurchase_audit',     file_exists($root . '/tools/dev/product_customer_repurchase_audit.php') ? 'ok' : '', 'ok', 'product_customer_repurchase_audit.php existe (PROD.R2).'),
+        checkContains('prod_r2_affinity_audit',       file_exists($root . '/tools/dev/product_vendor_affinity_audit.php') ? 'ok' : '', 'ok', 'product_vendor_affinity_audit.php existe (PROD.R2).'),
     ];
 }
 

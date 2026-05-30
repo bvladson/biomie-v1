@@ -16,11 +16,12 @@
     { key: 'evolucao',  label: 'Evolucao' },
     { key: 'ltv',       label: 'LTV' },
     { key: 'estoque',   label: 'Giro & Risco' },
+    { key: 'acao',      label: 'Ação Comercial' },
     { key: 'diagnostico', label: 'Diagnostico' },
   ];
 
   // Tabs that load lazily after drawer open (summary is preloaded)
-  var LAZY_TABS = { nfs: true, clientes: true, vendedores: true, pedidos: true, evolucao: true, ltv: true, estoque: true };
+  var LAZY_TABS = { nfs: true, clientes: true, vendedores: true, pedidos: true, evolucao: true, ltv: true, estoque: true, acao: true };
 
   var state = {
     loading: false,
@@ -163,6 +164,8 @@
       body.innerHTML = T.renderLtv(merged);
     } else if (tab === 'estoque') {
       body.innerHTML = T.renderEstoque ? T.renderEstoque(merged) : T.empty('Modulo estoque nao carregado.');
+    } else if (tab === 'acao') {
+      body.innerHTML = T.renderAcaoComercial ? T.renderAcaoComercial(merged) : T.empty('Modulo acao comercial nao carregado.');
     } else if (tab === 'diagnostico') {
       body.innerHTML = T.renderDiagnostico(merged);
     } else {

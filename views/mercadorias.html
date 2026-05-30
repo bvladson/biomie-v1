@@ -570,6 +570,475 @@
         });
       })();
       </script>
+
+      <!-- PROD.R2 — Inteligência comercial de produtos (lazy, recolhível) -->
+      <div class="section-label anim d6" id="prodR2Section" style="cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="document.getElementById('prodR2Panel').hidden=!document.getElementById('prodR2Panel').hidden;this.querySelector('.prodr2-toggle-icon').textContent=document.getElementById('prodR2Panel').hidden?'expand_more':'expand_less';">
+        <span class="material-symbols-rounded">lightbulb</span>Inteligência comercial de produtos
+        <span class="material-symbols-rounded prodr2-toggle-icon" style="font-size:18px;margin-left:auto;color:var(--text-3)">expand_more</span>
+      </div>
+      <section id="prodR2Panel" hidden class="anim d6">
+
+        <!-- KPIs globais -->
+        <div class="biomie-kpi-grid" id="prodR2KpiGrid" style="margin-bottom:12px;">
+          <article class="biomie-kpi-card biomie-kpi-card--success">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Com ação sugerida</span><span class="material-symbols-rounded biomie-kpi-card__icon">rocket_launch</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiTotal">—</div>
+            <div class="biomie-kpi-card__sub">Produtos com score ≥ 40</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--info">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recompra provável</span><span class="material-symbols-rounded biomie-kpi-card__icon">refresh</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiRecompra">—</div>
+            <div class="biomie-kpi-card__sub">Clientes com 30+ dias sem compra</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recorrentes</span><span class="material-symbols-rounded biomie-kpi-card__icon">repeat</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiRecorrentes">—</div>
+            <div class="biomie-kpi-card__sub">Vendidos em 2+ meses</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--warning">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Concentrados</span><span class="material-symbols-rounded biomie-kpi-card__icon">person</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiConcentrados">—</div>
+            <div class="biomie-kpi-card__sub">Top cliente ≥ 60% das saídas</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Parados</span><span class="material-symbols-rounded biomie-kpi-card__icon">pause_circle</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiParados">—</div>
+            <div class="biomie-kpi-card__sub">90+ dias sem venda</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--neutral">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Campeões</span><span class="material-symbols-rounded biomie-kpi-card__icon">star</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiCampeoes">—</div>
+            <div class="biomie-kpi-card__sub">Score ≥ 75</div>
+          </article>
+        </div>
+
+        <!-- Loading / empty states -->
+        <div id="prodR2Loading" style="padding:24px;text-align:center;color:var(--text-muted);">
+          <span style="font-size:13px;">Carregando inteligência comercial…</span>
+        </div>
+        <div id="prodR2Empty" style="display:none;padding:32px;text-align:center;color:var(--text-muted);">
+          <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">lightbulb</span>
+          <strong id="prodR2EmptyMsg">Sem dados de inteligência para o período.</strong>
+        </div>
+
+        <!-- Cards de oportunidade (lazy) -->
+        <div id="prodR2Cards" style="display:none;gap:16px;display:none;">
+
+          <!-- Card: Produtos para ação -->
+          <div class="table-card" style="margin-bottom:12px;">
+            <div class="table-card-header">
+              <div>
+                <h3>Produtos para ação <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Top 10 por score</span></h3>
+                <small>Recomendações comerciais baseadas em recorrência, recência, clientes e volume.</small>
+              </div>
+              <div style="padding:8px 0 0;display:flex;gap:6px;flex-wrap:wrap;" id="prodR2ActionFilterBar">
+                <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-prodr2-cat="all">Todos</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Produto campeão">Campeões</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Reativar produto">Reativar</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Campanha para clientes antigos">Recompra</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Acompanhar concentração">Concentração</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Cross-sell com vendedores fortes">Cross-sell</button>
+              </div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean" id="prodR2ActionTable">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Score</th>
+                    <th>Categoria</th>
+                    <th>Receita</th>
+                    <th>Clientes</th>
+                    <th>Meses</th>
+                    <th>Dias parado</th>
+                    <th>Concentração</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="prodR2ActionBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Card: Aderência Vendedor × Produto -->
+          <div class="table-card" style="margin-bottom:12px;">
+            <div class="table-card-header">
+              <div>
+                <h3>Aderência vendedor × produto</h3>
+                <small>Produtos fortes e oportunidades de cross-sell por vendedor.</small>
+              </div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Vendedor</th><th>Produto forte</th><th>% receita vendedor</th><th>% mercado</th><th>Clientes</th></tr></thead>
+                <tbody id="prodR2VendorBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- PROD.R2 — Drawer de ação comercial -->
+      <div id="prodR2DrawerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:800;" onclick="closeProdR2Drawer()"></div>
+      <aside id="prodR2Drawer" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(50vw,720px);background:var(--surface,#fff);box-shadow:-4px 0 24px rgba(0,0,0,.12);z-index:801;overflow-y:auto;flex-direction:column;" role="dialog" aria-modal="true" aria-label="Ação comercial do produto">
+        <div style="padding:20px 20px 0;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border,#e5e7eb);padding-bottom:16px;">
+          <div>
+            <div style="font-size:0.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Ação Comercial · Product Intelligence</div>
+            <h2 id="prodR2DrawerTitle" style="margin:0;font-size:1.1rem;font-weight:700;"></h2>
+            <div id="prodR2DrawerSubtitle" style="font-size:0.8rem;color:var(--text-3);margin-top:2px;"></div>
+          </div>
+          <button type="button" onclick="closeProdR2Drawer()" style="background:none;border:none;cursor:pointer;padding:4px;" aria-label="Fechar">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border,#e5e7eb);padding:0 20px;" id="prodR2DrawerTabBar">
+          <button class="biomie-drawer__tab is-active" data-drawer-tab="overview">Resumo</button>
+          <button class="biomie-drawer__tab" data-drawer-tab="repurchase">Recompra</button>
+          <button class="biomie-drawer__tab" data-drawer-tab="vendors">Vendedores</button>
+          <button class="biomie-drawer__tab" data-drawer-tab="action">Recomendação</button>
+        </div>
+
+        <!-- Body -->
+        <div id="prodR2DrawerBody" style="padding:16px 20px;flex:1;">
+          <div id="prodR2DrawerLoading" style="padding:32px;text-align:center;">Carregando…</div>
+        </div>
+      </aside>
+
+      <script>
+      (function() {
+        var loaded   = false;
+        var section  = document.getElementById('prodR2Section');
+        var panel    = document.getElementById('prodR2Panel');
+        if (!section) return;
+
+        var _allOpps  = [];
+        var _allVends = [];
+        var _activeFilter = 'all';
+        var _activeTab    = 'overview';
+        var _drawerData   = null;
+
+        function _esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function fmtR(n) { return 'R$ ' + (parseFloat(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+        function fmtN(n) { return (parseFloat(n)||0).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+
+        // ── Category chip colors ─────────────────────────────────────────────
+        var catColors = {
+          'Produto campeão':              '#16a34a',
+          'Reativar produto':             '#dc2626',
+          'Acompanhar concentração':      '#d97706',
+          'Campanha para clientes antigos': '#2563eb',
+          'Cross-sell com vendedores fortes': '#7c3aed',
+          'Produto sazonal':              '#db2777',
+          'Baixo giro':                   '#6b7280',
+          'Monitorar':                    '#9ca3af',
+        };
+
+        function catBadge(cat) {
+          var color = catColors[cat] || '#6b7280';
+          return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;color:#fff;background:' + color + '">' + _esc(cat) + '</span>';
+        }
+
+        function scoreBar(score) {
+          var color = score >= 75 ? '#16a34a' : score >= 40 ? '#2563eb' : '#9ca3af';
+          return '<span style="font-weight:700;color:' + color + '">' + score + '</span>';
+        }
+
+        // ── Render action table ───────────────────────────────────────────────
+        function renderActionTable(filter) {
+          _activeFilter = filter;
+          var rows = filter === 'all' ? _allOpps : _allOpps.filter(function(r) { return r.categoria === filter; });
+          var tbody = document.getElementById('prodR2ActionBody');
+          if (!tbody) return;
+
+          document.querySelectorAll('[data-prodr2-cat]').forEach(function(btn) {
+            btn.classList.toggle('nf-quick-filter-btn--active', btn.getAttribute('data-prodr2-cat') === filter);
+          });
+
+          if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhum produto nesta categoria.</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = rows.slice(0,20).map(function(r) {
+            var pcode = _esc(r.product_code||'');
+            var pname = _esc((r.product_name||'').substring(0,32));
+            var dias  = (r.dias_sem_venda||0) >= 90
+              ? '<span style="color:#dc2626;font-weight:700">' + (r.dias_sem_venda||0) + 'd</span>'
+              : (r.dias_sem_venda||0) + 'd';
+            var conc = (r.top_cliente_share_pct||0) >= 60
+              ? '<span style="color:#d97706;font-weight:700">' + (r.top_cliente_share_pct||0) + '%</span>'
+              : (r.top_cliente_share_pct||0) + '%';
+            return '<tr>'
+              + '<td><div class="truncate" title="' + _esc(r.product_name||'') + '">' + pname + '</div>'
+              + '<div style="font-size:0.72rem;color:var(--text-3)">' + pcode + '</div></td>'
+              + '<td>' + scoreBar(r.score_acao||0) + '</td>'
+              + '<td>' + catBadge(r.categoria||'') + '</td>'
+              + '<td class="font-mono">' + fmtR(r.receita_periodo||0) + '</td>'
+              + '<td>' + (r.clientes_periodo||0) + '</td>'
+              + '<td>' + (r.meses_ativos||0) + '</td>'
+              + '<td>' + dias + '</td>'
+              + '<td>' + conc + '</td>'
+              + '<td><button type="button" class="row-inline-link" onclick="openProdR2Drawer(' + JSON.stringify(pcode) + ',' + JSON.stringify(r.product_name||'') + ')" style="white-space:nowrap">Ver ação</button></td>'
+              + '</tr>';
+          }).join('');
+        }
+
+        // ── Render vendor affinity ────────────────────────────────────────────
+        function renderVendorAffinity(vendors) {
+          var tbody = document.getElementById('prodR2VendorBody');
+          if (!tbody) return;
+          var rows = [];
+          vendors.forEach(function(v) {
+            (v.produtos_fortes||[]).forEach(function(p) {
+              rows.push({
+                vendor: v.vendor_name, product: p.product_name,
+                pctVend: p.participacao_vendedor_pct, shareMkt: p.share_produto,
+                clientes: p.clientes,
+              });
+            });
+          });
+          if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sem dados de aderência no período.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = rows.slice(0,15).map(function(r) {
+            return '<tr><td class="truncate">' + _esc(r.vendor) + '</td>'
+              + '<td class="truncate">' + _esc((r.product||'').substring(0,28)) + '</td>'
+              + '<td><strong>' + (r.pctVend||0) + '%</strong></td>'
+              + '<td>' + (r.shareMkt||0) + '%</td>'
+              + '<td>' + (r.clientes||0) + '</td></tr>';
+          }).join('');
+        }
+
+        // ── Load data ─────────────────────────────────────────────────────────
+        function loadAll() {
+          var p = new URLSearchParams(window.location.search);
+          var start = p.get('start') || new Date().getFullYear() + '-01-01';
+          var end   = p.get('end')   || new Date().toISOString().substring(0,10);
+
+          Promise.all([
+            fetch('/biomie/api/product_action_intelligence.php?mode=summary&start='+start+'&end='+end).then(function(r){return r.json();}),
+            fetch('/biomie/api/product_action_intelligence.php?mode=opportunities&start='+start+'&end='+end+'&limit=100&order=score').then(function(r){return r.json();}),
+            fetch('/biomie/api/product_action_intelligence.php?mode=vendors&start='+start+'&end='+end).then(function(r){return r.json();})
+          ]).then(function(results) {
+            var summary = results[0] || {};
+            var opps    = results[1] || {};
+            var vends   = results[2] || {};
+
+            document.getElementById('prodR2Loading').style.display = 'none';
+
+            // KPIs
+            var actionCount = (opps.opportunities||[]).filter(function(o){return (o.score_acao||0)>=40;}).length;
+            document.getElementById('prodR2KpiTotal').textContent       = actionCount;
+            document.getElementById('prodR2KpiRecompra').textContent    = fmtN(summary.clientes_recompra||0);
+            document.getElementById('prodR2KpiRecorrentes').textContent = summary.recorrentes||0;
+            document.getElementById('prodR2KpiConcentrados').textContent= summary.concentrados||0;
+            document.getElementById('prodR2KpiParados').textContent     = summary.dormentes||0;
+            document.getElementById('prodR2KpiCampeoes').textContent    = summary.campeoes||0;
+
+            _allOpps  = (opps.opportunities||[]).filter(function(o){return (o.score_acao||0)>=30;});
+            _allVends = vends.vendors||[];
+
+            if (_allOpps.length === 0) {
+              document.getElementById('prodR2Empty').style.display = '';
+              return;
+            }
+
+            var cards = document.getElementById('prodR2Cards');
+            cards.style.display = '';
+
+            renderActionTable('all');
+            renderVendorAffinity(_allVends);
+
+            // Wire filter buttons
+            document.querySelectorAll('[data-prodr2-cat]').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                renderActionTable(btn.getAttribute('data-prodr2-cat'));
+              });
+            });
+
+          }).catch(function() {
+            document.getElementById('prodR2Loading').style.display = 'none';
+            document.getElementById('prodR2EmptyMsg').textContent = 'Erro ao carregar inteligência comercial.';
+            document.getElementById('prodR2Empty').style.display = '';
+          });
+        }
+
+        section.addEventListener('click', function() {
+          if (!loaded && !panel.hidden) {
+            loaded = true;
+            loadAll();
+          }
+        });
+
+        // ── Drawer ────────────────────────────────────────────────────────────
+
+        window.openProdR2Drawer = function(productCode, productName) {
+          var drawer   = document.getElementById('prodR2Drawer');
+          var backdrop = document.getElementById('prodR2DrawerBackdrop');
+          var title    = document.getElementById('prodR2DrawerTitle');
+          var subtitle = document.getElementById('prodR2DrawerSubtitle');
+          var body     = document.getElementById('prodR2DrawerBody');
+
+          title.textContent    = productName || productCode;
+          subtitle.textContent = 'SKU ' + productCode;
+          body.innerHTML       = '<div id="prodR2DrawerLoading" style="padding:32px;text-align:center;">Carregando…</div>';
+
+          drawer.style.display   = 'flex';
+          backdrop.style.display = '';
+          document.body.classList.add('biomie-drawer-open');
+
+          // Set active tab
+          document.querySelectorAll('[data-drawer-tab]').forEach(function(btn) {
+            btn.classList.toggle('is-active', btn.getAttribute('data-drawer-tab') === 'overview');
+          });
+          _activeTab = 'overview';
+
+          var p = new URLSearchParams(window.location.search);
+          var start = p.get('start') || new Date().getFullYear() + '-01-01';
+          var end   = p.get('end')   || new Date().toISOString().substring(0,10);
+
+          fetch('/biomie/api/product_action_intelligence.php?mode=drawer&product_code='+encodeURIComponent(productCode)+'&start='+start+'&end='+end)
+            .then(function(r){return r.json();})
+            .then(function(data) {
+              _drawerData = data;
+              renderDrawerTab('overview', data);
+
+              // Wire tab buttons
+              document.querySelectorAll('[data-drawer-tab]').forEach(function(btn) {
+                btn.onclick = function() {
+                  _activeTab = btn.getAttribute('data-drawer-tab');
+                  document.querySelectorAll('[data-drawer-tab]').forEach(function(b){
+                    b.classList.toggle('is-active', b === btn);
+                  });
+                  renderDrawerTab(_activeTab, _drawerData);
+                };
+              });
+            })
+            .catch(function() {
+              body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Erro ao carregar dados de ação comercial.</div>';
+            });
+
+          // ESC key
+          var escHandler = function(e) { if (e.key === 'Escape') { closeProdR2Drawer(); document.removeEventListener('keydown', escHandler); } };
+          document.addEventListener('keydown', escHandler);
+        };
+
+        window.closeProdR2Drawer = function() {
+          var drawer   = document.getElementById('prodR2Drawer');
+          var backdrop = document.getElementById('prodR2DrawerBackdrop');
+          if (drawer)   drawer.style.display   = 'none';
+          if (backdrop) backdrop.style.display = 'none';
+          document.body.classList.remove('biomie-drawer-open');
+        };
+
+        function renderDrawerTab(tab, data) {
+          var body = document.getElementById('prodR2DrawerBody');
+          if (!body) return;
+          var prod = data.product || {};
+          var repurchase = data.repurchase || [];
+          var vendors    = data.product_vendors || [];
+
+          if (tab === 'overview') {
+            var cat = prod.categoria||'';
+            var catColor = catColors[cat] || '#6b7280';
+            body.innerHTML =
+              '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px;">'
+              + _kpi('Receita', fmtR(prod.receita_periodo||0), 'No período')
+              + _kpi('Qtd. vendida', fmtN(prod.qtd_periodo||0) + ' un', '')
+              + _kpi('NFs', prod.nfs_periodo||0, '')
+              + _kpi('Clientes', prod.clientes_periodo||0, 'Distintos')
+              + _kpi('Meses ativos', prod.meses_ativos||0, 'Com venda')
+              + _kpi('Dias parado', prod.dias_sem_venda||0, 'Desde última venda')
+              + '</div>'
+              + '<div style="margin-bottom:12px;">'
+              + '<strong>Categoria:</strong> <span style="background:' + catColor + ';color:#fff;padding:2px 8px;border-radius:12px;font-size:0.78rem;">' + _esc(cat) + '</span>'
+              + '</div>'
+              + (prod.top_cliente_nome ? '<p style="font-size:0.82rem;color:var(--text-2)">Top cliente: <strong>' + _esc(prod.top_cliente_nome) + '</strong> (' + (prod.top_cliente_share_pct||0) + '%)</p>' : '');
+          } else if (tab === 'repurchase') {
+            if (repurchase.length === 0) {
+              body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)"><span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">person_off</span>Sem clientes para recompra identificados no período.</div>';
+            } else {
+              body.innerHTML = '<p style="font-size:0.82rem;color:var(--text-3);margin-bottom:10px;">' + repurchase.length + ' cliente(s) identificado(s)</p>'
+                + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+                + '<thead><tr><th>Cliente</th><th>Score</th><th>Compras</th><th>Último</th><th>Vendedor</th></tr></thead>'
+                + '<tbody>' + repurchase.map(function(c) {
+                    var sc = c.score_recompra||0;
+                    var scColor = sc>=70?'#16a34a':sc>=40?'#2563eb':'#9ca3af';
+                    return '<tr><td class="truncate">' + _esc((c.cliente_nome||'').substring(0,28)) + '</td>'
+                      + '<td><strong style="color:' + scColor + '">' + sc + '</strong></td>'
+                      + '<td>' + (c.n_compras||0) + '</td>'
+                      + '<td>' + (c.ultima_compra||'—').substring(0,10) + '</td>'
+                      + '<td class="truncate">' + _esc((c.vendedor_ultima_venda||'').substring(0,18)) + '</td></tr>';
+                  }).join('') + '</tbody></table></div>';
+            }
+          } else if (tab === 'vendors') {
+            if (vendors.length === 0) {
+              body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Sem vendedores com histórico neste produto.</div>';
+            } else {
+              body.innerHTML = '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+                + '<thead><tr><th>Vendedor</th><th>Receita</th><th>% vendedor</th><th>% mercado</th><th>Clientes</th><th>Classificação</th></tr></thead>'
+                + '<tbody>' + vendors.map(function(v) {
+                    var cls = v.classificacao==='forte' ? '\033[32mForte\033[0m' : v.classificacao==='regular' ? 'Regular' : 'Fraco';
+                    var clsColor = v.classificacao==='forte'?'#16a34a':v.classificacao==='regular'?'#2563eb':'#9ca3af';
+                    return '<tr><td class="truncate">' + _esc((v.vendor_name||'').substring(0,22)) + '</td>'
+                      + '<td class="font-mono">' + fmtR(v.receita||0) + '</td>'
+                      + '<td>' + (v.participacao_vendedor_pct||0) + '%</td>'
+                      + '<td>' + (v.share_produto||0) + '%</td>'
+                      + '<td>' + (v.clientes||0) + '</td>'
+                      + '<td><span style="color:' + clsColor + ';font-weight:600">' + _esc(v.classificacao||'') + '</span></td></tr>';
+                  }).join('') + '</tbody></table></div>';
+            }
+          } else if (tab === 'action') {
+            var ac = prod.acao_sugerida || 'Sem recomendação disponível para este período.';
+            var sc = prod.score_acao || 0;
+            var scColor = sc>=75?'#16a34a':sc>=40?'#2563eb':'#9ca3af';
+            body.innerHTML =
+              '<div style="padding:16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:16px;">'
+              + '<div style="font-size:0.78rem;color:var(--text-3);margin-bottom:6px;">Score de ação comercial</div>'
+              + '<div style="font-size:2rem;font-weight:800;color:' + scColor + '">' + sc + '<span style="font-size:1rem;color:var(--text-3)">/100</span></div>'
+              + '</div>'
+              + '<div style="margin-bottom:12px;">'
+              + '<strong>Categoria:</strong> ' + catBadge(prod.categoria||'') + '</div>'
+              + '<div style="padding:12px 14px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;font-size:0.85rem;color:#1e40af;">'
+              + '<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:6px;">bolt</span>'
+              + _esc(ac) + '</div>'
+              + (repurchase.length > 0
+                ? '<p style="margin-top:12px;font-size:0.82rem;color:var(--text-2)"><strong>' + repurchase.length + ' clientes</strong> com possibilidade de recompra identificados.</p>'
+                : '');
+          }
+        }
+
+        function _kpi(label, value, sub) {
+          return '<div style="background:var(--surface-muted,#f3f4f6);border-radius:8px;padding:10px 14px;">'
+            + '<div style="font-size:0.72rem;color:var(--text-3);margin-bottom:3px;">' + _esc(label) + '</div>'
+            + '<div style="font-size:1.1rem;font-weight:700;">' + value + '</div>'
+            + (sub ? '<div style="font-size:0.72rem;color:var(--text-3);">' + _esc(sub) + '</div>' : '')
+            + '</div>';
+        }
+
+        // Make catColors accessible to tab renderer
+        var catColors = {
+          'Produto campeão':              '#16a34a',
+          'Reativar produto':             '#dc2626',
+          'Acompanhar concentração':      '#d97706',
+          'Campanha para clientes antigos': '#2563eb',
+          'Cross-sell com vendedores fortes': '#7c3aed',
+          'Produto sazonal':              '#db2777',
+          'Baixo giro':                   '#6b7280',
+          'Monitorar':                    '#9ca3af',
+        };
+
+        function catBadge(cat) {
+          var color = catColors[cat] || '#6b7280';
+          return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;color:#fff;background:' + color + '">' + _esc(cat) + '</span>';
+        }
+
+      })();
+      </script>
 </main>
 </body>
 </html>

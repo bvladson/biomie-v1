@@ -51,6 +51,7 @@ declare(strict_types=1);
  *   D33 EST.R1.1 Omie API-only Stock Intelligence                   [informacional — OmieStockSourceResolver + OmieDocumentStockLedgerBuilder + product_stock_intelligence.php + sem fonte manual]
  *   D34 EST.R1.2 Giro e Risco Operacional                          [informacional — buildTopVendors+buildRecurrence+buildConcentration+buildDormant + tab=estoque + 5-tab mercadorias]
  *   D35 EST.R1.3 Product 360 Polish & Temporal Semantics           [informacional — IdentityResolver + BucketResolver + TRIM/COALESCE + timeline_meta + JS placeholder fix]
+ *   D36 PROD.R2 Product Action Intelligence                        [informacional — ProductActionIntelligenceBuilder + product_action_intelligence.php + tab=acao + seção mercadorias]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2931,6 +2932,100 @@ $domains[] = [
         ? 'EST.R1.3 presente: identity/bucket resolvers + TRIM/COALESCE fixes + JS guard + audit tools'
         : count($d35Issues) . ' item(ns) EST.R1.3 ausente(s) [informacional]',
     'issues'        => $d35Issues,
+];
+
+// ── D36 — PROD.R2 Product Action Intelligence [informacional] ─────────────────
+
+$d36Issues = [];
+
+// Builder existe
+$builderFile = $projectRoot . '/app/Product/ProductActionIntelligenceBuilder.php';
+if (!is_file($builderFile)) {
+    $d36Issues[] = 'ProductActionIntelligenceBuilder.php ausente';
+} else {
+    $src = (string) file_get_contents($builderFile);
+    foreach (['buildExecutiveSummary', 'buildProductOpportunities', 'buildRepurchaseCandidates', 'buildVendorProductAffinity', 'buildActionScore'] as $method) {
+        if (!str_contains($src, $method)) $d36Issues[] = "ProductActionIntelligenceBuilder sem {$method}";
+    }
+    if (!str_contains($src, 'ProductCommercialIdentityResolver')) $d36Issues[] = 'Builder não usa ProductCommercialIdentityResolver';
+    if (!str_contains($src, 'ProductTemporalBucketResolver')) {
+        // BucketResolver is optional in builder — no issue
+    }
+    $srcCode = rg_strip_php_comments($src);
+    foreach (['csv', 'manual', 'planilha'] as $forbidden) {
+        if (stripos($srcCode, $forbidden) !== false) $d36Issues[] = "Builder contém referência proibida: {$forbidden}";
+    }
+    // Sem SELECT *
+    if (preg_match('/SELECT\s+\*/i', $srcCode)) $d36Issues[] = 'Builder usa SELECT *';
+}
+
+// API endpoint
+$apiFile36 = $projectRoot . '/api/product_action_intelligence.php';
+if (!is_file($apiFile36)) {
+    $d36Issues[] = 'api/product_action_intelligence.php ausente';
+} else {
+    $src = (string) file_get_contents($apiFile36);
+    foreach (['summary', 'opportunities', 'product', 'repurchase', 'vendors', 'drawer'] as $mode) {
+        if (!str_contains($src, "'mode' === '{$mode}'") && !str_contains($src, "=== '{$mode}'")) $d36Issues[] = "API sem mode={$mode}";
+    }
+    // Prepared statements são no builder, não na API. Verificar no builder.
+    if (is_file($builderFile)) {
+        $bSrc = rg_strip_php_comments((string) file_get_contents($builderFile));
+        if (!str_contains($bSrc, '$this->pdo->prepare(')) $d36Issues[] = 'ProductActionIntelligenceBuilder não usa prepared statements';
+        if (preg_match('/SELECT\s+\*/i', $bSrc)) $d36Issues[] = 'ProductActionIntelligenceBuilder usa SELECT *';
+    }
+}
+
+// product_detail.php tem tab=acao
+$pd36File = $projectRoot . '/api/product_detail.php';
+if (is_file($pd36File)) {
+    $src = (string) file_get_contents($pd36File);
+    if (!str_contains($src, "tab === 'acao'")) $d36Issues[] = 'api/product_detail.php sem branch tab=acao';
+    if (!str_contains($src, 'ProductActionIntelligenceBuilder')) $d36Issues[] = 'api/product_detail.php não usa ProductActionIntelligenceBuilder';
+}
+
+// mercadorias.html tem seção
+$merc36 = $projectRoot . '/views/mercadorias.html';
+if (is_file($merc36)) {
+    $src = (string) file_get_contents($merc36);
+    if (!str_contains($src, 'prodR2Section')) $d36Issues[] = 'mercadorias.html sem seção Inteligência comercial';
+    if (!str_contains($src, 'prodR2DrawerBody')) $d36Issues[] = 'mercadorias.html sem drawer de ação comercial';
+    if (!str_contains($src, 'Inteligência comercial de produtos')) $d36Issues[] = 'mercadorias.html sem título correto da seção';
+}
+
+// Product 360 drawer tem aba ação
+$pd360File = $projectRoot . '/assets/js/modules/product-detail/index.js';
+if (is_file($pd360File)) {
+    $src = (string) file_get_contents($pd360File);
+    if (!str_contains($src, "'acao'")) $d36Issues[] = 'product-detail/index.js sem tab acao';
+}
+
+$tabsFile36 = $projectRoot . '/assets/js/modules/product-detail/tabs.js';
+if (is_file($tabsFile36)) {
+    $src = (string) file_get_contents($tabsFile36);
+    if (!str_contains($src, 'renderAcaoComercial')) $d36Issues[] = 'tabs.js sem renderAcaoComercial';
+    if (!str_contains($src, 'score_acao')) $d36Issues[] = 'tabs.js renderAcaoComercial sem score_acao';
+}
+
+// Audit tools existem
+foreach ([
+    'tools/dev/product_action_opportunity_audit.php',
+    'tools/dev/product_customer_repurchase_audit.php',
+    'tools/dev/product_vendor_affinity_audit.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d36Issues[] = "Arquivo ausente: {$f}";
+}
+
+$domains[] = [
+    'label'         => 'D36 PROD.R2 Product Action Intelligence',
+    'guard'         => 'ProductActionIntelligenceBuilder + product_action_intelligence.php + tab=acao + seção mercadorias + aba Product 360',
+    'pass'          => true,
+    'warn'          => count($d36Issues) > 0,
+    'informational' => true,
+    'summary'       => $d36Issues === []
+        ? 'PROD.R2 presente: builder + API + tab=acao + seção mercadorias + aba Product 360 + 3 audits'
+        : count($d36Issues) . ' item(ns) PROD.R2 ausente(s) [informacional]',
+    'issues'        => $d36Issues,
 ];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
