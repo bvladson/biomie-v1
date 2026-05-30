@@ -35,6 +35,7 @@ require_once dirname(__DIR__, 2) . '/app/Support/CliGuard.php';
 require_once dirname(__DIR__, 2) . '/app/Bootstrap.php';
 \BIomie\Bootstrap::init();
 
+use BIomie\Bootstrap;
 use BIomie\Config;
 use BIomie\Logger;
 use BIomie\OmieClient;
@@ -64,7 +65,7 @@ try {
         fwrite(STDERR, "ERRO: omie.app_key / omie.app_secret não configurados.\n");
         exit(2);
     }
-    $logger = new Logger($config);
+    $logger = new Logger(Bootstrap::rootPath('storage/logs/stock_probe.log'));
     $client = new OmieClient($appKey, $appSecret, 30, $logger, null, null, 'stock_probe');
 } catch (\Throwable $e) {
     fwrite(STDERR, 'ERRO ao inicializar OmieClient: ' . $e->getMessage() . "\n");
