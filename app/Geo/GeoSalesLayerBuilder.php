@@ -174,7 +174,7 @@ final class GeoSalesLayerBuilder
         $sql = "
             SELECT
                 COALESCE(m.ibge_code, '0')                              AS territory_key,
-                COALESCE(m.nome, INITCAP(g.cidade_norm), g.cidade_norm, 'Não identificado') AS territory_label,
+                COALESCE(m.nome, g.cidade_norm, 'Não identificado')     AS territory_label,
                 COALESCE(SUM(g.faturamento), 0)                         AS receita,
                 COALESCE(SUM(g.qtd_notas), 0)                           AS nfs,
                 COUNT(DISTINCT COALESCE(CAST(g.codigo_cliente_omie AS CHAR), g.documento, g.cliente_nome)) AS clientes,
