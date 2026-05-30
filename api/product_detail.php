@@ -25,6 +25,8 @@ use BIomie\Http;
 use BIomie\Modules\Sales\Application\Products\Product360ReadService;
 use BIomie\Modules\Sales\Infrastructure\Product360ReadRepository;
 use BIomie\RequestContext;
+use BIomie\Stock\OmieDocumentStockLedgerBuilder;
+use BIomie\Stock\OmieStockSourceResolver;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -60,6 +62,28 @@ try {
         Http::json(['ok' => false, 'message' => 'Banco de dados nao configurado.', 'request_id' => RequestContext::id()], 503);
     }
     $pdo = Database::connect($config, $conn);
+
+    // EST.R1.2 — tab=estoque via document ledger (sem Product360ReadService)
+    if ($tab === 'estoque') {
+        $builder  = new OmieDocumentStockLedgerBuilder($pdo);
+        $resolver = new OmieStockSourceResolver($pdo);
+        $source   = $resolver->resolveForProduct($productCode);
+        $ledger   = $builder->buildForProduct($productCode, $start, $end, $limit);
+        $vendors  = $builder->buildTopVendorsForProduct($productCode, $start, $end, 10);
+
+        Http::json([
+            'ok'               => true,
+            'product_code'     => $productCode,
+            'period'           => ['start' => $start, 'end' => $end],
+            'stock_source'     => $source['source'],
+            'source_label'     => $source['label'],
+            'source_confidence' => $source['confidence'],
+            'source_note'      => $source['note'],
+            'document_ledger'  => $ledger,
+            'top_vendors'      => $vendors,
+            'meta'             => ['request_id' => RequestContext::id(), 'generated_at' => date(DATE_ATOM)],
+        ]);
+    }
 
     $repository = new Product360ReadRepository($pdo);
     $service    = new Product360ReadService($repository);

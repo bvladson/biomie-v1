@@ -248,9 +248,9 @@
         </div>
       </aside>
 
-      <!-- EST.R1.1 — Inteligência de Estoque Omie API-only (recolhível, lazy) -->
+      <!-- EST.R1.2 — Giro e Risco Operacional (recolhível, lazy) -->
       <div class="section-label anim d5" id="estoqueSection" style="cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="document.getElementById('estoquePanel').hidden=!document.getElementById('estoquePanel').hidden;this.querySelector('.estoque-toggle-icon').textContent=document.getElementById('estoquePanel').hidden?'expand_more':'expand_less';">
-        <span class="material-symbols-rounded">inventory</span>Estoque e Inteligência Operacional
+        <span class="material-symbols-rounded">trending_up</span>Giro e Risco Operacional
         <span id="estoqueSourceBadge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface-muted);color:var(--text-3);margin-left:4px;font-weight:600;"></span>
         <span class="material-symbols-rounded estoque-toggle-icon" style="font-size:18px;margin-left:auto;color:var(--text-3)">expand_more</span>
       </div>
@@ -264,7 +264,7 @@
           </div>
         </div>
 
-        <!-- KPIs — adapta ao tipo de fonte -->
+        <!-- KPIs globais -->
         <div class="biomie-kpi-grid" id="estoqueKpiGrid" style="margin-bottom:12px;">
           <article class="biomie-kpi-card">
             <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi1Label">Produtos distintos</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div>
@@ -277,7 +277,7 @@
             <div class="biomie-kpi-card__sub" id="estoqueKpi2Sub">Total de unidades NF comercial</div>
           </article>
           <article class="biomie-kpi-card biomie-kpi-card--warning">
-            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi3Label">Risco operacional</span><span class="material-symbols-rounded biomie-kpi-card__icon">trending_up</span></div>
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi3Label">Risco operacional</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning</span></div>
             <div class="biomie-kpi-card__value" id="estoqueKpi3">—</div>
             <div class="biomie-kpi-card__sub" id="estoqueKpi3Sub">Com alto giro nos últimos 30 dias</div>
           </article>
@@ -286,38 +286,108 @@
             <div class="biomie-kpi-card__value" id="estoqueKpi4">—</div>
             <div class="biomie-kpi-card__sub" id="estoqueKpi4Sub">Data da NF mais recente</div>
           </article>
+          <article class="biomie-kpi-card biomie-kpi-card--neutral">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recorrentes</span><span class="material-symbols-rounded biomie-kpi-card__icon">repeat</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpiRecorrentes">—</div>
+            <div class="biomie-kpi-card__sub">Produtos em 2+ meses</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Concentrados</span><span class="material-symbols-rounded biomie-kpi-card__icon">person</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpiConcentrados">—</div>
+            <div class="biomie-kpi-card__sub">Dep. cliente único ≥ 60%</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Parados</span><span class="material-symbols-rounded biomie-kpi-card__icon">do_not_disturb</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpiParados">—</div>
+            <div class="biomie-kpi-card__sub">Sem venda em 90+ dias</div>
+          </article>
         </div>
 
-        <!-- Tabela de giro (document ledger ou official stock) -->
-        <div class="table-card" style="margin-bottom:12px;">
-          <div class="table-card-header">
-            <div><h3 id="estoqueTableTitle">Produtos por volume vendido</h3><small id="estoqueTableSub">Top produtos por quantidade de saídas no período via NF autorizadas.</small></div>
-          </div>
-          <div id="estoqueLoadingState" style="padding:24px;text-align:center;color:var(--text-muted);">
-            <span style="font-size:13px;">Carregando inteligência de estoque…</span>
-          </div>
-          <div id="estoqueEmptyState" style="display:none;padding:32px;text-align:center;color:var(--text-muted);">
-            <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">inventory</span>
-            <strong id="estoqueEmptyMsg">Sem dados de estoque para o período.</strong>
-          </div>
-          <div class="drawer-table-wrap" id="estoqueTableWrap" style="display:none;">
-            <table class="mag-table mag-table-clean">
-              <thead id="estoqueTableHead"><tr></tr></thead>
-              <tbody id="estoqueTableBody"></tbody>
-            </table>
-          </div>
+        <!-- Tab switcher — 5 visões -->
+        <div id="estoqueLoadingState" style="padding:24px;text-align:center;color:var(--text-muted);">
+          <span style="font-size:13px;">Carregando giro e risco…</span>
+        </div>
+        <div id="estoqueEmptyState" style="display:none;padding:32px;text-align:center;color:var(--text-muted);">
+          <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">trending_up</span>
+          <strong id="estoqueEmptyMsg">Sem dados para o período.</strong>
         </div>
 
-        <!-- Risco operacional (document ledger) -->
-        <div class="table-card" id="estoqueRiskCard" style="display:none;">
-          <div class="table-card-header">
-            <div><h3>Risco Operacional por Giro</h3><small>Produtos com alta saída recente — sem evidência de reposição disponível. Estimativa, não saldo físico.</small></div>
+        <div id="estoqueTabsWrap" style="display:none;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="estoqueTabBar">
+            <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-estoque-tab="velocity">Por giro</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="risk">Risco operacional</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="recurrence">Recorrentes</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="concentration">Concentração</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="dormant">Parados</button>
           </div>
-          <div class="drawer-table-wrap">
-            <table class="mag-table mag-table-clean">
-              <thead><tr><th>Produto</th><th>Qtd 30d</th><th>Qtd total</th><th>NFs</th><th>Última venda</th><th>Risco</th></tr></thead>
-              <tbody id="estoqueRiskBody"></tbody>
-            </table>
+
+          <!-- Por giro -->
+          <div class="table-card" id="estoqueTabVelocity">
+            <div class="table-card-header">
+              <div><h3>Top produtos por volume vendido <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Fonte: Documentos Omie</span></h3><small>Saídas via NF comercial autorizada. Confiança operacional — não é saldo físico.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Qtd vendida</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th><th>Meses ativos</th></tr></thead>
+                <tbody id="estoqueVelocityBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Risco operacional -->
+          <div class="table-card" id="estoqueTabRisk" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Risco operacional por giro <span class="mag-status-chip mag-status-warning" style="font-size:0.7rem;padding:2px 7px;">Estimativa</span></h3><small>Alto giro recente sem evidência de reposição. Não é ruptura física confirmada.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>Qtd 30d</th><th>Qtd total</th><th>NFs</th><th>Última venda</th><th>Risco</th></tr></thead>
+                <tbody id="estoqueRiskBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueRiskEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto com alto giro recente no período.</div>
+          </div>
+
+          <!-- Recorrentes -->
+          <div class="table-card" id="estoqueTabRecurrence" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Produtos recorrentes <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Fonte: Documentos Omie</span></h3><small>Produtos vendidos em 2 ou mais meses distintos no período — demanda estável.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Meses ativos</th><th>Qtd total</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th></tr></thead>
+                <tbody id="estoqueRecurrenceBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueRecurrenceEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto com venda em múltiplos meses no período.</div>
+          </div>
+
+          <!-- Concentração -->
+          <div class="table-card" id="estoqueTabConcentration" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Concentração de cliente único <span class="mag-status-chip mag-status-warning" style="font-size:0.7rem;padding:2px 7px;">Risco comercial</span></h3><small>Produtos onde 1 cliente representa ≥ 60% da quantidade vendida — risco de dependência.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Qtd total</th><th>Clientes</th><th>Top cliente</th><th>Qtd top cliente</th><th>Concentração</th></tr></thead>
+                <tbody id="estoqueConcentrationBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueConcentrationEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto com alta concentração de cliente único no período.</div>
+          </div>
+
+          <!-- Parados -->
+          <div class="table-card" id="estoqueTabDormant" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Produtos parados <span class="mag-status-chip mag-status-error" style="font-size:0.7rem;padding:2px 7px;">90+ dias sem venda</span></h3><small>Produtos com histórico no período mas sem saída nos últimos 90 dias.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Qtd total</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th><th>Dias parado</th></tr></thead>
+                <tbody id="estoqueDormantBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueDormantEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto parado no período.</div>
           </div>
         </div>
       </section>
@@ -328,66 +398,88 @@
         var section = document.getElementById('estoqueSection');
         if (!section) return;
 
-        function _esc(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        var _activeTab = 'velocity';
+
+        function _esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
         function fmtN(n) { return (parseFloat(n)||0).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+        function fmtR(n) { return 'R$ ' + (parseFloat(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+        function showTab(tab) {
+          _activeTab = tab;
+          var tabMap = { velocity:'estoqueTabVelocity', risk:'estoqueTabRisk', recurrence:'estoqueTabRecurrence', concentration:'estoqueTabConcentration', dormant:'estoqueTabDormant' };
+          Object.keys(tabMap).forEach(function(k) {
+            var el = document.getElementById(tabMap[k]);
+            if (el) el.style.display = k === tab ? '' : 'none';
+          });
+          document.querySelectorAll('[data-estoque-tab]').forEach(function(btn) {
+            btn.classList.toggle('nf-quick-filter-btn--active', btn.getAttribute('data-estoque-tab') === tab);
+          });
+        }
 
         function renderDocumentLedger(d) {
-          var src = d.stock_source || 'omie_document_ledger';
-          var conf= {'official_stock_api':'Alta — saldo físico real','product_snapshot':'Média — cadastro de produto','omie_document_ledger':'Operacional — documentos Omie','unavailable':'Indisponível'}[src] || src;
+          var src = (d.stock_source && (d.stock_source.source || d.stock_source)) || 'omie_document_ledger';
 
           // Source badge
           var badge = document.getElementById('estoqueSourceBadge');
           if (badge) {
-            var lbl = {'official_stock_api':'Estoque oficial','product_snapshot':'Snapshot','omie_document_ledger':'Documentos Omie','unavailable':'Indisponível'}[src] || src;
+            var lbl = {'official_stock_api':'Estoque oficial','product_snapshot':'Snapshot','omie_document_ledger':'Documentos Omie','unavailable':'Indisponível'}[src] || 'Documentos Omie';
             badge.textContent = lbl;
-            badge.style.background = src==='official_stock_api' ? '#d1fae5' : src==='omie_document_ledger' ? '#e0e7ff' : '#f3f4f6';
-            badge.style.color = src==='official_stock_api' ? '#065f46' : src==='omie_document_ledger' ? '#3730a3' : '#374151';
+            badge.style.background = src==='official_stock_api' ? '#d1fae5' : '#e0e7ff';
+            badge.style.color      = src==='official_stock_api' ? '#065f46' : '#3730a3';
           }
 
           // Source note
           var noteEl = document.getElementById('estoqueSourceNote');
           if (noteEl) {
             noteEl.style.display = 'flex';
-            document.getElementById('estoqueSourceLabel').textContent = d.stock_source?.label || (d.stock_source?.source_label ?? 'Documentos fiscais/comerciais Omie');
-            document.getElementById('estoqueSourceDesc').textContent  = d.stock_source?.note  || (d.stock_source?.source_note  ?? 'Visão operacional calculada por NFs, pedidos, remessas e devoluções Omie. Não é saldo físico real.');
+            var srcObj = typeof d.stock_source === 'object' ? d.stock_source : {};
+            document.getElementById('estoqueSourceLabel').textContent = srcObj.label  || 'Documentos fiscais/comerciais Omie';
+            document.getElementById('estoqueSourceDesc').textContent  = srcObj.note   || 'Visão operacional calculada por NFs autorizadas. Não é saldo físico real. Confiança: Operacional.';
           }
 
+          // KPIs
           var stats = d.stats || {};
-          document.getElementById('estoqueKpi1').textContent = fmtN(stats.produtos_distintos ?? 0);
-          document.getElementById('estoqueKpi2').textContent = fmtN(stats.qty_total ?? 0);
-
-          var risk   = (d.rupture_risk_list || []).filter(function(r){ return r.rupture_risk === 'high'; });
-          document.getElementById('estoqueKpi3').textContent = risk.length;
+          document.getElementById('estoqueKpi1').textContent = fmtN(stats.produtos_distintos || 0);
+          document.getElementById('estoqueKpi2').textContent = fmtN(stats.qty_total || 0);
+          var highRisk = (d.rupture_risk_list || []).filter(function(r){ return r.rupture_risk === 'high'; });
+          document.getElementById('estoqueKpi3').textContent = highRisk.length;
           document.getElementById('estoqueKpi4').textContent = (stats.last_sale || '—').substring(0,10);
+          document.getElementById('estoqueKpiRecorrentes').textContent  = (d.recurrence_list    || []).length;
+          document.getElementById('estoqueKpiConcentrados').textContent = (d.concentration_list  || []).length;
+          document.getElementById('estoqueKpiParados').textContent      = (d.dormant_list        || []).length;
 
-          // Velocity table
-          var velocity = d.velocity_ranking || [];
           document.getElementById('estoqueLoadingState').style.display = 'none';
+          document.getElementById('estoqueEmptyState').style.display   = 'none';
 
-          if (velocity.length === 0) {
+          var velocity = d.velocity_ranking || [];
+          if (!velocity.length && !(d.rupture_risk_list||[]).length) {
             document.getElementById('estoqueEmptyMsg').textContent = 'Sem NFs de produto no período. Verifique o filtro de datas.';
             document.getElementById('estoqueEmptyState').style.display = '';
-          } else {
-            document.getElementById('estoqueTableTitle').textContent = 'Top produtos por volume vendido';
-            document.getElementById('estoqueTableSub').textContent   = 'Saídas via NF comercial autorizada no período. Fonte: documentos Omie.';
-            document.getElementById('estoqueTableHead').innerHTML = '<tr><th>Produto</th><th>SKU</th><th>Qtd vendida</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th><th>Meses ativos</th></tr>';
-            document.getElementById('estoqueTableWrap').style.display = '';
-            document.getElementById('estoqueTableBody').innerHTML = velocity.map(function(r) {
-              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
-                +'<td>'+_esc(r.codigo_produto)+'</td>'
-                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
-                +'<td>'+fmtN(r.nfs_count)+'</td>'
-                +'<td>'+fmtN(r.customers)+'</td>'
-                +'<td class="font-mono">R$'+fmtN(r.value_total)+'</td>'
-                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
-                +'<td>'+r.active_months+'</td></tr>';
-            }).join('');
+            return;
           }
 
-          // Risk table
+          document.getElementById('estoqueTabsWrap').style.display = '';
+
+          // Tab switcher
+          document.querySelectorAll('[data-estoque-tab]').forEach(function(btn) {
+            btn.addEventListener('click', function() { showTab(btn.getAttribute('data-estoque-tab')); });
+          });
+
+          // Velocity
+          document.getElementById('estoqueVelocityBody').innerHTML = velocity.map(function(r) {
+            return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+              +'<td>'+_esc(r.codigo_produto)+'</td>'
+              +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+              +'<td>'+fmtN(r.nfs_count)+'</td>'
+              +'<td>'+fmtN(r.customers)+'</td>'
+              +'<td class="font-mono">'+fmtR(r.value_total)+'</td>'
+              +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+              +'<td>'+r.active_months+'</td></tr>';
+          }).join('');
+
+          // Risk
           var riskRows = d.rupture_risk_list || [];
-          if (riskRows.length > 0) {
-            document.getElementById('estoqueRiskCard').style.display = '';
+          if (riskRows.length) {
             document.getElementById('estoqueRiskBody').innerHTML = riskRows.map(function(r){
               var rb = r.rupture_risk==='high' ? '<span style="color:#dc2626;font-weight:700">Alto</span>'
                      : r.rupture_risk==='medium' ? '<span style="color:#d97706">Médio</span>'
@@ -399,7 +491,65 @@
                 +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
                 +'<td>'+rb+'</td></tr>';
             }).join('');
+          } else {
+            document.getElementById('estoqueRiskEmpty').style.display = '';
           }
+
+          // Recurrence
+          var recRows = d.recurrence_list || [];
+          if (recRows.length) {
+            document.getElementById('estoqueRecurrenceBody').innerHTML = recRows.map(function(r) {
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td><strong>'+r.active_months+'</strong></td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.nfs_count)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="font-mono">'+fmtR(r.value_total)+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueRecurrenceEmpty').style.display = '';
+          }
+
+          // Concentration
+          var conRows = d.concentration_list || [];
+          if (conRows.length) {
+            document.getElementById('estoqueConcentrationBody').innerHTML = conRows.map(function(r) {
+              var pct = Number(r.concentration_pct||0).toFixed(1);
+              var pctColor = r.concentration_pct >= 90 ? '#dc2626' : r.concentration_pct >= 75 ? '#d97706' : '#374151';
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="truncate">'+_esc(r.top_client_name||'—')+'</td>'
+                +'<td class="font-mono">'+fmtN(r.top_client_qty)+'</td>'
+                +'<td><strong style="color:'+pctColor+'">'+pct+'%</strong></td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueConcentrationEmpty').style.display = '';
+          }
+
+          // Dormant
+          var domRows = d.dormant_list || [];
+          if (domRows.length) {
+            document.getElementById('estoqueDormantBody').innerHTML = domRows.map(function(r) {
+              var days = r.days_since_sale != null ? r.days_since_sale + ' dias' : '—';
+              var daysColor = (r.days_since_sale||0) > 180 ? '#dc2626' : '#d97706';
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.nfs_count)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="font-mono">'+fmtR(r.value_total)+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+                +'<td><strong style="color:'+daysColor+'">'+days+'</strong></td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueDormantEmpty').style.display = '';
+          }
+
+          showTab(_activeTab);
         }
 
         section.addEventListener('click', function() {
@@ -413,7 +563,7 @@
               .then(renderDocumentLedger)
               .catch(function(){
                 document.getElementById('estoqueLoadingState').style.display = 'none';
-                document.getElementById('estoqueEmptyMsg').textContent = 'Erro ao carregar inteligência de estoque.';
+                document.getElementById('estoqueEmptyMsg').textContent = 'Erro ao carregar giro e risco operacional.';
                 document.getElementById('estoqueEmptyState').style.display = '';
               });
           }

@@ -49,6 +49,7 @@ declare(strict_types=1);
  *   D31 Commercial 360 Period, Portfolio and Product Stock (COM.R3) [informacional — CommercialPeriodBucket + CommercialMetricsAggregator + Portfolio360 + Product360Builder + NF paginada + chart-helpers + stock migrations]
  *   D32 EST.R1 Product Stock Sync                                   [informacional — OmieStockClient + StockSyncCoordinator + Product360 tab estoque + nf_periodo_table filters + biomie-drawer.css]
  *   D33 EST.R1.1 Omie API-only Stock Intelligence                   [informacional — OmieStockSourceResolver + OmieDocumentStockLedgerBuilder + product_stock_intelligence.php + sem fonte manual]
+ *   D34 EST.R1.2 Giro e Risco Operacional                          [informacional — buildTopVendors+buildRecurrence+buildConcentration+buildDormant + tab=estoque + 5-tab mercadorias]
  */
 
 $opts       = getopt('', ['start:', 'end:', 'pretty', 'json', 'clear-cache']);
@@ -2748,6 +2749,74 @@ $domains[] = [
         ? 'EST.R1.1 presente: OmieStockSourceResolver + DocumentLedgerBuilder + product_stock_intelligence + mercadorias com honestidade semântica'
         : count($d33Issues) . ' item(ns) EST.R1.1 ausente(s) [informacional]',
     'issues'        => $d33Issues,
+];
+
+// ── D34 — EST.R1.2 Giro e Risco Operacional [informacional] ──────────────────
+
+$d34Issues = [];
+
+// 4 novos métodos no builder
+$ledgerFile34 = $projectRoot . '/app/Stock/OmieDocumentStockLedgerBuilder.php';
+if (is_file($ledgerFile34)) {
+    $src = (string) file_get_contents($ledgerFile34);
+    foreach (['buildTopVendorsForProduct', 'buildRecurrenceRanking', 'buildConcentrationList', 'buildDormantList'] as $method) {
+        if (!str_contains($src, $method)) $d34Issues[] = "OmieDocumentStockLedgerBuilder sem método {$method}";
+    }
+} else {
+    $d34Issues[] = 'OmieDocumentStockLedgerBuilder ausente';
+}
+
+// api/products.php emite os 3 novos rankings
+$productsFile34 = $projectRoot . '/api/products.php';
+if (is_file($productsFile34)) {
+    $src = (string) file_get_contents($productsFile34);
+    foreach (['recurrence_list', 'dormant_list', 'concentration_list'] as $key) {
+        if (!str_contains($src, $key)) $d34Issues[] = "api/products.php sem campo {$key} no payload";
+    }
+}
+
+// api/product_detail.php tem tab=estoque
+$pdFile34 = $projectRoot . '/api/product_detail.php';
+if (is_file($pdFile34)) {
+    $src = (string) file_get_contents($pdFile34);
+    if (!str_contains($src, "tab === 'estoque'")) $d34Issues[] = 'api/product_detail.php sem branch tab=estoque';
+}
+
+// mercadorias.html tem switcher de 5 abas e novo nome de section
+$mercFile34 = $projectRoot . '/views/mercadorias.html';
+if (is_file($mercFile34)) {
+    $src = (string) file_get_contents($mercFile34);
+    if (!str_contains($src, 'estoqueTabVelocity'))     $d34Issues[] = 'mercadorias.html sem estoqueTabVelocity';
+    if (!str_contains($src, 'estoqueTabRisk'))         $d34Issues[] = 'mercadorias.html sem estoqueTabRisk';
+    if (!str_contains($src, 'estoqueTabRecurrence'))   $d34Issues[] = 'mercadorias.html sem estoqueTabRecurrence';
+    if (!str_contains($src, 'estoqueTabConcentration')) $d34Issues[] = 'mercadorias.html sem estoqueTabConcentration';
+    if (!str_contains($src, 'estoqueTabDormant'))      $d34Issues[] = 'mercadorias.html sem estoqueTabDormant';
+    if (!str_contains($src, 'Giro e Risco Operacional')) $d34Issues[] = 'mercadorias.html sem renomeação da section';
+}
+
+// Product 360 drawer tem tab estoque
+$pdIndexFile34 = $projectRoot . '/assets/js/modules/product-detail/index.js';
+if (is_file($pdIndexFile34)) {
+    $src = (string) file_get_contents($pdIndexFile34);
+    if (!str_contains($src, "'estoque'")) $d34Issues[] = 'product-detail/index.js sem tab estoque';
+}
+
+$pdTabsFile34 = $projectRoot . '/assets/js/modules/product-detail/tabs.js';
+if (is_file($pdTabsFile34)) {
+    $src = (string) file_get_contents($pdTabsFile34);
+    if (!str_contains($src, 'renderEstoque')) $d34Issues[] = 'product-detail/tabs.js sem renderEstoque';
+}
+
+$domains[] = [
+    'label'         => 'D34 EST.R1.2 Giro e Risco Operacional (5-tab switcher + Product 360 estoque)',
+    'guard'         => 'buildTopVendors+buildRecurrence+buildConcentration+buildDormant + tab=estoque drawer + 5-tab mercadorias',
+    'pass'          => true,
+    'warn'          => count($d34Issues) > 0,
+    'informational' => true,
+    'summary'       => $d34Issues === []
+        ? 'EST.R1.2 presente: 4 builder methods + tab=estoque product_detail + 5 tabs mercadorias + Product 360 drawer'
+        : count($d34Issues) . ' item(ns) EST.R1.2 ausente(s) [informacional]',
+    'issues'        => $d34Issues,
 ];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────

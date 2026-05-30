@@ -94,7 +94,247 @@ final class OmieDocumentStockLedgerBuilder
         ];
     }
 
+    // ── Por produto — vendedores ──────────────────────────────────────────────
+
+    /**
+     * Top vendedores de um produto no período (para Product 360 tab estoque).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function buildTopVendorsForProduct(string $productCode, string $start, string $end, int $limit = 10): array
+    {
+        if ($productCode === '') {
+            return [];
+        }
+        $dateExpr = CommercialMetricDate::metricDateSql('nf');
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT nf.codigo_vendedor_omie AS vendor_id,
+                        MAX(nf.nome_vendedor)   AS vendor_name,
+                        COUNT(DISTINCT i.nota_key) AS nfs,
+                        SUM(i.quantidade)          AS qty,
+                        SUM(i.valor_total)         AS value,
+                        COUNT(DISTINCT nf.codigo_cliente_omie) AS customers
+                 FROM biomie_notas_fiscais_itens_canonicos i
+                 JOIN biomie_notas_fiscais_canonicas nf ON nf.nota_key = i.nota_key
+                 WHERE nf.status_fiscal = 'autorizada'
+                   AND nf.operation_scope = 'commercial'
+                   AND {$dateExpr} BETWEEN :start AND :end
+                   AND {$this->visCond}
+                   AND COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU') = :code
+                 GROUP BY nf.codigo_vendedor_omie
+                 ORDER BY qty DESC
+                 LIMIT :lim"
+            );
+            $stmt->bindValue(':start', $start);
+            $stmt->bindValue(':end',   $end);
+            $stmt->bindValue(':code',  $productCode);
+            $stmt->bindValue(':lim',   $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable) {
+            return [];
+        }
+
+        $totalQty = (float) array_sum(array_column($rows, 'qty'));
+        return array_map(fn(array $r): array => [
+            'vendor_id'          => (string)($r['vendor_id']   ?? ''),
+            'vendor_name'        => (string)($r['vendor_name'] ?? 'Sem vendedor'),
+            'nfs'                => (int)($r['nfs']             ?? 0),
+            'qty'                => round((float)($r['qty']     ?? 0), 2),
+            'value'              => round((float)($r['value']   ?? 0), 2),
+            'customers'          => (int)($r['customers']       ?? 0),
+            'participation_pct'  => $totalQty > 0
+                ? round((float)($r['qty'] ?? 0) / $totalQty * 100, 1)
+                : 0.0,
+        ], $rows);
+    }
+
     // ── Agregado (mercadorias.html) ───────────────────────────────────────────
+
+    /**
+     * Ranking de produtos por recorrência (meses com venda no período).
+     * Exclui produtos sem atividade.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function buildRecurrenceRanking(string $start, string $end, int $limit = 50): array
+    {
+        $dateExpr = CommercialMetricDate::metricDateSql('nf');
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT
+                    COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU') AS codigo_produto,
+                    MAX(COALESCE(NULLIF(TRIM(i.descricao_produto), ''), 'Produto sem descrição')) AS descricao_produto,
+                    COUNT(DISTINCT DATE_FORMAT({$dateExpr}, '%Y-%m')) AS active_months,
+                    SUM(i.quantidade)  AS qty_total,
+                    SUM(i.valor_total) AS value_total,
+                    COUNT(DISTINCT i.nota_key) AS nfs_count,
+                    COUNT(DISTINCT nf.codigo_cliente_omie) AS customers,
+                    MAX({$dateExpr}) AS last_sale
+                 FROM biomie_notas_fiscais_itens_canonicos i
+                 JOIN biomie_notas_fiscais_canonicas nf ON nf.nota_key = i.nota_key
+                 WHERE nf.status_fiscal = 'autorizada'
+                   AND nf.operation_scope = 'commercial'
+                   AND {$dateExpr} BETWEEN :start AND :end
+                   AND {$this->visCond}
+                 GROUP BY COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU')
+                 HAVING active_months >= 2
+                 ORDER BY active_months DESC, qty_total DESC
+                 LIMIT :lim"
+            );
+            $stmt->bindValue(':start', $start);
+            $stmt->bindValue(':end',   $end);
+            $stmt->bindValue(':lim',   $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable) {
+            return [];
+        }
+
+        return array_map(fn(array $r): array => [
+            'codigo_produto'    => (string)($r['codigo_produto']    ?? ''),
+            'descricao_produto' => (string)($r['descricao_produto'] ?? ''),
+            'active_months'     => (int)($r['active_months']        ?? 0),
+            'qty_total'         => round((float)($r['qty_total']    ?? 0), 2),
+            'value_total'       => round((float)($r['value_total']  ?? 0), 2),
+            'nfs_count'         => (int)($r['nfs_count']             ?? 0),
+            'customers'         => (int)($r['customers']             ?? 0),
+            'last_sale'         => substr((string)($r['last_sale']   ?? ''), 0, 10),
+            'source'            => OmieStockSourceResolver::SOURCE_DOCUMENT,
+        ], $rows);
+    }
+
+    /**
+     * Produtos concentrados: top 1 cliente representa ≥ 60% da qty no período.
+     * Risco operacional: dependência de cliente único.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function buildConcentrationList(string $start, string $end, int $limit = 30): array
+    {
+        $dateExpr = CommercialMetricDate::metricDateSql('nf');
+        try {
+            // Per (product, client) aggregation
+            $stmt = $this->pdo->prepare(
+                "SELECT
+                    COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU') AS codigo_produto,
+                    MAX(COALESCE(NULLIF(TRIM(i.descricao_produto), ''), '')) AS descricao_produto,
+                    nf.codigo_cliente_omie AS cliente_id,
+                    MAX(nf.nome_cliente)   AS cliente_nome,
+                    SUM(i.quantidade)      AS client_qty
+                 FROM biomie_notas_fiscais_itens_canonicos i
+                 JOIN biomie_notas_fiscais_canonicas nf ON nf.nota_key = i.nota_key
+                 WHERE nf.status_fiscal = 'autorizada'
+                   AND nf.operation_scope = 'commercial'
+                   AND {$dateExpr} BETWEEN :start AND :end
+                   AND {$this->visCond}
+                 GROUP BY COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU'), nf.codigo_cliente_omie"
+            );
+            $stmt->execute([':start' => $start, ':end' => $end]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable) {
+            return [];
+        }
+
+        // Aggregate per product in PHP: total qty, top client qty
+        $byProduct = [];
+        foreach ($rows as $r) {
+            $sku = (string)($r['codigo_produto'] ?? 'SEM_SKU');
+            if (!isset($byProduct[$sku])) {
+                $byProduct[$sku] = [
+                    'descricao_produto' => (string)($r['descricao_produto'] ?? ''),
+                    'total_qty'         => 0.0,
+                    'nfs_count'         => 0,
+                    'customers'         => 0,
+                    'top_client_qty'    => 0.0,
+                    'top_client_nome'   => '',
+                ];
+            }
+            $cQty = (float)($r['client_qty'] ?? 0);
+            $byProduct[$sku]['total_qty'] += $cQty;
+            $byProduct[$sku]['customers']++;
+            if ($cQty > $byProduct[$sku]['top_client_qty']) {
+                $byProduct[$sku]['top_client_qty']  = $cQty;
+                $byProduct[$sku]['top_client_nome'] = (string)($r['cliente_nome'] ?? '');
+            }
+        }
+
+        $result = [];
+        foreach ($byProduct as $sku => $p) {
+            if ($p['total_qty'] <= 0) continue;
+            $pct = $p['top_client_qty'] / $p['total_qty'] * 100;
+            if ($pct < 60.0) continue;
+            $result[] = [
+                'codigo_produto'    => $sku,
+                'descricao_produto' => $p['descricao_produto'],
+                'qty_total'         => round($p['total_qty'], 2),
+                'customers'         => $p['customers'],
+                'top_client_name'   => $p['top_client_nome'],
+                'top_client_qty'    => round($p['top_client_qty'], 2),
+                'concentration_pct' => round($pct, 1),
+                'source'            => OmieStockSourceResolver::SOURCE_DOCUMENT,
+            ];
+        }
+
+        usort($result, fn($a, $b) => $b['concentration_pct'] <=> $a['concentration_pct']);
+        return array_slice($result, 0, $limit);
+    }
+
+    /**
+     * Produtos parados: vendidos no período mas sem saída nos últimos 90 dias.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function buildDormantList(string $start, string $end, int $limit = 30): array
+    {
+        $dateExpr = CommercialMetricDate::metricDateSql('nf');
+        $cut90d   = date('Y-m-d', strtotime('-90 days'));
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT
+                    COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU') AS codigo_produto,
+                    MAX(COALESCE(NULLIF(TRIM(i.descricao_produto), ''), '')) AS descricao_produto,
+                    SUM(i.quantidade)  AS qty_total,
+                    SUM(i.valor_total) AS value_total,
+                    COUNT(DISTINCT i.nota_key) AS nfs_count,
+                    COUNT(DISTINCT nf.codigo_cliente_omie) AS customers,
+                    MAX({$dateExpr}) AS last_sale
+                 FROM biomie_notas_fiscais_itens_canonicos i
+                 JOIN biomie_notas_fiscais_canonicas nf ON nf.nota_key = i.nota_key
+                 WHERE nf.status_fiscal = 'autorizada'
+                   AND nf.operation_scope = 'commercial'
+                   AND {$dateExpr} BETWEEN :start AND :end
+                   AND {$this->visCond}
+                 GROUP BY COALESCE(NULLIF(TRIM(i.codigo_produto), ''), 'SEM_SKU')
+                 HAVING last_sale < :cut90
+                 ORDER BY last_sale ASC, qty_total DESC
+                 LIMIT :lim"
+            );
+            $stmt->bindValue(':start', $start);
+            $stmt->bindValue(':end',   $end);
+            $stmt->bindValue(':cut90', $cut90d);
+            $stmt->bindValue(':lim',   $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable) {
+            return [];
+        }
+
+        return array_map(fn(array $r): array => [
+            'codigo_produto'    => (string)($r['codigo_produto']    ?? ''),
+            'descricao_produto' => (string)($r['descricao_produto'] ?? ''),
+            'qty_total'         => round((float)($r['qty_total']    ?? 0), 2),
+            'value_total'       => round((float)($r['value_total']  ?? 0), 2),
+            'nfs_count'         => (int)($r['nfs_count']             ?? 0),
+            'customers'         => (int)($r['customers']             ?? 0),
+            'last_sale'         => substr((string)($r['last_sale']   ?? ''), 0, 10),
+            'days_since_sale'   => $r['last_sale']
+                ? (int) ((strtotime('today') - strtotime(substr((string)$r['last_sale'], 0, 10))) / 86400)
+                : null,
+            'source'            => OmieStockSourceResolver::SOURCE_DOCUMENT,
+        ], $rows);
+    }
 
     /**
      * Ranking de produtos por giro (volume de vendas) no período.

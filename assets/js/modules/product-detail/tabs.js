@@ -243,6 +243,103 @@
       '</div>';
   };
 
+  // ── Giro & Risco (Estoque operacional) ───────────────────────────────────
+
+  T.renderEstoque = function (data) {
+    var ledger  = (data && data.document_ledger) || {};
+    var vendors = (data && data.top_vendors)     || [];
+    var source  = data && (data.source_note || '');
+    var conf    = data && (data.source_confidence || '');
+
+    if (ledger.empty_state) {
+      return T.empty(ledger.empty_state, 'inventory');
+    }
+
+    var com  = ledger.commercial || {};
+    var vel  = ledger.velocity   || {};
+    var risk = ledger.rupture_risk || {};
+    var topC = ledger.top_clients  || [];
+    var monthly = ledger.monthly_breakdown || [];
+
+    // Source note
+    var sourceHtml = source
+      ? '<div class="pd-source-note"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:middle;margin-right:4px;">info</span>'
+        + T.esc(source) + '</div>'
+      : '';
+
+    // KPIs
+    var riskColor = risk.level === 'high' ? '#dc2626' : risk.level === 'medium' ? '#d97706' : '#16a34a';
+    var riskLabel = risk.level === 'high' ? 'Alto' : risk.level === 'medium' ? 'Médio' : 'Baixo';
+    var kpis = [
+      ['Qtd. vendida', T.fmtN(com.qty_total) + ' un', 'Período selecionado'],
+      ['Giro 30 dias',  T.fmtN(vel.giro_30d_qty) + ' un', vel.giro_30d_nfs + ' NFs'],
+      ['Giro 90 dias',  T.fmtN(vel.giro_90d_qty) + ' un', vel.giro_90d_nfs + ' NFs'],
+      ['Meses ativos',  com.active_months + ' meses', 'Com venda no período'],
+      ['Clientes',      T.fmtN(com.customers_count || com.customers), 'Compradores distintos'],
+      ['Receita total', T.fmt(com.value_total), 'NF comercial'],
+      ['Risco operacional', '<span style="color:' + riskColor + ';font-weight:700">' + riskLabel + '</span>', T.esc(risk.note || '')],
+    ];
+    var kpiHtml = '<div class="pd-kpi-grid">'
+      + kpis.map(function (k) {
+          return '<div class="pd-kpi-item"><span class="pd-kpi-label">' + T.esc(k[0]) + '</span>'
+            + '<strong class="pd-kpi-value">' + k[1] + '</strong>'
+            + (k[2] ? '<span class="pd-kpi-sub">' + T.esc(k[2]) + '</span>' : '')
+            + '</div>';
+        }).join('')
+      + '</div>';
+
+    // Monthly breakdown table
+    var monthlyHtml = '';
+    if (monthly.length > 0) {
+      monthlyHtml = '<h4 class="pd-section-title">Giro por mês</h4>'
+        + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+        + '<thead><tr><th>Mês</th><th>Qtd</th><th>NFs</th><th>Receita</th></tr></thead>'
+        + '<tbody>' + monthly.map(function (m) {
+            return '<tr><td>' + T.esc(m.mes || '') + '</td>'
+              + '<td class="font-mono">' + T.fmtN(m.qty) + '</td>'
+              + '<td>' + T.fmtN(m.nfs) + '</td>'
+              + '<td class="font-mono">' + T.fmt(m.value) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+    }
+
+    // Top clients
+    var clientsHtml = '';
+    if (topC.length > 0) {
+      clientsHtml = '<h4 class="pd-section-title">Top clientes compradores</h4>'
+        + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+        + '<thead><tr><th>Cliente</th><th>Qtd</th><th>NFs</th><th>Receita</th></tr></thead>'
+        + '<tbody>' + topC.map(function (c) {
+            return '<tr><td class="truncate">' + T.esc(c.nome_cliente || c.customer_name || '') + '</td>'
+              + '<td class="font-mono">' + T.fmtN(c.qty) + '</td>'
+              + '<td>' + T.fmtN(c.nfs) + '</td>'
+              + '<td class="font-mono">' + T.fmt(c.value) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+    }
+
+    // Top vendors
+    var vendorsHtml = '';
+    if (vendors.length > 0) {
+      vendorsHtml = '<h4 class="pd-section-title">Vendedores que mais venderam</h4>'
+        + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+        + '<thead><tr><th>Vendedor</th><th>Qtd</th><th>Particip.</th><th>NFs</th><th>Clientes</th></tr></thead>'
+        + '<tbody>' + vendors.map(function (v) {
+            return '<tr><td class="truncate">' + T.esc(v.vendor_name || '') + '</td>'
+              + '<td class="font-mono">' + T.fmtN(v.qty) + '</td>'
+              + '<td>' + Number(v.participation_pct || 0).toFixed(1) + '%</td>'
+              + '<td>' + T.fmtN(v.nfs) + '</td>'
+              + '<td>' + T.fmtN(v.customers) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+    }
+
+    return '<div class="pd-estoque">'
+      + sourceHtml
+      + kpiHtml
+      + monthlyHtml
+      + clientsHtml
+      + vendorsHtml
+      + '</div>';
+  };
+
   // ── Diagnóstico ──────────────────────────────────────────────────────────
 
   T.renderDiagnostico = function (data) {

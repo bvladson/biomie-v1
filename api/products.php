@@ -60,20 +60,26 @@ try {
             Http::json(['ok'=>true,'stock_source'=>$source,'diagnostics'=>$diag,'stock_stats'=>$stats,'stock_rows'=>$rows]);
         }
 
-        // Document ledger (EST.R1.1)
-        $ledger   = new OmieDocumentStockLedgerBuilder($stockPdo);
-        $velocity = $ledger->buildVelocityRanking($rawStart, $rawEnd, $stockLimit);
-        $risk     = $ledger->buildRuptureRiskList($rawStart, $rawEnd, min($stockLimit, 30));
-        $stats    = $ledger->statsGerais($rawStart, $rawEnd);
+        // Document ledger (EST.R1.1 + EST.R1.2)
+        $ledger      = new OmieDocumentStockLedgerBuilder($stockPdo);
+        $velocity    = $ledger->buildVelocityRanking($rawStart, $rawEnd, $stockLimit);
+        $risk        = $ledger->buildRuptureRiskList($rawStart, $rawEnd, min($stockLimit, 30));
+        $stats       = $ledger->statsGerais($rawStart, $rawEnd);
+        $recurrence  = $ledger->buildRecurrenceRanking($rawStart, $rawEnd, min($stockLimit, 50));
+        $dormant     = $ledger->buildDormantList($rawStart, $rawEnd, min($stockLimit, 30));
+        $concentration = $ledger->buildConcentrationList($rawStart, $rawEnd, min($stockLimit, 30));
         Http::json([
-            'ok'           => true,
-            'stock_source' => $source,
-            'diagnostics'  => $diag,
-            'period'       => ['start' => $rawStart, 'end' => $rawEnd],
-            'stats'        => $stats,
-            'velocity_ranking' => $velocity,
-            'rupture_risk_list' => $risk,
-            'stock_stats'  => ['total' => 0, 'com_saldo' => 0, 'sem_saldo' => 0, 'abaixo_minimo' => 0, 'ruptura' => 0],
+            'ok'                 => true,
+            'stock_source'       => $source,
+            'diagnostics'        => $diag,
+            'period'             => ['start' => $rawStart, 'end' => $rawEnd],
+            'stats'              => $stats,
+            'velocity_ranking'   => $velocity,
+            'rupture_risk_list'  => $risk,
+            'recurrence_list'    => $recurrence,
+            'dormant_list'       => $dormant,
+            'concentration_list' => $concentration,
+            'stock_stats'        => ['total' => 0, 'com_saldo' => 0, 'sem_saldo' => 0, 'abaixo_minimo' => 0, 'ruptura' => 0],
         ]);
     }
 

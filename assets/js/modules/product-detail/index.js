@@ -15,11 +15,12 @@
     { key: 'pedidos',   label: 'Pedidos vinculados' },
     { key: 'evolucao',  label: 'Evolucao' },
     { key: 'ltv',       label: 'LTV' },
+    { key: 'estoque',   label: 'Giro & Risco' },
     { key: 'diagnostico', label: 'Diagnostico' },
   ];
 
   // Tabs that load lazily after drawer open (summary is preloaded)
-  var LAZY_TABS = { nfs: true, clientes: true, vendedores: true, pedidos: true, evolucao: true, ltv: true };
+  var LAZY_TABS = { nfs: true, clientes: true, vendedores: true, pedidos: true, evolucao: true, ltv: true, estoque: true };
 
   var state = {
     loading: false,
@@ -160,6 +161,8 @@
       body.innerHTML = C ? C.renderTimeline(merged) : T.empty('Modulo charts nao carregado.');
     } else if (tab === 'ltv') {
       body.innerHTML = T.renderLtv(merged);
+    } else if (tab === 'estoque') {
+      body.innerHTML = T.renderEstoque ? T.renderEstoque(merged) : T.empty('Modulo estoque nao carregado.');
     } else if (tab === 'diagnostico') {
       body.innerHTML = T.renderDiagnostico(merged);
     } else {
