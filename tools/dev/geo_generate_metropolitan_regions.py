@@ -49,7 +49,7 @@ METRO_REGIONS = {
     "metro_sobral": {
         "id": "metro_sobral", "nome": "Região Metropolitana de Sobral",
         "nome_curto": "Metrópole Sobral", "norm": "metro_sobral",
-        "source_law": "LC_CE_97_2010", "source_year": 2010,
+        "source_law": "LC_CE_168_2016", "source_year": 2016,
         "municipios_ibge": [
             2313005, 2300200, 2303105, 2303808, 2304905, 2305001, 2304657,
             2305100, 2307601, 2307809, 2308351, 2309003, 2309904, 2310951,

@@ -58,7 +58,7 @@
       kpiTopLabel: 'Melhor município',
       fitMaxZoom: 10,
       geometryAvailable: true,
-      sourceBadge: 'LC CE 97/2010',
+      sourceBadge: 'LC CE 168/2016',
       multiCityLayer: true,
     },
     metro_cariri_municipios: {

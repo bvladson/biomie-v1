@@ -49,8 +49,8 @@ final class GeoMetropolitanRegionRegistry
             'nome'        => 'Região Metropolitana de Sobral',
             'nome_curto'  => 'Metrópole Sobral',
             'norm'        => 'metro_sobral',
-            'source'      => 'LC_CE_97_2010',
-            'source_year' => 2010,
+            'source'      => 'LC_CE_168_2016',
+            'source_year' => 2016,
             'municipios_ibge' => [
                 2313005, // Sobral (sede)
                 2300200, // Alcântaras
