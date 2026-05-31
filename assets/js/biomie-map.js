@@ -37,39 +37,89 @@
       bounds: [[-4.50,-39.50],[-3.20,-37.80]],
       matchProp: 'municipio_ibge',
       scopeLabel: 'município',
-      title: 'Região Metropolitana por municípios',
-      subtitle: 'Compare as cidades da Região Metropolitana de Fortaleza.',
+      title: 'Metrópole Fortaleza · Municípios',
+      subtitle: 'Compare os municípios da Região Metropolitana de Fortaleza.',
       pageTitle: 'Região Metropolitana de Fortaleza',
       kpiAreasLabel: 'Municípios com venda',
       kpiTopLabel: 'Melhor município',
       fitMaxZoom: 11,
       geometryAvailable: true,
+      multiCityLayer: true,
+    },
+    metro_sobral_municipios: {
+      geojson: 'assets/geo/metro_sobral_municipios.geojson',
+      bounds: [[-4.10,-41.20],[-3.20,-40.00]],
+      matchProp: 'cidade_key',
+      scopeLabel: 'município',
+      title: 'Metrópole Sobral · Municípios',
+      subtitle: 'Compare os municípios da Região Metropolitana de Sobral.',
+      pageTitle: 'Região Metropolitana de Sobral',
+      kpiAreasLabel: 'Municípios com venda',
+      kpiTopLabel: 'Melhor município',
+      fitMaxZoom: 10,
+      geometryAvailable: true,
+      sourceBadge: 'LC CE 97/2010',
+      multiCityLayer: true,
+    },
+    metro_cariri_municipios: {
+      geojson: 'assets/geo/metro_cariri_municipios.geojson',
+      bounds: [[-7.70,-39.80],[-7.00,-38.80]],
+      matchProp: 'cidade_key',
+      scopeLabel: 'município',
+      title: 'Metrópole Cariri · Municípios',
+      subtitle: 'Compare os municípios da Região Metropolitana do Cariri.',
+      pageTitle: 'Região Metropolitana do Cariri',
+      kpiAreasLabel: 'Municípios com venda',
+      kpiTopLabel: 'Melhor município',
+      fitMaxZoom: 10,
+      geometryAvailable: true,
+      sourceBadge: 'LC CE 78/2009',
+      multiCityLayer: true,
+    },
+    metro_todas_municipios: {
+      geojson: 'assets/geo/metro_todas_municipios.geojson',
+      bounds: [[-7.80,-41.50],[-2.80,-37.20]],
+      matchProp: 'cidade_key',
+      scopeLabel: 'município',
+      title: 'Regiões Metropolitanas CE',
+      subtitle: 'Compare as três regiões metropolitanas oficiais do Ceará por município.',
+      pageTitle: 'Regiões Metropolitanas do Ceará',
+      kpiAreasLabel: 'Municípios com venda',
+      kpiTopLabel: 'Melhor município',
+      fitMaxZoom: 8,
+      geometryAvailable: true,
+      sourceBadge: 'LC CE Metropolitanas',
+      multiCityLayer: true,
     },
     ceara_municipios: {
-      geojson: 'assets/geo/ceara_mun.json',
+      geojson: 'assets/geo/ceara_municipios_oficial.geojson',
       bounds: [[-7.80,-41.50],[-2.80,-37.20]],
-      matchProp: 'municipio_ibge',
+      matchProp: 'cidade_key',
       scopeLabel: 'município',
       title: 'Ceará por municípios',
-      subtitle: 'Compare os municípios do Ceará com vendas no período.',
+      subtitle: 'Compare os 184 municípios do Ceará por faturamento.',
       pageTitle: 'Ceará por municípios',
       kpiAreasLabel: 'Municípios com venda',
       kpiTopLabel: 'Melhor município',
       fitMaxZoom: 8,
       geometryAvailable: true,
+      sourceBadge: 'IBGE Malha Municipal 2022',
+      multiCityLayer: true,
     },
     ceara_regioes: {
-      geojson: 'assets/geo/ceara_regioes.json',
+      geojson: 'assets/geo/ceara_regioes_ipece_oficial.geojson',
       bounds: [[-7.80,-41.50],[-2.80,-37.20]],
-      matchProp: 'regiao_id',
+      matchProp: 'regiao_norm',
       scopeLabel: 'região',
-      title: 'Ceará por regiões',
-      subtitle: 'Compare regiões do Ceará. Geometria regional ainda derivada por bbox.',
-      pageTitle: 'Ceará por regiões',
+      title: 'Ceará por Regiões de Planejamento',
+      subtitle: 'Compare as 14 Regiões de Planejamento oficiais do Ceará.',
+      pageTitle: 'Ceará por Regiões de Planejamento',
       kpiAreasLabel: 'Regiões com venda',
       kpiTopLabel: 'Melhor região',
       fitMaxZoom: 8,
       geometryAvailable: true,
+      sourceBadge: 'IPECE Regiões de Planejamento',
+      multiCityLayer: false,
     },
   };
   const DEFAULT_LAYER = 'fortaleza_bairros';
@@ -478,9 +528,10 @@
 
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
-    // GEO.R1.3 — metro layer: pass layer param instead of city (API aggregates all RMF)
-    if (_activeLayer === 'grande_fortaleza_bairros') {
-      params.set('layer', 'grande_fortaleza_bairros');
+    // GEO.R1.3/R1.5 — multi-city layers pass layer param; API aggregates by cidade_norm
+    const layerDef = activeLayerDef();
+    if (layerDef.multiCityLayer || _activeLayer === 'grande_fortaleza_bairros') {
+      params.set('layer', _activeLayer);
     } else {
       if (city) params.set('city', city);
     }

@@ -422,6 +422,51 @@ function buildChecks(string $root): array
         checkContains('geo_r1_3_generator_bairro_key',readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'bairro_key', 'Gerador produz campo bairro_key compatível com BIomie (GEO.R1.3).'),
         checkContains('geo_r1_3_generator_join_key',  readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'join_key', 'Gerador produz campo join_key para matching de camada metro (GEO.R1.3).'),
         checkContains('geo_r1_3_docs_exist',          file_exists($root . '/docs/GEO_R1_3_GRANDE_FORTALEZA_BAIRROS_IBGE_2022.md') ? 'ok' : '', 'ok', 'Documentação GEO_R1_3 existe (GEO.R1.3).'),
+
+        // GEO.R1.4 — Ceará Municípios Oficial
+        checkContains('geo_r1_4_generator',       file_exists($root . '/tools/dev/geo_generate_ceara_municipios.py') ? 'ok' : '', 'ok', 'geo_generate_ceara_municipios.py existe (GEO.R1.4).'),
+        checkContains('geo_r1_4_probe',           file_exists($root . '/tools/dev/geo_ceara_municipios_source_probe.php') ? 'ok' : '', 'ok', 'geo_ceara_municipios_source_probe.php existe (GEO.R1.4).'),
+        checkContains('geo_r1_4_geojson',         file_exists($root . '/assets/geo/ceara_municipios_oficial.geojson') ? 'ok' : '', 'ok', 'ceara_municipios_oficial.geojson existe (GEO.R1.4).'),
+        checkContains('geo_r1_4_geojson_184',     (function() use ($root) {
+            $f = $root . '/assets/geo/ceara_municipios_oficial.geojson';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f), true);
+            return count($d['features'] ?? []) === 184 ? 'ok' : '';
+        })(), 'ok', 'ceara_municipios_oficial.geojson tem 184 features (GEO.R1.4).'),
+        checkContains('geo_r1_4_js_oficial',      readFileSafe($root . '/assets/js/biomie-map.js'), 'ceara_municipios_oficial.geojson', 'biomie-map.js usa ceara_municipios_oficial.geojson (GEO.R1.4).'),
+        checkContains('geo_r1_4_multicity_api',   readFileSafe($root . '/api/sales_by_neighborhood.php'), 'isMultiCityLayer', 'API detecta camadas multi-cidade (GEO.R1.4/R1.5).'),
+        checkContains('geo_r1_4_docs',            file_exists($root . '/docs/GEO_R1_4_CEARA_MUNICIPIOS_OFICIAIS.md') ? 'ok' : '', 'ok', 'Documentação GEO_R1_4 existe (GEO.R1.4).'),
+
+        // GEO.R1.5 — Regiões Metropolitanas
+        checkContains('geo_r1_5_registry',        file_exists($root . '/app/Geo/GeoMetropolitanRegionRegistry.php') ? 'ok' : '', 'ok', 'GeoMetropolitanRegionRegistry.php existe (GEO.R1.5).'),
+        checkContains('geo_r1_5_generator',       file_exists($root . '/tools/dev/geo_generate_metropolitan_regions.py') ? 'ok' : '', 'ok', 'geo_generate_metropolitan_regions.py existe (GEO.R1.5).'),
+        checkContains('geo_r1_5_probe',           file_exists($root . '/tools/dev/geo_metropolitan_regions_probe.php') ? 'ok' : '', 'ok', 'geo_metropolitan_regions_probe.php existe (GEO.R1.5).'),
+        checkContains('geo_r1_5_sobral_geojson',  file_exists($root . '/assets/geo/metro_sobral_municipios.geojson') ? 'ok' : '', 'ok', 'metro_sobral_municipios.geojson existe (GEO.R1.5).'),
+        checkContains('geo_r1_5_cariri_geojson',  file_exists($root . '/assets/geo/metro_cariri_municipios.geojson') ? 'ok' : '', 'ok', 'metro_cariri_municipios.geojson existe (GEO.R1.5).'),
+        checkContains('geo_r1_5_todas_geojson',   file_exists($root . '/assets/geo/metro_todas_municipios.geojson') ? 'ok' : '', 'ok', 'metro_todas_municipios.geojson existe (GEO.R1.5).'),
+        checkContains('geo_r1_5_js_sobral',       readFileSafe($root . '/assets/js/biomie-map.js'), 'metro_sobral_municipios', 'biomie-map.js tem camada metro_sobral_municipios (GEO.R1.5).'),
+        checkContains('geo_r1_5_js_cariri',       readFileSafe($root . '/assets/js/biomie-map.js'), 'metro_cariri_municipios', 'biomie-map.js tem camada metro_cariri_municipios (GEO.R1.5).'),
+        checkContains('geo_r1_5_js_todas',        readFileSafe($root . '/assets/js/biomie-map.js'), 'metro_todas_municipios', 'biomie-map.js tem camada metro_todas_municipios (GEO.R1.5).'),
+        checkContains('geo_r1_5_html_optgroup',   readFileSafe($root . '/views/mapa_vendas.html'), '<optgroup', 'mapa_vendas.html usa optgroup no seletor (GEO.R1.5).'),
+        checkContains('geo_r1_5_docs',            file_exists($root . '/docs/GEO_R1_5_REGIOES_METROPOLITANAS_CE.md') ? 'ok' : '', 'ok', 'Documentação GEO_R1_5 existe (GEO.R1.5).'),
+
+        // GEO.R1.6 — Regiões IPECE oficiais
+        checkContains('geo_r1_6_generator',       file_exists($root . '/tools/dev/geo_generate_ceara_regioes_ipece.py') ? 'ok' : '', 'ok', 'geo_generate_ceara_regioes_ipece.py existe (GEO.R1.6).'),
+        checkContains('geo_r1_6_probe',           file_exists($root . '/tools/dev/geo_ceara_regioes_ipece_probe.php') ? 'ok' : '', 'ok', 'geo_ceara_regioes_ipece_probe.php existe (GEO.R1.6).'),
+        checkContains('geo_r1_6_geojson',         file_exists($root . '/assets/geo/ceara_regioes_ipece_oficial.geojson') ? 'ok' : '', 'ok', 'ceara_regioes_ipece_oficial.geojson existe (GEO.R1.6).'),
+        checkContains('geo_r1_6_geojson_14',      (function() use ($root) {
+            $f = $root . '/assets/geo/ceara_regioes_ipece_oficial.geojson';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f), true);
+            return count($d['features'] ?? []) === 14 ? 'ok' : '';
+        })(), 'ok', 'ceara_regioes_ipece_oficial.geojson tem 14 regiões (GEO.R1.6).'),
+        checkNotContains('geo_r1_6_no_bbox',      (function() use ($root) {
+            $f = $root . '/assets/geo/ceara_regioes_ipece_oficial.geojson';
+            if (!file_exists($f)) return '';
+            return file_get_contents($f);
+        })(), 'ibge_bbox_derivado', 'ceara_regioes_ipece_oficial.geojson sem bbox derivado (GEO.R1.6).'),
+        checkContains('geo_r1_6_js_url',          readFileSafe($root . '/assets/js/biomie-map.js'), 'ceara_regioes_ipece_oficial.geojson', 'biomie-map.js usa ceara_regioes_ipece_oficial.geojson (GEO.R1.6).'),
+        checkContains('geo_r1_6_docs',            file_exists($root . '/docs/GEO_R1_6_REGIOES_PLANEJAMENTO_IPECE_OFICIAIS.md') ? 'ok' : '', 'ok', 'Documentação GEO_R1_6 existe (GEO.R1.6).'),
     ];
 }
 

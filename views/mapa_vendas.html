@@ -40,11 +40,20 @@
           <div class="filter-group">
             <label class="filter-label" for="geoLayerSelector">Camada territorial</label>
             <select id="geoLayerSelector" class="filter-input" aria-label="Selecionar camada do mapa">
-              <option value="fortaleza_bairros" selected>Fortaleza · Bairros</option>
-              <option value="rmf_municipios">Região Metropolitana · Municípios</option>
-              <option value="ceara_municipios">Ceará · Municípios</option>
-              <option value="ceara_regioes">Ceará · Regiões</option>
-              <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros</option>
+              <optgroup label="Fortaleza">
+                <option value="fortaleza_bairros" selected>Fortaleza · Bairros</option>
+                <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros</option>
+              </optgroup>
+              <optgroup label="Regiões Metropolitanas">
+                <option value="rmf_municipios">Metrópole Fortaleza</option>
+                <option value="metro_sobral_municipios">Metrópole Sobral</option>
+                <option value="metro_cariri_municipios">Metrópole Cariri</option>
+                <option value="metro_todas_municipios">Todas as Metrópoles</option>
+              </optgroup>
+              <optgroup label="Ceará">
+                <option value="ceara_municipios">Ceará · Municípios</option>
+                <option value="ceara_regioes">Ceará · Regiões de Planejamento</option>
+              </optgroup>
             </select>
           </div>
           <div class="filter-group">
@@ -344,6 +353,6 @@
 <script src="assets/js/modules/customer-detail/index.js"></script>
 <script src="assets/js/biomie-map-panel.js?v=20260527-uxr11-1"></script>
 <script src="assets/js/geo-normalizer.js?v=20260513-mapfix2"></script>
-<script src="assets/js/biomie-map.js?v=20260531-geo-r1-3"></script>
+<script src="assets/js/biomie-map.js?v=20260531-geo-r1-4-5-6"></script>
 </body>
 </html>

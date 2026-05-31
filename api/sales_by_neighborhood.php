@@ -26,9 +26,13 @@ try {
     // Normalized values for SQL binding (state suffix already stripped by MapFilterSupport)
     $cityNorm       = $f['city'] ?? GeoMapSupport::normalizeKey('Fortaleza');
     $neighborhoodNorm = $f['neighborhood'];
-    // GEO.R1.3 — camada metropolitan (aggregate across all RMF cities, compound key)
+    // GEO.R1.3/R1.4/R1.5 — multi-city layers aggregate without single-city restriction
     $geoLayer       = trim((string) ($_GET['layer'] ?? ''));
     $isMetroLayer   = $geoLayer === 'grande_fortaleza_bairros';
+    $isMultiCityLayer = in_array($geoLayer, [
+        'ceara_municipios', 'rmf_municipios',
+        'metro_sobral_municipios', 'metro_cariri_municipios', 'metro_todas_municipios',
+    ], true);
 
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
@@ -45,8 +49,8 @@ try {
         'end_comp' => substr($range['date_to'], 0, 7),
     ];
 
-    // City filter — skip for metro layer which aggregates across all RMF cities.
-    if (!$isMetroLayer) {
+    // City filter — skip for multi-city layers which aggregate across multiple cities.
+    if (!$isMetroLayer && !$isMultiCityLayer) {
         $martWhere[] = '(LOWER(TRIM(m.cidade_norm)) = :city OR m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = \'\')';
         $params['city'] = $cityNorm;
     }
@@ -94,8 +98,28 @@ try {
 
     $martWhereSql = implode(' AND ', $martWhere);
 
+    // GEO.R1.4/R1.5 — multi-city municipality layers: aggregate by cidade_norm
+    if ($isMultiCityLayer) {
+        $sql = "
+            SELECT
+                LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade')))  AS neighborhood_key,
+                LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade')))  AS neighborhood,
+                LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade')))  AS cidade_key_raw,
+                LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade')))  AS bairro_norm_raw,
+                SUM(m.faturamento)                                              AS revenue,
+                COUNT(DISTINCT COALESCE(CAST(m.codigo_cliente_omie AS CHAR), m.documento, m.cliente_nome)) AS customers,
+                SUM(m.qtd_notas)                                                AS invoices,
+                IF(SUM(m.qtd_notas)>0, SUM(m.faturamento)/SUM(m.qtd_notas),0) AS average_ticket,
+                MAX(m.refreshed_at)                                             AS last_materialized_at,
+                1                                                               AS tem_venda
+            FROM mart_compradores_por_geo m
+            WHERE {$martWhereSql}
+              AND LOWER(TRIM(COALESCE(m.cidade_norm,''))) != ''
+            GROUP BY LOWER(TRIM(m.cidade_norm))
+            ORDER BY revenue DESC
+        ";
     // GEO.R1.3 — metro layer: aggregate by (cidade_norm, bairro_norm), compound join_key
-    if ($isMetroLayer) {
+    } elseif ($isMetroLayer) {
         $sql = "
             SELECT
                 CONCAT(
