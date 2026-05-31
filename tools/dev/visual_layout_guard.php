@@ -373,6 +373,28 @@ function buildChecks(string $root): array
             $d = json_decode(file_get_contents($f),true);
             return $d['metadata']['source']??'';
         })(), 'centroid_approximation', 'ceara_mun.json sem polígonos de aproximação (GEO.R1.1).'),
+        // GEO.R1.2 — Metropolitan map UX expansion
+        checkContains('geo_r1_2_apply_layer_labels',  readFileSafe($root . '/assets/js/biomie-map.js'), 'applyLayerLabels', 'biomie-map.js tem applyLayerLabels() para labels dinâmicos por camada (GEO.R1.2).'),
+        checkContains('geo_r1_2_fit_layer_bounds',    readFileSafe($root . '/assets/js/biomie-map.js'), 'fitLayerBounds', 'biomie-map.js tem fitLayerBounds() para recentrar a camada (GEO.R1.2).'),
+        checkContains('geo_r1_2_geometry_available',  readFileSafe($root . '/assets/js/biomie-map.js'), 'geometryAvailable', 'biomie-map.js usa geometryAvailable para camadas sem GeoJSON (GEO.R1.2).'),
+        checkContains('geo_r1_2_fit_max_zoom',        readFileSafe($root . '/assets/js/biomie-map.js'), 'fitMaxZoom', 'biomie-map.js tem fitMaxZoom por camada para fitBounds correto (GEO.R1.2).'),
+        checkContains('geo_r1_2_map_fitted_reset',    readFileSafe($root . '/assets/js/biomie-map.js'), '_mapFitted = false', 'applyGeoLayer reseta _mapFitted para novo fitBounds ao trocar camada (GEO.R1.2).'),
+        checkContains('geo_r1_2_page_title_id',       readFileSafe($root . '/views/mapa_vendas.html'), 'geoPageTitle', 'mapa_vendas.html tem id=geoPageTitle para título dinâmico (GEO.R1.2).'),
+        checkContains('geo_r1_2_areas_label_id',      readFileSafe($root . '/views/mapa_vendas.html'), 'geoKpiAreasLabel', 'mapa_vendas.html tem id=geoKpiAreasLabel para label de KPI (GEO.R1.2).'),
+        checkContains('geo_r1_2_top_area_label_id',   readFileSafe($root . '/views/mapa_vendas.html'), 'geoKpiTopAreaLabel', 'mapa_vendas.html tem id=geoKpiTopAreaLabel para label de KPI (GEO.R1.2).'),
+        checkContains('geo_r1_2_fit_bounds_btn',      readFileSafe($root . '/views/mapa_vendas.html'), 'fitLayerBoundsBtn', 'mapa_vendas.html tem botão fitLayerBoundsBtn (GEO.R1.2).'),
+        checkContains('geo_r1_2_rmf_option',          readFileSafe($root . '/views/mapa_vendas.html'), 'rmf_municipios', 'mapa_vendas.html tem opção rmf_municipios no seletor (GEO.R1.2).'),
+        checkContains('geo_r1_2_ceara_option',        readFileSafe($root . '/views/mapa_vendas.html'), 'ceara_municipios', 'mapa_vendas.html tem opção ceara_municipios no seletor (GEO.R1.2).'),
+        checkContains('geo_r1_2_geometry_missing_msg',readFileSafe($root . '/views/mapa_vendas.html'), 'geoGeometryMissingMsg', 'mapa_vendas.html tem geoGeometryMissingMsg para empty state por camada (GEO.R1.2).'),
+        checkContains('geo_r1_2_fortaleza_intact',    readFileSafe($root . '/assets/js/biomie-map.js'), "'fortaleza_bairros'", 'biomie-map.js preserva camada fortaleza_bairros (GEO.R1.2).'),
+        checkNotContains('geo_r1_2_no_rendermap_bug', readFileSafe($root . '/assets/js/biomie-map.js'), 'renderMap()', 'biomie-map.js sem chamada a renderMap() inexistente — bug corrigido (GEO.R1.2).'),
+        // GEO.R1.3 — RMF bairros via IBGE 2022 [ferramentas de geração]
+        checkContains('geo_r1_3_probe_exists',    file_exists($root . '/tools/dev/geo_rmf_bairros_source_probe.php') ? 'ok' : '', 'ok', 'geo_rmf_bairros_source_probe.php existe (GEO.R1.3 pré-requisito).'),
+        checkContains('geo_r1_3_generator_exists',file_exists($root . '/tools/dev/geo_generate_rmf_bairros.py') ? 'ok' : '', 'ok', 'geo_generate_rmf_bairros.py existe (GEO.R1.3 pré-requisito).'),
+        checkContains('geo_r1_3_probe_rmf_codes', readFileSafe($root . '/tools/dev/geo_rmf_bairros_source_probe.php'), '2304400', 'Probe contém código IBGE Fortaleza (GEO.R1.3).'),
+        checkContains('geo_r1_3_generator_geobr',  readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'geobr.read_neighborhood', 'Gerador usa geobr.read_neighborhood (GEO.R1.3).'),
+        checkContains('geo_r1_3_generator_simplify',readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'simplify_safe', 'Gerador simplifica geometrias para Leaflet (GEO.R1.3).'),
+        checkContains('geo_r1_3_generator_bairro_key',readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'bairro_key', 'Gerador produz campo bairro_key compatível com BIomie (GEO.R1.3).'),
     ];
 }
 

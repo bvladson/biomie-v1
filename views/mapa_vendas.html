@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
   <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
-  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260527-uxr11-1" />
+  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260530-geo-r1-2" />
   <script src="assets/js/chart.umd.js"></script>
   <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
@@ -29,8 +29,8 @@
       <section class="biomie-page-header biomie-page-header--shell anim">
         <div class="biomie-page-header__body">
           <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">map</span>Mapa comercial</div>
-          <h1 class="biomie-page-header__title">Vendas por bairro em Fortaleza</h1>
-          <p class="biomie-page-header__subtitle">Leitura geográfica dos bairros, com faturamento, clientes, notas, ticket médio, compradores e CNAEs.</p>
+          <h1 id="geoPageTitle" class="biomie-page-header__title">Fortaleza por bairros</h1>
+          <p id="geoPageSubtitle" class="biomie-page-header__subtitle">Compare os bairros de Fortaleza por faturamento.</p>
         </div>
       </section>
 
@@ -41,10 +41,10 @@
             <label class="filter-label" for="geoLayerSelector">Camada territorial</label>
             <select id="geoLayerSelector" class="filter-input" aria-label="Selecionar camada do mapa">
               <option value="fortaleza_bairros" selected>Fortaleza · Bairros</option>
-              <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros disponíveis</option>
-              <option value="rmf_municipios">RMF · Municípios</option>
+              <option value="rmf_municipios">Região Metropolitana · Municípios</option>
               <option value="ceara_municipios">Ceará · Municípios</option>
-              <option value="ceara_regioes">Ceará · Regiões IPECE</option>
+              <option value="ceara_regioes">Ceará · Regiões</option>
+              <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros (em breve)</option>
             </select>
           </div>
           <div class="filter-group">
@@ -125,12 +125,12 @@
           <span class="biomie-kpi-card__sub">Faturamento materializado no filtro.</span>
         </article>
         <article class="biomie-kpi-card">
-          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Bairros com venda</span><span class="material-symbols-rounded biomie-kpi-card__icon">pin_drop</span></div>
+          <div class="biomie-kpi-card__head"><span id="geoKpiAreasLabel" class="biomie-kpi-card__label">Bairros com venda</span><span class="material-symbols-rounded biomie-kpi-card__icon">pin_drop</span></div>
           <strong id="geoKpiAreas" class="biomie-kpi-card__value">-</strong>
-          <span class="biomie-kpi-card__sub">Bairros com movimentação no período.</span>
+          <span id="geoKpiAreasSub" class="biomie-kpi-card__sub">Territórios com movimentação no período.</span>
         </article>
         <article class="biomie-kpi-card">
-          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Melhor bairro</span><span class="material-symbols-rounded biomie-kpi-card__icon">workspace_premium</span></div>
+          <div class="biomie-kpi-card__head"><span id="geoKpiTopAreaLabel" class="biomie-kpi-card__label">Melhor bairro</span><span class="material-symbols-rounded biomie-kpi-card__icon">workspace_premium</span></div>
           <strong id="geoKpiTopArea" class="biomie-kpi-card__value">-</strong>
           <span class="biomie-kpi-card__sub">Maior faturamento do recorte.</span>
         </article>
@@ -167,15 +167,18 @@
               <h2 id="geoMapTitle">Fortaleza por bairros</h2>
               <p id="geoMapSubtitle">Cor por faturamento, tooltip no hover e clique para detalhar o território.</p>
             </div>
+            <button id="fitLayerBoundsBtn" type="button" class="btn-secondary" title="Enquadrar a camada atual no mapa">
+              <span class="material-symbols-rounded">fit_screen</span>Enquadrar
+            </button>
             <button id="clearSelection" type="button" class="btn-secondary">
               <span class="material-symbols-rounded">close</span>Limpar selecao
             </button>
           </div>
           <div class="biomie-map-canvas-wrap">
             <div id="geoLayerBadge" style="display:none;position:absolute;top:8px;left:8px;z-index:900;padding:3px 8px;border-radius:12px;background:rgba(30,64,175,0.85);color:#fff;font-size:0.7rem;font-weight:600;pointer-events:none;"></div>
-            <div id="geoGeometryMissing" style="display:none;position:absolute;inset:0;z-index:800;background:rgba(255,255,255,0.93);display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;padding:24px;">
+            <div id="geoGeometryMissing" style="display:none;position:absolute;inset:0;z-index:800;background:rgba(255,255,255,0.93);flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;">
               <span class="material-symbols-rounded" style="font-size:40px;color:var(--text-3)">map_off</span>
-              <p id="geoGeometryMissingMsg" style="font-size:0.88rem;color:var(--text-2);max-width:320px;">Geometria não disponível para esta camada. Os dados comerciais estão calculados — importe o arquivo GeoJSON para visualizar no mapa.</p>
+              <p id="geoGeometryMissingMsg" style="font-size:0.88rem;color:var(--text-2);max-width:360px;">Geometria não disponível para esta camada. Os dados comerciais estão calculados — importe o arquivo GeoJSON para visualizar no mapa.</p>
             </div>
             <div id="map-container" aria-label="Mapa comercial territorial BIomie"></div>
             <div id="mapLegend" class="biomie-map-legend" aria-label="Legenda do mapa"></div>
@@ -341,6 +344,6 @@
 <script src="assets/js/modules/customer-detail/index.js"></script>
 <script src="assets/js/biomie-map-panel.js?v=20260527-uxr11-1"></script>
 <script src="assets/js/geo-normalizer.js?v=20260513-mapfix2"></script>
-<script src="assets/js/biomie-map.js?v=20260527-uxr11-1"></script>
+<script src="assets/js/biomie-map.js?v=20260530-geo-r1-2"></script>
 </body>
 </html>

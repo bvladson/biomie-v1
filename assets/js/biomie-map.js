@@ -3,11 +3,72 @@
 
   // GEO.R1 — Configuração de camadas territoriais
   const GEO_LAYERS = {
-    fortaleza_bairros:        { geojson: 'assets/geo/fortaleza_bairros.json',  bounds: [[-3.92,-38.68],[-3.67,-38.36]], matchProp: 'Nome',           scopeLabel: 'bairro',     title: 'Fortaleza · Bairros' },
-    grande_fortaleza_bairros: { geojson: 'assets/geo/grande_fortaleza_bairros.json', bounds: [[-4.30,-38.80],[-3.30,-38.20]], matchProp: 'bairro_nome', scopeLabel: 'bairro',     title: 'Grande Fortaleza · Bairros' },
-    rmf_municipios:           { geojson: 'assets/geo/rmf_municipios.json',     bounds: [[-4.50,-39.50],[-3.20,-37.80]], matchProp: 'municipio_ibge',  scopeLabel: 'município',  title: 'RMF · Municípios' },
-    ceara_municipios:         { geojson: 'assets/geo/ceara_mun.json',          bounds: [[-7.80,-41.50],[-2.80,-37.20]], matchProp: 'municipio_ibge',  scopeLabel: 'município',  title: 'Ceará · Municípios' },
-    ceara_regioes:            { geojson: 'assets/geo/ceara_regioes.json',      bounds: [[-7.80,-41.50],[-2.80,-37.20]], matchProp: 'regiao_id',       scopeLabel: 'região',     title: 'Ceará · Regiões IPECE' },
+    fortaleza_bairros: {
+      geojson: 'assets/geo/fortaleza_bairros.json',
+      bounds: [[-3.92,-38.68],[-3.67,-38.36]],
+      matchProp: 'Nome',
+      scopeLabel: 'bairro',
+      title: 'Fortaleza por bairros',
+      subtitle: 'Compare os bairros de Fortaleza por faturamento.',
+      pageTitle: 'Fortaleza por bairros',
+      kpiAreasLabel: 'Bairros com venda',
+      kpiTopLabel: 'Melhor bairro',
+      fitMaxZoom: 13,
+      geometryAvailable: true,
+    },
+    grande_fortaleza_bairros: {
+      geojson: 'assets/geo/grande_fortaleza_bairros.json',
+      bounds: [[-4.30,-38.80],[-3.30,-38.20]],
+      matchProp: 'bairro_nome',
+      scopeLabel: 'bairro',
+      title: 'Grande Fortaleza por bairros',
+      subtitle: 'Bairros metropolitanos. Geometria ainda não disponível.',
+      pageTitle: 'Grande Fortaleza por bairros',
+      kpiAreasLabel: 'Bairros com venda',
+      kpiTopLabel: 'Melhor bairro',
+      fitMaxZoom: 11,
+      geometryAvailable: false,
+      geometryMissingMsg: 'Ainda não há geometria de bairros metropolitanos disponível. Use a camada Região Metropolitana por municípios para analisar Caucaia, Maracanaú, Eusébio, Aquiraz e demais cidades.',
+    },
+    rmf_municipios: {
+      geojson: 'assets/geo/rmf_municipios.json',
+      bounds: [[-4.50,-39.50],[-3.20,-37.80]],
+      matchProp: 'municipio_ibge',
+      scopeLabel: 'município',
+      title: 'Região Metropolitana por municípios',
+      subtitle: 'Compare as cidades da Região Metropolitana de Fortaleza.',
+      pageTitle: 'Região Metropolitana de Fortaleza',
+      kpiAreasLabel: 'Municípios com venda',
+      kpiTopLabel: 'Melhor município',
+      fitMaxZoom: 11,
+      geometryAvailable: true,
+    },
+    ceara_municipios: {
+      geojson: 'assets/geo/ceara_mun.json',
+      bounds: [[-7.80,-41.50],[-2.80,-37.20]],
+      matchProp: 'municipio_ibge',
+      scopeLabel: 'município',
+      title: 'Ceará por municípios',
+      subtitle: 'Compare os municípios do Ceará com vendas no período.',
+      pageTitle: 'Ceará por municípios',
+      kpiAreasLabel: 'Municípios com venda',
+      kpiTopLabel: 'Melhor município',
+      fitMaxZoom: 8,
+      geometryAvailable: true,
+    },
+    ceara_regioes: {
+      geojson: 'assets/geo/ceara_regioes.json',
+      bounds: [[-7.80,-41.50],[-2.80,-37.20]],
+      matchProp: 'regiao_id',
+      scopeLabel: 'região',
+      title: 'Ceará por regiões',
+      subtitle: 'Compare regiões do Ceará. Geometria regional ainda derivada por bbox.',
+      pageTitle: 'Ceará por regiões',
+      kpiAreasLabel: 'Regiões com venda',
+      kpiTopLabel: 'Melhor região',
+      fitMaxZoom: 8,
+      geometryAvailable: true,
+    },
   };
   const DEFAULT_LAYER = 'fortaleza_bairros';
   const FORTALEZA_BOUNDS = [[-3.92, -38.68], [-3.67, -38.36]];
@@ -429,6 +490,48 @@
   function updateUrl() {
     const params = currentFilters();
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+  }
+
+  function applyLayerLabels(layerKey) {
+    const def = GEO_LAYERS[layerKey] || GEO_LAYERS[DEFAULT_LAYER];
+
+    const pageTitle = $('geoPageTitle');
+    if (pageTitle) pageTitle.textContent = def.pageTitle || def.title;
+    const pageSubtitle = $('geoPageSubtitle');
+    if (pageSubtitle) pageSubtitle.textContent = def.subtitle || '';
+
+    const titleEl = $('geoMapTitle');
+    if (titleEl) titleEl.textContent = def.title;
+    const subEl = $('geoMapSubtitle');
+    if (subEl) subEl.textContent = def.subtitle || '';
+
+    const badge = $('geoLayerBadge');
+    if (badge) { badge.textContent = def.title; badge.style.display = 'block'; }
+
+    const areasLabel = $('geoKpiAreasLabel');
+    if (areasLabel) areasLabel.textContent = def.kpiAreasLabel || 'Territórios com venda';
+    const topAreaLabel = $('geoKpiTopAreaLabel');
+    if (topAreaLabel) topAreaLabel.textContent = def.kpiTopLabel || 'Melhor território';
+
+    const rankTitle = $('geoRankingTitle');
+    if (rankTitle) rankTitle.textContent = 'Ranking de ' + (def.scopeLabel || 'territórios');
+
+    const overlay = $('geoGeometryMissing');
+    if (def.geometryAvailable === false) {
+      const msg = $('geoGeometryMissingMsg');
+      if (msg) msg.textContent = def.geometryMissingMsg || 'Geometria não disponível para esta camada.';
+      if (overlay) overlay.style.display = 'flex';
+    } else {
+      if (overlay) overlay.style.display = 'none';
+    }
+  }
+
+  function fitLayerBounds() {
+    if (!state.map || !state.geoLayer) return;
+    const bounds = state.geoLayer.getBounds();
+    if (!bounds.isValid()) return;
+    const def = activeLayerDef();
+    state.map.fitBounds(bounds, { padding: [18, 18], maxZoom: def.fitMaxZoom || 13 });
   }
 
   function setMapBusy(isBusy) {
@@ -911,7 +1014,8 @@
 
       if (state.geoLayer && state.geoLayer.getBounds().isValid()) {
         if (!state._mapFitted) {
-          state.map.fitBounds(state.geoLayer.getBounds(), { padding: [18, 18], maxZoom: 13 });
+          const def = activeLayerDef();
+          state.map.fitBounds(state.geoLayer.getBounds(), { padding: [18, 18], maxZoom: def.fitMaxZoom || 13 });
           state._mapFitted = true;
         }
       }
@@ -1305,6 +1409,15 @@
 
   async function loadCommercialData() {
     initMap();
+
+    // Camadas sem geometria disponível: mostrar overlay e sair sem tentar carregar GeoJSON
+    if (activeLayerDef().geometryAvailable === false) {
+      hideState();
+      showFeedback('', '');
+      applyLayerLabels(_activeLayer);
+      return;
+    }
+
     setMapBusy(true);
     hideState();
     showFeedback('', '');
@@ -1609,20 +1722,6 @@
     if (!GEO_LAYERS[newLayer]) return;
     _activeLayer = newLayer;
 
-    const def = activeLayerDef();
-
-    // Atualiza título e subtítulo
-    const titleEl = $('geoMapTitle');
-    if (titleEl) titleEl.textContent = def.title || newLayer;
-    const subEl = $('geoMapSubtitle');
-    if (subEl) subEl.textContent = 'Cor por ' + ($('geoMetricSelector')?.options[$('geoMetricSelector')?.selectedIndex]?.text || 'faturamento') + ' · clique no território para detalhar.';
-    const rankTitle = $('geoRankingTitle');
-    if (rankTitle) rankTitle.textContent = 'Ranking de ' + (def.scopeLabel || 'territórios');
-
-    // Layer badge
-    const badge = $('geoLayerBadge');
-    if (badge) { badge.textContent = def.title; badge.style.display = 'block'; }
-
     // Atualiza URL sem reload
     try {
       const up = new URLSearchParams(window.location.search);
@@ -1632,8 +1731,12 @@
       history.replaceState(null, '', '?' + up.toString());
     } catch(e) {}
 
-    // Reset map state
+    // Atualiza todos os labels/títulos/overlay conforme a camada
+    applyLayerLabels(newLayer);
+
+    // Reset map state — inclui _mapFitted para forçar fitBounds na nova camada
     state.selectedKey = '';
+    state._mapFitted = false;
     if (state.geoLayer && state.map) { state.map.removeLayer(state.geoLayer); state.geoLayer = null; }
     state.geoJson = null;
     state.rows = [];
@@ -1687,8 +1790,7 @@
     $('geoLayerSelector')?.addEventListener('change', applyGeoLayer);
     $('geoScopeSelector')?.addEventListener('change', applyGeoLayer);
     $('geoMetricSelector')?.addEventListener('change', () => {
-      // Recolore o mapa com a nova métrica sem recarregar dados
-      if (state.geoLayer && state.geoJson) renderMap();
+      if (state.geoLayer && state.geoJson) renderGeoLayer();
     });
 
     $('applyFilters')?.addEventListener('click', () => {
@@ -1697,6 +1799,7 @@
     });
     $('clearFilters')?.addEventListener('click', clearFilters);
     $('clearSelection')?.addEventListener('click', clearSelection);
+    $('fitLayerBoundsBtn')?.addEventListener('click', fitLayerBounds);
     $('geoRankingSearch')?.addEventListener('input', renderRanking);
     $('geoRankingSort')?.addEventListener('change', renderRanking);
     $('geoDrawerClose')?.addEventListener('click', closeNeighborhoodDrawer);
@@ -1760,6 +1863,7 @@
   function init() {
     initFiltersFromUrl();
     bindEvents();
+    applyLayerLabels(_activeLayer);
     window.BIomieMapPanel?.setInitial(formatters);
     loadCommercialData();
   }
