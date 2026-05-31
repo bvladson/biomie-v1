@@ -6,14 +6,15 @@ Gera rmf_bairros_ibge_2022.geojson com os bairros dos 19 municípios da
 Região Metropolitana de Fortaleza (RMF).
 
 Fonte canônica: IBGE Malha Censitária 2022 — Bairros por UF (CE)
-  Campos originais: CD_BAIRRO, NM_BAIRRO, CD_MUN, NM_MUN
-  CRS: SIRGAS 2000 (EPSG:4674) → convertido para WGS84 (EPSG:4326)
-  Encoding: UTF-8 (confirmado por IBGE)
+  URL: https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/
+         malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/
+         bairros/shp/UF/CE_bairros_CD2022.zip
+  Campos: CD_BAIRRO, NM_BAIRRO, CD_MUN, NM_MUN  |  CRS: SIRGAS 2000 (EPSG:4674)
+  Encoding: UTF-8  |  Total Ceará: 1.311 bairros
 
-Atalho operacional: geobr (Python) — acessa o mesmo produto IBGE 2022
-  em GeoPackage/GeoDataFrame, sem download manual do SHP.
-  URL canônica do produto: https://geoftp.ibge.gov.br/organizacao_do_territorio/
-    malhas_territoriais/malhas_de_bairros/
+Atalho operacional: geobr.read_neighborhood(code_muni="CE", year=2022)
+  Acessa o mesmo produto IBGE 2022 via GeoPackage — sem download manual.
+  Se geobr falhar, o script usa o fallback IBGE direto automaticamente.
 
 Dependências:
     pip install geobr geopandas
@@ -171,69 +172,57 @@ def normalize_bairro_key(name: str) -> str:
 
 def _download_ibge_direct(project_root: Path) -> "gpd.GeoDataFrame | None":
     """
-    Fallback: baixa o arquivo de bairros diretamente do FTP do IBGE quando geobr falha.
+    Fallback: baixa o arquivo de bairros CE diretamente do FTP do IBGE.
 
-    Fonte canônica IBGE: produto "Malha de Bairros" da Malha Censitária 2022.
-    O arquivo nacional (ZIP com SHP/GPKG) é publicado em:
-      https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_de_bairros/
-
-    IMPORTANTE: verificar a URL exata no portal antes do primeiro uso, pois o IBGE
-    pode atualizar o nome do arquivo ao publicar revisões do produto.
-    URL esperada (confirmar no portal):
+    Fonte canônica IBGE — Censo 2022, produto Bairros por UF:
       https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/
-        malhas_de_bairros/Malha_de_Bairros_v2_20231030.zip
+        malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/
+        bairros/shp/UF/CE_bairros_CD2022.zip
+
+    Campos no SHP: CD_BAIRRO, NM_BAIRRO, CD_MUN, NM_MUN, CD_UF, NM_UF
+    CRS: SIRGAS 2000 (EPSG:4674)
+    Encoding: UTF-8
+
+    O cache local fica em tools/dev/.ibge_cache/ e é reutilizado em execuções
+    subsequentes para evitar re-download (~alguns MB por UF).
     """
     import urllib.request
     import zipfile
-    import tempfile
 
-    # URL canônica do produto IBGE 2022 — confirmar no portal se o arquivo mudar.
-    IBGE_BAIRROS_URL = (
+    # URL canônica CE — pacote UF direto, sem precisar filtrar arquivo nacional.
+    IBGE_CE_URL = (
         "https://geoftp.ibge.gov.br/organizacao_do_territorio/"
-        "malhas_territoriais/malhas_de_bairros/"
-        "Malha_de_Bairros_v2_20231030.zip"
+        "malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/"
+        "censo_2022/bairros/shp/UF/CE_bairros_CD2022.zip"
     )
 
-    cache_dir  = project_root / "tools" / "dev" / ".ibge_cache"
+    cache_dir = project_root / "tools" / "dev" / ".ibge_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
-    zip_path   = cache_dir / "ibge_bairros_2022.zip"
-    gpkg_dir   = cache_dir / "ibge_bairros_2022"
+    zip_path  = cache_dir / "CE_bairros_CD2022.zip"
+    shp_dir   = cache_dir / "CE_bairros_CD2022"
 
     try:
         if not zip_path.exists():
-            print(f"  Baixando {IBGE_BAIRROS_URL} ...")
-            print("  (arquivo nacional ~100 MB — pode demorar alguns minutos)")
-            urllib.request.urlretrieve(IBGE_BAIRROS_URL, zip_path)
-            print(f"  Download concluído: {zip_path.stat().st_size // 1024 // 1024} MB")
-
-        if not gpkg_dir.exists():
-            print("  Extraindo arquivo...")
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(gpkg_dir)
-
-        # Procura por arquivo CE (SHP ou GPKG)
-        ce_files = list(gpkg_dir.rglob("*CE*.[sS][hH][pP]")) + list(gpkg_dir.rglob("*CE*.[gG][pP][kK][gG]"))
-        if not ce_files:
-            # Tenta arquivo nacional e filtra por estado depois
-            all_files = list(gpkg_dir.rglob("*.[sS][hH][pP]")) + list(gpkg_dir.rglob("*.[gG][pP][kK][gG]"))
-            if not all_files:
-                print("  [ERRO] Nenhum arquivo SHP/GPKG encontrado no ZIP do IBGE.")
-                return None
-            source_file = all_files[0]
-            print(f"  Lendo arquivo nacional: {source_file.name}")
+            print(f"  Baixando {IBGE_CE_URL} ...")
+            urllib.request.urlretrieve(IBGE_CE_URL, zip_path)
+            print(f"  Download concluído: {zip_path.stat().st_size // 1024} KB")
         else:
-            source_file = ce_files[0]
-            print(f"  Lendo arquivo CE: {source_file.name}")
+            print(f"  Usando cache: {zip_path}")
 
+        if not shp_dir.exists():
+            print("  Extraindo SHP...")
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(shp_dir)
+
+        shp_files = list(shp_dir.rglob("*.shp")) + list(shp_dir.rglob("*.SHP"))
+        if not shp_files:
+            print("  [ERRO] Nenhum .shp encontrado no ZIP.")
+            return None
+
+        source_file = shp_files[0]
+        print(f"  Lendo {source_file.name} ...")
         gdf = gpd.read_file(source_file, encoding="utf-8")
-
-        # Se arquivo nacional, filtra pelo estado do Ceará (código 23)
-        cols_lower = {c.lower(): c for c in gdf.columns}
-        state_col  = cols_lower.get("cd_uf") or cols_lower.get("cd_estado") or cols_lower.get("state_code")
-        if state_col and str(gdf.iloc[0][state_col])[:2] != "23":
-            gdf = gdf[gdf[state_col].astype(str).str.startswith("23")].copy()
-            print(f"  Filtrado para Ceará: {len(gdf)} bairros")
-
+        print(f"  Carregados: {len(gdf)} bairros do Ceará")
         return gdf
 
     except Exception as e:
