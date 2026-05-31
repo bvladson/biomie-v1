@@ -2,55 +2,75 @@
 """
 geo_generate_rmf_bairros.py
 
-Gera rmf_bairros_ibge_2022.geojson com os bairros dos 19 municípios da
-Região Metropolitana de Fortaleza (RMF).
+Gera assets/geo/rmf_bairros_ibge_2022.geojson — bairros metropolitanos (RMF)
+para a camada `grande_fortaleza_bairros` do BIomie.
 
 Fonte canônica: IBGE Malha Censitária 2022 — Bairros por UF (CE)
-  URL: https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/
-         malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/
-         bairros/shp/UF/CE_bairros_CD2022.zip
-  Campos: CD_BAIRRO, NM_BAIRRO, CD_MUN, NM_MUN  |  CRS: SIRGAS 2000 (EPSG:4674)
-  Encoding: UTF-8  |  Total Ceará: 1.311 bairros
-
-Atalho operacional: geobr.read_neighborhood(code_muni="CE", year=2022)
-  Acessa o mesmo produto IBGE 2022 via GeoPackage — sem download manual.
-  Se geobr falhar, o script usa o fallback IBGE direto automaticamente.
+  URL FTP: https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/
+            malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/
+            bairros/shp/UF/CE_bairros_CD2022.zip
+  Campos : CD_BAIRRO, NM_BAIRRO, CD_MUN, NM_MUN (+ CD_REGIAO, CD_UF, CD_DIST…)
+  CRS    : EPSG:4674 / SIRGAS 2000 → convertido para EPSG:4326 / WGS84
+  Encoding: UTF-8  |  Total CE: 1.311 bairros
 
 Dependências:
-    pip install geobr geopandas
+    pip install geopandas
 
 Uso:
-    python tools/dev/geo_generate_rmf_bairros.py               # modo padrão
-    python tools/dev/geo_generate_rmf_bairros.py --dry-run     # só estatísticas
+    python tools/dev/geo_generate_rmf_bairros.py --dry-run
+    python tools/dev/geo_generate_rmf_bairros.py
     python tools/dev/geo_generate_rmf_bairros.py --include-fortaleza
-    python tools/dev/geo_generate_rmf_bairros.py --tolerance=0.0002
-
-Output:
-    assets/geo/rmf_bairros_ibge_2022.geojson
+    python tools/dev/geo_generate_rmf_bairros.py --input-shp=storage/geo/source/CE_bairros_CD2022/CE_bairros_CD2022.shp
+    python tools/dev/geo_generate_rmf_bairros.py --tolerance=0.0002 --strict
 """
 
 import argparse
 import json
 import sys
+import unicodedata
+import re
+import urllib.request
+import zipfile
 from pathlib import Path
+from datetime import datetime, timezone
+
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 try:
-    import geobr
     import geopandas as gpd
     from shapely.errors import TopologicalError
+    try:
+        from shapely.validation import make_valid as _shapely_make_valid
+        HAS_MAKE_VALID = True
+    except ImportError:
+        HAS_MAKE_VALID = False
 except ImportError as e:
     print(f"[ERRO] Dependência faltando: {e}")
-    print("  Execute: pip install geobr geopandas")
+    print("  Execute: pip install geopandas")
     sys.exit(1)
 
-# ─── Configuração ─────────────────────────────────────────────────────────────
+# ─── Constantes ───────────────────────────────────────────────────────────────
 
-# Raiz do projeto (2 níveis acima de tools/dev/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-OUTPUT_PATH  = PROJECT_ROOT / "assets" / "geo" / "rmf_bairros_ibge_2022.geojson"
 
-# 19 municípios da RMF com códigos IBGE oficiais
-RMF_IBGE_CODES = {
+DEFAULT_INPUT_SHP = PROJECT_ROOT / "storage" / "geo" / "source" / "CE_bairros_CD2022" / "CE_bairros_CD2022.shp"
+DEFAULT_OUTPUT    = PROJECT_ROOT / "assets" / "geo" / "rmf_bairros_ibge_2022.geojson"
+GENERATED_DIR     = PROJECT_ROOT / "storage" / "geo" / "generated"
+
+IBGE_CE_URL = (
+    "https://geoftp.ibge.gov.br/organizacao_do_territorio/"
+    "malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/"
+    "censo_2022/bairros/shp/UF/CE_bairros_CD2022.zip"
+)
+
+IBGE_DOWNLOAD_DIR = PROJECT_ROOT / "storage" / "geo" / "source" / "CE_bairros_CD2022"
+
+DEFAULT_TOLERANCE = 0.00008
+
+# 19 municípios da RMF de Fortaleza (código IBGE → nome oficial)
+RMF_IBGE = {
     2304400: "Fortaleza",
     2303709: "Caucaia",
     2307650: "Maracanaú",
@@ -72,342 +92,377 @@ RMF_IBGE_CODES = {
     2313500: "Trairi",
 }
 
-# Tolerância padrão de simplificação (graus decimais)
-# 0.00005 ≈ 5 metros, bom para zoom ~12
-# 0.0001  ≈ 10 metros, menor arquivo, zoom ~11
-# 0.0002  ≈ 20 metros, arquivo menor ainda, zoom ~10
-DEFAULT_TOLERANCE = 0.00008
+REQUIRED_COLS = {"CD_MUN", "NM_MUN", "CD_BAIRRO", "NM_BAIRRO"}
 
+# ─── Normalização ─────────────────────────────────────────────────────────────
 
-# ─── Funções auxiliares ───────────────────────────────────────────────────────
-
-def detect_columns(gdf: "gpd.GeoDataFrame") -> dict:
-    """
-    Auto-detecta os nomes das colunas de código e nome de município e bairro.
-    geobr pode mudar os nomes entre versões da biblioteca.
-    """
-    cols = [c.lower() for c in gdf.columns]
-    col_map = dict(zip(cols, gdf.columns))  # lowercase → original
-
-    def find(candidates):
-        for c in candidates:
-            if c in col_map:
-                return col_map[c]
-        return None
-
-    muni_code = find(["code_muni", "cd_municipio", "cd_mun", "codigo_municipio", "muni_code"])
-    muni_name = find(["name_muni", "nm_municipio", "nm_mun", "nome_municipio", "municipio"])
-    bairro_code = find(["code_neighborhood", "cd_bairro", "codigo_bairro", "id_bairro"])
-    bairro_name = find(["name_neighborhood", "nm_bairro", "nome_bairro", "bairro"])
-
-    return {
-        "muni_code":   muni_code,
-        "muni_name":   muni_name,
-        "bairro_code": bairro_code,
-        "bairro_name": bairro_name,
-    }
-
-
-def normalize_muni_code(value) -> int:
-    """Normaliza código IBGE para int (pode vir como string ou float)."""
-    try:
-        return int(float(str(value).strip()))
-    except (ValueError, TypeError):
-        return 0
-
-
-def simplify_safe(geom, tolerance: float):
-    """Simplifica geometria preservando topologia; retorna original em caso de erro."""
-    try:
-        simplified = geom.simplify(tolerance, preserve_topology=True)
-        return simplified if simplified is not None and not simplified.is_empty else geom
-    except (TopologicalError, Exception):
-        return geom
-
-
-def build_properties(row, cols: dict, muni_code_int: int) -> dict:
-    """
-    Constrói o dict de properties padronizado para o GeoJSON de saída.
-
-    Campos obrigatórios validados pelo probe:
-      municipio_ibge, municipio_nome, bairro_ibge, bairro_nome, bairro_key, cidade_key
-    """
-    bairro_name = ""
-    bairro_ibge = ""  # CD_BAIRRO do IBGE — campo canônico de identificação
-
-    if cols["bairro_name"] and cols["bairro_name"] in row.index:
-        bairro_name = str(row[cols["bairro_name"]] or "").strip()
-    if cols["bairro_code"] and cols["bairro_code"] in row.index:
-        bairro_ibge = str(row[cols["bairro_code"]] or "").strip()
-
-    muni_name = RMF_IBGE_CODES.get(muni_code_int, "")
-    if cols["muni_name"] and cols["muni_name"] in row.index and not muni_name:
-        muni_name = str(row[cols["muni_name"]] or "").strip()
-
-    return {
-        "bairro_nome":    bairro_name,
-        "bairro_key":     normalize_bairro_key(bairro_name),
-        "bairro_ibge":    bairro_ibge,           # CD_BAIRRO — fonte canônica IBGE
-        "municipio_ibge": str(muni_code_int),    # CD_MUN — fonte canônica IBGE
-        "municipio_nome": muni_name,
-        "cidade_key":     normalize_bairro_key(muni_name),
-        "source":         "IBGE_Malha_Bairros_2022",
-        "crs_origin":     "SIRGAS2000_EPSG4674",  # CRS original antes da conversão para WGS84
-    }
-
-
-def normalize_bairro_key(name: str) -> str:
-    """Normaliza para o formato bairro_key do BIomie (underscore, sem acentos)."""
-    import unicodedata
-    import re
-    normalized = unicodedata.normalize("NFD", name)
-    ascii_str  = normalized.encode("ascii", "ignore").decode("ascii")
-    lower      = ascii_str.lower()
-    keyed      = re.sub(r"[^a-z0-9]+", "_", lower)
-    keyed      = re.sub(r"_+", "_", keyed).strip("_")
+def normalize_key(name: str) -> str:
+    """Normaliza string para chave estável: lowercase, sem acento, underscore."""
+    if not name:
+        return ""
+    nfd = unicodedata.normalize("NFD", str(name))
+    ascii_str = nfd.encode("ascii", "ignore").decode("ascii")
+    lower = ascii_str.lower()
+    keyed = re.sub(r"[^a-z0-9]+", "_", lower)
+    keyed = re.sub(r"_+", "_", keyed).strip("_")
     return keyed
 
 
-# ─── Fallback IBGE direto ─────────────────────────────────────────────────────
+def bairro_key(municipio_ibge: int, bairro_norm: str) -> str:
+    """Chave estável: '{municipio_ibge}:{bairro_norm}'. Ex: 2303709:jurema"""
+    return f"{municipio_ibge}:{bairro_norm}"
 
-def _download_ibge_direct(project_root: Path) -> "gpd.GeoDataFrame | None":
-    """
-    Fallback: baixa o arquivo de bairros CE diretamente do FTP do IBGE.
 
-    Fonte canônica IBGE — Censo 2022, produto Bairros por UF:
-      https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/
-        malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/
-        bairros/shp/UF/CE_bairros_CD2022.zip
+def join_key(cidade_key_str: str, bairro_norm: str) -> str:
+    """Chave de join: '{cidade_key}:{bairro_norm}'. Ex: caucaia:jurema"""
+    return f"{cidade_key_str}:{bairro_norm}"
 
-    Campos no SHP: CD_BAIRRO, NM_BAIRRO, CD_MUN, NM_MUN, CD_UF, NM_UF
-    CRS: SIRGAS 2000 (EPSG:4674)
-    Encoding: UTF-8
+# ─── Geometria ────────────────────────────────────────────────────────────────
 
-    O cache local fica em tools/dev/.ibge_cache/ e é reutilizado em execuções
-    subsequentes para evitar re-download (~alguns MB por UF).
-    """
-    import urllib.request
-    import zipfile
-
-    # URL canônica CE — pacote UF direto, sem precisar filtrar arquivo nacional.
-    IBGE_CE_URL = (
-        "https://geoftp.ibge.gov.br/organizacao_do_territorio/"
-        "malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/"
-        "censo_2022/bairros/shp/UF/CE_bairros_CD2022.zip"
-    )
-
-    cache_dir = project_root / "tools" / "dev" / ".ibge_cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    zip_path  = cache_dir / "CE_bairros_CD2022.zip"
-    shp_dir   = cache_dir / "CE_bairros_CD2022"
-
-    try:
-        if not zip_path.exists():
-            print(f"  Baixando {IBGE_CE_URL} ...")
-            urllib.request.urlretrieve(IBGE_CE_URL, zip_path)
-            print(f"  Download concluído: {zip_path.stat().st_size // 1024} KB")
-        else:
-            print(f"  Usando cache: {zip_path}")
-
-        if not shp_dir.exists():
-            print("  Extraindo SHP...")
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(shp_dir)
-
-        shp_files = list(shp_dir.rglob("*.shp")) + list(shp_dir.rglob("*.SHP"))
-        if not shp_files:
-            print("  [ERRO] Nenhum .shp encontrado no ZIP.")
-            return None
-
-        source_file = shp_files[0]
-        print(f"  Lendo {source_file.name} ...")
-        gdf = gpd.read_file(source_file, encoding="utf-8")
-        print(f"  Carregados: {len(gdf)} bairros do Ceará")
-        return gdf
-
-    except Exception as e:
-        print(f"  [ERRO] Fallback IBGE direto falhou: {e}")
+def repair_geometry(geom):
+    """Tenta corrigir geometria inválida. Retorna None se impossível."""
+    if geom is None or geom.is_empty:
         return None
+    if geom.is_valid:
+        return geom
+    if HAS_MAKE_VALID:
+        try:
+            fixed = _shapely_make_valid(geom)
+            if fixed is not None and not fixed.is_empty:
+                return fixed
+        except Exception:
+            pass
+    try:
+        buffered = geom.buffer(0)
+        if buffered is not None and not buffered.is_empty and buffered.is_valid:
+            return buffered
+    except Exception:
+        pass
+    return None
 
 
-# ─── Script principal ─────────────────────────────────────────────────────────
+def simplify_safe(geom, tolerance: float):
+    """Simplifica com topologia preservada; retorna original em erro."""
+    try:
+        simplified = geom.simplify(tolerance, preserve_topology=True)
+        return simplified if (simplified is not None and not simplified.is_empty) else geom
+    except (TopologicalError, Exception):
+        return geom
+
+# ─── Download IBGE direto ─────────────────────────────────────────────────────
+
+def download_ibge_if_missing(target_dir: Path) -> Path:
+    """Baixa CE_bairros_CD2022.zip do FTP IBGE e extrai em target_dir."""
+    shp_path = target_dir / "CE_bairros_CD2022.shp"
+    if shp_path.exists():
+        print(f"  Arquivo já existe: {shp_path}")
+        return shp_path
+
+    zip_path = target_dir.parent / "CE_bairros_CD2022.zip"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    if not zip_path.exists():
+        print(f"  Baixando {IBGE_CE_URL} ...")
+        urllib.request.urlretrieve(IBGE_CE_URL, zip_path)
+        print(f"  Download concluído: {zip_path.stat().st_size // 1024} KB")
+    else:
+        print(f"  Cache ZIP: {zip_path}")
+
+    print("  Extraindo SHP...")
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(target_dir)
+
+    if not shp_path.exists():
+        shp_files = list(target_dir.rglob("*.shp"))
+        if shp_files:
+            return shp_files[0]
+        raise FileNotFoundError("SHP não encontrado após extração.")
+
+    return shp_path
+
+# ─── Build properties ────────────────────────────────────────────────────────
+
+def build_properties(row) -> dict:
+    """
+    Constrói o dict de properties padronizado para cada feature GeoJSON.
+
+    Campos obrigatórios validados pelo probe:
+      layer_id, source, source_year, source_file, crs_origin,
+      municipio_ibge, municipio_nome, municipio_norm,
+      bairro_ibge, bairro_nome, bairro_norm, bairro_key, cidade_key,
+      label, join_key
+    """
+    muni_ibge = int(row["CD_MUN"])
+    muni_nome = str(row.get("NM_MUN") or "").strip()
+    muni_norm = normalize_key(muni_nome)
+
+    bairro_ibge_val = str(row.get("CD_BAIRRO") or "").strip()
+    bairro_nome     = str(row.get("NM_BAIRRO") or "").strip()
+    bairro_norm_val = normalize_key(bairro_nome)
+
+    cidade_key_str = muni_norm  # normalize_key já remove acentos/espaços
+    bk = bairro_key(muni_ibge, bairro_norm_val)
+    jk = join_key(cidade_key_str, bairro_norm_val)
+
+    return {
+        "layer_id":       "grande_fortaleza_bairros",
+        "source":         "IBGE_BAIRROS_CD2022",
+        "source_year":    2022,
+        "source_file":    "CE_bairros_CD2022",
+        "crs_origin":     "EPSG:4674/SIRGAS2000",
+        "municipio_ibge": str(muni_ibge),
+        "municipio_nome": muni_nome,
+        "municipio_norm": muni_norm,
+        "bairro_ibge":    bairro_ibge_val,
+        "bairro_nome":    bairro_nome,
+        "bairro_norm":    bairro_norm_val,
+        "bairro_key":     bk,
+        "cidade_key":     cidade_key_str,
+        "label":          f"{bairro_nome} — {muni_nome}",
+        "join_key":       jk,
+    }
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--tolerance",         type=float, default=DEFAULT_TOLERANCE,
-                        help=f"Tolerância de simplificação (default: {DEFAULT_TOLERANCE})")
-    parser.add_argument("--include-fortaleza", action="store_true",
-                        help="Incluir Fortaleza no output (por padrão é excluída — já existe fortaleza_bairros.json)")
-    parser.add_argument("--dry-run",           action="store_true",
-                        help="Apenas exibe estatísticas, não salva o arquivo")
-    parser.add_argument("--output",            type=str, default=str(OUTPUT_PATH),
-                        help="Caminho de saída do GeoJSON")
+    parser.add_argument("--input-shp",          type=str, default=str(DEFAULT_INPUT_SHP))
+    parser.add_argument("--output",             type=str, default=str(DEFAULT_OUTPUT))
+    parser.add_argument("--tolerance",          type=float, default=DEFAULT_TOLERANCE)
+    parser.add_argument("--include-fortaleza",  action="store_true", help="Incluir bairros de Fortaleza (padrão: excluído)")
+    parser.add_argument("--exclude-fortaleza",  action="store_true", help="Excluir Fortaleza explicitamente (padrão)")
+    parser.add_argument("--download-if-missing",action="store_true", help="Baixar SHP do IBGE se não encontrar localmente")
+    parser.add_argument("--dry-run",            action="store_true", help="Exibe estatísticas sem gerar arquivo")
+    parser.add_argument("--strict",             action="store_true", help="Falha em qualquer WARN")
     args = parser.parse_args()
 
+    include_fortaleza = args.include_fortaleza and not args.exclude_fortaleza
     output_path = Path(args.output)
-    include_fortaleza = args.include_fortaleza
+    input_shp   = Path(args.input_shp)
 
     print()
-    print("═" * 62)
-    print("  GEO — Gerador RMF Bairros IBGE 2022")
-    print("═" * 62)
-    print(f"  Tolerância de simplificação : {args.tolerance}")
-    print(f"  Incluir Fortaleza           : {include_fortaleza}")
-    print(f"  Output                      : {output_path}")
-    print(f"  Dry-run                     : {args.dry_run}")
+    print("═" * 66)
+    print("  BIomie — Gerador RMF Bairros IBGE 2022")
+    print("═" * 66)
+    print(f"  Fonte     : IBGE Malha Censitária 2022 — CE_bairros_CD2022")
+    print(f"  Input SHP : {input_shp}")
+    print(f"  Output    : {output_path}")
+    print(f"  Tolerance : {args.tolerance}")
+    print(f"  Fortaleza : {'INCLUÍDA' if include_fortaleza else 'EXCLUÍDA (usa fortaleza_bairros.json)'}")
+    print(f"  Dry-run   : {args.dry_run}")
+    print(f"  Strict    : {args.strict}")
     print()
 
-    # ── 1. Download via geobr (atalho para IBGE 2022) ────────────────────────
-    print("[1/5] Baixando bairros do Ceará via IBGE/geobr 2022...")
-    print("       Fonte canônica: IBGE Malha Censitária 2022 — Bairros por UF (CE)")
-    print("       Atalho: geobr.read_neighborhood (acessa o mesmo produto IBGE)")
-    bairros_ce = None
-    try:
-        bairros_ce = geobr.read_neighborhood(code_muni="CE", year=2022)
-        print(f"       geobr OK — {len(bairros_ce)} bairros carregados do Ceará")
-    except Exception as e:
-        print(f"[AVISO] geobr falhou: {e}")
-        print("  Tentando fallback: download direto IBGE FTP...")
-        bairros_ce = _download_ibge_direct(PROJECT_ROOT)
-        if bairros_ce is None:
-            print("[ERRO] Ambas as fontes falharam. Verifique a conexão.")
-            print("  geobr:       pip install --upgrade geobr")
-            print("  IBGE direto: https://geoftp.ibge.gov.br/organizacao_do_territorio/"
-                  "malhas_territoriais/malhas_de_bairros/")
+    warnings = []
+
+    # ── 1. Localiza SHP ──────────────────────────────────────────────────────
+    print("[1/6] Localizando arquivo SHP...")
+    if not input_shp.exists():
+        if args.download_if_missing:
+            print("  Arquivo não encontrado — iniciando download IBGE...")
+            input_shp = download_ibge_if_missing(IBGE_DOWNLOAD_DIR)
+        else:
+            print(f"[ERRO] Arquivo não encontrado: {input_shp}")
+            print("  Use --download-if-missing para baixar automaticamente, ou")
+            print("  copie os arquivos para storage/geo/source/CE_bairros_CD2022/")
             sys.exit(1)
 
-    print(f"       Total Ceará: {len(bairros_ce)} bairros")
-    if len(bairros_ce) < 1200:
-        print(f"[AVISO] Esperado ≥1.311 bairros no Ceará, mas vieram {len(bairros_ce)}. "
-              "Verificar se o dataset está completo.")
+    # Verifica componentes obrigatórios do shapefile
+    required_ext = {".shp", ".shx", ".dbf", ".prj"}
+    base = input_shp.with_suffix("")
+    missing_ext = [ext for ext in required_ext if not base.with_suffix(ext).exists()]
+    if missing_ext:
+        print(f"[ERRO] Componentes SHP faltando: {missing_ext}")
+        sys.exit(1)
+    print(f"  SHP localizado com todos os componentes: {input_shp.name}")
 
-    # ── 2. Auto-detecta colunas ───────────────────────────────────────────────
-    print("[2/5] Detectando colunas...")
-    cols = detect_columns(bairros_ce)
-    print(f"       Detectado: {cols}")
-
-    if not cols["muni_code"]:
-        print("[ERRO] Coluna de código de município não detectada.")
-        print(f"  Colunas disponíveis: {list(bairros_ce.columns)}")
+    # ── 2. Lê e valida shapefile ─────────────────────────────────────────────
+    print("[2/6] Lendo shapefile...")
+    try:
+        gdf = gpd.read_file(str(input_shp), encoding="utf-8")
+    except Exception as e:
+        print(f"[ERRO] Falha ao ler SHP: {e}")
         sys.exit(1)
 
-    if not cols["bairro_name"]:
-        print("[AVISO] Coluna de nome de bairro não detectada — bairro_nome ficará vazio.")
+    print(f"  Total CE     : {len(gdf)} bairros")
+    print(f"  CRS original : {gdf.crs}")
 
-    # ── 3. Filtra municípios da RMF ───────────────────────────────────────────
-    print("[3/5] Filtrando 19 municípios da RMF...")
+    # Valida CRS
+    crs_epsg = gdf.crs.to_epsg() if gdf.crs else None
+    if crs_epsg != 4674:
+        warnings.append(f"CRS inesperado: {gdf.crs} (esperado EPSG:4674/SIRGAS2000)")
+        if args.strict:
+            print(f"[ERRO] {warnings[-1]}")
+            sys.exit(1)
 
-    bairros_ce["_muni_code_int"] = bairros_ce[cols["muni_code"]].apply(normalize_muni_code)
+    # Valida colunas
+    missing_cols = REQUIRED_COLS - set(gdf.columns)
+    if missing_cols:
+        print(f"[ERRO] Colunas obrigatórias ausentes: {missing_cols}")
+        print(f"  Colunas disponíveis: {list(gdf.columns)}")
+        sys.exit(1)
 
-    target_codes = list(RMF_IBGE_CODES.keys())
+    # Geometrias nulas
+    null_geom = gdf.geometry.isna().sum()
+    if null_geom > 0:
+        warnings.append(f"{null_geom} geometria(s) nula(s) no shapefile")
+
+    print(f"  Colunas OK   : {sorted(REQUIRED_COLS)}")
+    print(f"  Geom nulas   : {null_geom}")
+
+    # ── 3. Filtra RMF ────────────────────────────────────────────────────────
+    print("[3/6] Filtrando municípios da RMF...")
+    gdf["_muni_int"] = gdf["CD_MUN"].astype(int)
+
+    target_codes = list(RMF_IBGE.keys())
     if not include_fortaleza:
         target_codes = [c for c in target_codes if c != 2304400]
-        print("       Fortaleza excluída (já existe fortaleza_bairros.json).")
 
-    rmf_bairros = bairros_ce[bairros_ce["_muni_code_int"].isin(target_codes)].copy()
-    print(f"       Bairros filtrados (RMF): {len(rmf_bairros)}")
+    rmf = gdf[gdf["_muni_int"].isin(target_codes)].copy()
+    print(f"  Bairros RMF  : {len(rmf)}")
 
-    if len(rmf_bairros) == 0:
-        print("[ERRO] Nenhum bairro encontrado para os municípios da RMF.")
-        print(f"  Códigos procurados: {target_codes[:5]}...")
-        print(f"  Exemplo de código no dataset: {bairros_ce['_muni_code_int'].iloc[0] if len(bairros_ce) > 0 else 'vazio'}")
-        sys.exit(1)
-
-    # Estatísticas por município
+    # Cobertura por município
     coverage = {}
-    for code in target_codes:
-        nome     = RMF_IBGE_CODES[code]
-        count    = len(rmf_bairros[rmf_bairros["_muni_code_int"] == code])
-        coverage[nome] = count
-        status = "✓" if count > 0 else "✗ SEM BAIRROS"
-        print(f"       {status:18s} {nome:35s} {count:4d} bairros")
+    for code, nome in RMF_IBGE.items():
+        if code == 2304400 and not include_fortaleza:
+            coverage[code] = {"nome": nome, "count": 0, "included": False, "reason": "excluída — usa fortaleza_bairros.json"}
+            continue
+        count = len(rmf[rmf["_muni_int"] == code])
+        coverage[code] = {"nome": nome, "count": count, "included": count > 0, "reason": ""}
 
-    sem_bairros = [nome for nome, count in coverage.items() if count == 0]
-    if sem_bairros:
-        print(f"\n  [AVISO] {len(sem_bairros)} município(s) sem bairros no dataset IBGE 2022: {', '.join(sem_bairros)}")
-        print("  Use OSM como fallback para esses com badge WARN.")
+    with_bairros    = [c for c, v in coverage.items() if v["count"] > 0]
+    without_bairros = [c for c, v in coverage.items() if v["count"] == 0 and c != 2304400]
+
+    print()
+    for code, v in coverage.items():
+        marker = "✓" if v["count"] > 0 else ("━" if v["reason"] else "✗")
+        extra  = f"  [{v['reason']}]" if v["reason"] else ""
+        print(f"    {marker} {v['nome']:35s} {v['count']:4d} bairros{extra}")
     print()
 
-    # ── 4. Converte CRS e simplifica geometrias ───────────────────────────────
-    print(f"[4/5] Convertendo CRS e simplificando geometrias (tolerance={args.tolerance})...")
-    # IBGE usa SIRGAS 2000 (EPSG:4674) — reprojetar para WGS84 (EPSG:4326) para o Leaflet
-    src_crs = str(rmf_bairros.crs) if rmf_bairros.crs is not None else "desconhecido"
-    print(f"       CRS de origem: {src_crs}")
-    rmf_bairros = rmf_bairros.to_crs("EPSG:4326")
-    print("       CRS final: EPSG:4326 (WGS84)")
-    rmf_bairros["geometry"] = rmf_bairros["geometry"].apply(
-        lambda g: simplify_safe(g, args.tolerance)
-    )
+    if without_bairros:
+        names = ", ".join(RMF_IBGE[c] for c in without_bairros)
+        warnings.append(
+            f"{len(without_bairros)} município(s) sem bairros no IBGE 2022: {names}. "
+            "Continuam disponíveis via rmf_municipios."
+        )
+        print(f"  [AVISO] {warnings[-1]}")
 
-    # ── 5. Constrói GeoJSON de saída ──────────────────────────────────────────
-    print("[5/5] Construindo GeoJSON padronizado para o BIomie...")
+    # Verifica bairros fora da RMF
+    extra = len(rmf[~rmf["_muni_int"].isin(target_codes)])
+    if extra > 0:
+        warnings.append(f"{extra} feature(s) de municípios fora da RMF no arquivo filtrado")
+        if args.strict:
+            print(f"[ERRO] {warnings[-1]}")
+            sys.exit(1)
+
+    # ── 4. Converte CRS → WGS84 ──────────────────────────────────────────────
+    print(f"[4/6] Convertendo CRS: {gdf.crs} → EPSG:4326 (WGS84)...")
+    rmf = rmf.to_crs("EPSG:4326")
+    print("  CRS final    : EPSG:4326")
+
+    # ── 5. Simplifica e corrige geometrias ───────────────────────────────────
+    print(f"[5/6] Simplificando geometrias (tolerance={args.tolerance})...")
+    invalid_before = (~rmf.geometry.is_valid).sum()
+    if invalid_before > 0:
+        print(f"  Geometrias inválidas antes: {invalid_before} — aplicando correção...")
+        rmf["geometry"] = rmf["geometry"].apply(repair_geometry)
+        rmf = rmf.dropna(subset=["geometry"])
+
+    rmf["geometry"] = rmf["geometry"].apply(lambda g: simplify_safe(g, args.tolerance))
+    invalid_after = (~rmf.geometry.is_valid).sum()
+    if invalid_after > 0:
+        msg = f"{invalid_after} geometria(s) ainda inválida(s) após correção"
+        if args.strict:
+            print(f"[ERRO] {msg}")
+            sys.exit(1)
+        warnings.append(msg)
+    print(f"  Inválidas restantes: {invalid_after}")
+
+    # ── 6. Constrói GeoJSON ───────────────────────────────────────────────────
+    print("[6/6] Construindo GeoJSON...")
 
     features = []
     skipped  = 0
-    for _, row in rmf_bairros.iterrows():
-        muni_code_int = int(row["_muni_code_int"])
+    for _, row in rmf.iterrows():
         geom = row.geometry
         if geom is None or geom.is_empty:
             skipped += 1
             continue
-
         try:
-            geom_dict = json.loads(gpd.GeoSeries([geom]).to_json())["features"][0]["geometry"]
+            geom_dict = json.loads(gpd.GeoSeries([geom], crs="EPSG:4326").to_json())["features"][0]["geometry"]
         except Exception:
             skipped += 1
             continue
 
-        props = build_properties(row, cols, muni_code_int)
-        features.append({
-            "type":       "Feature",
-            "properties": props,
-            "geometry":   geom_dict,
-        })
+        props = build_properties(row)
+        features.append({"type": "Feature", "properties": props, "geometry": geom_dict})
 
     if skipped > 0:
-        print(f"  [AVISO] {skipped} feature(s) ignoradas por geometria vazia/inválida.")
+        warnings.append(f"{skipped} feature(s) ignoradas por geometria vazia")
 
-    geojson_out = {
-        "type":     "FeatureCollection",
+    # Estatísticas finais
+    output_str  = json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False, separators=(",", ":"))
+    size_kb     = len(output_str.encode("utf-8")) / 1024
+
+    print()
+    print("─" * 66)
+    print(f"  Features no GeoJSON    : {len(features)}")
+    print(f"  Municípios com bairros : {len(with_bairros)}/{len(target_codes)}")
+    print(f"  Tamanho estimado       : {size_kb:.0f} KB")
+    print(f"  Fortaleza incluída     : {include_fortaleza}")
+    if warnings:
+        for w in warnings:
+            print(f"  [AVISO] {w}")
+
+    size_warn = size_kb > 3000
+    if size_warn:
+        print(f"  [AVISO] Arquivo grande ({size_kb:.0f} KB) — rode com --tolerance=0.0002")
+
+    ready = len(features) > 0 and not size_warn and (not args.strict or not warnings)
+    print(f"  Pronto para probe      : {'SIM' if ready else 'NÃO (ver avisos)'}")
+    print("─" * 66)
+
+    if args.dry_run:
+        print()
+        print("  [DRY-RUN] Arquivo não salvo. Rode sem --dry-run para gerar.")
+        print()
+        sys.exit(0 if ready else 1)
+
+    # Salva output principal
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    geojson_final = {
+        "type": "FeatureCollection",
         "metadata": {
-            "source":          "IBGE_Malha_Bairros_2022",
-            "generated_by":    "geo_generate_rmf_bairros.py",
-            "generated_at":    __import__("datetime").datetime.utcnow().isoformat() + "Z",
-            "total_features":  len(features),
-            "municipalities":  len(target_codes),
-            "tolerance":       args.tolerance,
-            "includes_fortaleza": include_fortaleza,
-            "rmf_coverage_pct": round(
-                (len([v for v in coverage.values() if v > 0]) / len(target_codes)) * 100
-            ),
+            "source":              "IBGE_BAIRROS_CD2022",
+            "source_year":         2022,
+            "source_file":         "CE_bairros_CD2022",
+            "generated_by":        "geo_generate_rmf_bairros.py",
+            "generated_at":        datetime.now(timezone.utc).isoformat(),
+            "total_features":      len(features),
+            "municipalities_with": len(with_bairros),
+            "municipalities_total": len(target_codes),
+            "includes_fortaleza":  include_fortaleza,
+            "crs_origin":          "EPSG:4674/SIRGAS2000",
+            "crs_output":          "EPSG:4326/WGS84",
+            "tolerance":           args.tolerance,
+            "warnings":            warnings,
         },
         "features": features,
     }
 
-    output_json = json.dumps(geojson_out, ensure_ascii=False, separators=(",", ":"))
-    size_kb     = len(output_json.encode("utf-8")) / 1024
+    output_json = json.dumps(geojson_final, ensure_ascii=False, separators=(",", ":"))
+    output_path.write_text(output_json, encoding="utf-8")
+
+    # Cópia em storage/geo/generated/ para rastreabilidade
+    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+    generated_copy = GENERATED_DIR / "rmf_bairros_ibge_2022.geojson"
+    generated_copy.write_text(output_json, encoding="utf-8")
 
     print()
-    print("─" * 62)
-    print(f"  Features geradas         : {len(features)}")
-    print(f"  Municípios com bairros   : {len([v for v in coverage.values() if v > 0])}/{len(target_codes)}")
-    print(f"  Tamanho estimado         : {size_kb:.0f} KB")
-    print(f"  Fortaleza incluída       : {include_fortaleza}")
-
-    if size_kb > 3000:
-        print(f"\n  [AVISO] Arquivo grande ({size_kb:.0f} KB). Rode com --tolerance=0.0002 para reduzir.")
-
-    if args.dry_run:
-        print("\n  [DRY-RUN] Arquivo não salvo.")
-        print("─" * 62)
-        print()
-        sys.exit(0)
-
-    # ── Salva arquivo ─────────────────────────────────────────────────────────
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(output_json, encoding="utf-8")
-    print(f"\n  Salvo em: {output_path}")
-    print("─" * 62)
+    print(f"  Salvo em    : {output_path}")
+    print(f"  Cópia em    : {generated_copy}")
     print()
     print("  Próximo passo: php tools/dev/geo_rmf_bairros_source_probe.php")
     print()

@@ -17,18 +17,20 @@
       geometryAvailable: true,
     },
     grande_fortaleza_bairros: {
-      geojson: 'assets/geo/grande_fortaleza_bairros.json',
+      geojson: 'assets/geo/rmf_bairros_ibge_2022.geojson',
       bounds: [[-4.30,-38.80],[-3.30,-38.20]],
-      matchProp: 'bairro_nome',
+      matchProp: 'bairro_key',
       scopeLabel: 'bairro',
       title: 'Grande Fortaleza por bairros',
-      subtitle: 'Bairros metropolitanos. Geometria ainda não disponível.',
+      subtitle: 'Compare bairros metropolitanos por faturamento. Municípios sem bairro no IBGE continuam na camada RMF por municípios.',
       pageTitle: 'Grande Fortaleza por bairros',
       kpiAreasLabel: 'Bairros com venda',
       kpiTopLabel: 'Melhor bairro',
       fitMaxZoom: 11,
-      geometryAvailable: false,
-      geometryMissingMsg: 'Ainda não há geometria de bairros metropolitanos disponível. Use a camada Região Metropolitana por municípios para analisar Caucaia, Maracanaú, Eusébio, Aquiraz e demais cidades.',
+      geometryAvailable: true,
+      sourceBadge: 'IBGE Bairros CD2022',
+      fallbackLayer: 'rmf_municipios',
+      fallbackMsg: 'Alguns municípios da RMF ainda não possuem bairros no IBGE 2022. Eles estão disponíveis na camada Região Metropolitana por municípios.',
     },
     rmf_municipios: {
       geojson: 'assets/geo/rmf_municipios.json',
@@ -282,6 +284,9 @@
       ? feature.properties
       : {};
 
+    // GEO.R1.3 — metro layer uses compound join_key "cidade:bairro" matching API compound bairro_key
+    pushLookupKey(keys, props.join_key);
+    pushLookupKey(keys, props.bairro_key);
     pushLookupKey(keys, props.neighborhood_key);
     pushLookupKey(keys, props.neighborhood_name);
     pushLookupKey(keys, getFeatureNeighborhoodName(feature));
@@ -473,7 +478,12 @@
 
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
-    if (city) params.set('city', city);
+    // GEO.R1.3 — metro layer: pass layer param instead of city (API aggregates all RMF)
+    if (_activeLayer === 'grande_fortaleza_bairros') {
+      params.set('layer', 'grande_fortaleza_bairros');
+    } else {
+      if (city) params.set('city', city);
+    }
     if (neighborhood) params.set('neighborhood', neighborhood);
     if (cnae) params.set('cnae', cnae);
     if (vendedor) params.set('seller_id', vendedor);
@@ -900,11 +910,14 @@
 
   function tooltipHtml(feature) {
     const rawName = getFeatureNeighborhoodName(feature);
+    const props = feature && typeof feature === 'object' && feature.properties ? feature.properties : {};
     const matched = getFeatureCommercialRow(feature, true);
     const row = matched.row;
-    const label = rawName || 'Sem nome';
+    // GEO.R1.3 — use label "Bairro — Município" for metro layer features
+    const label = props.label || rawName || 'Sem nome';
+    const sourceNote = props.source === 'IBGE_BAIRROS_CD2022' ? '<small style="color:#9ca3af">IBGE Bairros 2022</small>' : '';
     if (!row) {
-      return `<div class="biomie-map-tooltip"><strong>${escapeHtml(label)}</strong><span>Sem dados comerciais</span></div>`;
+      return `<div class="biomie-map-tooltip"><strong>${escapeHtml(label)}</strong>${sourceNote ? '<span>' + sourceNote + '</span>' : ''}<span>Sem dados comerciais</span></div>`;
     }
     const revenue = getRowRevenue(row);
     // UX.CHARTS.R1 — participation % in total
@@ -913,6 +926,7 @@
     return `
       <div class="biomie-map-tooltip">
         <strong>${escapeHtml(label)}</strong>
+        ${sourceNote ? '<span>' + sourceNote + '</span>' : ''}
         <span><em>Faturamento</em><b>${formatters.money(revenue)}${sharePct ? ' <small>(' + sharePct + ')</small>' : ''}</b></span>
         <span><em>Clientes</em><b>${formatters.number(row.customers || row.clientes || 0)}</b></span>
         <span><em>Notas</em><b>${formatters.number(row.invoices || row.notas || 0)}</b></span>

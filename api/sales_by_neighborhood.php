@@ -26,6 +26,9 @@ try {
     // Normalized values for SQL binding (state suffix already stripped by MapFilterSupport)
     $cityNorm       = $f['city'] ?? GeoMapSupport::normalizeKey('Fortaleza');
     $neighborhoodNorm = $f['neighborhood'];
+    // GEO.R1.3 — camada metropolitan (aggregate across all RMF cities, compound key)
+    $geoLayer       = trim((string) ($_GET['layer'] ?? ''));
+    $isMetroLayer   = $geoLayer === 'grande_fortaleza_bairros';
 
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
@@ -42,9 +45,11 @@ try {
         'end_comp' => substr($range['date_to'], 0, 7),
     ];
 
-    // City filter always applies (defaults to Fortaleza); include NULL/empty cidade_norm (unenriched rows)
-    $martWhere[] = '(LOWER(TRIM(m.cidade_norm)) = :city OR m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = \'\')';
-    $params['city'] = $cityNorm;
+    // City filter — skip for metro layer which aggregates across all RMF cities.
+    if (!$isMetroLayer) {
+        $martWhere[] = '(LOWER(TRIM(m.cidade_norm)) = :city OR m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = \'\')';
+        $params['city'] = $cityNorm;
+    }
 
     // Resolve bairro_key from request (supports bairro_key, bairro_norm, and neighborhood params).
     $rawBairroKey  = trim((string) ($_GET['bairro_key'] ?? ''));
@@ -89,9 +94,38 @@ try {
 
     $martWhereSql = implode(' AND ', $martWhere);
 
+    // GEO.R1.3 — metro layer: aggregate by (cidade_norm, bairro_norm), compound join_key
+    if ($isMetroLayer) {
+        $sql = "
+            SELECT
+                CONCAT(
+                    LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade'))),
+                    ':',
+                    LOWER(TRIM(COALESCE(NULLIF(m.bairro_norm,''), 'sem_bairro')))
+                )                                                           AS neighborhood_key,
+                CONCAT(
+                    LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade'))),
+                    ':',
+                    LOWER(TRIM(COALESCE(NULLIF(m.bairro_norm,''), 'sem_bairro')))
+                )                                                           AS neighborhood,
+                LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade'))) AS cidade_key_raw,
+                LOWER(TRIM(COALESCE(NULLIF(m.bairro_norm,''), 'sem_bairro'))) AS bairro_norm_raw,
+                SUM(m.faturamento)                                          AS revenue,
+                COUNT(DISTINCT COALESCE(CAST(m.codigo_cliente_omie AS CHAR), m.documento, m.cliente_nome)) AS customers,
+                SUM(m.qtd_notas)                                            AS invoices,
+                IF(SUM(m.qtd_notas)>0, SUM(m.faturamento)/SUM(m.qtd_notas), 0) AS average_ticket,
+                MAX(m.refreshed_at)                                         AS last_materialized_at,
+                1                                                           AS tem_venda
+            FROM mart_compradores_por_geo m
+            WHERE {$martWhereSql}
+              AND LOWER(TRIM(COALESCE(m.bairro_norm,''))) NOT IN ('','nao informado','nao_informado','sem bairro')
+              AND LOWER(TRIM(COALESCE(m.cidade_norm,''))) != ''
+            GROUP BY LOWER(TRIM(m.cidade_norm)), LOWER(TRIM(m.bairro_norm))
+            ORDER BY revenue DESC
+        ";
     // When the official bairros dimension exists, LEFT JOIN it so that all
     // 121 bairros always appear — even those with zero sales in the period.
-    if ($hasBairrosDim && $neighborhood === null) {
+    } elseif ($hasBairrosDim && $neighborhood === null) {
         $sql = "
             SELECT
                 b.bairro_nome                                                          AS neighborhood,
@@ -126,7 +160,7 @@ try {
             GROUP BY COALESCE(NULLIF(m.bairro_norm, ''), 'Nao informado')
             ORDER BY revenue DESC
         ";
-    }
+    } // end query selection
 
     $stmt = $pdo->prepare($sql);
     foreach ($params as $key => $value) {
@@ -144,13 +178,24 @@ try {
     $data = [];
     foreach ($rows as $index => $row) {
         $neighborhoodOriginal = (string) ($row['neighborhood'] ?? 'Nao informado');
-        $neighborhoodName = NeighborhoodNormalizer::displayName($neighborhoodOriginal);
-        // bairro_key: underscore-based stable technical key (new standard)
-        $bairroKeyOut = GeoKeyNormalizer::makeNeighborhoodKey($neighborhoodName !== '' ? $neighborhoodName : $neighborhoodOriginal);
-        // bairro_norm: space-based legacy key (backward compat)
-        $neighborhoodKey = GeoKeyNormalizer::normalizeNeighborhood($neighborhoodName !== '' ? $neighborhoodName : (string) ($row['neighborhood_key'] ?? ''));
-        $cityName = NeighborhoodNormalizer::displayName($city ?? 'Fortaleza');
-        $cityKey  = GeoKeyNormalizer::makeCityKey($cityName);
+
+        // GEO.R1.3 metro layer: neighborhood_key is compound "cidade:bairro" — use as-is for join_key matching
+        if ($isMetroLayer) {
+            $bairroKeyOut    = (string) ($row['neighborhood_key'] ?? '');   // "caucaia:jurema"
+            $neighborhoodKey = $bairroKeyOut;
+            $neighborhoodName = (string) ($row['bairro_norm_raw'] ?? $neighborhoodOriginal);
+            $citaKeyRaw      = (string) ($row['cidade_key_raw'] ?? '');
+            $cityKey         = $citaKeyRaw;
+            $cityName        = NeighborhoodNormalizer::displayName($citaKeyRaw);
+        } else {
+            $neighborhoodName = NeighborhoodNormalizer::displayName($neighborhoodOriginal);
+            // bairro_key: underscore-based stable technical key (new standard)
+            $bairroKeyOut = GeoKeyNormalizer::makeNeighborhoodKey($neighborhoodName !== '' ? $neighborhoodName : $neighborhoodOriginal);
+            // bairro_norm: space-based legacy key (backward compat)
+            $neighborhoodKey = GeoKeyNormalizer::normalizeNeighborhood($neighborhoodName !== '' ? $neighborhoodName : (string) ($row['neighborhood_key'] ?? ''));
+            $cityName = NeighborhoodNormalizer::displayName($city ?? 'Fortaleza');
+            $cityKey  = GeoKeyNormalizer::makeCityKey($cityName);
+        }
         $normalization = NeighborhoodNormalizer::explain($neighborhoodName);
         $aliasApplied = $normalization['alias_applied']['canonical_key'] ?? null;
         $isEmptyNeighborhood = $bairroKeyOut === '' || in_array($bairroKeyOut, ['nao_informado', 'nao-informado', 'nao informado'], true);

@@ -26,6 +26,9 @@ try {
     // Normalized values for SQL binding (state suffix already stripped by MapFilterSupport)
     $cityNorm       = $f['city'] ?? GeoMapSupport::normalizeKey('Fortaleza');
     $neighborhoodNorm = $f['neighborhood'];
+    // GEO.R1.3 — metro layer aggregates across RMF, no single-city restriction
+    $geoLayer       = trim((string) ($_GET['layer'] ?? ''));
+    $isMetroLayer   = $geoLayer === 'grande_fortaleza_bairros';
 
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
@@ -40,9 +43,11 @@ try {
         'end_comp' => substr($range['date_to'], 0, 7),
     ];
 
-    // City filter always applies (defaults to Fortaleza); include NULL/empty cidade_norm (unenriched rows)
-    $where[] = '(LOWER(cidade_norm) = :city OR cidade_norm IS NULL OR TRIM(cidade_norm) = \'\')';
-    $params['city'] = $cityNorm;
+    // City filter — skip for metro layer which aggregates across all RMF cities.
+    if (!$isMetroLayer) {
+        $where[] = '(LOWER(cidade_norm) = :city OR cidade_norm IS NULL OR TRIM(cidade_norm) = \'\')';
+        $params['city'] = $cityNorm;
+    }
 
     if ($neighborhoodNorm !== null) {
         $where[] = 'LOWER(bairro_norm) = :neighborhood';

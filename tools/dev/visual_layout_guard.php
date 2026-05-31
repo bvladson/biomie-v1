@@ -388,13 +388,40 @@ function buildChecks(string $root): array
         checkContains('geo_r1_2_geometry_missing_msg',readFileSafe($root . '/views/mapa_vendas.html'), 'geoGeometryMissingMsg', 'mapa_vendas.html tem geoGeometryMissingMsg para empty state por camada (GEO.R1.2).'),
         checkContains('geo_r1_2_fortaleza_intact',    readFileSafe($root . '/assets/js/biomie-map.js'), "'fortaleza_bairros'", 'biomie-map.js preserva camada fortaleza_bairros (GEO.R1.2).'),
         checkNotContains('geo_r1_2_no_rendermap_bug', readFileSafe($root . '/assets/js/biomie-map.js'), 'renderMap()', 'biomie-map.js sem chamada a renderMap() inexistente — bug corrigido (GEO.R1.2).'),
-        // GEO.R1.3 — RMF bairros via IBGE 2022 [ferramentas de geração]
-        checkContains('geo_r1_3_probe_exists',    file_exists($root . '/tools/dev/geo_rmf_bairros_source_probe.php') ? 'ok' : '', 'ok', 'geo_rmf_bairros_source_probe.php existe (GEO.R1.3 pré-requisito).'),
-        checkContains('geo_r1_3_generator_exists',file_exists($root . '/tools/dev/geo_generate_rmf_bairros.py') ? 'ok' : '', 'ok', 'geo_generate_rmf_bairros.py existe (GEO.R1.3 pré-requisito).'),
-        checkContains('geo_r1_3_probe_rmf_codes', readFileSafe($root . '/tools/dev/geo_rmf_bairros_source_probe.php'), '2304400', 'Probe contém código IBGE Fortaleza (GEO.R1.3).'),
-        checkContains('geo_r1_3_generator_geobr',  readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'geobr.read_neighborhood', 'Gerador usa geobr.read_neighborhood (GEO.R1.3).'),
-        checkContains('geo_r1_3_generator_simplify',readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'simplify_safe', 'Gerador simplifica geometrias para Leaflet (GEO.R1.3).'),
+        // GEO.R1.3 — RMF bairros IBGE 2022 ativado
+        checkContains('geo_r1_3_probe_exists',        file_exists($root . '/tools/dev/geo_rmf_bairros_source_probe.php') ? 'ok' : '', 'ok', 'geo_rmf_bairros_source_probe.php existe (GEO.R1.3).'),
+        checkContains('geo_r1_3_generator_exists',    file_exists($root . '/tools/dev/geo_generate_rmf_bairros.py') ? 'ok' : '', 'ok', 'geo_generate_rmf_bairros.py existe (GEO.R1.3).'),
+        checkContains('geo_r1_3_geojson_exists',      file_exists($root . '/assets/geo/rmf_bairros_ibge_2022.geojson') ? 'ok' : '', 'ok', 'rmf_bairros_ibge_2022.geojson gerado (GEO.R1.3).'),
+        checkContains('geo_r1_3_geojson_source',      (function() use ($root) {
+            $f = $root . '/assets/geo/rmf_bairros_ibge_2022.geojson';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f), true);
+            return ($d['metadata']['source'] ?? '') === 'IBGE_BAIRROS_CD2022' ? 'ok' : '';
+        })(), 'ok', 'rmf_bairros_ibge_2022.geojson tem source=IBGE_BAIRROS_CD2022 (GEO.R1.3).'),
+        checkContains('geo_r1_3_geojson_194',         (function() use ($root) {
+            $f = $root . '/assets/geo/rmf_bairros_ibge_2022.geojson';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f), true);
+            return count($d['features'] ?? []) >= 180 ? 'ok' : '';
+        })(), 'ok', 'rmf_bairros_ibge_2022.geojson tem ≥180 features RMF (GEO.R1.3).'),
+        checkContains('geo_r1_3_layer_active',        readFileSafe($root . '/assets/js/biomie-map.js'), "'grande_fortaleza_bairros'", 'biomie-map.js tem camada grande_fortaleza_bairros (GEO.R1.3).'),
+        checkContains('geo_r1_3_geometry_true',       readFileSafe($root . '/assets/js/biomie-map.js'), 'geometryAvailable: true', 'grande_fortaleza_bairros tem geometryAvailable: true (GEO.R1.3).'),
+        checkContains('geo_r1_3_metro_geojson_url',   readFileSafe($root . '/assets/js/biomie-map.js'), 'rmf_bairros_ibge_2022.geojson', 'biomie-map.js aponta para rmf_bairros_ibge_2022.geojson (GEO.R1.3).'),
+        checkContains('geo_r1_3_join_key_lookup',     readFileSafe($root . '/assets/js/biomie-map.js'), 'props.join_key', 'biomie-map.js inclui join_key no lookup de features (GEO.R1.3).'),
+        checkContains('geo_r1_3_metro_layer_param',   readFileSafe($root . '/assets/js/biomie-map.js'), "'grande_fortaleza_bairros'", 'biomie-map.js passa layer=grande_fortaleza_bairros na API (GEO.R1.3).'),
+        checkContains('geo_r1_3_api_metro_detect',    readFileSafe($root . '/api/sales_by_neighborhood.php'), 'isMetroLayer', 'sales_by_neighborhood.php detecta camada metro (GEO.R1.3).'),
+        checkContains('geo_r1_3_api_compound_key',    readFileSafe($root . '/api/sales_by_neighborhood.php'), 'cidade_key_raw', 'sales_by_neighborhood.php retorna compound key para metro (GEO.R1.3).'),
+        checkContains('geo_r1_3_summary_metro',       readFileSafe($root . '/api/geo_summary.php'), 'isMetroLayer', 'geo_summary.php detecta camada metro (GEO.R1.3).'),
+        checkContains('geo_r1_3_fortaleza_intact',    readFileSafe($root . '/assets/js/biomie-map.js'), "'fortaleza_bairros'", 'fortaleza_bairros preservada intacta (GEO.R1.3).'),
+        checkContains('geo_r1_3_source_badge',        readFileSafe($root . '/assets/js/biomie-map.js'), 'sourceBadge', 'biomie-map.js tem sourceBadge IBGE na camada (GEO.R1.3).'),
+        checkContains('geo_r1_3_fallback_layer',      readFileSafe($root . '/assets/js/biomie-map.js'), 'fallbackLayer', 'biomie-map.js tem fallbackLayer para municípios sem bairros (GEO.R1.3).'),
+        checkContains('geo_r1_3_ibge_tooltip',        readFileSafe($root . '/assets/js/biomie-map.js'), 'IBGE_BAIRROS_CD2022', 'biomie-map.js exibe badge IBGE no tooltip (GEO.R1.3).'),
+        checkContains('geo_r1_3_selector_no_em_breve',readFileSafe($root . '/views/mapa_vendas.html'), 'Grande Fortaleza · Bairros', 'seletor mostra Grande Fortaleza sem "(em breve)" (GEO.R1.3).'),
+        checkNotContains('geo_r1_3_no_em_breve',      readFileSafe($root . '/views/mapa_vendas.html'), 'em breve', 'seletor não tem "(em breve)" (GEO.R1.3).'),
+        checkContains('geo_r1_3_generator_ibge_url',  readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'CE_bairros_CD2022.zip', 'Gerador tem URL canônica IBGE CE_bairros_CD2022.zip (GEO.R1.3).'),
         checkContains('geo_r1_3_generator_bairro_key',readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'bairro_key', 'Gerador produz campo bairro_key compatível com BIomie (GEO.R1.3).'),
+        checkContains('geo_r1_3_generator_join_key',  readFileSafe($root . '/tools/dev/geo_generate_rmf_bairros.py'), 'join_key', 'Gerador produz campo join_key para matching de camada metro (GEO.R1.3).'),
+        checkContains('geo_r1_3_docs_exist',          file_exists($root . '/docs/GEO_R1_3_GRANDE_FORTALEZA_BAIRROS_IBGE_2022.md') ? 'ok' : '', 'ok', 'Documentação GEO_R1_3 existe (GEO.R1.3).'),
     ];
 }
 
