@@ -3028,6 +3028,88 @@ $domains[] = [
     'issues'        => $d36Issues,
 ];
 
+// ── D39 — GEO.R1.1 Geometrias Oficiais IBGE/IPECE [informacional] ─────────────
+
+$d39Issues = [];
+
+// ceara_mun.json com 184 features oficiais
+$cearaMun = $projectRoot . '/assets/geo/ceara_mun.json';
+if (!is_file($cearaMun)) {
+    $d39Issues[] = 'ceara_mun.json ausente';
+} else {
+    $geo39 = json_decode((string)file_get_contents($cearaMun), true);
+    $ct39  = count($geo39['features'] ?? []);
+    if ($ct39 < 184) $d39Issues[] = "ceara_mun.json tem {$ct39} features (esperado 184)";
+    $src39 = $geo39['metadata']['source'] ?? '';
+    if (!str_contains($src39,'IBGE')) $d39Issues[] = "ceara_mun.json: source não menciona IBGE (atual: {$src39})";
+}
+
+// rmf_municipios.json com 19 features derivadas do IBGE
+$rmfMun = $projectRoot . '/assets/geo/rmf_municipios.json';
+if (!is_file($rmfMun)) {
+    $d39Issues[] = 'rmf_municipios.json ausente';
+} else {
+    $geo39r = json_decode((string)file_get_contents($rmfMun), true);
+    $ct39r  = count($geo39r['features'] ?? []);
+    if ($ct39r !== 19) $d39Issues[] = "rmf_municipios.json tem {$ct39r} features (esperado 19)";
+    $derivedFrom = $geo39r['metadata']['derived_from'] ?? '';
+    if (!str_contains(strtolower($derivedFrom),'ceara_mun')) $d39Issues[] = "rmf_municipios.json não derivado de ceara_mun.json";
+}
+
+// ceara_regioes.json com 14 features
+$cearaReg = $projectRoot . '/assets/geo/ceara_regioes.json';
+if (!is_file($cearaReg)) {
+    $d39Issues[] = 'ceara_regioes.json ausente';
+} else {
+    $geo39reg = json_decode((string)file_get_contents($cearaReg), true);
+    $ct39reg  = count($geo39reg['features'] ?? []);
+    if ($ct39reg !== 14) $d39Issues[] = "ceara_regioes.json tem {$ct39reg} regiões (esperado 14)";
+}
+
+// fortaleza_bairros.json intacto (preservado)
+$fortBairros = $projectRoot . '/assets/geo/fortaleza_bairros.json';
+if (!is_file($fortBairros)) {
+    $d39Issues[] = 'CRÍTICO: fortaleza_bairros.json foi removido!';
+} else {
+    $geoFort = json_decode((string)file_get_contents($fortBairros), true);
+    $ct_fort = count($geoFort['features'] ?? []);
+    if ($ct_fort !== 121) $d39Issues[] = "fortaleza_bairros.json tem {$ct_fort} features (esperado 121 — verificar regressão!)";
+}
+
+// Importadores existem
+foreach ([
+    'tools/dev/geo_import_ibge_ce_municipios.php',
+    'tools/dev/geo_import_ipece_regioes.php',
+    'tools/dev/geo_official_geometry_coverage_audit.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d39Issues[] = "Ausente: {$f}";
+}
+
+// Migration de correção existe
+if (!is_file($projectRoot . '/database/migrations/Version20260530200001_GeoTerritoryCeIbgeFix.php')) {
+    $d39Issues[] = 'Migration GeoTerritoryCeIbgeFix ausente';
+}
+
+// Sem polígono manual inventado no ceara_mun
+if (is_file($cearaMun)) {
+    $meta = json_decode((string)file_get_contents($cearaMun), true)['metadata'] ?? [];
+    if (str_contains($meta['source'] ?? '','centroid_approximation')) {
+        $d39Issues[] = 'ceara_mun.json ainda usa polígonos aproximados (centroid_approximation) — importar IBGE oficial';
+    }
+}
+
+$domains[] = [
+    'label'         => 'D39 GEO.R1.1 Geometrias Oficiais IBGE/IPECE',
+    'guard'         => 'ceara_mun(184 IBGE) + rmf(19 derivado) + regioes(14) + fortaleza intacto + importadores',
+    'pass'          => true,
+    'warn'          => count($d39Issues) > 0,
+    'informational' => true,
+    'summary'       => $d39Issues === []
+        ? 'GEO.R1.1 presente: 184 municípios IBGE + 19 RMF + 14 regiões + Fortaleza preservada'
+        : count($d39Issues) . ' item(ns) GEO.R1.1 [informacional]',
+    'issues'        => $d39Issues,
+];
+
 // ── D38 — GEO.R1 Same-Map Ceará / RMF Expansion [informacional] ─────────────
 
 $d38Issues = [];

@@ -325,6 +325,54 @@ function buildChecks(string $root): array
         checkContains('geo_r1_geometry_audit',      file_exists($root . '/tools/dev/geo_geometry_audit.php') ? 'ok' : '', 'ok', 'geo_geometry_audit.php existe (GEO.R1).'),
         checkContains('geo_r1_consistency_audit',   file_exists($root . '/tools/dev/geo_layer_consistency_audit.php') ? 'ok' : '', 'ok', 'geo_layer_consistency_audit.php existe (GEO.R1).'),
         checkContains('geo_r1_current_audit',       file_exists($root . '/tools/dev/geo_current_map_audit.php') ? 'ok' : '', 'ok', 'geo_current_map_audit.php existe (GEO.R1).'),
+
+        // GEO.R1.1 — Geometrias Oficiais IBGE/IPECE
+        checkContains('geo_r1_1_ibge_importer',     file_exists($root . '/tools/dev/geo_import_ibge_ce_municipios.php') ? 'ok' : '', 'ok', 'geo_import_ibge_ce_municipios.php existe (GEO.R1.1).'),
+        checkContains('geo_r1_1_ipece_importer',    file_exists($root . '/tools/dev/geo_import_ipece_regioes.php') ? 'ok' : '', 'ok', 'geo_import_ipece_regioes.php existe (GEO.R1.1).'),
+        checkContains('geo_r1_1_coverage_audit',    file_exists($root . '/tools/dev/geo_official_geometry_coverage_audit.php') ? 'ok' : '', 'ok', 'geo_official_geometry_coverage_audit.php existe (GEO.R1.1).'),
+        checkContains('geo_r1_1_ibge_fix_migration',file_exists($root . '/database/migrations/Version20260530200001_GeoTerritoryCeIbgeFix.php') ? 'ok' : '', 'ok', 'Migration GeoTerritoryCeIbgeFix existe (GEO.R1.1).'),
+        checkContains('geo_r1_1_ceara_mun_184',     (function() use ($root) {
+            $f = $root.'/assets/geo/ceara_mun.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return count($d['features']??[]) >= 184 ? 'ok' : '';
+        })(), 'ok', 'ceara_mun.json tem ≥184 features IBGE (GEO.R1.1).'),
+        checkContains('geo_r1_1_ceara_mun_source',  (function() use ($root) {
+            $f = $root.'/assets/geo/ceara_mun.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return str_contains($d['metadata']['source']??'','IBGE') ? 'ok' : '';
+        })(), 'ok', 'ceara_mun.json source=IBGE oficial (GEO.R1.1).'),
+        checkContains('geo_r1_1_rmf_19',            (function() use ($root) {
+            $f = $root.'/assets/geo/rmf_municipios.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return count($d['features']??[]) === 19 ? 'ok' : '';
+        })(), 'ok', 'rmf_municipios.json tem 19 features IBGE-derivadas (GEO.R1.1).'),
+        checkContains('geo_r1_1_rmf_derived',       (function() use ($root) {
+            $f = $root.'/assets/geo/rmf_municipios.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return str_contains(strtolower($d['metadata']['derived_from']??''),'ceara_mun') ? 'ok' : '';
+        })(), 'ok', 'rmf_municipios.json derivado de ceara_mun.json (GEO.R1.1).'),
+        checkContains('geo_r1_1_regioes_14',        (function() use ($root) {
+            $f = $root.'/assets/geo/ceara_regioes.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return count($d['features']??[]) === 14 ? 'ok' : '';
+        })(), 'ok', 'ceara_regioes.json tem 14 regiões (GEO.R1.1).'),
+        checkContains('geo_r1_1_fortaleza_intact',   (function() use ($root) {
+            $f = $root.'/assets/geo/fortaleza_bairros.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return count($d['features']??[]) === 121 ? 'ok' : '';
+        })(), 'ok', 'fortaleza_bairros.json intacto com 121 features (GEO.R1.1).'),
+        checkNotContains('geo_r1_1_no_approx_ceara', (function() use ($root) {
+            $f = $root.'/assets/geo/ceara_mun.json';
+            if (!file_exists($f)) return '';
+            $d = json_decode(file_get_contents($f),true);
+            return $d['metadata']['source']??'';
+        })(), 'centroid_approximation', 'ceara_mun.json sem polígonos de aproximação (GEO.R1.1).'),
     ];
 }
 
