@@ -13,7 +13,7 @@
       pageTitle: 'Fortaleza por bairros',
       kpiAreasLabel: 'Bairros com venda',
       kpiTopLabel: 'Melhor bairro',
-      fitMaxZoom: 13,
+      fitMaxZoom: 11,
       geometryAvailable: true,
     },
     grande_fortaleza_bairros: {

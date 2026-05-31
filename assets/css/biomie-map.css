@@ -27,8 +27,8 @@
 .geo-main-grid {
   grid-template-columns: minmax(0, 1fr) 420px;
   align-items: stretch;
-  height: clamp(560px, 68vh, 680px);
-  min-height: 560px;
+  height: clamp(640px, 80vh, 880px);
+  min-height: 640px;
   overflow: hidden;
 }
 
@@ -485,13 +485,13 @@
   }
 
   .geo-map-card .biomie-map-canvas-wrap {
-    height: 520px;
+    height: 600px;
     flex: 0 0 auto;
   }
 
   .geo-ranking-scroll {
-    height: 420px;
-    max-height: 420px;
+    height: 480px;
+    max-height: 480px;
     flex: 0 1 auto;
   }
 
@@ -511,12 +511,12 @@
   }
 
   .geo-map-card .biomie-map-canvas-wrap {
-    height: 360px;
+    height: 440px;
   }
 
   .geo-map-card #map-container {
-    height: 360px;
-    min-height: 360px;
+    height: 440px;
+    min-height: 440px;
   }
 
   .biomie-panel-kpis {
