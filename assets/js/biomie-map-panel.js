@@ -123,13 +123,32 @@
 
   function renderNeighborhood(row, formatters) {
     const data = row || {};
-    const nbName  = data.neighborhood || data.bairro_nome || data.municipio_nome || 'Território';
-    const nbKey   = data.neighborhood_key || data.bairro_key || normalizeKey(nbName);
-    const city    = data.city || data.municipio_nome || 'Ceará';
-    // GEO.R1.8.1 — usar municipio real, não fixo "Fortaleza"
-    const subtitle = city ? `${city} · Ceará` : 'Ceará';
+    const nbKey   = data.neighborhood_key || data.bairro_key || '';
+
+    // GEO.R1.9.2 — resolveTerritoryDisplay: correct title/subtitle per territory type
+    const ttype = data.territory_type || '';
+    let nbName, subtitle;
+    if (ttype === 'fortaleza_bairro') {
+      nbName   = data.bairro_nome || data.neighborhood || 'Bairro';
+      subtitle = 'Fortaleza · Ceará';
+    } else if (ttype === 'metro_bairro') {
+      nbName   = data.bairro_nome || data.neighborhood || 'Bairro';
+      const muni = data.municipio_nome || data.city || '';
+      subtitle = muni ? `${muni} · Ceará` : 'Grande Fortaleza · Ceará';
+    } else if (ttype === 'rmf_municipio_fallback') {
+      nbName   = data.municipio_nome || data.city || data.neighborhood || 'Município';
+      subtitle = 'Metrópole Fortaleza · Ceará';
+    } else if (ttype === 'ceara_municipio') {
+      nbName   = data.municipio_nome || data.city || data.neighborhood || 'Município';
+      subtitle = 'Ceará';
+    } else {
+      nbName   = data.neighborhood || data.bairro_nome || data.municipio_nome || 'Território';
+      const city = data.city || data.municipio_nome || '';
+      subtitle = city ? `${city} · Ceará` : 'Ceará';
+    }
+
+    const _nbKey = nbKey || normalizeKey(nbName);
     // Territory type badge
-    const ttype   = data.territory_type || '';
     const ttDef   = TERRITORY_TYPE_LABELS[ttype] || null;
 
     text('selectedFeatureBadge', ttDef ? ttDef.label : nbName);
@@ -150,10 +169,11 @@
     }
 
     const geo360El = document.getElementById('geo360Btn');
-    if (geo360El && nbKey) {
-      geo360El.setAttribute('data-neighborhood-key', nbKey);
+    if (geo360El && _nbKey) {
+      const cityForBtn = data.city || data.municipio_nome || '';
+      geo360El.setAttribute('data-neighborhood-key', _nbKey);
       geo360El.setAttribute('data-neighborhood-name', nbName);
-      geo360El.setAttribute('data-city', city);
+      geo360El.setAttribute('data-city', cityForBtn);
       geo360El.style.display = '';
     }
 

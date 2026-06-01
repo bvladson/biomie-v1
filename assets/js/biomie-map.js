@@ -1893,10 +1893,29 @@
   }
 
   // GEO.R1 — aplica a camada selecionada: recarrega GeoJSON + dados
+  // GEO.R1.9.2 — Sanitize UI filters when switching to multi-city layers
+  function sanitizeGeoFiltersForLayer(newLayerId) {
+    const nbFilter   = $('neighborhoodFilter');
+    const multiCity  = ['grande_fortaleza_bairros','rmf_municipios','ceara_municipios','metro_todas_municipios','metro_sobral_municipios','metro_cariri_municipios','mapa_composto_ceara'];
+    if (multiCity.includes(newLayerId)) {
+      if (nbFilter && nbFilter.value) {
+        nbFilter.value = '';
+        const note = document.createElement('div');
+        note.className = 'geo-filter-sanitize-note';
+        note.textContent = 'Filtro de bairro removido para esta visão';
+        note.style.cssText = 'position:fixed;bottom:80px;right:16px;background:#1e293b;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;z-index:9999;opacity:0;transition:opacity .3s;';
+        document.body.appendChild(note);
+        requestAnimationFrame(() => { note.style.opacity = '1'; });
+        setTimeout(() => { note.style.opacity = '0'; setTimeout(() => note.remove(), 350); }, 2500);
+      }
+    }
+  }
+
   function applyGeoLayer() {
     const sel = $('geoLayerSelector');
     const newLayer = sel ? sel.value : DEFAULT_LAYER;
     if (!GEO_LAYERS[newLayer]) return;
+    sanitizeGeoFiltersForLayer(newLayer);
     _activeLayer = newLayer;
 
     // Atualiza URL sem reload
@@ -1969,6 +1988,7 @@
     $('geoMetricSelector')?.addEventListener('change', () => {
       if (state.geoLayer && state.geoJson) renderGeoLayer();
     });
+    $('geoMapModeSelector')?.addEventListener('change', (e) => applyMapMode(e.target.value));
 
     $('applyFilters')?.addEventListener('click', () => {
       state.selectedKey = '';
@@ -2228,7 +2248,8 @@
       setText('geoKpiClients',  formatters.number(summary.clientes || 0));
       setText('geoKpiNotes',    formatters.number(summary.notas || 0));
       setText('geoKpiNoArea',   formatters.number(summary.sem_bairro || 0));
-      const topRanking = (salesPayload.ranking || []).find(r => (r.revenue || 0) > 0);
+      // GEO.R1.9.2 — exclude sem_cidade from best territory
+      const topRanking = (salesPayload.ranking || []).find(r => (r.revenue || 0) > 0 && r.cidade_key !== 'sem_cidade' && r.join_key !== 'sem_cidade');
       setText('geoKpiTopArea', topRanking
         ? (topRanking.bairro_norm ? `${topRanking.bairro_norm} — ${topRanking.cidade_key}` : topRanking.cidade_key)
         : 'Sem território com venda');
@@ -2822,12 +2843,22 @@
     const dt = params.get('date_to')   || '';
 
     if (!items.length) {
-      panel.innerHTML = `
-        <div style="padding:20px;text-align:center;color:var(--mag-muted);">
-          <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;">receipt_long</span>
-          <strong>Sem notas fiscais</strong>
-          <p style="font-size:12px;margin:4px 0 0;">Nenhuma NF encontrada para este território no período.</p>
+      // GEO.R1.9.2 — Contract mismatch detection
+      const rowNotas = Number(row?.invoices || row?.notas || 0);
+      if (rowNotas > 0) {
+        panel.innerHTML = `
+            <div style="padding:16px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;margin:8px 0;">
+                <strong style="color:#92400e;">Contrato territorial não resolvido</strong>
+                <p style="font-size:12px;color:#78350f;margin:4px 0 0;">Este território tem <strong>${rowNotas}</strong> nota(s) no resumo, mas a lista de NFs retornou vazia. Possível divergência entre mart e canonical. <br>Código: <code>GEO_R1_9_2_INVOICE_CONTRACT_MISMATCH</code></p>
+            </div>`;
+        console.warn('GEO_R1_9_2_INVOICE_CONTRACT_MISMATCH', { row, data });
+      } else {
+        panel.innerHTML = `<div style="padding:20px;text-align:center;color:var(--mag-muted);">
+            <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;">receipt_long</span>
+            <strong>Sem notas fiscais</strong>
+            <p style="font-size:12px;margin:4px 0 0;">Nenhuma NF encontrada para este território no período.</p>
         </div>`;
+      }
       return;
     }
     const summaryHtml = `
@@ -2945,14 +2976,21 @@
   }
 
   // Build URL params for territory-specific API calls
+  // GEO.R1.9.2 — only pass date + commercial scope; NOT UI city/neighborhood (they contaminate cross-city lookups)
   function buildTerritoryParams(row) {
-    const params = currentFilters();
+    const cf = currentFilters();
+    const params = new URLSearchParams();
+    ['date_from','date_to','seller_id','cnae','scope'].forEach(k => { if (cf.get(k)) params.set(k, cf.get(k)); });
+
     const cidadeKey = row.city_key || row.cidade_key || normalizeNeighborhoodKey(row.city || row.municipio_nome || '');
     const bairroKey = row.bairro_key || normalizeNeighborhoodKey(row.bairro_nome || row.neighborhood || '');
     const ttype     = row.territory_type || '';
+    const joinKey   = row.join_key || row.bairro_norm || '';
+
     params.set('cidade_key',     cidadeKey);
     params.set('bairro_key',     bairroKey);
     params.set('territory_type', ttype);
+    if (joinKey) params.set('join_key', joinKey);
     return params;
   }
 
@@ -3064,6 +3102,100 @@
       });
     },
   };
+
+  // ── GEO.R1.9.2 — GeoBubbleMode ───────────────────────────────────────────
+
+  const GeoBubbleMode = {
+    _layer: null,
+    _active: false,
+
+    clear(map) {
+      if (this._layer) { map?.removeLayer(this._layer); this._layer = null; }
+      this._active = false;
+    },
+
+    getBubbleRadius(value, maxValue) {
+      if (!maxValue || maxValue <= 0) return 5;
+      return Math.max(5, Math.min(38, Math.round(Math.sqrt(value / maxValue) * 38)));
+    },
+
+    getBubbleColor(territoryType) {
+      const colors = {
+        fortaleza_bairro:       '#3b82f6',
+        metro_bairro:           '#22c55e',
+        rmf_municipio_fallback: '#8b5cf6',
+        ceara_municipio:        '#f59e0b',
+      };
+      return colors[territoryType] || '#64748b';
+    },
+
+    render(map, rows, onClickRow, fmts) {
+      this.clear(map);
+      if (!map || !rows?.length) return;
+      const withRevenue = rows.filter(r => (r.revenue || 0) > 0 && r.cidade_key !== 'sem_cidade');
+      if (!withRevenue.length) return;
+      const maxRev = Math.max(...withRevenue.map(r => r.revenue || 0));
+      const markers = [];
+      withRevenue.forEach(row => {
+        const lat = row.centroid_lat || row.lat;
+        const lng = row.centroid_lng || row.lng;
+        if (!lat || !lng) return;
+        const radius = this.getBubbleRadius(row.revenue || 0, maxRev);
+        const color  = this.getBubbleColor(row.territory_type || '');
+        const marker = L.circleMarker([lat, lng], {
+          radius, color, weight: 1.5, opacity: 0.8,
+          fillColor: color, fillOpacity: 0.35,
+          className: 'geo-bubble-marker',
+        });
+        const name = row.bairro_norm ? `${row.bairro_norm} — ${row.cidade_key}` : (row.municipio_nome || row.cidade_key || '');
+        marker.bindTooltip(`
+          <strong>${escapeHtml(name)}</strong><br>
+          Faturamento: ${fmts.money(row.revenue || 0)}<br>
+          Clientes: ${fmts.number(row.customers || 0)}<br>
+          Notas: ${fmts.number(row.invoices || 0)}
+        `, { sticky: true, className: 'geo-bubble-tooltip' });
+        marker.on('click', () => onClickRow(row));
+        markers.push(marker);
+      });
+      this._layer = L.layerGroup(markers);
+      this._layer.addTo(map);
+      this._active = true;
+    },
+  };
+
+  // Extract centroid from GeoJSON feature
+  function extractCentroid(feature) {
+    try {
+      const bounds = L.geoJSON(feature).getBounds();
+      const center = bounds.getCenter();
+      return { lat: center.lat, lng: center.lng };
+    } catch { return null; }
+  }
+
+  function applyMapMode(mode) {
+    const map = state.map;
+    if (!map) return;
+    const bubbleRows = state.compositeRows || state.rows || [];
+    const onClickBubble = (row) => {
+      state.selectedKey = row.join_key || row.cidade_key || '';
+      loadPanelData(row);
+      openNeighborhoodDrawer(null);
+    };
+    if (mode === 'bubbles') {
+      if (state.geoLayer) state.geoLayer.setStyle(f => ({ ...featureStyle(f), fillOpacity: 0, opacity: 0.3 }));
+      GeoBubbleMode.render(map, bubbleRows, onClickBubble, formatters);
+      document.body.classList.add('geo-map-mode-bubbles');
+    } else if (mode === 'hybrid') {
+      if (state.geoLayer) state.geoLayer.setStyle(f => ({ ...featureStyle(f), fillOpacity: (featureStyle(f).fillOpacity || 0.4) * 0.4 }));
+      GeoBubbleMode.render(map, bubbleRows, onClickBubble, formatters);
+      document.body.classList.remove('geo-map-mode-bubbles');
+    } else {
+      GeoBubbleMode.clear(map);
+      if (state.geoLayer) state.geoLayer.setStyle(featureStyle);
+      document.body.classList.remove('geo-map-mode-bubbles');
+    }
+    state._mapMode = mode;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // GEO.R1.8.6 — Seleção manual de área + Comparação de territórios

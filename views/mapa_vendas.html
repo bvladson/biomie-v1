@@ -35,20 +35,6 @@
       </section>
 
       <section class="dashboard-controls">
-        <!-- GEO.R1.8.1 — Chips de foco territorial (modo visual primário) -->
-        <div class="geo-focus-chips anim d1" id="geoFocusChips" role="group" aria-label="Foco territorial do mapa">
-          <button type="button" class="geo-focus-chip geo-focus-chip--active" data-layer="mapa_composto_ceara" aria-pressed="true">
-            <span class="material-symbols-rounded">map</span>Visão completa
-          </button>
-          <button type="button" class="geo-focus-chip" data-layer="fortaleza_bairros" aria-pressed="false">Fortaleza</button>
-          <button type="button" class="geo-focus-chip" data-layer="grande_fortaleza_bairros" aria-pressed="false">Grande Fortaleza</button>
-          <button type="button" class="geo-focus-chip" data-layer="rmf_municipios" aria-pressed="false">RMF</button>
-          <button type="button" class="geo-focus-chip" data-layer="ceara_municipios" aria-pressed="false">Ceará municípios</button>
-          <button type="button" class="geo-focus-chip" data-layer="metro_todas_municipios" aria-pressed="false">Metrópoles</button>
-          <button type="button" class="geo-focus-chip" data-layer="metro_sobral_municipios" aria-pressed="false">Sobral</button>
-          <button type="button" class="geo-focus-chip" data-layer="metro_cariri_municipios" aria-pressed="false">Cariri</button>
-        </div>
-
         <!-- GEO.R1 / GEO.R1.8.1 — Seletores de camada e escopo -->
         <div class="filter-bar biomie-map-toolbar anim d1" style="margin-bottom:6px;">
           <div class="filter-group">
@@ -86,6 +72,16 @@
               <option value="nfs">NFs</option>
               <option value="clientes">Clientes</option>
               <option value="ticket_medio">Ticket médio</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="geoMapModeSelector">Tipo de mapa</label>
+            <select id="geoMapModeSelector" class="filter-input" aria-label="Tipo de visualização do mapa">
+              <option value="territories" selected>Territórios</option>
+              <option value="bubbles">Bolhas proporcionais</option>
+              <option value="hybrid">Híbrido</option>
+              <option value="heat">Calor</option>
+              <option value="quality">Qualidade</option>
             </select>
           </div>
           <div class="filter-group">

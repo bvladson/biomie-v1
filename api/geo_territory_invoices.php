@@ -83,6 +83,25 @@ try {
         } catch (\Throwable) { $visScope = ''; }
     }
 
+    // GEO.R1.9.2 — Try mart-based client lookup for consistent data (avoids INNER JOIN miss)
+    $martTable = 'mart_compradores_por_geo';
+    $useMartLookup = false;
+    $martClientCodes = [];
+
+    if ($ttype !== 'fortaleza_bairro' && $ttype !== 'metro_bairro' && Http::tableExists($pdo, $martTable)) {
+        $startComp = substr($f['date_from'], 0, 7);
+        $endComp   = substr($f['date_to'],   0, 7);
+        $martWhere  = ['competencia BETWEEN :mc_s AND :mc_e', 'LOWER(TRIM(cidade_norm)) = :mc_cidade'];
+        $martParams = [':mc_s' => $startComp, ':mc_e' => $endComp, ':mc_cidade' => $cidadeKey];
+        try {
+            $stmtCodes = $pdo->prepare("SELECT DISTINCT codigo_cliente_omie FROM {$martTable} WHERE " . implode(' AND ', $martWhere) . " AND codigo_cliente_omie IS NOT NULL LIMIT 500");
+            foreach ($martParams as $k => $v) $stmtCodes->bindValue($k, $v);
+            $stmtCodes->execute();
+            $martClientCodes = array_column($stmtCodes->fetchAll(\PDO::FETCH_ASSOC), 'codigo_cliente_omie');
+            $useMartLookup = !empty($martClientCodes);
+        } catch (\Throwable) { $useMartLookup = false; }
+    }
+
     // ── Filtros WHERE ────────────────────────────────────────────────────────
     $where  = ["nf.status_fiscal = 'autorizada'"];
     $params = [
@@ -93,20 +112,26 @@ try {
     // Filtro de data
     $where[] = 'DATE(COALESCE(nf.data_competencia, nf.data_emissao)) BETWEEN :date_from AND :date_to';
 
-    // Filtro territorial via JOIN com geo_dim
-    if ($ttype === 'fortaleza_bairro' && $bairroKey !== '') {
-        $where[] = "LOWER(TRIM(geo.cidade_norm)) = 'fortaleza'";
-        $where[] = 'geo.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key';
-        $params[':bairro_key'] = $bairroKey;
-    } elseif ($ttype === 'metro_bairro' && $bairroKey !== '') {
-        $where[] = 'LOWER(TRIM(geo.cidade_norm)) = :cidade';
-        $where[] = 'geo.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key';
-        $params[':cidade']    = $cidadeKey;
-        $params[':bairro_key'] = $bairroKey;
+    if ($useMartLookup) {
+        // GEO.R1.9.2 — Use mart-derived client list: no mandatory geo JOIN required
+        $codePlaceholders = implode(',', array_fill(0, count($martClientCodes), '?'));
+        $where[] = "nf.codigo_cliente_omie IN ({$codePlaceholders})";
     } else {
-        // Municipality — all NFs for this city (aggregated)
-        $where[] = 'LOWER(TRIM(geo.cidade_norm)) = :cidade';
-        $params[':cidade'] = $cidadeKey;
+        // Filtro territorial via JOIN com geo_dim (original path)
+        if ($ttype === 'fortaleza_bairro' && $bairroKey !== '') {
+            $where[] = "LOWER(TRIM(geo.cidade_norm)) = 'fortaleza'";
+            $where[] = 'geo.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key';
+            $params[':bairro_key'] = $bairroKey;
+        } elseif ($ttype === 'metro_bairro' && $bairroKey !== '') {
+            $where[] = 'LOWER(TRIM(geo.cidade_norm)) = :cidade';
+            $where[] = 'geo.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key';
+            $params[':cidade']    = $cidadeKey;
+            $params[':bairro_key'] = $bairroKey;
+        } else {
+            // Municipality — all NFs for this city (aggregated)
+            $where[] = 'LOWER(TRIM(geo.cidade_norm)) = :cidade';
+            $params[':cidade'] = $cidadeKey;
+        }
     }
 
     // Filtro de vendedor
@@ -129,6 +154,9 @@ try {
     $vendedorCol = $hasVendedor ? 'MAX(nf.nome_vendedor)' : "''";
     $chaveCol    = $hasChaveNfe ? 'MAX(nf.chave_nfe)' : "''";
 
+    // Build JOIN clause: LEFT JOIN geo for display columns (mart path), INNER JOIN for filter path
+    $geoJoinType = $useMartLookup ? 'LEFT' : 'INNER';
+
     // ── Resumo ────────────────────────────────────────────────────────────────
     $stmtSum = $pdo->prepare("
         SELECT
@@ -136,10 +164,15 @@ try {
             COALESCE(SUM(nf.{$hasValorNfe}), 0)     AS valor_total,
             COUNT(DISTINCT COALESCE(CAST(nf.codigo_cliente_omie AS CHAR), nf.documento_cliente, nf.nome_cliente)) AS clientes
         FROM {$nfTable} nf
-        INNER JOIN {$geoTable} geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
+        {$geoJoinType} JOIN {$geoTable} geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
         WHERE {$whereSql} {$visScope}
     ");
     foreach ($params as $k => $v) $stmtSum->bindValue($k, $v);
+    if ($useMartLookup) {
+        foreach (array_values($martClientCodes) as $idx => $code) {
+            $stmtSum->bindValue($idx + 1, $code);
+        }
+    }
     $stmtSum->execute();
     $sumRow = $stmtSum->fetch(\PDO::FETCH_ASSOC) ?: [];
 
@@ -162,13 +195,18 @@ try {
             {$vendedorCol}                           AS vendedor_nome,
             COALESCE(SUM(nf.{$hasValorNfe}), 0)     AS valor
         FROM {$nfTable} nf
-        INNER JOIN {$geoTable} geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
+        {$geoJoinType} JOIN {$geoTable} geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
         WHERE {$whereSql} {$visScope}
         GROUP BY nf.id
         ORDER BY data_emissao DESC, valor DESC
         LIMIT :lim OFFSET :off
     ");
     foreach ($params as $k => $v) $stmtList->bindValue($k, $v);
+    if ($useMartLookup) {
+        foreach (array_values($martClientCodes) as $idx => $code) {
+            $stmtList->bindValue($idx + 1, $code);
+        }
+    }
     $stmtList->bindValue(':lim', $perPage, \PDO::PARAM_INT);
     $stmtList->bindValue(':off', $offset,  \PDO::PARAM_INT);
     $stmtList->execute();

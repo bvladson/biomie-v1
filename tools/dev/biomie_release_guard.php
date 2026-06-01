@@ -3320,6 +3320,44 @@ $domains[] = [
     'issues'        => $d40Issues,
 ];
 
+// ── D41 — GEO.R1.9.2 Hardening + Bubble Mode [informacional] ─────────────────
+
+$d41Issues = [];
+
+$mapJs     = is_file($projectRoot . '/assets/js/biomie-map.js')
+    ? file_get_contents($projectRoot . '/assets/js/biomie-map.js') : '';
+$panelJs   = is_file($projectRoot . '/assets/js/biomie-map-panel.js')
+    ? file_get_contents($projectRoot . '/assets/js/biomie-map-panel.js') : '';
+$mapCss    = is_file($projectRoot . '/assets/css/biomie-map.css')
+    ? file_get_contents($projectRoot . '/assets/css/biomie-map.css') : '';
+$mapaHtml  = is_file($projectRoot . '/views/mapa_vendas.html')
+    ? file_get_contents($projectRoot . '/views/mapa_vendas.html') : '';
+$invApi    = is_file($projectRoot . '/api/geo_territory_invoices.php')
+    ? file_get_contents($projectRoot . '/api/geo_territory_invoices.php') : '';
+
+if (!str_contains($mapJs, 'GEO_R1_9_2_INVOICE_CONTRACT_MISMATCH')) $d41Issues[] = 'biomie-map.js: contract mismatch detection ausente';
+if (!str_contains($mapJs, "['date_from','date_to','seller_id','cnae','scope']")) $d41Issues[] = 'biomie-map.js: buildTerritoryParams clean ausente';
+if (!str_contains($mapJs, 'sanitizeGeoFiltersForLayer')) $d41Issues[] = 'biomie-map.js: sanitizeGeoFiltersForLayer ausente';
+if (!str_contains($mapJs, "cidade_key !== 'sem_cidade'")) $d41Issues[] = 'biomie-map.js: sem_cidade exclusion ausente';
+if (!str_contains($mapJs, 'GeoBubbleMode')) $d41Issues[] = 'biomie-map.js: GeoBubbleMode ausente';
+if (!str_contains($mapaHtml, 'geoMapModeSelector')) $d41Issues[] = 'mapa_vendas.html: geoMapModeSelector ausente';
+if (str_contains($mapaHtml, 'geo-focus-chips')) $d41Issues[] = 'mapa_vendas.html: geo-focus-chips ainda presente (deve ser removido)';
+if (!str_contains($panelJs, 'fortaleza_bairro')) $d41Issues[] = 'biomie-map-panel.js: resolveTerritoryDisplay ausente';
+if (!str_contains($mapCss, 'geo-bubble-marker')) $d41Issues[] = 'biomie-map.css: geo-bubble-marker CSS ausente';
+if (!str_contains($invApi, 'useMartLookup')) $d41Issues[] = 'geo_territory_invoices.php: mart lookup ausente';
+
+$domains[] = [
+    'label'         => 'D41 GEO.R1.9.2 Hardening + Bubble Mode',
+    'guard'         => 'mart lookup + buildTerritoryParams clean + sanitize + sem_cidade + GeoBubbleMode + geoMapModeSelector + chips removed',
+    'pass'          => true,
+    'warn'          => count($d41Issues) > 0,
+    'informational' => true,
+    'summary'       => $d41Issues === []
+        ? 'GEO.R1.9.2 presente: mart lookup NF + filter sanitize + sem_cidade fix + GeoBubbleMode + map mode selector'
+        : count($d41Issues) . ' item(ns) GEO.R1.9.2 ausente(s) [informacional]',
+    'issues'        => $d41Issues,
+];
+
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';

@@ -488,7 +488,7 @@ function buildChecks(string $root): array
         checkContains('geo_r1_7_docs',               file_exists($root . '/docs/GEO_R1_7_MAPA_COMPOSTO_INTELIGENTE_CEARA.md') ? 'ok' : '', 'ok', 'Documentação GEO_R1_7 existe (GEO.R1.7).'),
 
         // GEO.R1.8 — Mapa Comercial Inteligente
-        checkContains('geo_r1_8_focus_chips',        readFileSafe($root . '/views/mapa_vendas.html'), 'geoFocusChips', 'mapa_vendas.html tem geoFocusChips — chips de foco territorial (GEO.R1.8.1).'),
+        checkContains('geo_r1_8_focus_chips',        readFileSafe($root . '/views/mapa_vendas.html'), 'geoLayerSelector', 'mapa_vendas.html tem geoLayerSelector — seletor de camada territorial (GEO.R1.8.1 superseded by GEO.R1.9.2).'),
         checkContains('geo_r1_8_mode_chips',         readFileSafe($root . '/views/mapa_vendas.html'), 'geoModeChips', 'mapa_vendas.html tem geoModeChips — chips de modo visual (GEO.R1.8.1).'),
         checkContains('geo_r1_8_drawer_tabs',        readFileSafe($root . '/views/mapa_vendas.html'), 'geoDrawerTabs', 'mapa_vendas.html tem geoDrawerTabs — Territory 360 stub (GEO.R1.8.2).'),
         checkContains('geo_r1_8_insights_panel',     readFileSafe($root . '/views/mapa_vendas.html'), 'geoInsightsCard', 'mapa_vendas.html tem geoInsightsCard — painel de insights (GEO.R1.8.1).'),
@@ -565,6 +565,18 @@ function buildChecks(string $root): array
         checkContains('geo_r191_ver_mapa_pedidos',   readFileSafe($root . '/views/pedidos.html'), 'pedidosMapLink', 'pedidos.html tem link pedidosMapLink (GEO.R1.9.1).'),
         checkContains('geo_r191_cnae_strip_index',   readFileSafe($root . '/views/index.html'), 'indexGeoCnaeStrip', 'index.html tem indexGeoCnaeStrip (GEO.R1.9.1).'),
         checkContains('geo_r191_smoke_probe',         file_exists($root . '/tools/dev/geo_r191_smoke_probe.php') ? 'ok' : '', 'ok', 'geo_r191_smoke_probe.php existe (GEO.R1.9.1).'),
+
+        // GEO.R1.9.2 — Hardening + Bubble Mode
+        checkContains('geo_r192_build_territory_params_fix', readFileSafe($root . '/assets/js/biomie-map.js'), 'GEO_R1_9_2_INVOICE_CONTRACT_MISMATCH', 'biomie-map.js tem contract mismatch detection (GEO.R1.9.2).'),
+        checkContains('geo_r192_territory_params_clean',     readFileSafe($root . '/assets/js/biomie-map.js'), "['date_from','date_to','seller_id','cnae','scope']", 'buildTerritoryParams não contamina com city/neighborhood (GEO.R1.9.2).'),
+        checkContains('geo_r192_sanitize_geo_filters',       readFileSafe($root . '/assets/js/biomie-map.js'), 'sanitizeGeoFiltersForLayer', 'sanitizeGeoFiltersForLayer presente (GEO.R1.9.2).'),
+        checkContains('geo_r192_sem_cidade_excluded',        readFileSafe($root . '/assets/js/biomie-map.js'), "cidade_key !== 'sem_cidade'", 'sem_cidade excluído do melhor território (GEO.R1.9.2).'),
+        checkContains('geo_r192_bubble_mode',                readFileSafe($root . '/assets/js/biomie-map.js'), 'GeoBubbleMode', 'GeoBubbleMode presente (GEO.R1.9.2).'),
+        checkContains('geo_r192_map_mode_selector',          readFileSafe($root . '/views/mapa_vendas.html'), 'geoMapModeSelector', 'views/mapa_vendas.html tem geoMapModeSelector (GEO.R1.9.2).'),
+        checkContains('geo_r192_chips_removed',              strpos(readFileSafe($root . '/views/mapa_vendas.html'), 'geo-focus-chips') === false ? 'ok' : '', 'ok', 'Chips redundantes removidos de mapa_vendas.html (GEO.R1.9.2).'),
+        checkContains('geo_r192_resolve_territory_display',  readFileSafe($root . '/assets/js/biomie-map-panel.js'), 'fortaleza_bairro', 'biomie-map-panel.js tem resolveTerritoryDisplay (GEO.R1.9.2).'),
+        checkContains('geo_r192_bubble_css',                 readFileSafe($root . '/assets/css/biomie-map.css'), 'geo-bubble-marker', 'CSS geo-bubble-marker existe (GEO.R1.9.2).'),
+        checkContains('geo_r192_mart_lookup_invoices',       readFileSafe($root . '/api/geo_territory_invoices.php'), 'useMartLookup', 'geo_territory_invoices.php usa mart lookup (GEO.R1.9.2).'),
     ];
 }
 

@@ -114,6 +114,29 @@ try {
             Http::json(['ok' => true, 'items' => $items, 'source' => 'mart_compradores_por_geo']);
             return;
         }
+
+        // GEO.R1.9.2 — mart returned no CNAE rows but may have sales; add cnae_nao_informado bucket
+        if ($hasCnaeMart) {
+            try {
+                $stmtCheck = $pdo->prepare("SELECT COALESCE(SUM(qtd_notas),0) AS total_notas, COALESCE(SUM(faturamento),0) AS total_fat FROM {$martTable} WHERE {$whereSql}");
+                foreach ($params as $k => $v) $stmtCheck->bindValue($k, $v);
+                $stmtCheck->execute();
+                $totals = $stmtCheck->fetch(\PDO::FETCH_ASSOC) ?: [];
+                if ((int)($totals['total_notas'] ?? 0) > 0) {
+                    Http::json(['ok' => true, 'items' => [[
+                        'cnae_codigo'    => 'SEM_CNAE',
+                        'cnae_descricao' => 'CNAE não informado',
+                        'segmento_macro' => 'Outros',
+                        'clientes'       => 0,
+                        'notas'          => (int)$totals['total_notas'],
+                        'faturamento'    => (float)$totals['total_fat'],
+                        'ticket_medio'   => (int)$totals['total_notas'] > 0 ? (float)$totals['total_fat'] / (int)$totals['total_notas'] : 0.0,
+                        'source'         => 'mart_bucket',
+                    ]], 'source' => 'mart_cnae_bucket']);
+                    return;
+                }
+            } catch (\Throwable) {}
+        }
     }
 
     // ── Fallback: canonical NF + clientes_dim ────────────────────────────────
