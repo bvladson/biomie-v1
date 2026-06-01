@@ -3386,6 +3386,48 @@ $domains[] = [
     'issues'        => $d42Issues,
 ];
 
+// ── D43 — GEO.R1.9.5–R2.0 Territory Buyers + Rich Tooltip + Enhanced Labels + Opportunity Map ──
+
+$d43Issues = [];
+
+$mapJs43  = is_file($projectRoot . '/assets/js/biomie-map.js')    ? file_get_contents($projectRoot . '/assets/js/biomie-map.js')    : '';
+$mapCss43 = is_file($projectRoot . '/assets/css/biomie-map.css')  ? file_get_contents($projectRoot . '/assets/css/biomie-map.css')  : '';
+$mapHtml43= is_file($projectRoot . '/views/mapa_vendas.html')     ? file_get_contents($projectRoot . '/views/mapa_vendas.html')     : '';
+$buyersApi= is_file($projectRoot . '/api/geo_territory_buyers.php') ? file_get_contents($projectRoot . '/api/geo_territory_buyers.php') : '';
+
+// R1.9.5 — Territory Buyers API
+if (!file_exists($projectRoot . '/api/geo_territory_buyers.php'))      $d43Issues[] = 'api/geo_territory_buyers.php não existe';
+if (!str_contains($buyersApi, 'Auth::requireModule'))                   $d43Issues[] = 'geo_territory_buyers.php: Auth::requireModule ausente';
+if (!str_contains($buyersApi, 'useMartLookup'))                         $d43Issues[] = 'geo_territory_buyers.php: useMartLookup ausente';
+if (!str_contains($mapJs43,   'geo_territory_buyers.php'))              $d43Issues[] = 'biomie-map.js: geo_territory_buyers.php ausente em loadPanelData';
+
+// R1.9.6 — Rich Tooltip
+if (!str_contains($mapJs43,   'biomie-map-tooltip--rich'))              $d43Issues[] = 'biomie-map.js: biomie-map-tooltip--rich ausente';
+if (!str_contains($mapJs43,   '_rankByJoinKey'))                        $d43Issues[] = 'biomie-map.js: _rankByJoinKey ausente';
+if (!str_contains($mapCss43,  'bmt-header'))                            $d43Issues[] = 'biomie-map.css: bmt-header CSS ausente';
+if (!str_contains($mapCss43,  'bmt-rank--top'))                         $d43Issues[] = 'biomie-map.css: bmt-rank--top CSS ausente';
+
+// R1.9.7 — Enhanced Labels
+if (!str_contains($mapJs43,   'geo-label-top5'))                        $d43Issues[] = 'biomie-map.js: geo-label-top5 ausente';
+if (!str_contains($mapCss43,  'geo-label-top5'))                        $d43Issues[] = 'biomie-map.css: geo-label-top5 CSS ausente';
+
+// R2.0 — Opportunity Map
+if (!str_contains($mapJs43,   'loadOpportunityLayer'))                  $d43Issues[] = 'biomie-map.js: loadOpportunityLayer ausente';
+if (!str_contains($mapHtml43, 'opportunities'))                         $d43Issues[] = 'mapa_vendas.html: option opportunities ausente';
+if (!str_contains($mapJs43,   'Oportunidades Comerciais'))              $d43Issues[] = 'biomie-map.js: legenda Oportunidades Comerciais ausente';
+
+$domains[] = [
+    'label'         => 'D43 GEO.R1.9.5–R2.0 Territory Buyers + Rich Tooltip + Enhanced Labels + Opportunity Map',
+    'guard'         => 'buyers API + mart lookup + rich tooltip + rank map + label top5/top10 + loadOpportunityLayer + opportunities selector + opp legend',
+    'pass'          => true,
+    'warn'          => count($d43Issues) > 0,
+    'informational' => true,
+    'summary'       => $d43Issues === []
+        ? 'GEO.R1.9.5–R2.0 presente: territory buyers mart-lookup + tooltip rico + labels escalonados + mapa oportunidades'
+        : count($d43Issues) . ' item(ns) GEO.R1.9.5–R2.0 ausente(s) [informacional]',
+    'issues'        => $d43Issues,
+];
+
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';

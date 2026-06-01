@@ -597,6 +597,24 @@ function buildChecks(string $root): array
         checkContains('geo_r194_panel_uses_geo_cnae', readFileSafe($root . '/assets/js/biomie-map.js'), 'geo_territory_cnaes.php', 'loadPanelData usa geo_territory_cnaes.php (GEO.R1.9.4).'),
         checkContains('geo_r194_buyers_cidade_key',   readFileSafe($root . '/api/top_buyers_by_geo.php'), 'GEO.R1.9.4', 'top_buyers_by_geo.php tem fallback cidade_key (GEO.R1.9.4).'),
         checkContains('geo_r194_cnae_cidade_key',     readFileSafe($root . '/api/sales_by_cnae.php'), 'GEO.R1.9.4', 'sales_by_cnae.php tem fallback cidade_key (GEO.R1.9.4).'),
+
+        // GEO.R1.9.5 — Territory Buyers API
+        checkContains('geo_r195_buyers_api',          file_exists($root . '/api/geo_territory_buyers.php') ? 'ok' : '', 'ok', 'api/geo_territory_buyers.php existe (R1.9.5).'),
+        checkContains('geo_r195_load_panel_new',      readFileSafe($root . '/assets/js/biomie-map.js'), 'geo_territory_buyers.php', 'loadPanelData usa geo_territory_buyers.php (R1.9.5).'),
+
+        // GEO.R1.9.6 — Rich Tooltip
+        checkContains('geo_r196_rich_tooltip',        readFileSafe($root . '/assets/js/biomie-map.js'), 'biomie-map-tooltip--rich', 'Tooltip rico implementado (R1.9.6).'),
+        checkContains('geo_r196_rank_map',            readFileSafe($root . '/assets/js/biomie-map.js'), '_rankByJoinKey', 'rank map presente (R1.9.6).'),
+        checkContains('geo_r196_tooltip_css',         readFileSafe($root . '/assets/css/biomie-map.css'), 'bmt-header', 'CSS tooltip rico (R1.9.6).'),
+
+        // GEO.R1.9.7 — Enhanced Labels
+        checkContains('geo_r197_label_top5',          readFileSafe($root . '/assets/js/biomie-map.js'), 'geo-label-top5', 'labels top5 class (R1.9.7).'),
+        checkContains('geo_r197_label_css',           readFileSafe($root . '/assets/css/biomie-map.css'), 'geo-label-top5', 'CSS geo-label-top5 (R1.9.7).'),
+
+        // GEO.R2.0 — Opportunity Map
+        checkContains('geo_r20_opp_mode',             readFileSafe($root . '/assets/js/biomie-map.js'), 'loadOpportunityLayer', 'loadOpportunityLayer presente (R2.0).'),
+        checkContains('geo_r20_opp_selector',         readFileSafe($root . '/views/mapa_vendas.html'), 'opportunities', 'geoMapModeSelector tem opportunities (R2.0).'),
+        checkContains('geo_r20_opp_legend',           readFileSafe($root . '/assets/js/biomie-map.js'), 'Oportunidades Comerciais', 'legenda modo oportunidades (R2.0).'),
     ];
 }
 

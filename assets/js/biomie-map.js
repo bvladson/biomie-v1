@@ -1052,6 +1052,14 @@
     return getFeatureNeighborhoodName(feature) || 'Sem nome';
   }
 
+  // GEO.R1.9.6 — territory type labels for tooltip badge
+  const _TTYPE_LABELS = {
+    fortaleza_bairro:       'Bairro Fortaleza',
+    metro_bairro:           'Grande Fortaleza',
+    rmf_municipio_fallback: 'Município RMF',
+    ceara_municipio:        'Município CE',
+  };
+
   function tooltipHtml(feature) {
     const rawName = getFeatureNeighborhoodName(feature);
     const props = feature && typeof feature === 'object' && feature.properties ? feature.properties : {};
@@ -1069,14 +1077,33 @@
     // UX.CHARTS.R1 — participation % in total
     const totalRevenue = Number(state.scale && state.scale.total || 0);
     const sharePct = totalRevenue > 0 ? (revenue / totalRevenue * 100).toFixed(1) + '%' : null;
+
+    // GEO.R1.9.6 — rank lookup from _rankByJoinKey Map
+    const jk = normalizeNeighborhoodKey(getFeatureCompositeJoinKey(feature));
+    const rank = state._rankByJoinKey?.get(jk);
+    const ttype = props.territory_type || '';
+    const ttypeLabel = _TTYPE_LABELS[ttype] || '';
+    const rankHtml = rank != null
+      ? (rank <= 10
+          ? `<span class="bmt-rank bmt-rank--top">🏆 #${rank}</span>`
+          : `<span class="bmt-rank">#${rank}</span>`)
+      : '';
+
     return `
-      <div class="biomie-map-tooltip">
-        <strong>${escapeHtml(label)}</strong>
+      <div class="biomie-map-tooltip biomie-map-tooltip--rich">
+        <div class="bmt-header">
+          <strong>${escapeHtml(label)}</strong>
+          ${rankHtml}
+        </div>
+        ${ttypeLabel ? `<span class="bmt-badge">${escapeHtml(ttypeLabel)}</span>` : ''}
         ${sourceNote ? '<span>' + sourceNote + '</span>' : ''}
-        <span><em>Faturamento</em><b>${formatters.money(revenue)}${sharePct ? ' <small>(' + sharePct + ')</small>' : ''}</b></span>
-        <span><em>Clientes</em><b>${formatters.number(row.customers || row.clientes || 0)}</b></span>
-        <span><em>Notas</em><b>${formatters.number(row.invoices || row.notas || 0)}</b></span>
-        <span><em>Ticket</em><b>${formatters.money(row.average_ticket || row.ticket_medio || 0)}</b></span>
+        <div class="bmt-kpis">
+          <span><em>Faturamento</em><b>${formatters.money(revenue)}</b></span>
+          ${sharePct ? `<span><em>% do total</em><b>${sharePct}</b></span>` : ''}
+          <span><em>Clientes</em><b>${formatters.number(row.customers || row.clientes || 0)}</b></span>
+          <span><em>Notas</em><b>${formatters.number(row.invoices || row.notas || 0)}</b></span>
+          <span><em>Ticket</em><b>${formatters.money(row.average_ticket || row.ticket_medio || 0)}</b></span>
+        </div>
       </div>
     `;
   }
@@ -1407,19 +1434,43 @@
     });
 
     // GEO.R1.9.4 — use territory-aware CNAE API (avoids mart_vendas_por_cnae_cnpj dependency)
+    // GEO.R1.9.5 — use territory-aware buyers API with mart-lookup strategy
+    const buyersParams = buildTerritoryParams(row);
+    buyersParams.set('limit', '10');
     const cnaeParams = buildTerritoryParams(row);
     cnaeParams.set('limit', '10');
 
     const [buyers, cnaes] = await Promise.allSettled([
-      apiFetch('api/top_buyers_by_geo.php', params, 'buyers'),
+      apiFetch('api/geo_territory_buyers.php', buyersParams, 'data'),
       apiFetch('api/geo_territory_cnaes.php', cnaeParams, 'items'),
     ]);
 
     if (state.panelToken !== token) return;
 
     if (buyers.status === 'fulfilled') {
-      const sourceMode = buyers.value.meta?.source_mode || 'gold_mart';
-      window.BIomieMapPanel?.renderBuyers(buyers.value.data || [], formatters, sourceMode);
+      const data = buyers.value.data || [];
+      const sourceMode = buyers.value.meta?.source_mode || 'geo_territory_mart';
+      if (data.length > 0) {
+        window.BIomieMapPanel?.renderBuyers(data.map(b => ({
+          customer_name:  b.customer_name,
+          document_raw:   b.document_raw,
+          revenue:        b.revenue,
+          invoices:       b.invoices,
+          average_ticket: b.average_ticket,
+          last_purchase:  b.last_purchase,
+          cnae:           b.cnae,
+          segment:        b.segment,
+        })), formatters, sourceMode);
+      } else {
+        // GEO.R1.9.5 — fallback to legacy API when new API returns empty
+        apiFetch('api/top_buyers_by_geo.php', params, 'buyers').then(legacyRes => {
+          if (state.panelToken !== token) return;
+          const legacyData = legacyRes.data || legacyRes.buyers || [];
+          window.BIomieMapPanel?.renderBuyers(legacyData, formatters, legacyRes.meta?.source_mode || 'gold_mart');
+        }).catch(() => {
+          window.BIomieMapPanel?.renderBuyers([], formatters, 'empty');
+        });
+      }
     } else {
       window.BIomieMapPanel?.renderBuyersError('Erro ao carregar compradores. Tente novamente.');
     }
@@ -2277,6 +2328,10 @@
       // GEO.R1.9.3 — cache ranking for presets
       state.compositeRankingCache = salesPayload.ranking || [];
       state.compositeRows = salesPayload.ranking || [];
+      // GEO.R1.9.6 — build rank lookup Map for rich tooltip
+      state._rankByJoinKey = new Map(
+        (salesPayload.ranking || []).map((r, i) => [normalizeNeighborhoodKey(r.join_key || r.cidade_key || ''), i + 1])
+      );
       renderMapModeLegend();
       renderCompositeRanking(salesPayload.ranking || []);
       // GEO.R1.8.1 — auto-insights
@@ -2332,6 +2387,14 @@
         <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#ef4444;"></span>Sem cidade</span>
         <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#f59e0b;"></span>Sem bairro</span>
         <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#10b981;"></span>Mapeado</span>
+      `;
+    } else if (mode === 'opportunities') {
+      // GEO.R2.0 — legenda oportunidades
+      node.innerHTML = `
+        <span class="biomie-composite-legend__title">Oportunidades Comerciais</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#10b981;"></span>Ativo — com faturamento</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#f59e0b;"></span>Clientes sem faturamento</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#e5e7eb;"></span>Sem dados</span>
       `;
     } else {
       node.innerHTML = `
@@ -2639,9 +2702,9 @@
       if (sortEl) sortEl.value = 'revenue_desc';
       showFeedback('Modo qualidade: territórios sem bairro ou sem cidade destacados.', 'warning');
     } else if (presetId === 'opportunity') {
-      if (modeEl) { modeEl.value = 'bubbles'; applyMapMode('bubbles'); }
-      if (sortEl) { sortEl.value = 'customers_desc'; renderCompositeRanking(state.compositeRankingCache || []); }
-      showFeedback('Bolhas por clientes: territórios com muitos clientes = oportunidade de crescimento.', 'info');
+      // GEO.R2.0 — preset usa modo oportunidades
+      if (modeEl) { modeEl.value = 'opportunities'; applyMapMode('opportunities'); }
+      showFeedback('Modo oportunidades: verde = território ativo, âmbar = clientes sem venda.', 'info');
     } else if (presetId === 'cnae_view') {
       if (modeEl) { modeEl.value = 'territories'; applyMapMode('territories'); }
       showFeedback('Abra um território e clique na aba CNAEs para ver o ranking por segmento.', 'info');
@@ -3103,16 +3166,20 @@
     // Minimum pixel area to show label at each zoom level
     _minAreaByZoom: { 6: 3000, 7: 1800, 8: 900, 9: 500, 10: 250, 11: 130, 12: 60, 13: 30 },
 
-    // GEO.R1.9.3 — lower ceara threshold to zoom 6; top 20 labels cap
-    _maxLabels: 20,
+    // GEO.R1.9.3 — lower ceara threshold to zoom 6; top 25 labels cap (R1.9.7: increased from 20)
+    _maxLabels: 25,
     _labelCount: 0,
 
     shouldShowLabel(feature, zoom, pixelArea, salesRank) {
       if (!this._enabled) return false;
       const type = feature?.properties?.territory_type || '';
       const minArea = this._minAreaByZoom[Math.min(zoom, 13)] || 900;
-      // Top revenue territories always labeled (cap at 20)
+      // GEO.R1.9.7 — top 5 always labeled from zoom 5+ with very low pixel threshold
+      if (salesRank && salesRank <= 5 && pixelArea > 10) return true;
+      // Top revenue territories always labeled (cap at _maxLabels)
       if (salesRank && salesRank <= 10 && pixelArea > 25) return true;
+      // GEO.R1.9.7 — metro region names at zoom 7+ if top 20 by revenue
+      if (salesRank && salesRank <= 20 && (type === 'rmf_municipio_fallback' || type === 'metro_bairro') && zoom >= 7) return true;
       // Type-based zoom thresholds (ceara_municipio now starts at zoom 6)
       if (type === 'ceara_municipio' && zoom >= 6) return pixelArea > minArea * 0.7;
       if (type === 'rmf_municipio_fallback' && zoom >= 8) return pixelArea > minArea * 0.5;
@@ -3132,15 +3199,17 @@
       return p.municipio_nome || p.label || p.cidade_key || '';
     },
 
-    getLabelClass(feature) {
+    // GEO.R1.9.7 — label class includes rank-based size class
+    getLabelClass(feature, rank) {
       const type = feature?.properties?.territory_type || '';
-      const map = {
-        fortaleza_bairro: 'geo-label-fortaleza',
-        metro_bairro: 'geo-label-rmf-bairro',
+      const rankClass = rank && rank <= 5 ? 'geo-label-top5' : (rank && rank <= 10 ? 'geo-label-top10' : '');
+      const typeClass = {
+        fortaleza_bairro:       'geo-label-fortaleza',
+        metro_bairro:           'geo-label-rmf-bairro',
         rmf_municipio_fallback: 'geo-label-rmf-municipio',
-        ceara_municipio: 'geo-label-ceara-municipio',
-      };
-      return map[type] || 'geo-label-ceara-municipio';
+        ceara_municipio:        'geo-label-ceara-municipio',
+      }[type] || 'geo-label-ceara-municipio';
+      return [typeClass, rankClass].filter(Boolean).join(' ');
     },
 
     // Apply labels to all features in geoLayer — cap at _maxLabels to prevent pollution
@@ -3171,7 +3240,8 @@
           layer.bindTooltip(label, {
             permanent: true,
             direction: 'center',
-            className: this.getLabelClass(feature),
+            // GEO.R1.9.7 — pass rank to getLabelClass for font scaling
+            className: this.getLabelClass(feature, rank),
             sticky: false,
           });
           labeled++;
@@ -3299,13 +3369,54 @@
         return featureStyle(feature);
       });
       document.body.classList.remove('geo-map-mode-bubbles');
+    } else if (mode === 'opportunities') {
+      // GEO.R2.0 — Mapa de Oportunidades Comerciais
+      GeoBubbleMode.clear(map);
+      state._opportunityMode = true;
+      document.body.classList.remove('geo-map-mode-bubbles');
+      loadOpportunityLayer();
     } else {
       GeoBubbleMode.clear(map);
+      state._opportunityMode = false;
       if (state.geoLayer) state.geoLayer.setStyle(featureStyle);
       document.body.classList.remove('geo-map-mode-bubbles');
     }
     state._mapMode = mode;
     renderMapModeLegend();
+  }
+
+  // GEO.R2.0 — Carrega e aplica camada de oportunidades comerciais
+  async function loadOpportunityLayer() {
+    const params = currentFilters();
+    try {
+      const data = await apiFetch('api/geo_opportunities.php', params, 'insights');
+      const insights = data.insights || [];
+      // Build opportunity insight map by join_key
+      const oppMap = new Map();
+      insights.forEach(ins => {
+        if (ins.join_key) oppMap.set(normalizeNeighborhoodKey(ins.join_key), ins);
+      });
+      // Apply opportunity colors to geoLayer
+      if (state.geoLayer) {
+        state.geoLayer.setStyle((feature) => {
+          const jk = normalizeNeighborhoodKey(getFeatureCompositeJoinKey(feature));
+          const row = state.compositeSalesIndex?.get(jk);
+          const rev  = Number(row?.revenue  || 0);
+          const cust = Number(row?.customers || 0);
+          if (rev > 0 && cust > 0) {
+            // Active territory — shade by volume
+            const maxRev = state.compositeScales?.max || rev;
+            const intensity = Math.min(0.85, 0.3 + (rev / (maxRev || rev)) * 0.55);
+            return { fillColor: '#10b981', fillOpacity: intensity, color: '#059669', weight: 0.8 };
+          }
+          if (cust > 0 && rev === 0) {
+            return { fillColor: '#f59e0b', fillOpacity: 0.55, color: '#d97706', weight: 1 };
+          }
+          return { fillColor: '#e5e7eb', fillOpacity: 0.25, color: '#d1d5db', weight: 0.4 };
+        });
+      }
+      renderMapModeLegend();
+    } catch { /* silently fail — opportunity layer is additive */ }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
