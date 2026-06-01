@@ -83,6 +83,9 @@ try {
     $geoJoin     = $geoHasTable ? "LEFT JOIN {$geoTable} geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie" : '';
     $geoSel      = $geoHasTable ? ", MAX(geo.cidade_norm) AS cidade_norm, MAX(geo.bairro_norm) AS bairro_norm" : ", '' AS cidade_norm, '' AS bairro_norm";
 
+    $hasNotaKey = Http::columnExists($pdo, $nfTable, 'nota_key');
+    $notaKeyCol = $hasNotaKey ? ", MAX(nf.nota_key) AS nota_key" : ", '' AS nota_key";
+
     $stmtNf = $pdo->prepare("
         SELECT
             MAX(nf.id)                                    AS id,
@@ -95,6 +98,7 @@ try {
             MAX(nf.codigo_cliente_omie)                   AS codigo_cliente_omie,
             {$vendedorCol}                                AS vendedor_nome,
             COALESCE(SUM(nf.{$hasValor}), 0)             AS valor_total
+            {$notaKeyCol}
             {$geoSel}
         FROM {$nfTable} nf
         {$geoJoin}
@@ -113,31 +117,55 @@ try {
     $maskFn = class_exists('BIomie\\Support\\DocumentMask') ? ['\BIomie\Support\DocumentMask', 'mask'] : null;
     $doc    = (string)($nfRow['cliente_documento'] ?? '');
 
-    // ── Itens da NF ──────────────────────────────────────────────────────────
+    // ── Itens da NF — usa biomie_notas_fiscais_itens_canonicos (nota_key) ───────
     $items = [];
-    $itemsTable = 'biomie_itens_nfe';
-    if (Http::tableExists($pdo, $itemsTable)) {
+    $itemsTable = 'biomie_notas_fiscais_itens_canonicos';
+    if (Http::tableExists($pdo, $itemsTable) && !empty($nfRow['nota_key'])) {
+        $hasValorDesc = Http::columnExists($pdo, $itemsTable, 'valor_desconto');
+        $descCol = $hasValorDesc ? ', valor_desconto' : '';
         $stmtItems = $pdo->prepare("
             SELECT
                 codigo_produto,
                 descricao_produto,
                 quantidade,
-                valor_unitario,
                 valor_total
+                {$descCol}
             FROM {$itemsTable}
-            WHERE numero_nf = :nf
-            ORDER BY id ASC
-            LIMIT 30
+            WHERE nota_key = :nk
+            ORDER BY sequencia_item ASC
+            LIMIT 50
         ");
-        $stmtItems->bindValue(':nf', $nfRow['numero_nf']);
+        $stmtItems->bindValue(':nk', $nfRow['nota_key']);
         $stmtItems->execute();
         $itemRows = $stmtItems->fetchAll(\PDO::FETCH_ASSOC);
         $items = array_map(fn($r) => [
             'codigo_produto'    => $r['codigo_produto'],
             'descricao_produto' => $r['descricao_produto'],
             'quantidade'        => (float)($r['quantidade']   ?? 0),
-            'valor_unitario'    => (float)($r['valor_unitario']?? 0),
+            'valor_unitario'    => $r['quantidade'] > 0
+                ? round((float)$r['valor_total'] / (float)$r['quantidade'], 4)
+                : (float)$r['valor_total'],
             'valor_total'       => (float)($r['valor_total']  ?? 0),
+        ], $itemRows);
+    } elseif (Http::tableExists($pdo, $itemsTable) && empty($nfRow['nota_key'])) {
+        // fallback: tenta por numero_nf via JOIN
+        $stmtItems = $pdo->prepare("
+            SELECT i.codigo_produto, i.descricao_produto, i.quantidade, i.valor_total
+            FROM {$itemsTable} i
+            JOIN {$nfTable} n ON n.nota_key = i.nota_key
+            WHERE n.numero_nf = :num AND n.status_fiscal = 'autorizada'
+            ORDER BY i.sequencia_item ASC
+            LIMIT 50
+        ");
+        $stmtItems->bindValue(':num', $nfRow['numero_nf']);
+        $stmtItems->execute();
+        $itemRows = $stmtItems->fetchAll(\PDO::FETCH_ASSOC);
+        $items = array_map(fn($r) => [
+            'codigo_produto'    => $r['codigo_produto'],
+            'descricao_produto' => $r['descricao_produto'],
+            'quantidade'        => (float)($r['quantidade'] ?? 0),
+            'valor_unitario'    => $r['quantidade'] > 0 ? round((float)$r['valor_total']/(float)$r['quantidade'],4) : (float)$r['valor_total'],
+            'valor_total'       => (float)($r['valor_total'] ?? 0),
         ], $itemRows);
     }
 
