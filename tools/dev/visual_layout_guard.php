@@ -591,6 +591,12 @@ function buildChecks(string $root): array
         checkContains('geo_r193_composite_cache',    readFileSafe($root . '/assets/js/biomie-map.js'), 'compositeRankingCache', 'biomie-map.js tem compositeRankingCache (GEO.R1.9.3).'),
         checkContains('geo_r193_preset_css',         readFileSafe($root . '/assets/css/biomie-map.css'), 'geo-preset-btn', 'CSS geo-preset-btn existe (GEO.R1.9.3).'),
         checkContains('geo_r193_bubble_legend_css',  readFileSafe($root . '/assets/css/biomie-map.css'), 'biomie-map-legend__bubble', 'CSS biomie-map-legend__bubble existe (GEO.R1.9.3).'),
+
+        // GEO.R1.9.4 — Fix compradores + CNAEs em modo composto
+        checkContains('geo_r194_load_panel_city',     readFileSafe($root . '/assets/js/biomie-map.js'), 'legacyCity', 'loadPanelData passa city= para APIs legacy (GEO.R1.9.4).'),
+        checkContains('geo_r194_panel_uses_geo_cnae', readFileSafe($root . '/assets/js/biomie-map.js'), 'geo_territory_cnaes.php', 'loadPanelData usa geo_territory_cnaes.php (GEO.R1.9.4).'),
+        checkContains('geo_r194_buyers_cidade_key',   readFileSafe($root . '/api/top_buyers_by_geo.php'), 'GEO.R1.9.4', 'top_buyers_by_geo.php tem fallback cidade_key (GEO.R1.9.4).'),
+        checkContains('geo_r194_cnae_cidade_key',     readFileSafe($root . '/api/sales_by_cnae.php'), 'GEO.R1.9.4', 'sales_by_cnae.php tem fallback cidade_key (GEO.R1.9.4).'),
     ];
 }
 

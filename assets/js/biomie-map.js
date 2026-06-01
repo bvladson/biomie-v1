@@ -1388,18 +1388,31 @@
     window.BIomieMapPanel?.renderNeighborhood(row, formatters);
     window.BIomieMapPanel?.renderBuyersLoading();
 
-    // Always use underscore-based bairro_key; fall back to normalizing the display name if absent.
     const bairroKey = normalizeNeighborhoodKey(row.bairro_key || row.neighborhood_key || row.neighborhood || '');
     const cityKey   = normalizeNeighborhoodKey(row.city_key || row.cidade_key || row.city || 'Fortaleza');
+
+    // GEO.R1.9.4 — always pass city= for legacy APIs (top_buyers/sales_by_cnae expect it;
+    // composite mode doesn't send it via currentFilters, breaking territory filtering)
+    const legacyCity = row.city || row.municipio_nome ||
+      (row.territory_type === 'fortaleza_bairro' ? 'Fortaleza' :
+       row.territory_type === 'metro_bairro' ? (row.municipio_nome || row.city || '') :
+       row.cidade_key || cityKey);
+
     const params = currentFilters({
-      bairro_key:  bairroKey,
-      city_key:    cityKey,
+      bairro_key:   bairroKey,
+      city_key:     cityKey,
+      city:         legacyCity,
       neighborhood: row.neighborhood || row.bairro_nome || '',
       limit: 10,
     });
+
+    // GEO.R1.9.4 — use territory-aware CNAE API (avoids mart_vendas_por_cnae_cnpj dependency)
+    const cnaeParams = buildTerritoryParams(row);
+    cnaeParams.set('limit', '10');
+
     const [buyers, cnaes] = await Promise.allSettled([
       apiFetch('api/top_buyers_by_geo.php', params, 'buyers'),
-      apiFetch('api/sales_by_cnae.php', params, 'cnae'),
+      apiFetch('api/geo_territory_cnaes.php', cnaeParams, 'items'),
     ]);
 
     if (state.panelToken !== token) return;
@@ -1412,7 +1425,14 @@
     }
 
     if (cnaes.status === 'fulfilled') {
-      window.BIomieMapPanel?.renderCnaes(cnaes.value.data || [], formatters);
+      // geo_territory_cnaes returns { items: [...] } — map to panel format
+      const cnaeItems = (cnaes.value.items || []).map(c => ({
+        cnae:             c.cnae_codigo,
+        cnae_description: c.cnae_descricao,
+        customers:        c.clientes,
+        revenue:          c.faturamento,
+      }));
+      window.BIomieMapPanel?.renderCnaes(cnaeItems, formatters);
     } else {
       window.BIomieMapPanel?.renderCnaes([], formatters);
     }

@@ -24,6 +24,12 @@ try {
         $limit = 50;
     }
 
+    // GEO.R1.9.4 — composite mode doesn't send city= so fall back to cidade_key param
+    if ($cityNorm === null) {
+        $ck = strtolower(trim((string) ($_GET['cidade_key'] ?? '')));
+        if ($ck !== '' && $ck !== 'sem_cidade') $cityNorm = $ck;
+    }
+
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
 
