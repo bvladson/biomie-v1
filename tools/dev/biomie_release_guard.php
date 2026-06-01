@@ -3358,6 +3358,34 @@ $domains[] = [
     'issues'        => $d41Issues,
 ];
 
+// ── D42 — GEO.R1.9.3 Visual Polish + Presets Executivos [informacional] ──────
+
+$d42Issues = [];
+
+$mapJs   = is_file($projectRoot . '/assets/js/biomie-map.js') ? file_get_contents($projectRoot . '/assets/js/biomie-map.js') : '';
+$mapHtml = is_file($projectRoot . '/views/mapa_vendas.html')  ? file_get_contents($projectRoot . '/views/mapa_vendas.html') : '';
+$mapCss  = is_file($projectRoot . '/assets/css/biomie-map.css') ? file_get_contents($projectRoot . '/assets/css/biomie-map.css') : '';
+
+if (!str_contains($mapHtml, 'geoPresetsBar'))        $d42Issues[] = 'geoPresetsBar ausente em mapa_vendas.html';
+if (!str_contains($mapJs, 'applyPreset'))            $d42Issues[] = 'applyPreset() ausente em biomie-map.js';
+if (!str_contains($mapJs, 'renderMapModeLegend'))    $d42Issues[] = 'renderMapModeLegend() ausente em biomie-map.js';
+if (!str_contains($mapJs, 'compositeRankingCache'))  $d42Issues[] = 'compositeRankingCache ausente em biomie-map.js';
+if (!str_contains($mapJs, '_maxLabels'))             $d42Issues[] = '_maxLabels ausente em GeoSmartLabels';
+if (!str_contains($mapCss, 'geo-preset-btn'))        $d42Issues[] = 'CSS geo-preset-btn ausente';
+if (!str_contains($mapCss, 'biomie-map-legend__bubble')) $d42Issues[] = 'CSS biomie-map-legend__bubble ausente';
+
+$domains[] = [
+    'label'         => 'D42 GEO.R1.9.3 Visual Polish + Presets Executivos',
+    'guard'         => 'presets + renderMapModeLegend + quality mode + label cap + bubble legend CSS',
+    'pass'          => true,
+    'warn'          => count($d42Issues) > 0,
+    'informational' => true,
+    'summary'       => $d42Issues === []
+        ? 'GEO.R1.9.3 presente: 4 presets executivos + legenda dinâmica + quality mode + labels cap 20'
+        : count($d42Issues) . ' item(ns) GEO.R1.9.3 ausente(s) [informacional]',
+    'issues'        => $d42Issues,
+];
+
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';

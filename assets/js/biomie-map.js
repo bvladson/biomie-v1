@@ -2254,7 +2254,10 @@
         ? (topRanking.bairro_norm ? `${topRanking.bairro_norm} — ${topRanking.cidade_key}` : topRanking.cidade_key)
         : 'Sem território com venda');
 
-      renderCompositeLegend();
+      // GEO.R1.9.3 — cache ranking for presets
+      state.compositeRankingCache = salesPayload.ranking || [];
+      state.compositeRows = salesPayload.ranking || [];
+      renderMapModeLegend();
       renderCompositeRanking(salesPayload.ranking || []);
       // GEO.R1.8.1 — auto-insights
       if (GEO_FEATURES.insights) {
@@ -2281,19 +2284,49 @@
     }
   }
 
-  // GEO.R1.7 — legenda composta com tipos territoriais
-  function renderCompositeLegend() {
+  // GEO.R1.9.3 — legenda dinâmica por modo de mapa
+  function renderMapModeLegend() {
     const node = $('mapLegend');
     if (!node) return;
-    node.innerHTML = `
-      <span class="biomie-composite-legend__title">Território · Intensidade</span>
-      <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#60A5FA"></span>Fortaleza bairros</span>
-      <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#2DD4BF"></span>Grande Fortaleza bairros</span>
-      <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#A78BFA"></span>RMF sem bairro</span>
-      <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#F59E0B"></span>Ceará município</span>
-      <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#E5E7EB"></span>Sem venda</span>
-    `;
+    const mode = state._mapMode || 'territories';
+    if (mode === 'bubbles' || mode === 'hybrid') {
+      node.innerHTML = `
+        <span class="biomie-composite-legend__title">Bolhas · ${mode === 'hybrid' ? 'Híbrido' : 'Proporcionais'}</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__bubble" style="background:#3b82f6;"></span>Bairro Fortaleza</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__bubble" style="background:#22c55e;"></span>Grande Fortaleza</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__bubble" style="background:#8b5cf6;"></span>Município RMF</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__bubble" style="background:#f59e0b;"></span>Município Ceará</span>
+        <span class="biomie-map-legend__item" style="color:var(--mag-muted);font-size:10px;font-style:italic;">raio ∝ faturamento</span>
+      `;
+    } else if (mode === 'heat') {
+      node.innerHTML = `
+        <span class="biomie-composite-legend__title">Calor · Intensidade</span>
+        <span class="biomie-map-legend__item">
+          <span style="display:inline-block;width:56px;height:10px;border-radius:4px;background:linear-gradient(to right,#60a5fa,#10b981,#f59e0b,#ef4444);border:1px solid rgba(0,0,0,.1);flex-shrink:0;"></span>
+          Baixo → Alto
+        </span>
+      `;
+    } else if (mode === 'quality') {
+      node.innerHTML = `
+        <span class="biomie-composite-legend__title">Qualidade · Cobertura</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#ef4444;"></span>Sem cidade</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#f59e0b;"></span>Sem bairro</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#10b981;"></span>Mapeado</span>
+      `;
+    } else {
+      node.innerHTML = `
+        <span class="biomie-composite-legend__title">Território · Intensidade</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#60A5FA"></span>Fortaleza bairros</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#2DD4BF"></span>Grande Fortaleza bairros</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#A78BFA"></span>RMF sem bairro</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#F59E0B"></span>Ceará município</span>
+        <span class="biomie-map-legend__item"><span class="biomie-map-legend__swatch" style="background:#E5E7EB"></span>Sem venda</span>
+      `;
+    }
   }
+
+  // GEO.R1.7 compat alias
+  function renderCompositeLegend() { renderMapModeLegend(); }
 
   // GEO.R1.7 — ranking territorial composto com badge de tipo
   function renderCompositeRanking(ranking) {
@@ -2568,6 +2601,43 @@
   }
 
   // Bind dos chips de foco
+  // ── GEO.R1.9.3 — Presets executivos ─────────────────────────────────────────
+
+  function applyPreset(presetId) {
+    document.querySelectorAll('.geo-preset-btn').forEach(b => b.classList.remove('geo-preset-btn--active'));
+    document.querySelector(`.geo-preset-btn[data-preset="${presetId}"]`)?.classList.add('geo-preset-btn--active');
+
+    const modeEl = $('geoMapModeSelector');
+    const sortEl = $('geoRankingSort');
+
+    if (presetId === 'top_revenue') {
+      if (modeEl) { modeEl.value = 'territories'; applyMapMode('territories'); }
+      if (sortEl) { sortEl.value = 'revenue_desc'; renderCompositeRanking(state.compositeRankingCache || []); }
+      showFeedback('Mostrando territórios com maior faturamento.', 'info');
+    } else if (presetId === 'sem_bairro') {
+      if (modeEl) { modeEl.value = 'quality'; applyMapMode('quality'); }
+      if (sortEl) sortEl.value = 'revenue_desc';
+      showFeedback('Modo qualidade: territórios sem bairro ou sem cidade destacados.', 'warning');
+    } else if (presetId === 'opportunity') {
+      if (modeEl) { modeEl.value = 'bubbles'; applyMapMode('bubbles'); }
+      if (sortEl) { sortEl.value = 'customers_desc'; renderCompositeRanking(state.compositeRankingCache || []); }
+      showFeedback('Bolhas por clientes: territórios com muitos clientes = oportunidade de crescimento.', 'info');
+    } else if (presetId === 'cnae_view') {
+      if (modeEl) { modeEl.value = 'territories'; applyMapMode('territories'); }
+      showFeedback('Abra um território e clique na aba CNAEs para ver o ranking por segmento.', 'info');
+      $('geoInsightsCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function bindPresets() {
+    const bar = document.getElementById('geoPresetsBar');
+    if (!bar) return;
+    bar.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-preset]');
+      if (btn) applyPreset(btn.dataset.preset);
+    });
+  }
+
   function bindFocusChips() {
     const chips = document.getElementById('geoFocusChips');
     if (!chips) return;
@@ -3013,15 +3083,19 @@
     // Minimum pixel area to show label at each zoom level
     _minAreaByZoom: { 6: 3000, 7: 1800, 8: 900, 9: 500, 10: 250, 11: 130, 12: 60, 13: 30 },
 
+    // GEO.R1.9.3 — lower ceara threshold to zoom 6; top 20 labels cap
+    _maxLabels: 20,
+    _labelCount: 0,
+
     shouldShowLabel(feature, zoom, pixelArea, salesRank) {
       if (!this._enabled) return false;
       const type = feature?.properties?.territory_type || '';
       const minArea = this._minAreaByZoom[Math.min(zoom, 13)] || 900;
-      // Top revenue territories always labeled
-      if (salesRank && salesRank <= 15 && pixelArea > 30) return true;
-      // Type-based zoom thresholds
-      if (type === 'ceara_municipio' && zoom >= 7) return pixelArea > minArea;
-      if (type === 'rmf_municipio_fallback' && zoom >= 9) return pixelArea > minArea * 0.6;
+      // Top revenue territories always labeled (cap at 20)
+      if (salesRank && salesRank <= 10 && pixelArea > 25) return true;
+      // Type-based zoom thresholds (ceara_municipio now starts at zoom 6)
+      if (type === 'ceara_municipio' && zoom >= 6) return pixelArea > minArea * 0.7;
+      if (type === 'rmf_municipio_fallback' && zoom >= 8) return pixelArea > minArea * 0.5;
       if (type === 'metro_bairro' && zoom >= 11) return pixelArea > minArea * 0.4;
       if (type === 'fortaleza_bairro' && zoom >= 12) return pixelArea > minArea * 0.3;
       return false;
@@ -3049,11 +3123,12 @@
       return map[type] || 'geo-label-ceara-municipio';
     },
 
-    // Apply labels to all features in geoLayer
+    // Apply labels to all features in geoLayer — cap at _maxLabels to prevent pollution
     applyLabels(map, geoLayer) {
       if (!this._enabled || !geoLayer || !map) return;
       const zoom = map.getZoom();
       let labeled = 0;
+      this._labelCount = 0;
       geoLayer.eachLayer((layer) => {
         const feature = layer.feature;
         if (!feature) return;
@@ -3072,7 +3147,7 @@
         const label = this.getLabel(feature);
         if (!label) return;
 
-        if (this.shouldShowLabel(feature, zoom, pixelArea, rank)) {
+        if (this._labelCount < this._maxLabels && this.shouldShowLabel(feature, zoom, pixelArea, rank)) {
           layer.bindTooltip(label, {
             permanent: true,
             direction: 'center',
@@ -3080,6 +3155,7 @@
             sticky: false,
           });
           labeled++;
+          this._labelCount++;
         } else {
           // Remove permanent label if below threshold
           if (layer.getTooltip?.()?.options?.permanent) {
@@ -3182,12 +3258,26 @@
       openNeighborhoodDrawer(null);
     };
     if (mode === 'bubbles') {
-      if (state.geoLayer) state.geoLayer.setStyle(f => ({ ...featureStyle(f), fillOpacity: 0, opacity: 0.3 }));
+      if (state.geoLayer) state.geoLayer.setStyle(f => ({ ...featureStyle(f), fillOpacity: 0, opacity: 0.25 }));
       GeoBubbleMode.render(map, bubbleRows, onClickBubble, formatters);
       document.body.classList.add('geo-map-mode-bubbles');
     } else if (mode === 'hybrid') {
-      if (state.geoLayer) state.geoLayer.setStyle(f => ({ ...featureStyle(f), fillOpacity: (featureStyle(f).fillOpacity || 0.4) * 0.4 }));
       GeoBubbleMode.render(map, bubbleRows, onClickBubble, formatters);
+      if (state.geoLayer) state.geoLayer.setStyle(f => {
+        const s = featureStyle(f);
+        return { ...s, fillOpacity: s.fillOpacity > 0 ? s.fillOpacity * 0.35 : 0 };
+      });
+      document.body.classList.remove('geo-map-mode-bubbles');
+    } else if (mode === 'quality') {
+      GeoBubbleMode.clear(map);
+      if (state.geoLayer) state.geoLayer.setStyle((feature) => {
+        const props = feature.properties || {};
+        const jk = props.join_key || props.bairro_key || props.cidade_key || '';
+        if (jk === 'sem_cidade') return { fillColor: '#ef4444', fillOpacity: 0.55, color: '#dc2626', weight: 1.5 };
+        const row = state.compositeSalesIndex?.get(normalizeNeighborhoodKey(jk)) || null;
+        if (!row || (row.revenue || 0) <= 0) return { fillColor: '#e5e7eb', fillOpacity: 0.35, color: '#d1d5db', weight: 0.5 };
+        return featureStyle(feature);
+      });
       document.body.classList.remove('geo-map-mode-bubbles');
     } else {
       GeoBubbleMode.clear(map);
@@ -3195,6 +3285,7 @@
       document.body.classList.remove('geo-map-mode-bubbles');
     }
     state._mapMode = mode;
+    renderMapModeLegend();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -3644,6 +3735,7 @@
     bindEvents();
     bindFocusChips();
     bindModeChips();
+    bindPresets();
     bindExportCsv();
     bindDrawerTabs();
     bindComparison();

@@ -577,6 +577,20 @@ function buildChecks(string $root): array
         checkContains('geo_r192_resolve_territory_display',  readFileSafe($root . '/assets/js/biomie-map-panel.js'), 'fortaleza_bairro', 'biomie-map-panel.js tem resolveTerritoryDisplay (GEO.R1.9.2).'),
         checkContains('geo_r192_bubble_css',                 readFileSafe($root . '/assets/css/biomie-map.css'), 'geo-bubble-marker', 'CSS geo-bubble-marker existe (GEO.R1.9.2).'),
         checkContains('geo_r192_mart_lookup_invoices',       readFileSafe($root . '/api/geo_territory_invoices.php'), 'useMartLookup', 'geo_territory_invoices.php usa mart lookup (GEO.R1.9.2).'),
+
+        // GEO.R1.9.3 — Visual Polish + Presets Executivos
+        checkContains('geo_r193_presets_bar',        readFileSafe($root . '/views/mapa_vendas.html'), 'geoPresetsBar', 'mapa_vendas.html tem geoPresetsBar (GEO.R1.9.3).'),
+        checkContains('geo_r193_preset_top_revenue', readFileSafe($root . '/views/mapa_vendas.html'), 'top_revenue', 'mapa_vendas.html tem preset top_revenue (GEO.R1.9.3).'),
+        checkContains('geo_r193_preset_sem_bairro',  readFileSafe($root . '/views/mapa_vendas.html'), 'sem_bairro', 'mapa_vendas.html tem preset sem_bairro (GEO.R1.9.3).'),
+        checkContains('geo_r193_preset_opportunity', readFileSafe($root . '/views/mapa_vendas.html'), 'opportunity', 'mapa_vendas.html tem preset opportunity (GEO.R1.9.3).'),
+        checkContains('geo_r193_apply_preset_fn',    readFileSafe($root . '/assets/js/biomie-map.js'), 'applyPreset', 'biomie-map.js tem applyPreset() (GEO.R1.9.3).'),
+        checkContains('geo_r193_bind_presets_fn',    readFileSafe($root . '/assets/js/biomie-map.js'), 'bindPresets', 'biomie-map.js tem bindPresets() (GEO.R1.9.3).'),
+        checkContains('geo_r193_dynamic_legend',     readFileSafe($root . '/assets/js/biomie-map.js'), 'renderMapModeLegend', 'biomie-map.js tem renderMapModeLegend() (GEO.R1.9.3).'),
+        checkContains('geo_r193_quality_mode',       readFileSafe($root . '/assets/js/biomie-map.js'), "'quality'", "applyMapMode suporta 'quality' (GEO.R1.9.3)."),
+        checkContains('geo_r193_label_cap',          readFileSafe($root . '/assets/js/biomie-map.js'), '_maxLabels', 'GeoSmartLabels tem _maxLabels cap (GEO.R1.9.3).'),
+        checkContains('geo_r193_composite_cache',    readFileSafe($root . '/assets/js/biomie-map.js'), 'compositeRankingCache', 'biomie-map.js tem compositeRankingCache (GEO.R1.9.3).'),
+        checkContains('geo_r193_preset_css',         readFileSafe($root . '/assets/css/biomie-map.css'), 'geo-preset-btn', 'CSS geo-preset-btn existe (GEO.R1.9.3).'),
+        checkContains('geo_r193_bubble_legend_css',  readFileSafe($root . '/assets/css/biomie-map.css'), 'biomie-map-legend__bubble', 'CSS biomie-map-legend__bubble existe (GEO.R1.9.3).'),
     ];
 }
 

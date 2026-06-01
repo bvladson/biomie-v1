@@ -1126,3 +1126,68 @@
 .geo-filter-sanitize-note {
   pointer-events: none;
 }
+
+/* GEO.R1.9.3 — Presets executivos */
+.geo-presets-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--mag-border);
+  flex-wrap: wrap;
+  background: var(--mag-surface, #fff);
+  flex: 0 0 auto;
+}
+
+.geo-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border: 1px solid var(--mag-border);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mag-muted, #64748b);
+  background: transparent;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  line-height: 1.4;
+}
+
+.geo-preset-btn .material-symbols-rounded {
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.geo-preset-btn:hover {
+  background: rgba(150,20,10,.06);
+  border-color: var(--mag-accent-1, #96140a);
+  color: var(--mag-accent-1, #96140a);
+}
+
+.geo-preset-btn--active {
+  background: var(--mag-accent-1, #96140a);
+  border-color: var(--mag-accent-1, #96140a);
+  color: #fff;
+}
+
+/* GEO.R1.9.3 — Bubble legend swatch */
+.biomie-map-legend__bubble {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,.2);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* GEO.R1.9.3 — Legenda dinâmica */
+.biomie-composite-legend__title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--mag-muted);
+  margin-right: 4px;
+  flex-shrink: 0;
+}
