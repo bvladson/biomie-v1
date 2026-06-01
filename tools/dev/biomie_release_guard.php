@@ -3279,6 +3279,47 @@ $domains[] = [
     'issues'        => $d37Issues,
 ];
 
+// ── D40 — GEO.R1.9.1 Cross-links NF ↔ Mapa ↔ Pedidos [informacional] ──────────
+
+$d40Issues = [];
+
+foreach ([
+    'api/geo_invoice_detail.php',
+    'api/company_cnae_ranking.php',
+    'tools/dev/geo_r191_smoke_probe.php',
+] as $f) {
+    if (!is_file($projectRoot . '/' . $f)) $d40Issues[] = "Ausente: {$f}";
+}
+
+$mapJs = is_file($projectRoot . '/assets/js/biomie-map.js')
+    ? file_get_contents($projectRoot . '/assets/js/biomie-map.js') : '';
+if (!str_contains($mapJs, 'geo-nf-expand-btn'))  $d40Issues[] = 'biomie-map.js: geo-nf-expand-btn ausente';
+if (!str_contains($mapJs, 'Ver em pedidos'))      $d40Issues[] = 'biomie-map.js: "Ver em pedidos" ausente';
+
+$nfTableJs = is_file($projectRoot . '/assets/js/modules/commercial/nf-periodo-table.js')
+    ? file_get_contents($projectRoot . '/assets/js/modules/commercial/nf-periodo-table.js') : '';
+if (!str_contains($nfTableJs, 'Ver no mapa'))     $d40Issues[] = 'nf-periodo-table.js: "Ver no mapa" ausente';
+
+$pedidosHtml = is_file($projectRoot . '/views/pedidos.html')
+    ? file_get_contents($projectRoot . '/views/pedidos.html') : '';
+if (!str_contains($pedidosHtml, 'pedidosMapLink')) $d40Issues[] = 'pedidos.html: pedidosMapLink ausente';
+
+$indexHtml = is_file($projectRoot . '/views/index.html')
+    ? file_get_contents($projectRoot . '/views/index.html') : '';
+if (!str_contains($indexHtml, 'indexGeoCnaeStrip')) $d40Issues[] = 'index.html: indexGeoCnaeStrip ausente';
+
+$domains[] = [
+    'label'         => 'D40 GEO.R1.9.1 Cross-links NF↔Mapa↔Pedidos',
+    'guard'         => 'geo_invoice_detail + cnae_ranking + expand btn + ver-pedidos + ver-mapa + cnae strip',
+    'pass'          => true,
+    'warn'          => count($d40Issues) > 0,
+    'informational' => true,
+    'summary'       => $d40Issues === []
+        ? 'GEO.R1.9.1 presente: NF detail API + CNAE ranking + expand itens + cross-links mapa↔pedidos↔index'
+        : count($d40Issues) . ' item(ns) GEO.R1.9.1 ausente(s) [informacional]',
+    'issues'        => $d40Issues,
+];
+
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';

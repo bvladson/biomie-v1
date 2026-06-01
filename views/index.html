@@ -79,6 +79,21 @@
     </article>
   </section>
 
+  <!-- GEO.R1.9.1 — Empresas e CNAEs (mini geo-cnae strip) -->
+  <section class="anim d1" id="indexGeoCnaeStrip" style="display:none;margin:0 0 8px;">
+    <div class="wallboard-card" style="padding:12px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:16px;color:var(--mag-accent-1,#96140a);">map</span>
+          <strong style="font-size:13px;color:var(--mag-text);">Empresas e CNAEs</strong>
+          <span id="indexGeoCnaeCount" style="font-size:11px;color:var(--mag-muted);font-weight:700;"></span>
+        </div>
+        <a id="indexGeoMapLink" href="mapa_vendas.php" style="font-size:12px;color:var(--mag-accent-1,#96140a);font-weight:700;text-decoration:none;">Ver mapa ↗</a>
+      </div>
+      <div id="indexGeoCnaeList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
+    </div>
+  </section>
+
   <!-- ═══ FILTER BAR ═══ -->
   <section class="dashboard-controls">
     <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" data-mobile-filter-sheet>
@@ -443,6 +458,63 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }, 3000);
 });
+
+// GEO.R1.9.1 — Carrega mini-ranking de empresas e CNAEs no index
+(function loadIndexGeoCnae() {
+  'use strict';
+  function esc(v) {
+    return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function fmtMoney(v) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(+v || 0);
+  }
+  function buildParams() {
+    const dateStart = document.getElementById('dateStart');
+    const dateEnd   = document.getElementById('dateEnd');
+    const p = new URLSearchParams();
+    if (dateStart?.value) p.set('date_from', dateStart.value);
+    if (dateEnd?.value)   p.set('date_to',   dateEnd.value);
+    p.set('mode', 'top_cnaes');
+    p.set('limit', '8');
+    return p.toString();
+  }
+  async function load() {
+    const strip = document.getElementById('indexGeoCnaeStrip');
+    const list  = document.getElementById('indexGeoCnaeList');
+    const count = document.getElementById('indexGeoCnaeCount');
+    const link  = document.getElementById('indexGeoMapLink');
+    if (!strip || !list) return;
+    try {
+      const params = buildParams();
+      const resp = await fetch('api/company_cnae_ranking.php?' + params, { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const items = data.items || [];
+      if (!items.length) return;
+      strip.style.display = '';
+      const sum = data.summary || {};
+      if (count) count.textContent = sum.cnaes + ' CNAEs · ' + sum.empresas + ' empresas';
+
+      // Update map link with current period
+      const dateStart = document.getElementById('dateStart');
+      const dateEnd   = document.getElementById('dateEnd');
+      if (link && dateStart?.value && dateEnd?.value) {
+        link.href = 'mapa_vendas.php?layer=mapa_composto_ceara&date_from=' + encodeURIComponent(dateStart.value) + '&date_to=' + encodeURIComponent(dateEnd.value);
+      }
+
+      list.innerHTML = items.slice(0, 6).map(c => `
+        <span style="display:inline-flex;flex-direction:column;padding:6px 10px;border:1px solid var(--mag-border,#e5e7eb);border-radius:8px;font-size:11px;background:var(--mag-surface,#fff);min-width:110px;">
+          <strong style="color:var(--mag-text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.cnae_descricao || c.cnae_codigo)}</strong>
+          <span style="color:var(--mag-muted);margin-top:1px;">${c.empresas} empresa${c.empresas !== 1 ? 's' : ''} · ${fmtMoney(c.faturamento)}</span>
+        </span>
+      `).join('');
+    } catch (e) { /* silent */ }
+  }
+
+  // Load after page settles, then on filter apply
+  setTimeout(load, 2200);
+  document.getElementById('applyFilters')?.addEventListener('click', () => setTimeout(load, 800));
+})();
 </script>
 </body>
 </html>

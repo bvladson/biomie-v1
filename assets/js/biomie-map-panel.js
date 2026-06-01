@@ -27,8 +27,8 @@
   function setInitial(formatters) {
     text('selectedFeatureBadge', 'Nenhuma selecao');
     text('geoDrawerHeading', 'Leitura comercial');
-    text('panelTitle', 'Selecione um bairro');
-    text('panelSubtitle', 'Clique em um bairro no mapa para ver a leitura comercial.');
+    text('panelTitle', 'Selecione um território');
+    text('panelSubtitle', 'Clique em um território no mapa para ver a leitura comercial.');
     text('kpiFeatureRevenue', '-');
     text('kpiFeatureClients', '-');
     text('kpiFeatureNotes', '-');
@@ -44,10 +44,10 @@
   }
 
   function setGlobal(buyers, cnaes, formatters) {
-    text('selectedFeatureBadge', 'Todos os bairros');
+    text('selectedFeatureBadge', 'Visão geral do Ceará');
     text('geoDrawerHeading', 'Visao geral');
-    text('panelTitle', 'Visao geral');
-    text('panelSubtitle', 'Top compradores e CNAEs do periodo. Clique em um bairro para detalhar.');
+    text('panelTitle', 'Visao geral do Ceará');
+    text('panelSubtitle', 'Top compradores e CNAEs do periodo. Clique em um território para detalhar.');
     text('kpiFeatureRevenue', '-');
     text('kpiFeatureClients', '-');
     text('kpiFeatureNotes', '-');
@@ -113,19 +113,41 @@
     ].join(' ');
   }
 
+  // GEO.R1.8.1 — territory type labels and colors
+  const TERRITORY_TYPE_LABELS = {
+    fortaleza_bairro:       { label: 'Bairro · Fortaleza',          color: '#1D4ED8' },
+    metro_bairro:           { label: 'Bairro · Grande Fortaleza',    color: '#0F766E' },
+    rmf_municipio_fallback: { label: 'Município · RMF',              color: '#6D28D9' },
+    ceara_municipio:        { label: 'Município · Ceará',            color: '#B45309' },
+  };
+
   function renderNeighborhood(row, formatters) {
     const data = row || {};
-    const nbName = data.neighborhood || 'Bairro';
-    const nbKey  = data.neighborhood_key || data.bairro_key || normalizeKey(nbName);
-    const city   = data.city || 'Fortaleza';
-    text('selectedFeatureBadge', nbName);
+    const nbName  = data.neighborhood || data.bairro_nome || data.municipio_nome || 'Território';
+    const nbKey   = data.neighborhood_key || data.bairro_key || normalizeKey(nbName);
+    const city    = data.city || data.municipio_nome || 'Ceará';
+    // GEO.R1.8.1 — usar municipio real, não fixo "Fortaleza"
+    const subtitle = city ? `${city} · Ceará` : 'Ceará';
+    // Territory type badge
+    const ttype   = data.territory_type || '';
+    const ttDef   = TERRITORY_TYPE_LABELS[ttype] || null;
+
+    text('selectedFeatureBadge', ttDef ? ttDef.label : nbName);
     text('geoDrawerHeading', nbName);
     text('panelTitle', nbName);
-    text('panelSubtitle', city ? `Fortaleza / ${city}` : 'Fortaleza');
+    text('panelSubtitle', subtitle);
     text('kpiFeatureRevenue', formatters.money(data.revenue));
     text('kpiFeatureClients', formatters.number(data.customers));
     text('kpiFeatureNotes', formatters.number(data.invoices));
     text('kpiFeatureTicket', formatters.money(data.average_ticket));
+
+    // GEO.R1.8.1 — territory type badge in drawer eyebrow
+    const eyebrow = document.querySelector('.geo-drawer__eyebrow');
+    if (eyebrow && ttDef) {
+      eyebrow.innerHTML = `<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:${ttDef.color}">${escapeHtml(ttDef.label)}</span>`;
+    } else if (eyebrow) {
+      eyebrow.textContent = 'Detalhe do território';
+    }
 
     const geo360El = document.getElementById('geo360Btn');
     if (geo360El && nbKey) {
@@ -134,6 +156,10 @@
       geo360El.setAttribute('data-city', city);
       geo360El.style.display = '';
     }
+
+    // GEO.R1.8.2 — show "Ver ações" quick-jump button
+    const actionsBtn = document.getElementById('geoDrawerActionsBtn');
+    if (actionsBtn) actionsBtn.style.display = '';
   }
 
   function normalizeKey(value) {

@@ -97,10 +97,12 @@ export const NfPeriodoTable = (() => {
                 <th class="sortable" data-col="data_ref" style="width:80px;">Data</th>
                 <th class="sortable text-right" data-col="base_comercial" style="width:100px;">Base Com.</th>
                 <th style="width:80px;">Pedido</th>
+                <!-- GEO.R1.9.1 — Ver no mapa -->
+                <th style="width:28px;" title="Ver no mapa"></th>
               </tr>
             </thead>
             <tbody id="nfPeriodoBody">
-              <tr><td colspan="7" class="empty-state">Carregando...</td></tr>
+              <tr><td colspan="8" class="empty-state">Carregando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -256,6 +258,11 @@ export const NfPeriodoTable = (() => {
         ? '<span class="scope-chip scope-chip--remessa">REM</span>'
         : '<span class="scope-chip scope-chip--orc-pd">ORC</span>';
 
+      // GEO.R1.9.1 — link "Ver no mapa" com mesmo período
+      const startParam  = encodeURIComponent(_state.start || '');
+      const endParam    = encodeURIComponent(_state.end   || '');
+      const mapLink = `<a href="mapa_vendas.php?layer=mapa_composto_ceara&date_from=${startParam}&date_to=${endParam}" target="_blank" title="Ver território no mapa" style="font-size:10px;color:var(--mag-accent-1,#96140a);white-space:nowrap;text-decoration:none;" tabindex="-1">🗺</a>`;
+
       return `<tr>
         <td>${nfLink}</td>
         <td>${scopeBadge}</td>
@@ -264,6 +271,7 @@ export const NfPeriodoTable = (() => {
         <td>${_esc(row.data_ref || '')}</td>
         <td class="text-right font-mono">${brl}</td>
         <td>${pedidoCell}</td>
+        <td style="text-align:center;width:28px;">${mapLink}</td>
       </tr>`;
     }).join('');
   }

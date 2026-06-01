@@ -123,6 +123,14 @@
       <div style="font-size:12px;">NFs de Licitação <strong>não entram</strong> no ranking comercial padrão, metas Orç-PD, vendedores comerciais, Mix de Produtos ou dashboards executivos. Visíveis apenas nesta aba.</div>
     </div>
 
+    <!-- GEO.R1.9.1 — Link para o mapa com período atual -->
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;">
+      <a id="pedidosMapLink" href="mapa_vendas.php?layer=mapa_composto_ceara" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--mag-accent-1,#96140a);text-decoration:none;padding:4px 10px;border:1px solid rgba(150,20,10,0.25);border-radius:8px;" title="Ver territorial no mapa composto">
+        <span class="material-symbols-rounded" style="font-size:14px;">map</span>Ver no mapa
+      </a>
+      <span style="font-size:11px;color:var(--mag-muted);">NFs da tabela correspedem ao mesmo período do mapa.</span>
+    </div>
+
     <!-- Filtros rápidos (Fase Q.2) -->
     <div class="nf-quick-filter-bar" id="nfQuickFilters">
       <button class="nf-quick-filter-btn" data-quick-filter="has_frete"    data-quick-value="1" title="Somente NFs com frete">
@@ -297,8 +305,20 @@
         const s = document.getElementById('dateStart')?.value || start;
         const e = document.getElementById('dateEnd')?.value   || end;
         NfPeriodoTable.updatePeriod(s, e);
+        // GEO.R1.9.1 — sync map link with current period
+        const mapLink = document.getElementById('pedidosMapLink');
+        if (mapLink && s && e) {
+          mapLink.href = 'mapa_vendas.php?layer=mapa_composto_ceara&date_from=' + encodeURIComponent(s) + '&date_to=' + encodeURIComponent(e);
+        }
       });
     }
+    // Initial map link sync
+    (() => {
+      const mapLink = document.getElementById('pedidosMapLink');
+      if (mapLink && start && end) {
+        mapLink.href = 'mapa_vendas.php?layer=mapa_composto_ceara&date_from=' + encodeURIComponent(start) + '&date_to=' + encodeURIComponent(end);
+      }
+    })();
   </script>
 </main>
 </body>

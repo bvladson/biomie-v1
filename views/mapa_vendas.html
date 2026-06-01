@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
   <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
   <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
-  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260530-geo-r1-2b" />
+  <link rel="stylesheet" href="assets/css/biomie-map.css?v=20260531-geo-r1-8" />
   <script src="assets/js/chart.umd.js"></script>
   <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
   <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
@@ -35,13 +35,28 @@
       </section>
 
       <section class="dashboard-controls">
-        <!-- GEO.R1 — Seletores de camada e escopo -->
+        <!-- GEO.R1.8.1 — Chips de foco territorial (modo visual primário) -->
+        <div class="geo-focus-chips anim d1" id="geoFocusChips" role="group" aria-label="Foco territorial do mapa">
+          <button type="button" class="geo-focus-chip geo-focus-chip--active" data-layer="mapa_composto_ceara" aria-pressed="true">
+            <span class="material-symbols-rounded">map</span>Visão completa
+          </button>
+          <button type="button" class="geo-focus-chip" data-layer="fortaleza_bairros" aria-pressed="false">Fortaleza</button>
+          <button type="button" class="geo-focus-chip" data-layer="grande_fortaleza_bairros" aria-pressed="false">Grande Fortaleza</button>
+          <button type="button" class="geo-focus-chip" data-layer="rmf_municipios" aria-pressed="false">RMF</button>
+          <button type="button" class="geo-focus-chip" data-layer="ceara_municipios" aria-pressed="false">Ceará municípios</button>
+          <button type="button" class="geo-focus-chip" data-layer="metro_todas_municipios" aria-pressed="false">Metrópoles</button>
+          <button type="button" class="geo-focus-chip" data-layer="metro_sobral_municipios" aria-pressed="false">Sobral</button>
+          <button type="button" class="geo-focus-chip" data-layer="metro_cariri_municipios" aria-pressed="false">Cariri</button>
+        </div>
+
+        <!-- GEO.R1 / GEO.R1.8.1 — Seletores de camada e escopo -->
         <div class="filter-bar biomie-map-toolbar anim d1" style="margin-bottom:6px;">
           <div class="filter-group">
-            <label class="filter-label" for="geoLayerSelector">Camada territorial</label>
-            <select id="geoLayerSelector" class="filter-input" aria-label="Selecionar camada do mapa">
+            <label class="filter-label" for="geoLayerSelector">Foco do mapa</label>
+            <select id="geoLayerSelector" class="filter-input" aria-label="Selecionar foco do mapa">
+              <option value="mapa_composto_ceara" selected>Visão completa do Ceará</option>
               <optgroup label="Fortaleza">
-                <option value="fortaleza_bairros" selected>Fortaleza · Bairros</option>
+                <option value="fortaleza_bairros">Fortaleza · Bairros</option>
                 <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros</option>
               </optgroup>
               <optgroup label="Regiões Metropolitanas">
@@ -52,7 +67,6 @@
               </optgroup>
               <optgroup label="Ceará">
                 <option value="ceara_municipios">Ceará · Municípios</option>
-                <option value="ceara_regioes">Ceará · Regiões de Planejamento</option>
               </optgroup>
             </select>
           </div>
@@ -173,16 +187,72 @@
         <article class="wallboard-card biomie-map-card geo-map-card">
           <div class="biomie-map-card__head">
             <div>
-              <h2 id="geoMapTitle">Fortaleza por bairros</h2>
-              <p id="geoMapSubtitle">Cor por faturamento, tooltip no hover e clique para detalhar o território.</p>
+              <h2 id="geoMapTitle">Mapa comercial do Ceará</h2>
+              <p id="geoMapSubtitle">Visão geográfica de vendas por bairros, municípios e territórios.</p>
             </div>
             <button id="fitLayerBoundsBtn" type="button" class="btn-secondary" title="Enquadrar a camada atual no mapa">
               <span class="material-symbols-rounded">fit_screen</span>Enquadrar
+            </button>
+            <!-- GEO.R1.8.6 — Selecionar área -->
+            <button id="geoDrawAreaBtn" type="button" class="btn-secondary" title="Desenhar área de seleção no mapa" style="display:none;">
+              <span class="material-symbols-rounded">draw</span>Selecionar área
             </button>
             <button id="clearSelection" type="button" class="btn-secondary">
               <span class="material-symbols-rounded">close</span>Limpar selecao
             </button>
           </div>
+          <!-- GEO.R1.8.1 — Modo visual bar -->
+          <div class="geo-mode-bar" style="padding:4px 14px 2px;" id="geoModeBar">
+            <div class="geo-mode-chips" id="geoModeChips" role="group" aria-label="Modo visual do mapa">
+              <button type="button" class="geo-mode-chip geo-mode-chip--active" data-mode="territories">
+                <span class="material-symbols-rounded">layers</span>Territórios
+              </button>
+              <!-- GEO.R1.8.5 — habilitado via GEO_FEATURES.heatmap no JS -->
+              <button type="button" class="geo-mode-chip" data-mode="heatmap" disabled title="Calor de vendas">
+                <span class="material-symbols-rounded">local_fire_department</span>Calor
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="clusters" disabled title="Cluster de clientes — próxima versão">
+                <span class="material-symbols-rounded">group_work</span>Clientes <span class="geo-mode-badge">breve</span>
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="quality" id="geoModeQuality">
+                <span class="material-symbols-rounded">verified</span>Qualidade
+              </button>
+              <!-- GEO.R1.8.6 — habilitado via GEO_FEATURES.comparison -->
+              <button type="button" class="geo-mode-chip" data-mode="comparison" disabled id="geoModeComparison" title="Comparar territórios">
+                <span class="material-symbols-rounded">compare</span>Comparar <span id="geoComparisonCountBadge" style="display:none;background:var(--mag-accent-1,#96140a);color:#fff;border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span>
+              </button>
+            </div>
+            <div id="geoInsightsBadge" style="display:none;font-size:11px;font-weight:700;color:var(--mag-accent-1,#96140a);"></div>
+          </div>
+
+          <!-- GEO.R1.8.6 — Barra de territórios em comparação -->
+          <div id="geoComparisonBar" class="geo-comparison-bar" hidden>
+            <span class="material-symbols-rounded" style="font-size:16px;color:#2563eb;">compare</span>
+            <span style="font-size:12px;font-weight:700;color:var(--mag-text);">Comparando <span id="geoComparisonCount">0</span> territórios</span>
+            <div id="geoComparisonChips" class="geo-comparison-chips"></div>
+            <button type="button" id="geoOpenComparisonBtn" class="btn-primary" style="font-size:11px;padding:4px 12px;">Ver comparação</button>
+            <button type="button" id="geoClearComparisonBtn" class="btn-secondary" style="font-size:11px;padding:4px 10px;">
+              <span class="material-symbols-rounded" style="font-size:13px;">close</span>Limpar
+            </button>
+          </div>
+
+          <!-- GEO.R1.8.6 — Painel de resultado de seleção de área -->
+          <div id="geoAreaResultPanel" class="geo-area-result" hidden>
+            <div class="geo-area-result__head">
+              <span class="material-symbols-rounded" style="font-size:16px;color:#059669;">draw</span>
+              <strong>Área selecionada</strong>
+              <button type="button" id="geoClearAreaBtn" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--mag-muted);">
+                <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+              </button>
+            </div>
+            <div id="geoAreaResultBody"></div>
+            <div style="padding:6px 0 2px;display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" id="geoExportAreaCsvBtn" class="btn-secondary" style="font-size:11px;">
+                <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">download</span>Exportar área CSV
+              </button>
+            </div>
+          </div>
+
           <div class="biomie-map-canvas-wrap">
             <div id="geoLayerBadge" style="display:none;position:absolute;top:8px;left:8px;z-index:900;padding:3px 8px;border-radius:12px;background:rgba(30,64,175,0.85);color:#fff;font-size:0.7rem;font-weight:600;pointer-events:none;"></div>
             <div id="geoGeometryMissing" style="display:none;position:absolute;inset:0;z-index:800;background:rgba(255,255,255,0.93);flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;">
@@ -215,7 +285,21 @@
             <span id="geoRankingCount" class="geo-ranking-count">0 de 0 territórios</span>
           </div>
           <div class="geo-ranking-scroll">
-            <div id="scopeRankingTable" class="geo-ranking-list" role="listbox" aria-label="Ranking de bairros" data-empty-title="Sem bairros" data-empty-message="Nenhum bairro com venda no periodo." data-empty-icon="location_off"></div>
+            <div id="scopeRankingTable" class="geo-ranking-list" role="listbox" aria-label="Ranking territorial" data-empty-title="Sem territórios" data-empty-message="Nenhum território com venda no periodo." data-empty-icon="location_off"></div>
+          </div>
+          <!-- GEO.R1.8.1 — Painel de insights geográficos -->
+          <div class="geo-insights-card" id="geoInsightsCard" style="display:none;">
+            <div class="geo-insights-header">
+              <span class="material-symbols-rounded">lightbulb</span>
+              Insights do período
+            </div>
+            <div id="geoInsightsList"></div>
+          </div>
+          <!-- GEO.R1.8.1 — Exportar ranking -->
+          <div style="padding:8px 14px 10px;border-top:1px solid var(--mag-border);flex:0 0 auto;">
+            <button type="button" id="geoExportCsvBtn" class="btn-secondary" style="font-size:11px;width:100%;">
+              <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;">download</span>Exportar ranking CSV
+            </button>
           </div>
         </article>
       </section>
@@ -224,20 +308,33 @@
       <aside id="geoNeighborhoodDrawer" class="geo-drawer" role="dialog" aria-modal="true" aria-labelledby="panelTitle" hidden>
         <div class="geo-drawer__header">
           <div>
-            <span class="geo-drawer__eyebrow">Detalhe do bairro</span>
+            <!-- GEO.R1.8.1 — eyebrow mostra tipo territorial dinâmico -->
+            <span class="geo-drawer__eyebrow" id="geoDrawerEyebrow">Detalhe do território</span>
             <h2 id="geoDrawerHeading">Leitura comercial</h2>
           </div>
-          <button id="geoDrawerClose" type="button" class="btn-secondary geo-drawer__close" aria-label="Fechar detalhe do bairro">
+          <button id="geoDrawerClose" type="button" class="btn-secondary geo-drawer__close" aria-label="Fechar detalhe do território">
             <span class="material-symbols-rounded">close</span>
           </button>
         </div>
 
-        <section class="biomie-side-panel geo-drawer__body" aria-label="Detalhe do bairro selecionado">
-          <article class="wallboard-card">
+        <!-- GEO.R1.8.2 — Territory 360 tabs -->
+        <div id="geoDrawerTabs" class="geo-drawer-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--mag-border);padding:0 14px;overflow-x:auto;" role="tablist" aria-label="Seções do território">
+          <button type="button" class="geo-drawer-tab geo-drawer-tab--active" role="tab" aria-selected="true" data-tab="resumo">Resumo</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="compradores">Compradores</button>
+          <!-- GEO.R1.9 — Notas fiscais tab -->
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="notas">Notas</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="cnaes">CNAEs</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="evolucao">Evolução</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="acoes">Ações</button>
+        </div>
+
+        <section class="biomie-side-panel geo-drawer__body" aria-label="Detalhe do território selecionado">
+          <!-- PANEL: resumo -->
+          <article class="wallboard-card" data-panel="resumo">
             <div class="biomie-panel-head">
               <div>
-                <h2 id="panelTitle">Selecione um bairro</h2>
-                <p id="panelSubtitle">Clique em um bairro no mapa para ver a leitura comercial.</p>
+                <h2 id="panelTitle">Selecione um território</h2>
+                <p id="panelSubtitle">Clique em um território no mapa para ver a leitura comercial.</p>
               </div>
               <span id="selectedFeatureBadge" class="topbar-badge">Nenhuma selecao</span>
             </div>
@@ -247,29 +344,52 @@
               <div class="biomie-panel-kpi"><span>Notas</span><strong id="kpiFeatureNotes">-</strong></div>
               <div class="biomie-panel-kpi"><span>Ticket medio</span><strong id="kpiFeatureTicket">-</strong></div>
             </div>
-            <div style="padding:8px 0 4px;">
+            <div style="padding:8px 0 4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <button type="button" id="geo360Btn" class="row-inline-link" style="display:none;font-size:0.72rem;"
                 data-biomie-action="open-neighborhood"
                 data-neighborhood-key="" data-neighborhood-name="" data-city="Fortaleza"
-                title="Geo 360 — detalhe analítico do bairro">
+                title="Geo 360 — detalhe analítico do território">
                 <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">open_in_new</span>
                 Geo 360
+              </button>
+              <button type="button" id="geoDrawerActionsBtn" class="row-inline-link" style="display:none;font-size:0.72rem;">
+                <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">bolt</span>
+                Ver ações
+              </button>
+              <!-- GEO.R1.8.6 — Adicionar à comparação -->
+              <button type="button" id="geoAddToComparisonBtn" class="row-inline-link" style="display:none;font-size:0.72rem;">
+                <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">compare</span>
+                Comparar
               </button>
             </div>
           </article>
 
-          <article class="wallboard-card">
+          <!-- PANEL: notas fiscais (GEO.R1.9) -->
+          <article class="wallboard-card" data-panel="notas" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Notas fiscais</h2>
+                <p>NFs que compõem o faturamento deste território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section" id="geoInvoicesPanel">
+              <p style="color:var(--mag-muted);font-size:13px;padding:8px 0;">Selecione um território com vendas para ver as notas fiscais.</p>
+            </div>
+          </article>
+
+          <!-- PANEL: compradores (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="resumo compradores">
             <div class="biomie-panel-head">
               <div>
                 <h2>Principais compradores</h2>
-                <p>Clientes com maior faturamento no bairro.</p>
+                <p>Clientes com maior faturamento no território.</p>
               </div>
             </div>
             <div class="biomie-panel-section">
               <div id="buyersSourceBadge" style="display:none;margin-bottom:6px;"></div>
               <table class="mag-table mag-table-clean" data-mobile-card-table>
                 <thead><tr><th>Cliente</th><th>Notas</th><th>Faturamento</th></tr></thead>
-                <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um bairro para ver os compradores." data-empty-icon="group_off"></tbody>
+                <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um território para ver os compradores." data-empty-icon="group_off"></tbody>
               </table>
               <div id="buyerChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
                 <canvas id="buyerChartCanvas"></canvas>
@@ -277,11 +397,12 @@
             </div>
           </article>
 
-          <article class="wallboard-card">
+          <!-- PANEL: cnaes (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="resumo cnaes">
             <div class="biomie-panel-head">
               <div>
                 <h2>Principais CNAEs</h2>
-                <p>Segmentos com maior faturamento no bairro.</p>
+                <p>Segmentos com maior faturamento no território.</p>
               </div>
             </div>
             <div class="biomie-panel-section">
@@ -292,6 +413,36 @@
               <div id="cnaeChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
                 <canvas id="cnaeChartCanvas"></canvas>
               </div>
+            </div>
+          </article>
+
+          <!-- PANEL: evolucao (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="evolucao" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Evolução mensal</h2>
+                <p>Faturamento mês a mês no período selecionado.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section">
+              <div id="evolutionLoading" style="padding:18px;text-align:center;color:var(--mag-muted);font-size:13px;">Selecione um território para ver a evolução.</div>
+              <div id="evolutionChartBlock" class="biomie-chart-box mag-chart-container" style="height:220px;display:none;">
+                <canvas id="evolutionChartCanvas"></canvas>
+              </div>
+              <div id="evolutionEmpty" style="display:none;padding:18px;text-align:center;color:var(--mag-muted);font-size:13px;">Sem dados de evolução para este território.</div>
+            </div>
+          </article>
+
+          <!-- PANEL: acoes (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="acoes" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Ações comerciais</h2>
+                <p>Recomendações baseadas no desempenho do território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section" id="geoDrawerActionsList">
+              <p style="color:var(--mag-muted);font-size:13px;padding:8px 0;">Selecione um território para ver as ações recomendadas.</p>
             </div>
           </article>
         </section>
@@ -338,7 +489,33 @@
       </details>
 </main>
 
+<!-- GEO.R1.8.6 — Painel de comparação de territórios (overlay) -->
+<div id="geoComparisonOverlay" class="geo-comparison-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="geoComparisonTitle">
+  <div class="geo-comparison-panel" id="geoComparisonPanel">
+    <div class="geo-comparison-panel__head">
+      <div>
+        <h2 id="geoComparisonTitle">Comparação de territórios</h2>
+        <p id="geoComparisonSubtitle">Faturamento, clientes e notas lado a lado.</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" id="geoExportComparisonCsvBtn" class="btn-secondary" style="font-size:11px;">
+          <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">download</span>Exportar CSV
+        </button>
+        <button type="button" id="geoCloseComparisonBtn" class="btn-secondary geo-drawer__close" aria-label="Fechar comparação">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+    </div>
+    <div id="geoComparisonGrid" class="geo-comparison-grid"></div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- GEO.R1.8.5 — Leaflet.heat para modo calor de vendas -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" crossorigin="anonymous"></script>
+<!-- GEO.R1.8.6 — Leaflet.draw para seleção manual de área -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" crossorigin="anonymous"></script>
 <script src="assets/js/shell.js?v=20260425-ui1"></script>
 <script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
 <script src="assets/js/biomie-states.js?v=20260502-p16"></script>
@@ -351,8 +528,8 @@
 <script src="assets/js/modules/order-detail/index.js"></script>
 <script src="assets/js/modules/invoice-detail/index.js"></script>
 <script src="assets/js/modules/customer-detail/index.js"></script>
-<script src="assets/js/biomie-map-panel.js?v=20260527-uxr11-1"></script>
+<script src="assets/js/biomie-map-panel.js?v=20260531-geo-r1-8"></script>
 <script src="assets/js/geo-normalizer.js?v=20260513-mapfix2"></script>
-<script src="assets/js/biomie-map.js?v=20260531-geo-r1-4-5-6"></script>
+<script src="assets/js/biomie-map.js?v=20260531-geo-r1-8"></script>
 </body>
 </html>
