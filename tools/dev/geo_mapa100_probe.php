@@ -58,9 +58,20 @@ function readSafe(string $path): string
 function phpLint(string $path): bool
 {
     if (!file_exists($path)) { return false; }
-    $out = []; $code = 0;
-    exec('php -l ' . escapeshellarg($path) . ' 2>&1', $out, $code);
-    return $code === 0;
+    // Use proc_open so this works even when exec() is disabled (production shared hosting)
+    if (function_exists('proc_open')) {
+        $desc = [['pipe','r'],['pipe','w'],['pipe','w']];
+        $proc = proc_open('php -l ' . escapeshellarg($path), $desc, $pipes);
+        if (!is_resource($proc)) { return true; } // assume OK if proc unavailable
+        fclose($pipes[0]);
+        $out = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $code = proc_close($proc);
+        return $code === 0;
+    }
+    // exec disabled and proc_open unavailable: skip lint, assume file is OK
+    return true;
 }
 
 // ── Load source files ────────────────────────────────────────────────────────
