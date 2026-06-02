@@ -315,8 +315,55 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     window.BIomieCharts.destroyChart(canvasId);
 
     var rows = daily || [];
-    if (!rows.length) { B._chartEmpty(canvasId, 'Sem movimentacao diaria no periodo.'); return; }
-    var compactRows = rows.slice(-14);
+
+    // Seed the full date range from page filters so all days appear even with 0 values
+    var range       = B.getDateRange();
+    var seededDates = (range.start && range.end) ? B.buildRangeDates(range.start, range.end) : [];
+
+    // If no seeded range, derive from the data itself
+    if (!seededDates.length && rows.length) {
+      rows.forEach(function (r) { if (r.date) seededDates.push(r.date); });
+      seededDates.sort();
+    }
+
+    if (!seededDates.length && !rows.length) {
+      B._chartEmpty(canvasId, 'Sem movimentacao diaria no periodo.');
+      return;
+    }
+
+    // Build per-date value Maps — rows with no entry default to 0 (seeded)
+    var billedMap    = new Map(seededDates.map(function (d) { return [d, 0]; }));
+    var authMap      = new Map(seededDates.map(function (d) { return [d, 0]; }));
+    var cancelMap    = new Map(seededDates.map(function (d) { return [d, 0]; }));
+    rows.forEach(function (r) {
+      if (!r.date) return;
+      billedMap.set( r.date, Number(r.billed_value     || 0));
+      authMap.set(   r.date, Number(r.authorized_value || 0));
+      cancelMap.set( r.date, Number(r.cancelled_value  || 0));
+    });
+
+    // For periods > 62 days compress to weekly to keep chart readable
+    var dates = seededDates;
+    if (dates.length > 62) {
+      var weekMap = {};
+      dates.forEach(function (d) {
+        var wk = d.substring(0, 7); // YYYY-MM → group by month for very long ranges
+        if (!weekMap[wk]) weekMap[wk] = { date: wk + '-01', billed: 0, auth: 0, cancel: 0 };
+        weekMap[wk].billed += billedMap.get(d) || 0;
+        weekMap[wk].auth   += authMap.get(d)   || 0;
+        weekMap[wk].cancel += cancelMap.get(d)  || 0;
+      });
+      var compressed = Object.values(weekMap).sort(function (a, b) { return a.date.localeCompare(b.date); });
+      dates       = compressed.map(function (r) { return r.date; });
+      billedMap   = new Map(compressed.map(function (r) { return [r.date, r.billed];  }));
+      authMap     = new Map(compressed.map(function (r) { return [r.date, r.auth];    }));
+      cancelMap   = new Map(compressed.map(function (r) { return [r.date, r.cancel];  }));
+    }
+
+    var hasAnyData = dates.some(function (d) {
+      return (billedMap.get(d) || 0) + (authMap.get(d) || 0) + (cancelMap.get(d) || 0) > 0;
+    });
+    if (!hasAnyData) { B._chartEmpty(canvasId, 'Sem movimentacao diaria no periodo.'); return; }
 
     var theme       = B._chartTheme();
     var billedColor = theme.billed;
@@ -325,20 +372,20 @@ window.BIomie.destroyChart = window.BIomieCharts.destroyChart;
     var ctx = canvas.getContext('2d');
 
     var mixedDatasets = [
-      { type: 'bar',  label: 'NF',         data: compactRows.map(function (r) { return Number(r.billed_value    || 0); }), backgroundColor: B.buildGradient(ctx, billedColor, 0.26), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
-      { type: 'bar',  label: 'Carteira',   data: compactRows.map(function (r) { return Number(r.authorized_value|| 0); }), backgroundColor: B.buildGradient(ctx, authColor,   0.22), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
-      { type: 'line', label: 'Canceladas', data: compactRows.map(function (r) { return Number(r.cancelled_value || 0); }), borderColor: cancelColor, backgroundColor: B.hexToRgba(cancelColor, 0.1), pointBackgroundColor: cancelColor, pointRadius: 0, pointHoverRadius: 3, tension: 0.32, fill: false, order: 1 }
+      { type: 'bar',  label: 'NF',        data: dates.map(function (d) { return billedMap.get(d)  || 0; }), backgroundColor: B.buildGradient(ctx, billedColor, 0.26), borderColor: billedColor, borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
+      { type: 'bar',  label: 'Carteira',  data: dates.map(function (d) { return authMap.get(d)    || 0; }), backgroundColor: B.buildGradient(ctx, authColor,   0.22), borderColor: authColor,   borderWidth: 1, borderRadius: 8, stack: 'status', order: 2 },
+      { type: 'line', label: 'Canceladas',data: dates.map(function (d) { return cancelMap.get(d)  || 0; }), borderColor: cancelColor, backgroundColor: B.hexToRgba(cancelColor, 0.1), pointBackgroundColor: cancelColor, pointRadius: 0, pointHoverRadius: 3, tension: 0.32, fill: false, order: 1 }
     ];
     B._renderChart(canvasId, {
       data: {
-        labels: compactRows.map(function (r) { return B.chartDateLabel(r.date || ''); }),
+        labels: dates.map(function (d) { return B.chartDateLabel(d); }),
         datasets: mixedDatasets
       },
       options: {
         responsive: true, resizeDelay: 100, maintainAspectRatio: false, animation: false,
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + B.formatCurrency(ctx.parsed.y); } } } },
-        scales: { x: B.chartAxisOptions('label', { stacked: true, grid: { display: false } }), y: B.chartAxisOptions('money', { stacked: true, beginAtZero: true }) }
+        scales: { x: B.chartAxisOptions('label', { stacked: true, grid: { display: false }, ticks: { maxTicksLimit: 15, maxRotation: 30 } }), y: B.chartAxisOptions('money', { stacked: true, beginAtZero: true }) }
       }
     });
     // UX.CHARTS.R1 — external legend

@@ -222,7 +222,12 @@ export const NfPeriodoTable = (() => {
       _state.filteredRecords = json.recordsFiltered || 0;
       _state.loading = false;
 
-      _renderRows(json.data || []);
+      if (json.data_error) {
+        const tbody = document.getElementById('nfPeriodoBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:var(--danger,#dc2626);">Erro ao carregar NFs: ${json.data_error}</td></tr>`;
+      } else {
+        _renderRows(json.data || []);
+      }
       _renderPagination();
       _renderSummary(json.summary || {});
       _setState('done');

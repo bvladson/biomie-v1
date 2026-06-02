@@ -151,7 +151,7 @@
   };
 
   // GEO.R1.7 — Códigos IBGE dos municípios RMF com bairros (excluídos do polígono municipal no mapa composto)
-  const RMF_WITH_BAIRROS_CODES = new Set(['2304400','2303709','2304285','2304954','2306256','2307650','2307700','2309706','2313500']);
+  const RMF_WITH_BAIRROS_CODES = new Set(['2304400','2303709','2304285','2304954','2306256','2307650','2307700','2309706']);
   const RMF_ALL_CODES = new Set(['2304400','2303709','2307650','2307700','2304285','2301000','2305233','2309607','2309706','2306256','2304954','2303956','2303501','2310852','2310209','2310258','2312403','2312601','2313500']);
 
   // Cache persistente de GeoJSONs entre trocas de modo
@@ -177,7 +177,25 @@
     'NOM_BAIRRO',
     'name',
     'Name',
+    // Municípios CE/RMF (ceara_municipios, rmf_municipios, metro_*)
+    'municipio_nome',
+    'MUNICIPIO_NOME',
+    'NM_MUNICIP',
+    'cidade_key',
+    'label',
   ];
+
+  // Territory type inferred from the active standalone layer (not composite)
+  const LAYER_TERRITORY_TYPE = {
+    'fortaleza_bairros':        'fortaleza_bairro',
+    'grande_fortaleza_bairros': 'metro_bairro',
+    'rmf_municipios':           'rmf_municipio_fallback',
+    'metro_sobral_municipios':  'ceara_municipio',
+    'metro_cariri_municipios':  'ceara_municipio',
+    'metro_todas_municipios':   'ceara_municipio',
+    'ceara_municipios':         'ceara_municipio',
+    'ceara_regioes':            'ceara_regiao',
+  };
   const GEO_NORMALIZER = window.BIOMIE_GEO_NORMALIZER || null;
   const EMPTY_GEO_MESSAGE = 'Nao encontramos vendas geograficas para o periodo selecionado. Verifique o periodo, a sincronizacao do Omie ou a materializacao geografica.';
   const MAP_DEBUG = new URLSearchParams(window.location.search).get('debug') === '1' || window.BIOMIE_GEO_DEBUG === true;
@@ -1070,10 +1088,13 @@
     // GEO.R1.7 — label usa município real (nunca herda city fixo da URL)
     const label = getFeatureTerritoryLabel(feature);
     const sourceNote = props.source === 'IBGE_BAIRROS_CD2022' ? '<small style="color:#9ca3af">IBGE Bairros 2022</small>' : '';
-    if (!row) {
-      return `<div class="biomie-map-tooltip"><strong>${escapeHtml(label)}</strong>${sourceNote ? '<span>' + sourceNote + '</span>' : ''}<span>Sem dados comerciais</span></div>`;
-    }
-    const revenue = getRowRevenue(row);
+    const tooltipRow = row || {
+      revenue: 0,
+      customers: 0,
+      invoices: 0,
+      ticket_medio: 0,
+    };
+    const revenue = getRowRevenue(tooltipRow);
     // UX.CHARTS.R1 — participation % in total
     const totalRevenue = Number(state.scale && state.scale.total || 0);
     const sharePct = totalRevenue > 0 ? (revenue / totalRevenue * 100).toFixed(1) + '%' : null;
@@ -1100,9 +1121,9 @@
         <div class="bmt-kpis">
           <span><em>Faturamento</em><b>${formatters.money(revenue)}</b></span>
           ${sharePct ? `<span><em>% do total</em><b>${sharePct}</b></span>` : ''}
-          <span><em>Clientes</em><b>${formatters.number(row.customers || row.clientes || 0)}</b></span>
-          <span><em>Notas</em><b>${formatters.number(row.invoices || row.notas || 0)}</b></span>
-          <span><em>Ticket</em><b>${formatters.money(row.average_ticket || row.ticket_medio || 0)}</b></span>
+          <span><em>Clientes</em><b>${formatters.number(tooltipRow.customers || tooltipRow.clientes || 0)}</b></span>
+          <span><em>Notas</em><b>${formatters.number(tooltipRow.invoices || tooltipRow.notas || 0)}</b></span>
+          <span><em>Ticket</em><b>${formatters.money(tooltipRow.average_ticket || tooltipRow.ticket_medio || 0)}</b></span>
         </div>
       </div>
     `;
@@ -1121,12 +1142,47 @@
         event.target.setStyle(featureStyle(feature));
       },
       click(event) {
-        const rawName = getFeatureNeighborhoodName(feature);
+        const props = feature.properties || {};
+        // GEO.R2.1 — prefer municipio_nome / label for municipality layers
+        const rawName = getFeatureNeighborhoodName(feature)
+          || props.municipio_nome
+          || props.label
+          || '';
         const matched = getFeatureCommercialRow(feature, false);
-        // Prefer bairro_key from GeoJSON properties (stable underscore key) over fuzzy matching.
-        const bairroKey = feature.properties?.bairro_key || matched.key || normalizeNeighborhoodKey(rawName);
-        const cityKey   = feature.properties?.city_key || 'fortaleza';
-        selectNeighborhood(bairroKey, rawName, cityKey);
+        const bairroKey = props.bairro_key || matched.key || normalizeNeighborhoodKey(rawName);
+        // cityKey for municipality layers = the municipality itself, not hardcoded 'fortaleza'
+        const cityKey = props.city_key || props.cidade_key || normalizeNeighborhoodKey(rawName) || 'fortaleza';
+        const territoryType = props.territory_type || LAYER_TERRITORY_TYPE[_activeLayer] || '';
+        const muniNome = props.municipio_nome || rawName || '';
+
+        state.selectedKey = bairroKey;
+        updateRankingActiveRow();
+
+        // Build row with territory context so renderNeighborhood shows correct title
+        const baseRow = matched.row ? Object.assign({}, matched.row, {
+          bairro_key:     bairroKey,
+          city_key:       cityKey,
+          neighborhood:   rawName,
+          territory_type: territoryType || matched.row.territory_type || '',
+          municipio_nome: muniNome,
+          municipio_ibge: props.municipio_ibge || props.codigo_ibge || '',
+        }) : {
+          bairro_key:     bairroKey,
+          city_key:       cityKey,
+          city:           muniNome,
+          neighborhood:   rawName,
+          bairro_nome:    props.bairro_nome || '',
+          municipio_nome: muniNome,
+          municipio_ibge: props.municipio_ibge || props.codigo_ibge || '',
+          territory_type: territoryType,
+          revenue:        0,
+          customers:      0,
+          invoices:       0,
+          average_ticket: 0,
+        };
+
+        openNeighborhoodDrawer(event.target);
+        loadPanelData(baseRow);
         event.target.setStyle(featureStyle(feature));
         event.target.bringToFront?.();
       },
@@ -1460,6 +1516,13 @@
           last_purchase:  b.last_purchase,
           cnae:           b.cnae,
           segment:        b.segment,
+          codigo_cliente_omie: b.codigo_cliente_omie,
+          cliente_documento: b.document_raw,
+          document_masked: b.document_raw,
+          cidade: b.cidade,
+          cidade_norm: b.cidade_norm,
+          bairro: b.bairro,
+          bairro_norm: b.bairro_norm,
         })), formatters, sourceMode);
       } else {
         // GEO.R1.9.5 — fallback to legacy API when new API returns empty
@@ -1566,7 +1629,8 @@
           bairro_key: '__sem_bairro__',
           neighborhood: 'Sem bairro',
           city: $('cityFilter')?.value || 'Fortaleza',
-          city_key: 'fortaleza',
+          city_key: '',
+          territory_type: 'sem_geo',
           revenue: revenue || 0,
           customers: count || 0,
           invoices: 0,
@@ -1582,14 +1646,50 @@
 
   async function loadSemBairroPanel(row) {
     const token = ++state.panelToken;
-    window.BIomieMapPanel?.renderNoNeighborhood(formatters, row.customers || 0, row.revenue || 0);
-    const params = currentFilters({ bairro_key: '__sem_bairro__', limit: 10 });
-    const buyers = await Promise.allSettled([apiFetch('api/top_buyers_by_geo.php', params, 'buyers')]);
+    const semGeoRow = Object.assign({}, row || {}, {
+      bairro_key: '__sem_bairro__',
+      city_key: '',
+      territory_type: 'sem_geo',
+      neighborhood: 'Sem bairro',
+    });
+    state.drawerTerritoryRow = semGeoRow;
+    activateDrawerTab('resumo');
+    window.BIomieMapPanel?.renderNoNeighborhood(formatters, semGeoRow.customers || 0, semGeoRow.revenue || 0);
+    window.BIomieMapPanel?.renderBuyersLoading();
+    window.BIomieMapPanel?.renderCnaesLoading?.();
+
+    const params = buildTerritoryParams(semGeoRow);
+    params.set('limit', '10');
+    const cnaeParams = buildTerritoryParams(semGeoRow);
+    cnaeParams.set('limit', '10');
+
+    const [buyers, cnaes] = await Promise.allSettled([
+      apiFetch('api/geo_territory_buyers.php', params, 'sem_geo_buyers'),
+      apiFetch('api/geo_territory_cnaes.php', cnaeParams, 'sem_geo_cnaes'),
+    ]);
     if (state.panelToken !== token) return;
-    if (buyers[0].status === 'fulfilled') {
-      const bd = buyers[0].value;
-      const ctx = bd.no_neighborhood_context || {};
-      window.BIomieMapPanel?.renderNoNeighborhood(formatters, row.customers || 0, row.revenue || 0, bd.data || [], ctx);
+
+    if (buyers.status === 'fulfilled') {
+      const bd = buyers.value;
+      const ctx = {
+        title: 'Sem bairro cadastrado',
+        message: 'Clientes com cidade ou bairro ausente no cadastro Omie. Eles continuam visiveis neste painel ate o enriquecimento completar.',
+      };
+      window.BIomieMapPanel?.renderNoNeighborhood(formatters, semGeoRow.customers || 0, semGeoRow.revenue || 0, bd.data || [], ctx);
+    } else {
+      window.BIomieMapPanel?.renderBuyersError('Erro ao carregar clientes sem bairro.');
+    }
+
+    if (cnaes.status === 'fulfilled') {
+      const cnaeItems = (cnaes.value.items || []).map(c => ({
+        cnae: c.cnae_codigo,
+        cnae_description: c.cnae_descricao,
+        customers: c.clientes,
+        revenue: c.faturamento,
+      }));
+      window.BIomieMapPanel?.renderCnaes(cnaeItems, formatters);
+    } else {
+      window.BIomieMapPanel?.renderCnaes([], formatters);
     }
   }
 
@@ -2076,7 +2176,9 @@
     $('geoPresetLast3')?.addEventListener('click', () => { applyPreset3Months(); loadCommercialData(); });
     $('geoPresetThisYear')?.addEventListener('click', () => { applyPresetMonth(); loadCommercialData(); });
     document.addEventListener('click', handleCustomerOpenClick);
+    document.addEventListener('click', handleCnaeDrilldownClick);
     document.addEventListener('keydown', handleCustomerOpenKeydown);
+    document.addEventListener('keydown', handleCnaeDrilldownKeydown);
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !$('geoNeighborhoodDrawer')?.hidden) closeNeighborhoodDrawer();
     });
@@ -2128,6 +2230,63 @@
     openCustomerFromTrigger(trigger);
   }
 
+  async function loadBuyersForSelectedCnae(cnaeCode, description) {
+    const row = state.drawerTerritoryRow;
+    if (!row || !cnaeCode) return;
+
+    const params = buildTerritoryParams(row);
+    params.set('cnae', cnaeCode);
+    params.set('limit', '20');
+    window.BIomieMapPanel?.renderBuyersLoading();
+
+    try {
+      const payload = await apiFetch('api/geo_territory_buyers.php', params, 'cnae_buyers');
+      const rows = (payload.data || []).map((b) => ({
+        customer_name: b.customer_name,
+        document_raw: b.document_raw,
+        document_masked: b.document_raw,
+        cliente_documento: b.document_raw,
+        revenue: b.revenue,
+        invoices: b.invoices,
+        average_ticket: b.average_ticket,
+        last_purchase: b.last_purchase,
+        cnae: b.cnae || cnaeCode,
+        segment: b.segment || description || '',
+        codigo_cliente_omie: b.codigo_cliente_omie,
+        cidade: b.cidade,
+        cidade_norm: b.cidade_norm,
+        bairro: b.bairro,
+        bairro_norm: b.bairro_norm,
+      }));
+      window.BIomieMapPanel?.renderBuyers(rows, formatters, payload.meta?.source_mode || 'geo_territory_cnae');
+      const label = description ? `${cnaeCode} - ${description}` : cnaeCode;
+      showFeedback(`Empresas filtradas por CNAE ${label}.`, 'info');
+    } catch (error) {
+      window.BIomieMapPanel?.renderBuyersError('Erro ao carregar empresas deste CNAE.');
+    }
+  }
+
+  function handleCnaeDrilldownClick(event) {
+    const trigger = event.target.closest('[data-geo-cnae-code]');
+    if (!trigger) return;
+    event.preventDefault();
+    loadBuyersForSelectedCnae(
+      trigger.getAttribute('data-geo-cnae-code') || '',
+      trigger.getAttribute('data-geo-cnae-description') || ''
+    );
+  }
+
+  function handleCnaeDrilldownKeydown(event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const trigger = event.target.closest('[data-geo-cnae-code]');
+    if (!trigger) return;
+    event.preventDefault();
+    loadBuyersForSelectedCnae(
+      trigger.getAttribute('data-geo-cnae-code') || '',
+      trigger.getAttribute('data-geo-cnae-description') || ''
+    );
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // GEO.R1.7 — Mapa Composto Inteligente do Ceará
   // ─────────────────────────────────────────────────────────────────────────
@@ -2173,6 +2332,8 @@
     // 2. Bairros metropolitanos (acima dos municípios)
     for (const f of (metro.features || [])) {
       const props = f.properties || {};
+      const code = String(props.codigo_ibge || props.municipio_ibge || props.CD_MUN || props.codarea || '');
+      if (!RMF_WITH_BAIRROS_CODES.has(code)) continue;
       props.territory_type = 'metro_bairro';
       features.push({ ...f, properties: { ...props } });
     }
@@ -3139,6 +3300,14 @@
     const bairroKey = row.bairro_key || normalizeNeighborhoodKey(row.bairro_nome || row.neighborhood || '');
     const ttype     = row.territory_type || '';
     const joinKey   = row.join_key || row.bairro_norm || '';
+
+    if (ttype === 'sem_geo' || ttype === 'sem_bairro' || bairroKey === '__sem_bairro__') {
+      params.set('territory_type', 'sem_geo');
+      params.set('bairro_key', '__sem_bairro__');
+      const filterCity = $('cityFilter')?.value || '';
+      if (filterCity) params.set('filter_city', filterCity);
+      return params;
+    }
 
     params.set('cidade_key',     cidadeKey);
     params.set('bairro_key',     bairroKey);

@@ -153,21 +153,34 @@ try {
     exit;
 }
 
+// ── Probe optional columns (may not exist in all deployments) ────────────────
+
+$hasNotaKey     = Http::columnExists($pdo, 'biomie_notas_fiscais_canonicas', 'nota_key');
+$hasValorDesc   = Http::columnExists($pdo, 'biomie_notas_fiscais_canonicas', 'valor_desconto');
+$hasPedidoOmie  = Http::columnExists($pdo, 'biomie_notas_fiscais_canonicas', 'pedido_id_omie');
+$hasValorBase   = Http::columnExists($pdo, 'biomie_notas_fiscais_canonicas', 'valor_base_comercial_nf');
+
+$notaKeyExpr   = $hasNotaKey    ? 'nf.nota_key'     : "CONCAT(COALESCE(nf.numero_nf,''), '_', COALESCE(nf.id,'')) ";
+$descExpr      = $hasValorDesc  ? 'nf.valor_desconto'  : '0';
+$pedidoExpr    = $hasPedidoOmie ? 'nf.pedido_id_omie'  : '0';
+$baseComExpr   = $hasValorBase  ? 'COALESCE(nf.valor_base_comercial_nf, nf.valor_mercadorias)' : 'nf.valor_mercadorias';
+
 // ── Data page ─────────────────────────────────────────────────────────────────
 
 $data = [];
+$dataError = null;
 try {
     $stmtData = $pdo->prepare(
         "SELECT
-            nf.nota_key,
+            ({$notaKeyExpr})  AS nota_key,
             nf.numero_nf,
-            {$dateExpr} AS data_ref,
+            {$dateExpr}       AS data_ref,
             nf.nome_cliente,
             nf.nome_vendedor,
-            COALESCE(nf.valor_base_comercial_nf, nf.valor_mercadorias) AS base_comercial,
+            {$baseComExpr}    AS base_comercial,
             nf.valor_mercadorias,
-            nf.valor_desconto,
-            nf.pedido_id_omie,
+            ({$descExpr})     AS valor_desconto,
+            ({$pedidoExpr})   AS pedido_id_omie,
             nf.operation_scope AS scope
          FROM biomie_notas_fiscais_canonicas nf
          {$whereStr}
@@ -177,7 +190,7 @@ try {
     $stmtData->execute($params);
     $rows = $stmtData->fetchAll(\PDO::FETCH_ASSOC);
 
-    $data = array_map(function (array $row): array {
+    $data = array_map(function (array $row) use ($baseComExpr): array {
         $scope = (string)($row['scope'] ?? 'commercial');
         $scopeBadge = match ($scope) {
             'remittance' => '<span class="scope-badge scope-badge--remessa">Remessa</span>',
@@ -185,26 +198,27 @@ try {
         };
 
         return [
-            'nota_key'       => (string)($row['nota_key'] ?? ''),
-            'numero_nf'      => (string)($row['numero_nf'] ?? ''),
-            'data_ref'       => substr((string)($row['data_ref'] ?? ''), 0, 10),
-            'nome_cliente'   => (string)($row['nome_cliente'] ?? ''),
-            'nome_vendedor'  => (string)($row['nome_vendedor'] ?? ''),
-            'base_comercial' => (float)($row['base_comercial'] ?? 0),
+            'nota_key'          => (string)($row['nota_key'] ?? ''),
+            'numero_nf'         => (string)($row['numero_nf'] ?? ''),
+            'data_ref'          => substr((string)($row['data_ref'] ?? ''), 0, 10),
+            'nome_cliente'      => (string)($row['nome_cliente'] ?? ''),
+            'nome_vendedor'     => (string)($row['nome_vendedor'] ?? ''),
+            'base_comercial'    => (float)($row['base_comercial'] ?? 0),
             'valor_mercadorias' => (float)($row['valor_mercadorias'] ?? 0),
-            'valor_desconto' => (float)($row['valor_desconto'] ?? 0),
-            'pedido_ref'     => $row['pedido_id_omie'] > 0 ? (string)$row['pedido_id_omie'] : '',
-            'scope'          => $scope,
-            'scope_badge'    => $scopeBadge,
+            'valor_desconto'    => (float)($row['valor_desconto'] ?? 0),
+            'pedido_ref'        => (int)($row['pedido_id_omie'] ?? 0) > 0 ? (string)$row['pedido_id_omie'] : '',
+            'scope'             => $scope,
+            'scope_badge'       => $scopeBadge,
         ];
     }, $rows);
 } catch (\Throwable $e) {
+    $dataError = SecretMask::sanitizeErrorMessage($e->getMessage());
     $data = [];
 }
 
 // ── Response ──────────────────────────────────────────────────────────────────
 
-echo json_encode([
+$response = [
     'draw'            => $draw,
     'recordsTotal'    => $recordsTotal,
     'recordsFiltered' => $recordsFiltered,
@@ -214,4 +228,8 @@ echo json_encode([
         'nfs_filtered'         => $recordsFiltered,
         'clientes_filtered'    => $clientesFiltered,
     ],
-], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+];
+if ($dataError !== null) {
+    $response['data_error'] = $dataError;
+}
+echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
