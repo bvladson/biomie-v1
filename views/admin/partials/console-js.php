@@ -71,10 +71,67 @@
   }
   window.consoleOnCommandSelect = consoleOnCommandSelect;
 
+  // Update description display and highlight active command in list
+  function updateSelectedCommandUI(name) {
+    var descEl = document.getElementById('consoleCmdDesc');
+    if (descEl) {
+      if (name) {
+        var item = document.querySelector('.console-cmd-item[data-cmd="' + name + '"]');
+        descEl.textContent = item ? item.dataset.desc : '';
+        descEl.style.display = item ? 'block' : 'none';
+      } else {
+        descEl.style.display = 'none';
+      }
+    }
+    document.querySelectorAll('.console-cmd-item').forEach(function (btn) {
+      btn.classList.toggle('is-selected', btn.dataset.cmd === name);
+    });
+    // Scroll selected item into view inside the browser panel
+    if (name) {
+      var sel = document.querySelector('.console-cmd-item.is-selected');
+      if (sel) sel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
   window.consoleSelectCommand = function (name) {
     var sel = document.getElementById('consoleCommandSelect');
     sel.value = name;
     consoleOnCommandSelect(name);
+    updateSelectedCommandUI(name);
+    // Clear search filter if set so the selected command is visible
+    var searchEl = document.getElementById('consoleCommandSearch');
+    if (searchEl && searchEl.value) {
+      searchEl.value = '';
+      consoleFilterCommands('');
+    }
+    // Scroll the execute panel into view on narrow screens
+    var execPanel = document.getElementById('consoleLayout');
+    if (execPanel) execPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  // Filter command list by search term
+  window.consoleFilterCommands = function (query) {
+    var q = (query || '').toLowerCase().trim();
+    var badge = document.getElementById('consoleFilterBadge');
+    var empty = document.getElementById('consoleCmdEmpty');
+    var items = document.querySelectorAll('.console-cmd-item');
+    var groups = document.querySelectorAll('.console-cmd-group');
+    var visible = 0;
+
+    items.forEach(function (btn) {
+      var match = !q || btn.dataset.cmd.toLowerCase().includes(q) || btn.dataset.desc.toLowerCase().includes(q);
+      btn.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    groups.forEach(function (g) {
+      var anyVisible = Array.from(g.querySelectorAll('.console-cmd-item')).some(function (b) { return b.style.display !== 'none'; });
+      g.style.display = anyVisible ? '' : 'none';
+    });
+    if (badge) {
+      badge.textContent = q ? visible + ' resultado' + (visible !== 1 ? 's' : '') : '';
+      badge.style.display = q ? 'inline' : 'none';
+    }
+    if (empty) empty.style.display = visible === 0 && q ? 'block' : 'none';
   };
 
   window.consoleRun = function (forceConfirm) {

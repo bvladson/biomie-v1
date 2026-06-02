@@ -1,26 +1,23 @@
         <?php if ($can['console'] ?? false): ?>
         <section class="admin-section <?php echo $activeTab === 'console' ? 'active' : ''; ?>" data-admin-tab-panel="console">
 
-          <div class="admin-panel" style="margin-bottom:12px">
-            <div style="display:flex;align-items:flex-start;gap:10px">
-              <span class="material-symbols-rounded" style="font-size:22px;color:var(--mag-muted);flex-shrink:0;margin-top:2px">terminal</span>
-              <div>
-                <strong style="display:block;color:var(--mag-text);margin-bottom:4px">Ferramentas administrativas</strong>
-                <p class="admin-small" style="margin:0">Comandos restritos e auditados. N&atilde;o executa shell do servidor. Toda execu&ccedil;&atilde;o &eacute; registrada em log.</p>
-              </div>
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start" id="consoleLayout">
+          <div style="display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start" id="consoleLayout">
 
             <div>
+              <!-- ── Executar comando ─────────────────────────────────────── -->
               <div class="admin-panel" style="margin-bottom:12px">
-                <h2 style="margin-bottom:12px;display:flex;align-items:center;gap:6px">
+                <h2 style="margin-bottom:10px;display:flex;align-items:center;gap:6px;font-size:.95rem">
                   <span class="material-symbols-rounded" style="font-size:18px">play_circle</span>Executar comando
                 </h2>
 
+                <!-- Search filter -->
+                <div style="position:relative;margin-bottom:10px">
+                  <span class="material-symbols-rounded" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--mag-muted);pointer-events:none">search</span>
+                  <input type="search" id="consoleCommandSearch" class="admin-input" placeholder="Filtrar comandos..." style="padding-left:30px;font-size:.82rem" oninput="consoleFilterCommands(this.value)" autocomplete="off" />
+                </div>
+
                 <div class="admin-field" style="margin-bottom:10px">
-                  <label for="consoleCommandSelect">Comando</label>
+                  <label for="consoleCommandSelect" style="font-size:.78rem">Comando selecionado</label>
                   <select id="consoleCommandSelect" class="admin-select" onchange="consoleOnCommandSelect(this.value)">
                     <option value="">-- selecione --</option>
                     <?php
@@ -40,6 +37,11 @@
                         'logs'       => 'Logs',
                         'rbac'       => 'RBAC',
                     ];
+                    $consolGroupIcons = [
+                        'sistema' => 'settings', 'banco' => 'storage', 'migrations' => 'published_with_changes',
+                        'gold' => 'auto_awesome', 'clientes' => 'group', 'cnae' => 'category',
+                        'geo' => 'map', 'omie' => 'sync', 'logs' => 'receipt_long', 'rbac' => 'shield',
+                    ];
                     foreach ($consolGroupLabels as $gKey => $gLabel) {
                         if (!isset($consoleGroups[$gKey])) continue;
                         echo '<optgroup label="' . $h($gLabel) . '">';
@@ -53,6 +55,9 @@
                     ?>
                   </select>
                 </div>
+
+                <!-- Description of selected command -->
+                <div id="consoleCmdDesc" style="display:none;font-size:.78rem;color:var(--mag-muted);background:var(--mag-bg);border-radius:8px;padding:7px 10px;margin-bottom:10px;line-height:1.5"></div>
 
                 <div id="consoleArgsArea" style="display:none">
                   <div id="consoleLimitField" class="admin-field" style="display:none;margin-bottom:8px">
@@ -112,24 +117,75 @@
                 </div>
               </div>
 
-              <div class="admin-panel">
-                <h2 style="margin-bottom:10px;font-size:.92rem;display:flex;align-items:center;gap:6px">
-                  <span class="material-symbols-rounded" style="font-size:16px">list</span>Comandos dispon&iacute;veis
+              <!-- Command browser -->
+              <div class="admin-panel" id="consoleCmdBrowser" style="max-height:420px;overflow-y:auto">
+                <h2 style="margin-bottom:8px;font-size:.85rem;display:flex;align-items:center;gap:6px;position:sticky;top:0;background:var(--mag-panel,#fff);padding-bottom:6px;z-index:1">
+                  <span class="material-symbols-rounded" style="font-size:15px">list</span>Comandos
+                  <span id="consoleFilterBadge" style="display:none;margin-left:auto;font-size:.7rem;background:var(--page-accent-soft);color:var(--page-accent);border-radius:20px;padding:1px 8px"></span>
                 </h2>
+                <div id="consoleCmdList">
                 <?php foreach ($consolGroupLabels as $gKey => $gLabel): ?>
                   <?php if (!isset($consoleGroups[$gKey])) continue; ?>
-                  <p style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--mag-muted);margin:10px 0 4px"><?php echo $h($gLabel); ?></p>
-                  <?php foreach ($consoleGroups[$gKey] as $cmd): ?>
-                    <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;cursor:pointer" onclick="consoleSelectCommand('<?php echo $h($cmd['name']); ?>')">
-                      <code style="font-size:.78rem;font-weight:700;color:var(--page-accent);background:var(--page-accent-soft);border-radius:6px;padding:2px 6px;white-space:nowrap;flex-shrink:0"><?php echo $h($cmd['name']); ?></code>
-                      <span class="admin-small" style="font-size:.75rem;line-height:1.4"><?php echo $h($cmd['description']); ?></span>
-                    </div>
-                  <?php endforeach; ?>
+                  <div class="console-cmd-group" data-group="<?php echo $h($gKey); ?>">
+                    <p style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--mag-muted);margin:10px 0 4px;display:flex;align-items:center;gap:4px">
+                      <span class="material-symbols-rounded" style="font-size:12px"><?php echo $h($consolGroupIcons[$gKey] ?? 'circle'); ?></span><?php echo $h($gLabel); ?>
+                    </p>
+                    <?php foreach ($consoleGroups[$gKey] as $cmd): ?>
+                      <button type="button"
+                        class="console-cmd-item"
+                        data-cmd="<?php echo $h($cmd['name']); ?>"
+                        data-desc="<?php echo $h($cmd['description']); ?>"
+                        data-group="<?php echo $h($gKey); ?>"
+                        onclick="consoleSelectCommand('<?php echo $h($cmd['name']); ?>')"
+                        title="<?php echo $h($cmd['description']); ?>"
+                        style="display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:8px;padding:5px 6px;cursor:pointer;margin-bottom:3px;transition:background .12s">
+                        <code style="font-size:.75rem;font-weight:700;color:var(--page-accent);background:var(--page-accent-soft);border-radius:6px;padding:2px 7px;white-space:nowrap;flex-shrink:0;line-height:1.6"><?php echo $h($cmd['name']); ?><?php if ($cmd['requires_confirmation']): ?><span style="opacity:.6;font-weight:400"> ⚠</span><?php endif; ?></code>
+                        <span style="font-size:.73rem;color:var(--mag-muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"><?php echo $h($cmd['description']); ?></span>
+                      </button>
+                    <?php endforeach; ?>
+                  </div>
                 <?php endforeach; ?>
+                </div>
+                <p id="consoleCmdEmpty" style="display:none;text-align:center;color:var(--mag-muted);font-size:.8rem;padding:16px 0">Nenhum comando encontrado.</p>
               </div>
             </div>
 
             <div>
+
+              <!-- ── Ações rápidas de manutenção ──────────────────────────── -->
+              <div class="admin-panel" style="margin-bottom:12px">
+                <h2 style="margin-bottom:10px;font-size:.88rem;display:flex;align-items:center;gap:6px">
+                  <span class="material-symbols-rounded" style="font-size:16px">bolt</span>Ações rápidas
+                </h2>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('geo:materialize')" title="Rematerializar mart geo">
+                    <span class="material-symbols-rounded" style="font-size:14px">map</span>Geo mart
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('clientes:enrich-omie-all')" title="Enriquecer clientes via Omie">
+                    <span class="material-symbols-rounded" style="font-size:14px">group</span>Enriquecer clientes
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('clientes:geo-coverage')" title="Ver cobertura geo dos clientes">
+                    <span class="material-symbols-rounded" style="font-size:14px">pin_drop</span>Cobertura geo
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('gold:materialize-commercial')" title="Materializar gold comercial">
+                    <span class="material-symbols-rounded" style="font-size:14px">auto_awesome</span>Gold comercial
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('cnae:materialize')" title="Materializar dim CNAE">
+                    <span class="material-symbols-rounded" style="font-size:14px">category</span>CNAE dim
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('system:health')" title="Status do sistema">
+                    <span class="material-symbols-rounded" style="font-size:14px">monitor_heart</span>Health
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('logs:recent')" title="Ver logs recentes">
+                    <span class="material-symbols-rounded" style="font-size:14px">receipt_long</span>Logs
+                  </button>
+                  <button type="button" class="console-quick-btn" onclick="consoleSelectCommand('db:counts')" title="Contagem das tabelas">
+                    <span class="material-symbols-rounded" style="font-size:14px">storage</span>DB contagens
+                  </button>
+                </div>
+              </div>
+
+              <!-- ── Painel de resultado ──────────────────────────────────── -->
               <div class="admin-panel" id="consoleResultPanel">
                 <div id="consoleResultEmpty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0;gap:8px;color:var(--mag-muted)">
                   <span class="material-symbols-rounded" style="font-size:40px;opacity:.35">terminal</span>
@@ -189,7 +245,13 @@
 
           <style>
             @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-            @media(max-width:960px){#consoleLayout{grid-template-columns:1fr}}
+            @media(max-width:1024px){#consoleLayout{grid-template-columns:1fr}}
+            .console-cmd-item:hover{background:var(--page-accent-soft,#fdf2f1)!important;border-color:var(--page-accent,#96140a)!important}
+            .console-cmd-item.is-selected{background:var(--page-accent-soft,#fdf2f1);border-color:var(--page-accent,#96140a)}
+            .console-quick-btn{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:.76rem;font-weight:600;padding:5px 10px;border-radius:20px;border:1px solid var(--mag-border,#e2e2e2);background:var(--mag-bg,#f8f8f8);color:var(--mag-text);cursor:pointer;transition:background .12s,border-color .12s;white-space:nowrap}
+            .console-quick-btn:hover{background:var(--page-accent-soft);border-color:var(--page-accent);color:var(--page-accent)}
+            #consoleCmdBrowser::-webkit-scrollbar{width:4px}
+            #consoleCmdBrowser::-webkit-scrollbar-thumb{background:var(--mag-border,#ddd);border-radius:4px}
           </style>
         </section>
         <?php endif; ?>
