@@ -66,6 +66,9 @@ final class CnaeAggregateBuilder
         $hasSourceCol    = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cnae_source');
         $hasConfCol      = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cnae_confidence');
         $hasUpdatedAt    = $this->columnExists('mart_vendas_por_cnae_cnpj', 'updated_at');
+        $hasCnaeDim      = $this->tableHealth->tableExists('biomie_cnae_dim')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_codigo_normalizado')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_descricao');
 
         $nomeExpr = $hasNomeExibicao
             ? 'COALESCE(cd.cliente_nome_exibicao, cd.nome_cliente, cp.nome_cliente)'
@@ -100,6 +103,12 @@ final class CnaeAggregateBuilder
             ? 'COALESCE(' . implode(', ', $coalesceFields) . ')'
             : $coalesceFields[0];
         $joinSql = !empty($joinFragments) ? implode("\n             ", $joinFragments) : '';
+        $cnaeDimJoin = $hasCnaeDim
+            ? "LEFT JOIN biomie_cnae_dim AS cdim ON cdim.cnae_codigo_normalizado = REGEXP_REPLACE({$cnaeCoalesce}, '[^0-9]', '')"
+            : '';
+        $cnaeDescExpr = $hasCnaeDim
+            ? "COALESCE(NULLIF(cdim.cnae_descricao, ''), NULLIF(cd.cnae_descricao, ''), 'Sem CNAE informado')"
+            : "COALESCE(NULLIF(cd.cnae_descricao, ''), 'Sem CNAE informado')";
 
         $insertOptionalCols = '';
         $selectOptionalCols = '';
@@ -140,7 +149,7 @@ final class CnaeAggregateBuilder
                  cp.codigo_cliente_omie,
                  {$nomeExpr}                                                          AS cliente_nome,
                  {$cnaeCoalesce}                                                      AS cnae_codigo,
-                 cd.cnae_descricao,
+                 {$cnaeDescExpr},
                  COALESCE(cd.segmento_macro, 'PJ_SEM_CNAE')                          AS segmento_macro,
                  COALESCE(g.uf, '')                                                   AS uf,
                  COALESCE(g.cidade_norm, '')                                          AS cidade_norm,
@@ -156,6 +165,7 @@ final class CnaeAggregateBuilder
              FROM mart_cliente_periodo AS cp
              LEFT JOIN biomie_clientes_dim AS cd ON cd.codigo_cliente_omie = cp.codigo_cliente_omie
              LEFT JOIN biomie_clientes_geo_dim AS g  ON g.codigo_cliente_omie = cp.codigo_cliente_omie
+             {$cnaeDimJoin}
              {$joinSql}
              WHERE (cp.nfes_emitidas > 0 OR cp.valor_nfe > 0)
                AND {$cnaeCoalesce} IS NOT NULL

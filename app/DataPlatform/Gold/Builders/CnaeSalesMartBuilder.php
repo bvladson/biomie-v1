@@ -36,6 +36,15 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
         $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
             ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('nf')
             : 'nf.valor_total';
+        $hasCnaeDim = $this->tableExists('biomie_cnae_dim')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_codigo_normalizado')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_descricao');
+        $cnaeDimJoin = $hasCnaeDim
+            ? "LEFT JOIN biomie_cnae_dim cdim ON cdim.cnae_codigo_normalizado = REGEXP_REPLACE(COALESCE(dim.cnae_codigo, 'SEM_CNAE'), '[^0-9]', '')"
+            : '';
+        $cnaeDescExpr = $hasCnaeDim
+            ? "COALESCE(NULLIF(MAX(cdim.cnae_descricao), ''), NULLIF(MAX(dim.cnae_descricao), ''), 'Sem CNAE informado')"
+            : "COALESCE(NULLIF(MAX(dim.cnae_descricao), ''), 'Sem CNAE informado')";
         $sql = <<<SQL
             INSERT INTO mart_vendas_por_cnae_cnpj (
                 competencia, documento_normalizado, codigo_cliente_omie, cliente_nome,
@@ -49,7 +58,7 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
                 nf.codigo_cliente_omie,
                 MAX(nf.nome_cliente),
                 COALESCE(MAX(dim.cnae_codigo),    'SEM_CNAE'),
-                COALESCE(MAX(dim.cnae_descricao), 'Sem CNAE informado'),
+                {$cnaeDescExpr},
                 COALESCE(MAX(dim.segmento_macro), 'Nao classificado'),
                 COALESCE(MAX(geo.uf), 'NA'),
                 COALESCE(MAX(geo.cidade_norm), 'NAO INFORMADA'),
@@ -63,6 +72,7 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             FROM biomie_notas_fiscais_canonicas nf
             LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = nf.codigo_cliente_omie
             LEFT JOIN biomie_clientes_geo_dim geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
+            {$cnaeDimJoin}
             WHERE nf.status_fiscal = 'autorizada'
               AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$scopeFilter}{$visibilityFilter}
             GROUP BY

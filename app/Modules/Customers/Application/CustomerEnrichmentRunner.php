@@ -102,20 +102,39 @@ final class CustomerEnrichmentRunner
                 $codigoOmie = (int) ($localClient['codigo_cliente_omie'] ?? 0);
                 if ($codigoOmie === 0) { $agg['ignored']++; continue; }
 
+                if (!$dryRun) {
+                    $this->dimRepo->ensureMinimalClient($codigoOmie, $localClient);
+                }
+
                 try {
                     $rawCliente = $this->fetcher->consult($codigoOmie);
                 } catch (Throwable $e) {
                     $norm = $this->validator->normalizeMessage($e->getMessage());
-                    if ($this->validator->isNotFoundError($norm))  { $agg['not_found']++; continue; }
+                    if ($this->validator->isNotFoundError($norm))  {
+                        $agg['not_found']++;
+                        if (!$dryRun) {
+                            $this->dimRepo->markEnrichmentQueue($codigoOmie, 'erro', 'omie_nao_encontrado', $norm);
+                        }
+                        continue;
+                    }
                     if ($this->validator->isRateLimitError($norm)) { $agg['rate_limited']++; $gotRateLimit = true; break; }
                     $agg['api_errors']++;
+                    if (!$dryRun) {
+                        $this->dimRepo->markEnrichmentQueue($codigoOmie, 'erro', 'omie_api_error', $norm);
+                    }
                     $this->logger->warning('CustomerEnrichmentRunner::runAll ConsultarCliente falhou.', [
                         'codigo_cliente_omie' => $codigoOmie, 'message' => $e->getMessage(),
                     ]);
                     continue;
                 }
 
-                if ($rawCliente === null) { $agg['not_found']++; continue; }
+                if ($rawCliente === null) {
+                    $agg['not_found']++;
+                    if (!$dryRun) {
+                        $this->dimRepo->markEnrichmentQueue($codigoOmie, 'erro', 'omie_sem_retorno', 'ConsultarCliente retornou vazio');
+                    }
+                    continue;
+                }
 
                 $agg['processed']++;
                 $fields = $this->normalizer->normalize($rawCliente);
@@ -144,8 +163,11 @@ final class CustomerEnrichmentRunner
                         }
 
                         $this->geoRepo->sync($codigoOmie, $fields, $result['bairro_norm'], $result['oficial_bairro']);
+                        [$queueStatus, $queueMotivo] = $this->queueStatusForFields($fields, $target);
+                        $this->dimRepo->markEnrichmentQueue($codigoOmie, $queueStatus, $queueMotivo);
                     } catch (Throwable $e) {
                         $agg['api_errors']++;
+                        $this->dimRepo->markEnrichmentQueue($codigoOmie, 'erro', 'persist_error', $e->getMessage());
                         $this->logger->warning('CustomerEnrichmentRunner::runAll enrich falhou.', [
                             'codigo_cliente_omie' => $codigoOmie, 'message' => $e->getMessage(),
                         ]);
@@ -188,5 +210,29 @@ final class CustomerEnrichmentRunner
         $agg['duration_ms']           = (int) round((microtime(true) - $startedAt) * 1000);
 
         return $agg;
+    }
+
+    /** @param array<string,string> $fields */
+    private function queueStatusForFields(array $fields, string $target): array
+    {
+        $missing = [];
+        if ($target === 'geo' || $target === 'all') {
+            if (($fields['cidade'] ?? '') === '') {
+                $missing[] = 'cidade_ausente';
+            }
+            if (($fields['bairro'] ?? '') === '') {
+                $missing[] = 'bairro_ausente';
+            }
+        }
+        if ($target === 'cnae' || $target === 'all') {
+            if (($fields['cnae_codigo'] ?? '') === '') {
+                $missing[] = 'cnae_ausente';
+            }
+        }
+
+        if ($missing === []) {
+            return ['concluido', 'omie_completo'];
+        }
+        return ['pendente', implode(',', $missing)];
     }
 }

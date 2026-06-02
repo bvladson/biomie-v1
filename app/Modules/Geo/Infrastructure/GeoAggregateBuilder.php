@@ -85,6 +85,15 @@ final class GeoAggregateBuilder
             $extraSelectVals .= ",\n                 {$geoScopeExpr}";
         }
 
+        $hasCnaeDim = $this->columnExists('biomie_cnae_dim', 'cnae_codigo_normalizado')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_descricao');
+        $cnaeDimJoin = $hasCnaeDim
+            ? "LEFT JOIN biomie_cnae_dim AS cdim ON cdim.cnae_codigo_normalizado = REGEXP_REPLACE(COALESCE(cd.cnae_codigo, 'SEM_CNAE'), '[^0-9]', '')"
+            : '';
+        $cnaeDescExpr = $hasCnaeDim
+            ? "COALESCE(NULLIF(cdim.cnae_descricao, ''), NULLIF(cd.cnae_descricao, ''), 'CNAE nao informado')"
+            : "COALESCE(NULLIF(cd.cnae_descricao, ''), 'CNAE nao informado')";
+
         $startedTransaction = false;
         try {
             if (!$this->pdo->inTransaction()) {
@@ -113,7 +122,7 @@ final class GeoAggregateBuilder
                      {$bairroExpr}                                                        AS bairro_norm,
                      b.regional_atual                                                      AS regiao_nome,
                      cd.cnae_codigo,
-                     cd.cnae_descricao,
+                     {$cnaeDescExpr},
                      COALESCE(cd.segmento_macro, 'PJ_SEM_CNAE')                          AS segmento_macro,
                      cp.nfes_emitidas                                                     AS qtd_notas,
                      cp.valor_nfe                                                         AS faturamento,
@@ -123,6 +132,7 @@ final class GeoAggregateBuilder
                  FROM mart_cliente_periodo AS cp
                  LEFT JOIN biomie_clientes_dim AS cd ON cd.codigo_cliente_omie = cp.codigo_cliente_omie
                  LEFT JOIN biomie_clientes_geo_dim AS g  ON g.codigo_cliente_omie = cp.codigo_cliente_omie
+                 {$cnaeDimJoin}
                  LEFT JOIN biomie_bairros_fortaleza_dim AS b
                    ON b.bairro_nome_normalizado = {$bairroDimJoin} AND b.ativo = 1
                  WHERE cp.competencia BETWEEN :start_comp AND :end_comp

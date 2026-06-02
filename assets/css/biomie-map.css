@@ -795,6 +795,12 @@
   font-size: 12px;
 }
 
+.geo-comparison-bar[hidden],
+.geo-area-result[hidden],
+.geo-comparison-overlay[hidden] {
+  display: none !important;
+}
+
 .geo-comparison-chips {
   display: flex;
   gap: 4px;
@@ -831,7 +837,7 @@
 .geo-comparison-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1080;
+  z-index: 1120;
   background: rgba(15, 23, 42, 0.32);
   backdrop-filter: blur(2px);
   display: flex;

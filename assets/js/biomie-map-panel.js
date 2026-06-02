@@ -201,6 +201,12 @@
     window.BIomieChartHelpers?.destroy('buyerChartCanvas');
   }
 
+  function renderCnaesLoading() {
+    html('cnaeRevenueTable', '<tr><td colspan="3" style="text-align:center;color:var(--mag-muted);padding:18px;">Carregando CNAEs…</td></tr>');
+    document.getElementById('cnaeChartBlock')?.classList.add('is-hidden');
+    window.BIomieChartHelpers?.destroy('cnaeChartCanvas');
+  }
+
   function renderBuyersError(message) {
     clearBuyersSourceBadge();
     html('topBuyersTable', `<tr><td colspan="3" style="text-align:center;color:var(--danger,#dc2626);padding:18px;">${escapeHtml(message || 'Erro ao carregar compradores.')}</td></tr>`);
@@ -265,16 +271,27 @@
       return;
     }
 
-    html('cnaeRevenueTable', dataRows.map((row) => `
+    html('cnaeRevenueTable', dataRows.map((row) => {
+      const code = row.cnae || row.cnae_codigo || 'SEM_CNAE';
+      const description = row.cnae_description || row.cnae_descricao || row.segment || 'PJ sem CNAE';
+      return `
       <tr>
         <td>
-          <strong>${escapeHtml(row.cnae || row.cnae_codigo || 'SEM_CNAE')}</strong>
-          <div style="color:var(--mag-muted);font-size:12px;">${escapeHtml(row.cnae_description || row.cnae_descricao || row.segment || 'PJ sem CNAE')}</div>
+          <button type="button"
+            class="row-inline-link geo-cnae-drilldown"
+            data-geo-cnae-code="${escapeHtml(code)}"
+            data-geo-cnae-description="${escapeHtml(description)}"
+            style="font-weight:700;text-align:left;"
+            title="Ver empresas deste CNAE">
+            ${escapeHtml(code)}
+          </button>
+          <div style="color:var(--mag-muted);font-size:12px;">${escapeHtml(description)}</div>
         </td>
         <td style="text-align:right;">${formatters.number(row.customers || row.qtd_clientes)}</td>
         <td style="text-align:right;"><strong>${formatters.money(row.revenue || row.faturamento)}</strong></td>
       </tr>
-    `).join(''));
+    `;
+    }).join(''));
 
     document.getElementById('cnaeChartBlock')?.classList.remove('is-hidden');
     window.BIomieChartHelpers?.renderHorizontalBar('cnaeChartCanvas', dataRows.slice(0, 5), {
@@ -332,11 +349,8 @@
       `);
     }
 
-    renderEmptyTable('cnaeRevenueTable', 'CNAE indisponivel para registros sem bairro.', 3);
     document.getElementById('buyerChartBlock')?.classList.add('is-hidden');
-    document.getElementById('cnaeChartBlock')?.classList.add('is-hidden');
     window.BIomieChartHelpers?.destroy('buyerChartCanvas');
-    window.BIomieChartHelpers?.destroy('cnaeChartCanvas');
   }
 
   window.BIomieMapPanel = {
@@ -346,6 +360,7 @@
     renderNoNeighborhood,
     renderBuyers,
     renderBuyersLoading,
+    renderCnaesLoading,
     renderBuyersError,
     renderCnaes,
   };

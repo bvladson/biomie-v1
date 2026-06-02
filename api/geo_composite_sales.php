@@ -47,21 +47,45 @@ try {
     // Municípios RMF com bairros IBGE 2022 (camada grande_fortaleza_bairros)
     $rmfWithBairros = [
         'fortaleza', 'caucaia', 'maracanau', 'maranguape', 'eusebio',
-        'guaiuba', 'itaitinga', 'pacatuba', 'trairi',
+        'guaiuba', 'itaitinga', 'pacatuba',
     ];
 
     // Municípios RMF sem bairros IBGE (fallback municipal)
     $rmfFallback = [
         'aquiraz', 'horizonte', 'pacajus', 'chorozinho', 'cascavel',
         'pindoretama', 'paracuru', 'paraipaba', 'sao_goncalo_do_amarante',
-        'sao_luis_do_curu',
+        'sao_luis_do_curu', 'trairi',
     ];
 
     $rmfAll = array_merge($rmfWithBairros, $rmfFallback);
 
     // ── Query principal: agrega por (cidade_norm, bairro_norm) ────────────────
     // Sem filtro de cidade — retorna todo o Ceará
-    $where = ['competencia BETWEEN :start_comp AND :end_comp'];
+    $hasClientDim = Http::tableExists($pdo, 'biomie_clientes_dim');
+    $hasCnaeDim = Http::tableExists($pdo, 'biomie_cnae_dim');
+    $clientDimJoin = $hasClientDim
+        ? 'LEFT JOIN biomie_clientes_dim cd ON cd.codigo_cliente_omie = m.codigo_cliente_omie'
+        : '';
+    $rawCnaeCodeExpr = $hasClientDim
+        ? "COALESCE(NULLIF(TRIM(m.cnae_codigo), ''), NULLIF(TRIM(cd.cnae_codigo), ''))"
+        : "NULLIF(TRIM(m.cnae_codigo), '')";
+    $cnaeDimJoin = $hasCnaeDim
+        ? "LEFT JOIN biomie_cnae_dim cdim ON cdim.cnae_codigo_normalizado = REGEXP_REPLACE({$rawCnaeCodeExpr}, '[^0-9]', '')"
+        : '';
+    $dimJoin = trim($clientDimJoin . "\n" . $cnaeDimJoin);
+    $cnaeCodeExpr = $rawCnaeCodeExpr;
+    $cnaeDescParts = [];
+    if ($hasCnaeDim) {
+        $cnaeDescParts[] = "NULLIF(TRIM(cdim.cnae_descricao), '')";
+    }
+    $cnaeDescParts[] = "NULLIF(NULLIF(TRIM(m.cnae_descricao), ''), 'CNAE não informado')";
+    if ($hasClientDim) {
+        $cnaeDescParts[] = "NULLIF(NULLIF(TRIM(cd.cnae_descricao), ''), 'CNAE não informado')";
+    }
+    $cnaeDescParts[] = 'NULL';
+    $cnaeDescExpr = 'COALESCE(' . implode(', ', $cnaeDescParts) . ')';
+
+    $where = ['m.competencia BETWEEN :start_comp AND :end_comp'];
     $params = [
         'start_comp' => substr($range['date_from'], 0, 7),
         'end_comp'   => substr($range['date_to'],   0, 7),
@@ -71,30 +95,42 @@ try {
     $sellerId = $f['seller_id'];
     if ($sellerId !== null && Http::tableExists($pdo, 'mart_compradores_por_geo') &&
         Http::columnExists($pdo, 'mart_compradores_por_geo', 'codigo_vendedor_omie')) {
-        $where[]                  = 'LOWER(nome_vendedor) LIKE :seller_pct';
+        $where[]                  = 'LOWER(m.nome_vendedor) LIKE :seller_pct';
         $params['seller_pct']     = '%' . mb_strtolower(trim($sellerId)) . '%';
     }
 
     $cnae = $f['cnae'];
     if ($cnae !== null) {
-        $where[]       = 'cnae_codigo = :cnae';
-        $params['cnae'] = $cnae;
+        if (strtoupper(trim($cnae)) === 'SEM_CNAE') {
+            $where[] = "{$cnaeCodeExpr} IS NULL";
+        } else {
+            $cnaeNorm = preg_replace('/\D+/', '', $cnae);
+            $cnaeWhere = ["{$cnaeCodeExpr} = :cnae_code", "LOWER({$cnaeDescExpr}) LIKE :cnae_like"];
+            $params['cnae_code'] = $cnae;
+            $params['cnae_like'] = '%' . mb_strtolower($cnae) . '%';
+            if ($cnaeNorm !== '') {
+                $cnaeWhere[] = "REGEXP_REPLACE({$cnaeCodeExpr}, '[^0-9]', '') = :cnae_norm";
+                $params['cnae_norm'] = $cnaeNorm;
+            }
+            $where[] = '(' . implode(' OR ', $cnaeWhere) . ')';
+        }
     }
 
     $whereSql = implode(' AND ', $where);
 
     $sql = "
         SELECT
-            LOWER(TRIM(COALESCE(NULLIF(cidade_norm,''), 'sem_cidade'))) AS cidade_key,
-            LOWER(TRIM(COALESCE(NULLIF(bairro_norm,''), '')))           AS bairro_raw,
-            SUM(faturamento)                                             AS revenue,
-            COUNT(DISTINCT COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)) AS customers,
-            SUM(qtd_notas)                                               AS invoices,
-            IF(SUM(qtd_notas)>0, SUM(faturamento)/SUM(qtd_notas), 0)   AS ticket_medio,
-            MAX(refreshed_at)                                            AS refreshed_at
-        FROM mart_compradores_por_geo
+            LOWER(TRIM(COALESCE(NULLIF(m.cidade_norm,''), 'sem_cidade'))) AS cidade_key,
+            LOWER(TRIM(COALESCE(NULLIF(m.bairro_norm,''), '')))           AS bairro_raw,
+            SUM(m.faturamento)                                             AS revenue,
+            COUNT(DISTINCT COALESCE(CAST(m.codigo_cliente_omie AS CHAR), m.documento, m.cliente_nome)) AS customers,
+            SUM(m.qtd_notas)                                               AS invoices,
+            IF(SUM(m.qtd_notas)>0, SUM(m.faturamento)/SUM(m.qtd_notas), 0) AS ticket_medio,
+            MAX(m.refreshed_at)                                            AS refreshed_at
+        FROM mart_compradores_por_geo m
+        {$dimJoin}
         WHERE {$whereSql}
-        GROUP BY LOWER(TRIM(cidade_norm)), LOWER(TRIM(bairro_norm))
+        GROUP BY LOWER(TRIM(m.cidade_norm)), LOWER(TRIM(m.bairro_norm))
         ORDER BY revenue DESC
     ";
 

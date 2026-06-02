@@ -24,6 +24,23 @@ final class GeoMapLayerRegistry
      * @var array<string, array<string, mixed>>
      */
     private const LAYERS = [
+        'mapa_composto_ceara' => [
+            'layer_id'               => 'mapa_composto_ceara',
+            'label'                  => 'Visao completa do Ceara',
+            'description'            => 'Fortaleza por bairro, adjacentes validados por bairro e restante do Ceara por municipio.',
+            'geojson_path'           => '',
+            'geojson_match_property' => 'join_key',
+            'match_strategy'         => 'composite',
+            'city_scope'             => null,
+            'requires_geometry'      => true,
+            'has_geometry'           => true,
+            'feature_count_expected' => null,
+            'source'                 => 'composite_local',
+            'fallback_empty_state'   => 'Territorio sem venda registrada no periodo.',
+            'scope_label'            => 'territorio',
+            'preserve_existing'      => false,
+            'geometry_note'          => 'Camada sintetica montada no front-end.',
+        ],
         'fortaleza_bairros' => [
             'layer_id'               => 'fortaleza_bairros',
             'label'                  => 'Fortaleza · Bairros',
@@ -44,12 +61,12 @@ final class GeoMapLayerRegistry
             'layer_id'               => 'grande_fortaleza_bairros',
             'label'                  => 'Grande Fortaleza · Bairros disponíveis',
             'description'            => 'Fortaleza + bairros oficiais de cidades adjacentes com geometria validada.',
-            'geojson_path'           => 'assets/geo/grande_fortaleza_bairros.json',
+            'geojson_path'           => 'assets/geo/rmf_bairros_ibge_2022.geojson',
             'geojson_match_property' => 'bairro_nome',
             'match_strategy'         => 'bairro_norm',
             'city_scope'             => null,
             'requires_geometry'      => true,
-            'has_geometry'           => false,
+            'has_geometry'           => true,
             'feature_count_expected' => null,
             'source'                 => 'oficial_municipal',
             'fallback_empty_state'   => 'Bairro sem venda no período. Para municípios sem geometria de bairro validada, os dados aparecem agrupados no polígono municipal.',
@@ -73,11 +90,59 @@ final class GeoMapLayerRegistry
             'scope_label'            => 'município',
             'preserve_existing'      => false,
         ],
+        'metro_sobral_municipios' => [
+            'layer_id'               => 'metro_sobral_municipios',
+            'label'                  => 'Metropole Sobral',
+            'description'            => 'Regiao Metropolitana de Sobral por municipio.',
+            'geojson_path'           => 'assets/geo/metro_sobral_municipios.geojson',
+            'geojson_match_property' => 'municipio_ibge',
+            'match_strategy'         => 'ibge_code',
+            'city_scope'             => null,
+            'requires_geometry'      => true,
+            'has_geometry'           => true,
+            'feature_count_expected' => null,
+            'source'                 => 'lc_ce_168_2016',
+            'fallback_empty_state'   => 'Municipio sem venda registrada no periodo.',
+            'scope_label'            => 'municipio',
+            'preserve_existing'      => false,
+        ],
+        'metro_cariri_municipios' => [
+            'layer_id'               => 'metro_cariri_municipios',
+            'label'                  => 'Metropole Cariri',
+            'description'            => 'Regiao Metropolitana do Cariri por municipio.',
+            'geojson_path'           => 'assets/geo/metro_cariri_municipios.geojson',
+            'geojson_match_property' => 'municipio_ibge',
+            'match_strategy'         => 'ibge_code',
+            'city_scope'             => null,
+            'requires_geometry'      => true,
+            'has_geometry'           => true,
+            'feature_count_expected' => null,
+            'source'                 => 'lc_ce_78_2009',
+            'fallback_empty_state'   => 'Municipio sem venda registrada no periodo.',
+            'scope_label'            => 'municipio',
+            'preserve_existing'      => false,
+        ],
+        'metro_todas_municipios' => [
+            'layer_id'               => 'metro_todas_municipios',
+            'label'                  => 'Todas as Metropoles',
+            'description'            => 'Regioes metropolitanas do Ceara por municipio.',
+            'geojson_path'           => 'assets/geo/metro_todas_municipios.geojson',
+            'geojson_match_property' => 'municipio_ibge',
+            'match_strategy'         => 'ibge_code',
+            'city_scope'             => null,
+            'requires_geometry'      => true,
+            'has_geometry'           => true,
+            'feature_count_expected' => null,
+            'source'                 => 'lc_ce_metropolitanas',
+            'fallback_empty_state'   => 'Municipio sem venda registrada no periodo.',
+            'scope_label'            => 'municipio',
+            'preserve_existing'      => false,
+        ],
         'ceara_municipios' => [
             'layer_id'               => 'ceara_municipios',
             'label'                  => 'Ceará · Municípios',
             'description'            => '184 municípios do Ceará — polígono municipal, sem bairros.',
-            'geojson_path'           => 'assets/geo/ceara_mun.json',
+            'geojson_path'           => 'assets/geo/ceara_municipios_oficial.geojson',
             'geojson_match_property' => 'municipio_ibge',
             'match_strategy'         => 'ibge_code',
             'city_scope'             => null,
@@ -94,12 +159,12 @@ final class GeoMapLayerRegistry
             'layer_id'               => 'ceara_regioes',
             'label'                  => 'Ceará · Regiões IPECE',
             'description'            => '14 regiões de planejamento do IPECE — camada macro estratégica.',
-            'geojson_path'           => 'assets/geo/ceara_regioes.json',
+            'geojson_path'           => 'assets/geo/ceara_regioes_ipece_oficial.geojson',
             'geojson_match_property' => 'regiao_id',
             'match_strategy'         => 'regiao_id',
             'city_scope'             => null,
             'requires_geometry'      => true,
-            'has_geometry'           => false,
+            'has_geometry'           => true,
             'feature_count_expected' => 14,
             'source'                 => 'ipece_regioes',
             'fallback_empty_state'   => 'Região sem venda registrada no período.',
@@ -135,12 +200,12 @@ final class GeoMapLayerRegistry
     /** @return array<string, mixed> */
     public static function getOrDefault(string $layerId): array
     {
-        return self::LAYERS[$layerId] ?? self::LAYERS['fortaleza_bairros'];
+        return self::LAYERS[$layerId] ?? self::LAYERS[self::defaultLayer()];
     }
 
     public static function defaultLayer(): string
     {
-        return 'fortaleza_bairros';
+        return 'mapa_composto_ceara';
     }
 
     /** Camadas com geometria confirmada disponível. */
@@ -160,6 +225,7 @@ final class GeoMapLayerRegistry
     {
         $layer = self::get($layerId);
         if ($layer === null) return '';
+        if (($layer['geojson_path'] ?? '') === '') return '';
         return rtrim($projectRoot, '/') . '/' . $layer['geojson_path'];
     }
 

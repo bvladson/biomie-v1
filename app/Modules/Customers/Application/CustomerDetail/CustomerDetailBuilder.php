@@ -62,7 +62,15 @@ final class CustomerDetailBuilder
         $financeTitles = $this->fetchFinanceTitles($identity, $period['start'], $period['end'], $warnings);
         $vendors = $this->buildVendors($invoices, $products);
 
-        $customer = $this->buildCustomer($identity, $profile, $geoProfile, $mart['row'], $invoices[0] ?? [], $input, $warnings);
+        $customerSource = $profile !== []
+            ? 'clientes_dim'
+            : (($mart['rows'] ?? 0) > 0 ? 'mart' : ($invoices !== [] ? 'nf_canonica' : 'pendente_omie'));
+        if ($profile === []) {
+            $this->enqueuePendingEnrichment($identity, $mart['row'], $invoices[0] ?? [], $input);
+            $warnings[] = 'Cliente ainda nao existe em biomie_clientes_dim; perfil montado por ' . $customerSource . ' e enviado para enriquecimento Omie.';
+        }
+
+        $customer = $this->buildCustomer($identity, $profile, $geoProfile, $mart['row'], $invoices[0] ?? [], $input, $customerSource, $warnings);
         $summary = $this->buildSummary($mart['row'], $invoices, $orders, $products, $vendors, $financeTitles);
         $timeline = $this->buildTimeline($summary, $invoices, $orders, $financeTitles);
 
@@ -88,6 +96,8 @@ final class CustomerDetailBuilder
             'linhas_biomie_notas_fiscais_itens_canonicos' => array_sum(array_map(static fn (array $row): int => (int) ($row['notas_count'] ?? 0), $products)),
             'linhas_biomie_pedidos_canonicos' => count($orders),
             'linhas_biomie_titulos_financeiros_canonicos' => count($financeTitles),
+            'cliente_profile_source' => $customerSource,
+            'pendente_omie' => $profile === [],
             'motivo_provavel' => $this->likelyReason($mart['rows'] ?? 0, $invoices, $products, $identity),
         ];
 
@@ -106,6 +116,8 @@ final class CustomerDetailBuilder
                 'source_tables' => $sourceTables,
                 'resolved_by' => (string) ($identity['resolved_by'] ?? ''),
                 'customer_key' => (string) ($identity['customer_key'] ?? ''),
+                'customer_source' => $customerSource,
+                'pending_omie' => $profile === [],
                 'warnings' => array_values(array_unique(array_filter($warnings))),
                 'diagnostics' => $diagnostics,
             ],
@@ -545,7 +557,7 @@ final class CustomerDetailBuilder
      * @param list<string> $warnings
      * @return array<string,mixed>
      */
-    private function buildCustomer(array $identity, array $profile, array $geoProfile, array $mart, array $invoice, array $input, array &$warnings): array
+    private function buildCustomer(array $identity, array $profile, array $geoProfile, array $mart, array $invoice, array $input, string $customerSource, array &$warnings): array
     {
         $doc = $this->firstString($profile, ['documento_normalizado', 'cpf_cnpj', 'documento_cliente']);
         if ($doc === '') {
@@ -597,18 +609,19 @@ final class CustomerDetailBuilder
                 $this->firstString($profile, ['cidade', 'cidade_normalizada']),
                 $this->firstString($geoProfile, ['cidade_raw', 'cidade_norm']),
                 $this->firstString($mart, ['cidade_norm']),
-                (string) ($input['city'] ?? $input['cidade'] ?? ''),
+                $this->firstString($invoice, ['cidade_cliente', 'cidade', 'cidade_norm']),
             ]),
             'uf' => $this->firstNonEmpty([
                 $this->firstString($profile, ['uf']),
                 $this->firstString($geoProfile, ['uf']),
                 $this->firstString($mart, ['uf']),
+                $this->firstString($invoice, ['uf_cliente', 'uf']),
             ]),
             'bairro' => $this->firstNonEmpty([
                 $this->firstString($profile, ['bairro', 'bairro_normalizado']),
                 $this->firstString($geoProfile, ['bairro_raw', 'bairro_norm', 'bairro_oficial_nome_fortaleza']),
                 $this->firstString($mart, ['bairro_norm']),
-                (string) ($input['bairro'] ?? $input['neighborhood'] ?? ''),
+                $this->firstString($invoice, ['bairro_cliente', 'bairro', 'bairro_norm']),
             ]),
             'endereco' => $address,
             'telefone' => $telefone,
@@ -621,6 +634,8 @@ final class CustomerDetailBuilder
                 $this->firstString($profile, ['cnae_descricao']),
                 $this->firstString($mart, ['cnae_descricao']),
             ]),
+            'source' => $customerSource,
+            'pending_omie' => $customerSource !== 'clientes_dim',
         ];
     }
 
@@ -927,6 +942,89 @@ final class CustomerDetailBuilder
             }
         }
         return null;
+    }
+
+    /**
+     * @param array<string,mixed> $identity
+     * @param array<string,mixed> $mart
+     * @param array<string,mixed> $invoice
+     * @param array<string,mixed> $input
+     */
+    private function enqueuePendingEnrichment(array $identity, array $mart, array $invoice, array $input): void
+    {
+        if (!$this->tableExists('biomie_clientes_para_enriquecer')) {
+            return;
+        }
+
+        $codigo = (int) $this->firstNonEmpty([
+            (string) ($identity['codigo_cliente_omie'] ?? ''),
+            $this->firstString($mart, ['codigo_cliente_omie']),
+            $this->firstString($invoice, ['codigo_cliente_omie']),
+            (string) ($input['codigo_cliente_omie'] ?? ''),
+        ]);
+        if ($codigo <= 0) {
+            return;
+        }
+
+        $nome = $this->firstNonEmpty([
+            $this->firstString($mart, ['cliente_nome']),
+            $this->firstString($invoice, ['nome_cliente']),
+            (string) ($identity['cliente_nome'] ?? ''),
+            (string) ($input['cliente_nome'] ?? ''),
+        ]);
+
+        $columns = ['codigo_cliente_omie', 'source_origin', 'status'];
+        $values = [
+            'codigo_cliente_omie' => ':codigo_cliente_omie',
+            'source_origin' => ':source_origin',
+            'status' => ':status',
+        ];
+        $params = [
+            'codigo_cliente_omie' => $codigo,
+            'source_origin' => 'customer_detail_api',
+            'status' => 'pendente',
+        ];
+        $updates = [
+            "source_origin = VALUES(source_origin)",
+            "status = IF(status = 'concluido', status, VALUES(status))",
+        ];
+
+        $optional = [
+            'motivo' => ['value' => 'dim_ausente', 'update' => true],
+            'cliente_nome_exibicao' => ['value' => mb_substr($nome, 0, 255), 'update' => true],
+            'ultima_tentativa' => ['raw' => 'CURRENT_TIMESTAMP', 'update_raw' => 'ultima_tentativa = CURRENT_TIMESTAMP'],
+        ];
+
+        foreach ($optional as $column => $def) {
+            if (!$this->columnExists('biomie_clientes_para_enriquecer', $column)) {
+                continue;
+            }
+            $columns[] = $column;
+            if (isset($def['raw'])) {
+                $values[$column] = (string) $def['raw'];
+            } else {
+                $values[$column] = ':' . $column;
+                $params[$column] = $def['value'];
+            }
+            if (!empty($def['update_raw'])) {
+                $updates[] = (string) $def['update_raw'];
+            } elseif (!empty($def['update'])) {
+                $updates[] = $column . ' = VALUES(' . $column . ')';
+            }
+        }
+
+        try {
+            $sql = 'INSERT INTO biomie_clientes_para_enriquecer (`' . implode('`, `', $columns) . '`) VALUES ('
+                . implode(', ', array_map(static fn (string $column): string => $values[$column], $columns))
+                . ') ON DUPLICATE KEY UPDATE ' . implode(', ', $updates);
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue(':' . $key, $value);
+            }
+            $stmt->execute();
+        } catch (Throwable) {
+            // Cliente 360 nao deve falhar por impossibilidade de enfileirar.
+        }
     }
 
     private function tableExists(string $table): bool

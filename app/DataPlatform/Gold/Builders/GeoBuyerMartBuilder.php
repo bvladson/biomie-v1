@@ -134,6 +134,16 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             $extraUpsertFields .= ",\n            codigo_vendedor_omie = VALUES(codigo_vendedor_omie),\n            nome_vendedor        = VALUES(nome_vendedor)";
         }
 
+        $hasCnaeDim = $this->tableExists('biomie_cnae_dim')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_codigo_normalizado')
+            && $this->columnExists('biomie_cnae_dim', 'cnae_descricao');
+        $cnaeDimJoin = $hasCnaeDim
+            ? "LEFT JOIN biomie_cnae_dim cdim ON cdim.cnae_codigo_normalizado = REGEXP_REPLACE(COALESCE(dim.cnae_codigo, 'SEM_CNAE'), '[^0-9]', '')"
+            : '';
+        $cnaeDescExpr = $hasCnaeDim
+            ? "COALESCE(NULLIF(MAX(cdim.cnae_descricao), ''), NULLIF(MAX(dim.cnae_descricao), ''), 'CNAE nao informado')"
+            : "COALESCE(NULLIF(MAX(dim.cnae_descricao), ''), 'CNAE nao informado')";
+
         $sql = "
             INSERT INTO mart_compradores_por_geo (
                 competencia, codigo_cliente_omie, cliente_nome, documento,
@@ -151,7 +161,7 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
                 {$bairroExpr},
                 {$regiaoExpression},
                 MAX(dim.cnae_codigo),
-                MAX(dim.cnae_descricao),
+                {$cnaeDescExpr},
                 COALESCE(MAX(dim.segmento_macro), 'Nao classificado'),
                 COUNT(nf.id),
                 SUM({$nfBasisExpr}),
@@ -161,6 +171,7 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             FROM biomie_notas_fiscais_canonicas nf
             LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = nf.codigo_cliente_omie
             LEFT JOIN biomie_clientes_geo_dim geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
+            {$cnaeDimJoin}
             WHERE nf.status_fiscal = 'autorizada'
               AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$operationScopeFilter}{$visibilityFilter}
             GROUP BY

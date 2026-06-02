@@ -8,7 +8,7 @@ declare(strict_types=1);
  * GEO.R1.9.5 — Compradores agregados de um território.
  *
  * Parâmetros:
- *   territory_type = fortaleza_bairro|metro_bairro|rmf_municipio_fallback|ceara_municipio
+ *   territory_type = fortaleza_bairro|metro_bairro|rmf_municipio_fallback|ceara_municipio|sem_geo
  *   cidade_key     = cidade normalizada
  *   bairro_key     = bairro normalizado (obrigatório para tipos bairro)
  *   date_from / date_to
@@ -35,14 +35,150 @@ try {
     $bairroKey = strtolower(trim((string) ($_GET['bairro_key']    ?? '')));
     $ttype     = trim((string) ($_GET['territory_type'] ?? ''));
     $limit     = min(50, max(1, (int) ($_GET['limit'] ?? 10)));
+    $isNoGeo   = in_array($ttype, ['sem_geo', 'sem_bairro'], true) || $bairroKey === '__sem_bairro__';
+    $filterCity = strtolower(trim((string) ($_GET['filter_city'] ?? '')));
 
-    if ($cidadeKey === '') {
+    if ($cidadeKey === '' && !$isNoGeo) {
         Http::json(['ok' => false, 'error' => 'missing_cidade_key'], 400);
         return;
     }
 
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
+
+    $canViewDocs = class_exists('BIomie\\Auth') && method_exists('BIomie\\Auth', 'canViewFullDocuments')
+        ? \BIomie\Auth::canViewFullDocuments()
+        : false;
+    $maskFn = class_exists('BIomie\\Support\\DocumentMask') ? ['\BIomie\Support\DocumentMask', 'mask'] : null;
+
+    // Primeiro tenta o mesmo mart que alimenta o mapa, para o painel nao divergir dos KPIs.
+    $martTable = 'mart_compradores_por_geo';
+    if (Http::tableExists($pdo, $martTable)) {
+        $startComp = substr($f['date_from'], 0, 7);
+        $endComp   = substr($f['date_to'],   0, 7);
+        $hasClientDim = Http::tableExists($pdo, 'biomie_clientes_dim');
+        $dimJoin = $hasClientDim
+            ? 'LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = m.codigo_cliente_omie'
+            : '';
+        $martCnaeExpr = Http::columnExists($pdo, $martTable, 'cnae_codigo') ? "NULLIF(TRIM(m.cnae_codigo), '')" : 'NULL';
+        $dimCnaeExpr = $hasClientDim ? "NULLIF(TRIM(dim.cnae_codigo), '')" : 'NULL';
+        $rawCnaeExpr = $hasClientDim
+            ? "COALESCE({$martCnaeExpr}, {$dimCnaeExpr})"
+            : $martCnaeExpr;
+        $martDescExpr = Http::columnExists($pdo, $martTable, 'cnae_descricao')
+            ? "NULLIF(NULLIF(TRIM(m.cnae_descricao), ''), 'CNAE não informado')"
+            : 'NULL';
+        $dimDescExpr = $hasClientDim
+            ? "NULLIF(NULLIF(TRIM(dim.cnae_descricao), ''), 'CNAE não informado')"
+            : 'NULL';
+        $descExpr = $hasClientDim
+            ? "COALESCE({$martDescExpr}, {$dimDescExpr})"
+            : $martDescExpr;
+
+        $where = ['m.competencia BETWEEN :s AND :e'];
+        $params = [':s' => $startComp, ':e' => $endComp];
+
+        if ($isNoGeo) {
+            $where[] = "(m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = '' OR m.bairro_norm IS NULL OR TRIM(m.bairro_norm) = '' OR LOWER(TRIM(m.bairro_norm)) IN ('nao informado', 'sem bairro', 'sem_bairro'))";
+            if ($filterCity !== '') {
+                $where[] = "(LOWER(TRIM(m.cidade_norm)) = :filter_city OR m.cidade_norm IS NULL OR TRIM(m.cidade_norm) = '')";
+                $params[':filter_city'] = $filterCity;
+            }
+        } elseif ($ttype === 'fortaleza_bairro' && $bairroKey !== '') {
+            $where[] = "LOWER(TRIM(m.cidade_norm)) = 'fortaleza'";
+            $where[] = 'm.bairro_norm COLLATE utf8mb4_general_ci = :bairro';
+            $params[':bairro'] = $bairroKey;
+        } elseif ($ttype === 'metro_bairro' && $bairroKey !== '') {
+            $where[] = 'LOWER(TRIM(m.cidade_norm)) = :cidade';
+            $where[] = 'm.bairro_norm COLLATE utf8mb4_general_ci = :bairro';
+            $params[':cidade'] = $cidadeKey;
+            $params[':bairro'] = $bairroKey;
+        } else {
+            $where[] = 'LOWER(TRIM(m.cidade_norm)) = :cidade';
+            $params[':cidade'] = $cidadeKey;
+        }
+
+        if (!empty($f['seller_id']) && Http::columnExists($pdo, $martTable, 'nome_vendedor')) {
+            $where[] = 'LOWER(m.nome_vendedor) LIKE :vendedor';
+            $params[':vendedor'] = '%' . mb_strtolower(trim($f['seller_id'])) . '%';
+        }
+
+        if (!empty($f['cnae'])) {
+            if (strtoupper(trim((string) $f['cnae'])) === 'SEM_CNAE') {
+                $where[] = "{$rawCnaeExpr} IS NULL";
+            } else {
+                $cnaeNorm = preg_replace('/\D+/', '', (string) $f['cnae']);
+                $cnaeWhere = ["{$rawCnaeExpr} = :cnae_code", "LOWER({$descExpr}) LIKE :cnae_like"];
+                $params[':cnae_code'] = $f['cnae'];
+                $params[':cnae_like'] = '%' . mb_strtolower((string) $f['cnae']) . '%';
+                if ($cnaeNorm !== '') {
+                    $cnaeWhere[] = "REGEXP_REPLACE({$rawCnaeExpr}, '[^0-9]', '') = :cnae_norm";
+                    $params[':cnae_norm'] = $cnaeNorm;
+                }
+                $where[] = '(' . implode(' OR ', $cnaeWhere) . ')';
+            }
+        }
+
+        $whereSql = implode(' AND ', $where);
+        $stmtMart = $pdo->prepare("
+            SELECT
+                MAX(m.cliente_nome) AS customer_name,
+                MAX(m.documento) AS document_raw,
+                COALESCE(SUM(m.faturamento), 0) AS revenue,
+                COALESCE(SUM(m.qtd_notas), 0) AS invoices,
+                MAX(m.ultima_compra) AS last_purchase,
+                MAX({$rawCnaeExpr}) AS cnae,
+                MAX(m.codigo_cliente_omie) AS codigo_cliente_omie,
+                MAX(m.cidade_norm) AS cidade_norm,
+                MAX(m.bairro_norm) AS bairro_norm
+            FROM {$martTable} m
+            {$dimJoin}
+            WHERE {$whereSql}
+            GROUP BY COALESCE(CAST(m.codigo_cliente_omie AS CHAR), m.documento, m.cliente_nome)
+            ORDER BY revenue DESC
+            LIMIT :lim
+        ");
+        foreach ($params as $k => $v) $stmtMart->bindValue($k, $v);
+        $stmtMart->bindValue(':lim', $limit, \PDO::PARAM_INT);
+        $stmtMart->execute();
+        $martRows = $stmtMart->fetchAll(\PDO::FETCH_ASSOC);
+
+        if ($martRows) {
+            $data = array_map(function ($row) use ($canViewDocs, $maskFn) {
+                $doc      = (string) ($row['document_raw'] ?? '');
+                $revenue  = (float)  ($row['revenue']      ?? 0);
+                $invoices = (int)    ($row['invoices']      ?? 0);
+                $ticket   = $invoices > 0 ? $revenue / $invoices : 0.0;
+
+                return [
+                    'customer_name'  => $row['customer_name'] ?? '',
+                    'document_raw'   => $canViewDocs ? $doc : ($maskFn ? call_user_func($maskFn, $doc) : (strlen($doc) > 6 ? substr($doc, 0, 3) . '***' . substr($doc, -2) : '***')),
+                    'revenue'        => $revenue,
+                    'invoices'       => $invoices,
+                    'average_ticket' => round($ticket, 2),
+                    'last_purchase'  => $row['last_purchase'] ?? null,
+                    'cnae'           => $row['cnae'] ?? null,
+                    'segment'        => null,
+                    'codigo_cliente_omie' => $row['codigo_cliente_omie'] ?? null,
+                    'cidade'         => $row['cidade_norm'] ?? '',
+                    'cidade_norm'    => $row['cidade_norm'] ?? '',
+                    'bairro'         => $row['bairro_norm'] ?? '',
+                    'bairro_norm'    => $row['bairro_norm'] ?? '',
+                ];
+            }, $martRows);
+
+            Http::json([
+                'ok'   => true,
+                'data' => $data,
+                'meta' => [
+                    'source_mode'    => 'mart_compradores_por_geo',
+                    'count'          => count($data),
+                    'territory_type' => $ttype,
+                ],
+            ]);
+            return;
+        }
+    }
 
     $nfTable  = 'biomie_notas_fiscais_canonicas';
     $geoTable = 'biomie_clientes_geo_dim';
@@ -56,10 +192,6 @@ try {
         ]);
         return;
     }
-
-    $canViewDocs = class_exists('BIomie\\Auth') && method_exists('BIomie\\Auth', 'canViewFullDocuments')
-        ? \BIomie\Auth::canViewFullDocuments()
-        : false;
 
     // Detectar colunas opcionais
     $hasVendedor = Http::columnExists($pdo, $nfTable, 'nome_vendedor');
@@ -87,15 +219,24 @@ try {
     }
 
     // GEO.R1.9.5 — Try mart-based client lookup for consistent data (mirrors geo_territory_invoices.php R1.9.2)
-    $martTable = 'mart_compradores_por_geo';
     $useMartLookup = false;
     $martClientCodes = [];
 
     if ($ttype !== 'fortaleza_bairro' && $ttype !== 'metro_bairro' && Http::tableExists($pdo, $martTable)) {
         $startComp = substr($f['date_from'], 0, 7);
         $endComp   = substr($f['date_to'],   0, 7);
-        $martWhere  = ['competencia BETWEEN :mc_s AND :mc_e', 'LOWER(TRIM(cidade_norm)) = :mc_cidade'];
-        $martParams = [':mc_s' => $startComp, ':mc_e' => $endComp, ':mc_cidade' => $cidadeKey];
+        $martWhere  = ['competencia BETWEEN :mc_s AND :mc_e'];
+        $martParams = [':mc_s' => $startComp, ':mc_e' => $endComp];
+        if ($isNoGeo) {
+            $martWhere[] = "(cidade_norm IS NULL OR TRIM(cidade_norm) = '' OR bairro_norm IS NULL OR TRIM(bairro_norm) = '' OR LOWER(TRIM(bairro_norm)) IN ('nao informado', 'sem bairro', 'sem_bairro'))";
+            if ($filterCity !== '') {
+                $martWhere[] = "(LOWER(TRIM(cidade_norm)) = :mc_filter_city OR cidade_norm IS NULL OR TRIM(cidade_norm) = '')";
+                $martParams[':mc_filter_city'] = $filterCity;
+            }
+        } else {
+            $martWhere[] = 'LOWER(TRIM(cidade_norm)) = :mc_cidade';
+            $martParams[':mc_cidade'] = $cidadeKey;
+        }
         try {
             $stmtCodes = $pdo->prepare("SELECT DISTINCT codigo_cliente_omie FROM {$martTable} WHERE " . implode(' AND ', $martWhere) . " AND codigo_cliente_omie IS NOT NULL LIMIT 500");
             foreach ($martParams as $k => $v) $stmtCodes->bindValue($k, $v);
@@ -121,7 +262,13 @@ try {
         $where[] = "nf.codigo_cliente_omie IN ({$codePlaceholders})";
     } else {
         // Filtro territorial via JOIN com geo_dim (original path)
-        if ($ttype === 'fortaleza_bairro' && $bairroKey !== '') {
+        if ($isNoGeo) {
+            $where[] = "(geo.cidade_norm IS NULL OR TRIM(geo.cidade_norm) = '' OR geo.bairro_norm IS NULL OR TRIM(geo.bairro_norm) = '' OR LOWER(TRIM(geo.bairro_norm)) IN ('nao informado', 'sem bairro', 'sem_bairro'))";
+            if ($filterCity !== '') {
+                $where[] = "(LOWER(TRIM(geo.cidade_norm)) = :filter_city OR geo.cidade_norm IS NULL OR TRIM(geo.cidade_norm) = '')";
+                $params[':filter_city'] = $filterCity;
+            }
+        } elseif ($ttype === 'fortaleza_bairro' && $bairroKey !== '') {
             $where[] = "LOWER(TRIM(geo.cidade_norm)) = 'fortaleza'";
             $where[] = 'geo.bairro_norm COLLATE utf8mb4_general_ci = :bairro_key';
             $params[':bairro_key'] = $bairroKey;
@@ -168,7 +315,9 @@ try {
             COUNT(DISTINCT nf.id)                                                           AS invoices,
             MAX(DATE(COALESCE(nf.data_competencia, nf.data_emissao)))                       AS last_purchase,
             {$cnaeCol}                                                                      AS cnae,
-            nf.codigo_cliente_omie
+            nf.codigo_cliente_omie,
+            MAX(geo.cidade_norm)                                                            AS cidade_norm,
+            MAX(geo.bairro_norm)                                                            AS bairro_norm
         FROM {$nfTable} nf
         {$geoJoinType} JOIN {$geoTable} geo ON geo.codigo_cliente_omie = nf.codigo_cliente_omie
         WHERE {$whereSql} {$visScope}
@@ -187,8 +336,6 @@ try {
     $stmtBuyers->execute();
     $buyerRows = $stmtBuyers->fetchAll(\PDO::FETCH_ASSOC);
 
-    $maskFn = class_exists('BIomie\\Support\\DocumentMask') ? ['\BIomie\Support\DocumentMask', 'mask'] : null;
-
     $data = array_map(function ($row) use ($canViewDocs, $maskFn) {
         $doc      = (string) ($row['document_raw'] ?? '');
         $revenue  = (float)  ($row['revenue']      ?? 0);
@@ -204,6 +351,11 @@ try {
             'last_purchase'  => $row['last_purchase'] ?? null,
             'cnae'           => $row['cnae'] ?? null,
             'segment'        => null, // future: CommercialChannelPresenter
+            'codigo_cliente_omie' => $row['codigo_cliente_omie'] ?? null,
+            'cidade'         => $row['cidade_norm'] ?? '',
+            'cidade_norm'    => $row['cidade_norm'] ?? '',
+            'bairro'         => $row['bairro_norm'] ?? '',
+            'bairro_norm'    => $row['bairro_norm'] ?? '',
         ];
     }, $buyerRows);
 
