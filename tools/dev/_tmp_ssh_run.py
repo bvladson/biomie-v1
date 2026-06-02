@@ -1,16 +1,23 @@
 import sys
+import os
+import getpass
 import paramiko
-import logging
 
-# Enable verbose logging to stdout
-logging.basicConfig(level=logging.DEBUG)
+DEFAULT_HOST = '82.112.247.199'
+DEFAULT_PORT = 65002
+DEFAULT_USER = 'u106688109'
 
 def run_ssh_command(cmd):
+    host = os.environ.get('BIOMIE_SSH_HOST', DEFAULT_HOST)
+    port = int(os.environ.get('BIOMIE_SSH_PORT', str(DEFAULT_PORT)))
+    username = os.environ.get('BIOMIE_SSH_USER', DEFAULT_USER)
+    password = os.environ.get('BIOMIE_SSH_PASSWORD') or getpass.getpass('SSH password: ')
+
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         print("Connecting to SSH server...")
-        ssh.connect('82.112.247.199', port=65002, username='u106688109', password='Mortal@mag6135', timeout=10, auth_timeout=10)
+        ssh.connect(host, port=port, username=username, password=password, timeout=10, auth_timeout=10)
         print("Connected! Executing command...")
         stdin, stdout, stderr = ssh.exec_command(cmd, timeout=300)
         print("Command executed. Reading stdout...")
