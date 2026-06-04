@@ -1,0 +1,391 @@
+<?php
+
+declare(strict_types=1);
+
+use BIomie\AdminConsole\AdminCommandContext;
+use BIomie\AdminConsole\AdminCommandRegistry;
+use BIomie\Bootstrap;
+use BIomie\Config;
+use BIomie\Database;
+use BIomie\Logger;
+use BIomie\RequestContext;
+use BIomie\Support\CliGuard;
+
+$root = dirname(__DIR__);
+
+require $root . '/app/Support/CliGuard.php';
+CliGuard::requireCli();
+require $root . '/app/Bootstrap.php';
+Bootstrap::init();
+
+$argvCopy = array_values(array_map('strval', $_SERVER['argv'] ?? []));
+array_shift($argvCopy);
+$commandName = array_shift($argvCopy) ?: 'help';
+$args = parseArgs($argvCopy);
+$json = truthy($args['json'] ?? '0') || strtolower((string) ($args['format'] ?? '')) === 'json';
+
+try {
+    $config = new Config();
+    $logger = new Logger($root . '/storage/logs/biomie-cli.log');
+    $pdo = Database::connect($config, 'db');
+    $registry = AdminCommandRegistry::build($pdo, $logger, $config);
+
+    if ($commandName === 'list') {
+        $commandName = 'help';
+    }
+
+    $started = microtime(true);
+    $payload = match ($commandName) {
+        'about' => aboutPayload($config, $registry),
+        'doctor', 'release:guard' => runTool($root, 'tools/dev/biomie_release_guard.php', ['--json']),
+        'map:contract' => runTool($root, 'tools/dev/source_contract_audit.php', sourceAuditArgs($args)),
+        'map:probe' => runTool($root, 'tools/dev/geo_readmodel_probe.php', ['--json']),
+        'map:shadow' => runTool($root, 'tools/dev/geo_readmodel_shadow_compare.php', shadowArgs($args)),
+        'map:performance' => runTool($root, 'tools/dev/geo_map_performance_probe.php', performanceArgs($args)),
+        'cnae:coverage' => runTool($root, 'tools/dev/cnae_coverage_probe.php', ['--json']),
+        default => runAdminCommand($registry, $pdo, $config, $commandName, $args),
+    };
+
+    $payload['cli'] = [
+        'command' => $commandName,
+        'duration_ms' => (int) round((microtime(true) - $started) * 1000),
+        'request_id' => RequestContext::id(),
+    ];
+
+    $artifact = writeArtifacts($root, $commandName, $payload);
+    $payload['cli']['artifact'] = $artifact;
+
+    if ($json) {
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+    } else {
+        renderHuman($payload);
+    }
+
+    exit(exitCode($payload));
+} catch (Throwable $exception) {
+    $payload = [
+        'ok' => false,
+        'status' => 'environment_error',
+        'title' => 'BIomie CLI',
+        'message' => $exception->getMessage(),
+        'errors' => [$exception->getMessage()],
+    ];
+
+    if ($json) {
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+    } else {
+        echo 'BIomie CLI' . PHP_EOL;
+        echo 'Erro: ' . $exception->getMessage() . PHP_EOL;
+    }
+
+    exit(5);
+}
+
+/**
+ * @param list<string> $raw
+ * @return array<string,string>
+ */
+function parseArgs(array $raw): array
+{
+    $args = [];
+    foreach ($raw as $item) {
+        $item = trim((string) $item);
+        if ($item === '') {
+            continue;
+        }
+        if (str_starts_with($item, '--')) {
+            $item = substr($item, 2);
+        }
+        if (str_contains($item, '=')) {
+            [$key, $value] = explode('=', $item, 2);
+            $args[str_replace('-', '_', trim($key))] = trim($value);
+        } else {
+            $args[str_replace('-', '_', $item)] = '1';
+        }
+    }
+
+    return $args;
+}
+
+function truthy(string $value): bool
+{
+    return in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'y', 'sim', 'on'], true);
+}
+
+/** @return array<string,mixed> */
+function aboutPayload(Config $config, AdminCommandRegistry $registry): array
+{
+    return [
+        'ok' => true,
+        'status' => 'ok',
+        'title' => 'BIomie CLI',
+        'message' => 'Console central do BIomie.',
+        'data' => [
+            'app' => [
+                'name' => $config->get('app.name', 'BIomie'),
+                'version' => $config->get('app.version', 'dev'),
+                'env' => $config->get('app.env', 'production'),
+            ],
+            'commands_registered' => count($registry->list()),
+        ],
+    ];
+}
+
+/**
+ * @param array<string,string> $args
+ * @return list<string>
+ */
+function sourceAuditArgs(array $args): array
+{
+    $out = ['--json'];
+    if (truthy($args['strict'] ?? '0')) {
+        $out[] = '--strict';
+    }
+    return $out;
+}
+
+/**
+ * @param array<string,string> $args
+ * @return list<string>
+ */
+function shadowArgs(array $args): array
+{
+    $out = ['--json'];
+    foreach (['start', 'end', 'layer', 'city', 'cnae', 'seller_id'] as $key) {
+        if (isset($args[$key]) && trim($args[$key]) !== '') {
+            $out[] = '--' . $key . '=' . $args[$key];
+        }
+    }
+    return $out;
+}
+
+/**
+ * @param array<string,string> $args
+ * @return list<string>
+ */
+function performanceArgs(array $args): array
+{
+    $out = ['--json'];
+    foreach (['start', 'end', 'layer', 'city', 'cnae', 'seller_id', 'base_url'] as $key) {
+        if (isset($args[$key]) && trim($args[$key]) !== '') {
+            $out[] = '--' . str_replace('_', '-', $key) . '=' . $args[$key];
+        }
+    }
+    return $out;
+}
+
+/**
+ * @param list<string> $toolArgs
+ * @return array<string,mixed>
+ */
+function runTool(string $root, string $relativeScript, array $toolArgs): array
+{
+    $script = $root . '/' . $relativeScript;
+    if (!is_file($script)) {
+        return [
+            'ok' => false,
+            'status' => 'tool_missing',
+            'title' => 'Ferramenta ausente',
+            'message' => $relativeScript . ' nao existe.',
+            'errors' => [$relativeScript . ' nao existe.'],
+        ];
+    }
+
+    $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script);
+    foreach ($toolArgs as $arg) {
+        $cmd .= ' ' . escapeshellarg($arg);
+    }
+
+    $descriptor = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+    $proc = proc_open($cmd, $descriptor, $pipes, $root);
+    if (!is_resource($proc)) {
+        return [
+            'ok' => false,
+            'status' => 'process_error',
+            'title' => 'Falha operacional',
+            'message' => 'Nao foi possivel iniciar ' . $relativeScript,
+        ];
+    }
+    fclose($pipes[0]);
+    $stdout = stream_get_contents($pipes[1]) ?: '';
+    $stderr = stream_get_contents($pipes[2]) ?: '';
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exit = proc_close($proc);
+
+    $decoded = json_decode($stdout, true);
+    $data = is_array($decoded) ? $decoded : ['stdout' => trim($stdout), 'stderr' => trim($stderr)];
+
+    return [
+        'ok' => $exit === 0,
+        'status' => $exit === 0 ? 'ok' : 'tool_failed',
+        'title' => basename($relativeScript),
+        'message' => $exit === 0 ? 'Ferramenta executada com sucesso.' : 'Ferramenta retornou falha.',
+        'exit_code' => $exit,
+        'data' => $data,
+        'errors' => $stderr !== '' ? [trim($stderr)] : [],
+    ];
+}
+
+/**
+ * @param array<string,string> $args
+ * @return array<string,mixed>
+ */
+function runAdminCommand(AdminCommandRegistry $registry, PDO $pdo, Config $config, string $name, array $args): array
+{
+    $command = $registry->get($name);
+    if ($command === null) {
+        return [
+            'ok' => false,
+            'status' => 'unknown_command',
+            'title' => 'Comando desconhecido',
+            'message' => "Comando '{$name}' nao encontrado. Use: php bin/biomie help",
+            'errors' => ["Comando '{$name}' nao encontrado."],
+        ];
+    }
+
+    if (($command->isDestructive() || $command->requiresConfirmation()) && !truthy($args['yes'] ?? '0')) {
+        return [
+            'ok' => false,
+            'status' => 'confirmation_required',
+            'title' => $command->name(),
+            'message' => 'Comando exige confirmacao explicita. Execute novamente com --yes.',
+            'errors' => ['Confirmacao exigida.'],
+        ];
+    }
+
+    $validation = $command->validateArgs($args);
+    if ($validation !== null) {
+        return [
+            'ok' => false,
+            'status' => 'validation_error',
+            'title' => $command->name(),
+            'message' => $validation,
+            'errors' => [$validation],
+        ];
+    }
+
+    $context = new AdminCommandContext(
+        userId: 0,
+        username: 'cli',
+        role: 'admin',
+        permissions: ['admin.console', '*'],
+        pdo: $pdo,
+        requestId: RequestContext::id(),
+        ipAddress: 'cli',
+        userAgent: 'bin/biomie',
+        appEnv: (string) $config->get('app.env', 'production'),
+        startedAt: microtime(true),
+    );
+
+    $result = $command->run($context, $args);
+
+    return [
+        'ok' => $result->success,
+        'status' => $result->status,
+        'title' => $result->title,
+        'message' => $result->message,
+        'data' => $result->toArray(),
+        'warnings' => $result->warnings,
+        'errors' => $result->errors,
+    ];
+}
+
+/**
+ * @param array<string,mixed> $payload
+ * @return array<string,string|null>
+ */
+function writeArtifacts(string $root, string $command, array $payload): array
+{
+    $date = date('Ymd');
+    $dir = $root . '/storage/diagnostics/' . $date;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return ['json' => null, 'markdown' => null];
+    }
+
+    $safeCommand = preg_replace('/[^a-z0-9_.-]+/i', '_', $command) ?: 'command';
+    $base = $dir . '/' . date('His') . '_' . $safeCommand;
+    $jsonPath = $base . '.json';
+    $mdPath = $base . '.md';
+    @file_put_contents($jsonPath, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    @file_put_contents($mdPath, markdownSummary($payload));
+
+    return [
+        'json' => is_file($jsonPath) ? $jsonPath : null,
+        'markdown' => is_file($mdPath) ? $mdPath : null,
+    ];
+}
+
+/** @param array<string,mixed> $payload */
+function markdownSummary(array $payload): string
+{
+    $lines = [
+        '# BIomie CLI',
+        '',
+        '- Status: ' . (string) ($payload['status'] ?? '-'),
+        '- Titulo: ' . (string) ($payload['title'] ?? '-'),
+        '- Mensagem: ' . (string) ($payload['message'] ?? '-'),
+    ];
+    foreach ((array) ($payload['warnings'] ?? []) as $warning) {
+        $lines[] = '- Aviso: ' . (string) $warning;
+    }
+    foreach ((array) ($payload['errors'] ?? []) as $error) {
+        $lines[] = '- Erro: ' . (string) $error;
+    }
+
+    return implode(PHP_EOL, $lines) . PHP_EOL;
+}
+
+/** @param array<string,mixed> $payload */
+function renderHuman(array $payload): void
+{
+    echo (string) ($payload['title'] ?? 'BIomie CLI') . PHP_EOL;
+    echo (string) ($payload['message'] ?? '') . PHP_EOL;
+
+    $data = $payload['data'] ?? null;
+    if (is_array($data) && isset($data['output_lines']) && is_array($data['output_lines'])) {
+        foreach ($data['output_lines'] as $line) {
+            echo (string) $line . PHP_EOL;
+        }
+    } elseif (is_array($data)) {
+        foreach ($data as $key => $value) {
+            if (is_scalar($value) || $value === null) {
+                echo $key . ': ' . (string) $value . PHP_EOL;
+            }
+        }
+    }
+
+    foreach ((array) ($payload['warnings'] ?? []) as $warning) {
+        echo '[WARN] ' . (string) $warning . PHP_EOL;
+    }
+    foreach ((array) ($payload['errors'] ?? []) as $error) {
+        echo '[ERRO] ' . (string) $error . PHP_EOL;
+    }
+
+    $artifact = $payload['cli']['artifact'] ?? null;
+    if (is_array($artifact) && !empty($artifact['json'])) {
+        echo 'Artefato: ' . $artifact['json'] . PHP_EOL;
+    }
+}
+
+/** @param array<string,mixed> $payload */
+function exitCode(array $payload): int
+{
+    if (($payload['ok'] ?? false) === true && !in_array((string) ($payload['status'] ?? ''), ['warning'], true)) {
+        return 0;
+    }
+    $status = (string) ($payload['status'] ?? '');
+    if (in_array($status, ['validation_error', 'warning'], true)) {
+        return 2;
+    }
+    if (in_array($status, ['tool_failed', 'unknown_command'], true)) {
+        return 3;
+    }
+    if ($status === 'confirmation_required') {
+        return 4;
+    }
+    return 1;
+}

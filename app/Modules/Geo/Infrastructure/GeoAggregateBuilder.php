@@ -75,12 +75,12 @@ final class GeoAggregateBuilder
         $extraInsertCols   = '';
         $extraSelectVals   = '';
         if ($hasGeoQualityCol) {
-            $geoQualityExpr  = CompradoresPorGeo::geoQualitySql($hasBairroOficial, 'g');
+            $geoQualityExpr  = CompradoresPorGeo::geoQualitySql($hasBairroOficial, 'g', $bairroExpr, $cidadeExpr);
             $extraInsertCols .= ', geo_quality';
             $extraSelectVals .= ",\n                 {$geoQualityExpr}";
         }
         if ($hasGeoScopeCol) {
-            $geoScopeExpr    = CompradoresPorGeo::geoScopeSql('g');
+            $geoScopeExpr    = CompradoresPorGeo::geoScopeSql('g', $cidadeExpr, $ufExpr);
             $extraInsertCols .= ', geo_scope';
             $extraSelectVals .= ",\n                 {$geoScopeExpr}";
         }
@@ -163,11 +163,16 @@ final class GeoAggregateBuilder
             return;
         }
 
+        $hasCidadeKey = $this->columnExists('mart_compradores_por_geo', 'cidade_key');
+        $needsKeySql = $hasCidadeKey
+            ? "((bairro_key IS NULL OR bairro_key = '') OR (cidade_key IS NULL OR cidade_key = ''))"
+            : "(bairro_key IS NULL OR bairro_key = '')";
+
         $stmt = $this->pdo->prepare(
             "SELECT DISTINCT cidade_norm, bairro_norm
              FROM mart_compradores_por_geo
              WHERE competencia BETWEEN :s AND :e
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
         $stmt->execute([':s' => $startComp, ':e' => $endComp]);
         $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -176,13 +181,13 @@ final class GeoAggregateBuilder
             return;
         }
 
-        $hasCidadeKey   = $this->columnExists('mart_compradores_por_geo', 'cidade_key');
         $hasBairroNome  = $this->columnExists('mart_compradores_por_geo', 'bairro_nome');
         $hasCidadeNome  = $this->columnExists('mart_compradores_por_geo', 'cidade_nome');
 
         $upFields = ['bairro_key = :bk', 'bairro_norm = :bn'];
         if ($hasCidadeKey) {
             $upFields[] = 'cidade_key = :ck';
+            $upFields[] = 'cidade_norm = :cn';
         }
         if ($hasBairroNome) {
             $upFields[] = 'bairro_nome = :nome';
@@ -197,7 +202,7 @@ final class GeoAggregateBuilder
              WHERE competencia BETWEEN :s AND :e
                AND cidade_norm <=> :city_raw
                AND bairro_norm <=> :bairro_raw
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
 
         foreach ($pairs as $pair) {
@@ -206,10 +211,6 @@ final class GeoAggregateBuilder
             $cityText = $cityRaw === null ? '' : (string) $cityRaw;
             $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
             $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
-
-            if ($bairroKey === '') {
-                continue;
-            }
 
             $params = [
                 ':bk' => $bairroKey,
@@ -221,6 +222,7 @@ final class GeoAggregateBuilder
             ];
             if ($hasCidadeKey) {
                 $params[':ck'] = GeoKeyNormalizer::makeCityKey($cityText);
+                $params[':cn'] = GeoKeyNormalizer::normalizeCity($cityText);
             }
             if ($hasBairroNome) {
                 $params[':nome'] = GeoKeyNormalizer::displayName($bairroText);

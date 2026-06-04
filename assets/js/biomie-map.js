@@ -197,6 +197,8 @@
     'ceara_regioes':            'ceara_regiao',
   };
   const GEO_NORMALIZER = window.BIOMIE_GEO_NORMALIZER || null;
+  const BIOMIE_BOOTSTRAP = window.__BIOMIE_BOOTSTRAP__ || {};
+  const GEO_BOOT_FEATURES = BIOMIE_BOOTSTRAP.features || {};
   const EMPTY_GEO_MESSAGE = 'Nao encontramos vendas geograficas para o periodo selecionado. Verifique o periodo, a sincronizacao do Omie ou a materializacao geografica.';
   const MAP_DEBUG = new URLSearchParams(window.location.search).get('debug') === '1' || window.BIOMIE_GEO_DEBUG === true;
   const API_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -204,6 +206,7 @@
   const CACHEABLE_ENDPOINTS = new Set([
     'api/geo_summary.php',
     'api/sales_by_neighborhood.php',
+    'api/geo_map_payload.php',
     'api/top_buyers_by_geo.php',
     'api/sales_by_cnae.php',
   ]);
@@ -231,6 +234,8 @@
     matchConfidence: {},
     panelToken: 0,
     drawerReturnFocus: null,
+    cnaeBuyerContext: null,
+    cnaeBuyerDocumentType: 'all',
   };
 
   const formatters = {
@@ -255,6 +260,18 @@
   function setText(id, value) {
     const node = $(id);
     if (node) node.textContent = value;
+  }
+
+  function boolFlag(value) {
+    if (value === true) return true;
+    if (value === false || value == null) return false;
+    const normalized = String(value).trim().toLowerCase();
+    return ['1', 'true', 'yes', 'y', 'sim', 'on'].includes(normalized);
+  }
+
+  function geoSinglePayloadEnabled() {
+    const params = new URLSearchParams(window.location.search);
+    return boolFlag(GEO_BOOT_FEATURES.geo_single_payload) || boolFlag(params.get('single_payload'));
   }
 
   function escapeHtml(value) {
@@ -1464,6 +1481,7 @@
   async function loadPanelData(row) {
     if (!row) return;
     const token = ++state.panelToken;
+    resetCnaeBuyerContext();
     // GEO.R1.8.2 — persist row for lazy tab loads + reset to resumo tab
     state.drawerTerritoryRow = row;
     activateDrawerTab('resumo');
@@ -1518,7 +1536,9 @@
           segment:        b.segment,
           codigo_cliente_omie: b.codigo_cliente_omie,
           cliente_documento: b.document_raw,
-          document_masked: b.document_raw,
+          document_masked: b.document_masked || b.document_raw,
+          document_type: b.document_type || '',
+          document_label: b.document_label || '',
           cidade: b.cidade,
           cidade_norm: b.cidade_norm,
           bairro: b.bairro,
@@ -1646,6 +1666,7 @@
 
   async function loadSemBairroPanel(row) {
     const token = ++state.panelToken;
+    resetCnaeBuyerContext();
     const semGeoRow = Object.assign({}, row || {}, {
       bairro_key: '__sem_bairro__',
       city_key: '',
@@ -2230,21 +2251,58 @@
     openCustomerFromTrigger(trigger);
   }
 
-  async function loadBuyersForSelectedCnae(cnaeCode, description) {
+  function normalizeCnaeDocumentType(value) {
+    if (value === 'cnpj' || value === 'cpf') return value;
+    return 'all';
+  }
+
+  function renderCnaeBuyerTools(visible) {
+    const tools = $('cnaeBuyerTools');
+    if (!tools) return;
+    tools.classList.toggle('is-hidden', !visible);
+    tools.querySelectorAll('[data-geo-cnae-document-type]').forEach((button) => {
+      const type = normalizeCnaeDocumentType(button.getAttribute('data-geo-cnae-document-type') || 'all');
+      const active = type === state.cnaeBuyerDocumentType;
+      button.classList.toggle('geo-cnae-doc-filter--active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function resetCnaeBuyerContext() {
+    state.cnaeBuyerContext = null;
+    state.cnaeBuyerDocumentType = 'all';
+    renderCnaeBuyerTools(false);
+  }
+
+  async function loadBuyersForSelectedCnae(cnaeCode, description, documentType) {
     const row = state.drawerTerritoryRow;
     if (!row || !cnaeCode) return;
 
+    state.cnaeBuyerDocumentType = normalizeCnaeDocumentType(documentType || state.cnaeBuyerDocumentType || 'all');
+    state.cnaeBuyerContext = {
+      code: cnaeCode,
+      description: description || '',
+      row,
+    };
+    renderCnaeBuyerTools(true);
+
     const params = buildTerritoryParams(row);
     params.set('cnae', cnaeCode);
+    params.set('document_type', state.cnaeBuyerDocumentType);
     params.set('limit', '20');
     window.BIomieMapPanel?.renderBuyersLoading();
+    renderCnaeBuyerTools(true);
 
     try {
       const payload = await apiFetch('api/geo_territory_buyers.php', params, 'cnae_buyers');
       const rows = (payload.data || []).map((b) => ({
         customer_name: b.customer_name,
         document_raw: b.document_raw,
-        document_masked: b.document_raw,
+        document_masked: b.document_masked || b.document_raw,
+        document_type: b.document_type || '',
+        document_label: b.document_label || '',
+        buyer_kind: b.buyer_kind || '',
+        is_b2b: !!b.is_b2b,
         cliente_documento: b.document_raw,
         revenue: b.revenue,
         invoices: b.invoices,
@@ -2258,12 +2316,98 @@
         bairro: b.bairro,
         bairro_norm: b.bairro_norm,
       }));
-      window.BIomieMapPanel?.renderBuyers(rows, formatters, payload.meta?.source_mode || 'geo_territory_cnae');
+      const cnaeMeta = payload.meta || {};
+      cnaeMeta.cnae_filter = cnaeMeta.cnae_filter || {};
+      cnaeMeta.cnae_filter.code = cnaeCode;
+      cnaeMeta.cnae_filter.description = description || cnaeMeta.cnae_filter.description || '';
+      window.BIomieMapPanel?.renderBuyers(rows, formatters, cnaeMeta.source_mode || 'geo_territory_cnae', cnaeMeta);
       const label = description ? `${cnaeCode} - ${description}` : cnaeCode;
-      showFeedback(`Empresas filtradas por CNAE ${label}.`, 'info');
+      const summary = cnaeMeta.summary || {};
+      const cnpjCount = summary.cnpj?.count || 0;
+      const cpfCount = summary.cpf?.count || 0;
+      const filterLabel = state.cnaeBuyerDocumentType === 'cnpj' ? 'empresas CNPJ' : (state.cnaeBuyerDocumentType === 'cpf' ? 'clientes CPF' : 'todos');
+      showFeedback(`Compradores por CNAE ${label}: ${cnpjCount} CNPJ e ${cpfCount} CPF (${filterLabel}).`, 'info');
     } catch (error) {
       window.BIomieMapPanel?.renderBuyersError('Erro ao carregar empresas deste CNAE.');
     }
+  }
+
+  function handleCnaeBuyerDocumentTypeClick(event) {
+    const trigger = event.target.closest('[data-geo-cnae-document-type]');
+    if (!trigger) return;
+    event.preventDefault();
+    const context = state.cnaeBuyerContext;
+    if (!context || !context.code) {
+      showFeedback('Clique primeiro em um CNAE para filtrar os compradores.', 'warning');
+      return;
+    }
+    loadBuyersForSelectedCnae(
+      context.code,
+      context.description || '',
+      trigger.getAttribute('data-geo-cnae-document-type') || 'all'
+    );
+  }
+
+  function exportFilenameFromDisposition(disposition) {
+    const raw = String(disposition || '');
+    const utfMatch = raw.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utfMatch) {
+      try { return decodeURIComponent(utfMatch[1]); } catch (error) {}
+    }
+    const match = raw.match(/filename="?([^"]+)"?/i);
+    return match ? match[1] : '';
+  }
+
+  async function exportSelectedCnaeBuyersCsv() {
+    const context = state.cnaeBuyerContext;
+    if (!context || !context.code || !state.drawerTerritoryRow) {
+      showFeedback('Clique em um CNAE antes de exportar compradores.', 'warning');
+      return;
+    }
+
+    const params = buildTerritoryParams(state.drawerTerritoryRow);
+    params.set('cnae', context.code);
+    params.set('cnae_description', context.description || '');
+    params.set('document_type', state.cnaeBuyerDocumentType || 'all');
+    params.set('territory_label', getApiNeighborhoodName(state.drawerTerritoryRow) || state.drawerTerritoryRow.neighborhood || state.drawerTerritoryRow.city || '');
+    params.set('limit', '2000');
+
+    showFeedback('Gerando CSV de compradores do CNAE...', 'info');
+    try {
+      const response = await fetch(`api/geo_territory_cnae_buyers_export.php?${params.toString()}`, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        let message = 'Nao foi possivel exportar o CSV.';
+        try {
+          const payload = await response.json();
+          message = payload.message || payload.error || message;
+        } catch (error) {
+          const text = await response.text();
+          if (text) message = text.slice(0, 160);
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportFilenameFromDisposition(response.headers.get('Content-Disposition')) || `biomie-compradores-cnae-${context.code}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showFeedback('CSV de compradores do CNAE exportado.', 'info');
+    } catch (error) {
+      showFeedback(error?.message || 'Erro ao exportar compradores do CNAE.', 'warning');
+    }
+  }
+
+  function bindCnaeBuyerTools() {
+    $('cnaeBuyerTools')?.addEventListener('click', handleCnaeBuyerDocumentTypeClick);
+    $('geoExportCnaeBuyersCsvBtn')?.addEventListener('click', exportSelectedCnaeBuyersCsv);
   }
 
   function handleCnaeDrilldownClick(event) {
@@ -2272,7 +2416,8 @@
     event.preventDefault();
     loadBuyersForSelectedCnae(
       trigger.getAttribute('data-geo-cnae-code') || '',
-      trigger.getAttribute('data-geo-cnae-description') || ''
+      trigger.getAttribute('data-geo-cnae-description') || '',
+      'all'
     );
   }
 
@@ -2283,7 +2428,8 @@
     event.preventDefault();
     loadBuyersForSelectedCnae(
       trigger.getAttribute('data-geo-cnae-code') || '',
-      trigger.getAttribute('data-geo-cnae-description') || ''
+      trigger.getAttribute('data-geo-cnae-description') || '',
+      'all'
     );
   }
 
@@ -2353,13 +2499,39 @@
   // GEO.R1.7 — carrega dados de vendas do endpoint composto
   async function loadCompositeSalesData() {
     const params = currentFilters();
-    const url    = `api/geo_composite_sales.php?${params.toString()}`;
+    const endpoint = geoSinglePayloadEnabled() ? 'api/geo_map_payload.php' : 'api/geo_composite_sales.php';
+    const url    = `${endpoint}?${params.toString()}`;
     const started = performance.now();
     const resp    = await fetch(url, { credentials: 'same-origin' });
     if (!resp.ok) throw new Error(`API composite HTTP ${resp.status}`);
     const data = await resp.json();
     const duration = Math.round(performance.now() - started);
-    updateDiagnostics({ endpoint: 'api/geo_composite_sales.php', status: String(resp.status), duration });
+    updateDiagnostics({ endpoint, status: String(resp.status), duration });
+    if (endpoint === 'api/geo_map_payload.php') {
+      const payloadData = data && typeof data === 'object' ? (data.data || {}) : {};
+      return {
+        ok: data.ok !== false,
+        layer: 'mapa_composto_ceara',
+        date_from: params.get('date_from') || '',
+        date_to: params.get('date_to') || '',
+        summary: {
+          total_vendido: Number(payloadData.summary?.revenue || 0),
+          territorios_com_venda: Array.isArray(payloadData.ranking) ? payloadData.ranking.length : 0,
+          clientes: Number(payloadData.summary?.customers || 0),
+          notas: Number(payloadData.summary?.invoices || 0),
+          sem_bairro: Number(payloadData.summary?.rows_without_neighborhood || 0),
+        },
+        territories: payloadData.territories || {},
+        scales: payloadData.scales || {},
+        ranking: payloadData.ranking || [],
+        top_buyers: payloadData.top_buyers || [],
+        top_cnaes: payloadData.top_cnaes || [],
+        meta: data.meta || {},
+        warnings: data.warnings || [],
+        source: data.source || 'gold',
+        source_contract: data.source_contract || data.meta?.source?.contract || 'geo.map_payload.v1',
+      };
+    }
     return data;
   }
 
@@ -4037,6 +4209,7 @@
     bindModeChips();
     bindPresets();
     bindExportCsv();
+    bindCnaeBuyerTools();
     bindDrawerTabs();
     bindComparison();
     bindAreaSelection();

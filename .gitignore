@@ -26,6 +26,9 @@
 /storage/releases/*
 !/storage/releases/.gitkeep
 /storage/backups/
+/storage/certs/
+/storage/diagnostics/
+/storage/sources/
 
 # Geo processing: generated GeoJSONs + raw source shapefiles (large binaries)
 /storage/geo/

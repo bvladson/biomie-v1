@@ -12,6 +12,7 @@ final class Geo360ReadService
 
     /**
      * @param string|null $tab  null = tudo; 'resumo'|'compradores'|'cnaes'|'nfs'|'vendedores'|'evolucao'|'diagnostico'
+     * @param array<string,string> $territory
      */
     public function build(
         string $neighborhoodKey,
@@ -19,34 +20,53 @@ final class Geo360ReadService
         string $city,
         string $start,
         string $end,
-        int    $limit,
-        ?string $tab
+        int $limit,
+        ?string $tab,
+        array $territory = []
     ): array {
-        $loadAll     = $tab === null;
-        $loadResumo  = $loadAll || $tab === 'resumo';
-        $loadBuyers  = $loadAll || $tab === 'compradores';
-        $loadCnaes   = $loadAll || $tab === 'cnaes';
-        $loadNfs     = $loadAll || $tab === 'nfs';
+        $territoryType = (string) ($territory['territory_type'] ?? '');
+        $cidadeKey = (string) ($territory['cidade_key'] ?? '');
+        $bairroKey = (string) ($territory['bairro_key'] ?? $neighborhoodKey);
+
+        if ($territoryType === '') {
+            $territoryType = $cidadeKey !== '' && $bairroKey === '' ? 'ceara_municipio' : 'fortaleza_bairro';
+        }
+
+        $territory['territory_type'] = $territoryType;
+        $territory['cidade_key'] = $cidadeKey;
+        $territory['bairro_key'] = $bairroKey;
+
+        $isNeighborhood = in_array($territoryType, ['fortaleza_bairro', 'metro_bairro'], true);
+        $officialName = $isNeighborhood ? $this->repo->officialNeighborhoodName($bairroKey) : null;
+        $displayName = (string) ($territory['territory_label'] ?? '');
+        if ($displayName === '') {
+            $displayName = $officialName ?? $neighborhood;
+        }
+
+        $loadAll = $tab === null;
+        $loadResumo = $loadAll || $tab === 'resumo';
+        $loadBuyers = $loadAll || $tab === 'compradores';
+        $loadCnaes = $loadAll || $tab === 'cnaes';
+        $loadNfs = $loadAll || $tab === 'nfs';
         $loadVendors = $loadAll || $tab === 'vendedores';
         $loadTimeline = $loadAll || $tab === 'evolucao';
 
-        $summary   = $loadResumo  ? $this->repo->summary($neighborhoodKey, $start, $end)          : null;
-        $buyers    = $loadBuyers  ? $this->repo->buyers($neighborhoodKey, $start, $end, $limit)   : null;
-        $cnaes     = $loadCnaes   ? $this->repo->cnaes($neighborhoodKey, $start, $end, $limit)    : null;
-        $invoices  = $loadNfs     ? $this->repo->invoices($neighborhoodKey, $start, $end, $limit) : null;
-        $vendors   = $loadVendors ? $this->repo->vendors($neighborhoodKey, $start, $end, $limit)  : null;
-        $timeline  = $loadTimeline ? $this->repo->timeline($neighborhoodKey, $start, $end)        : null;
+        $summary = $loadResumo ? $this->repo->summary($territory, $start, $end) : null;
+        $buyers = $loadBuyers ? $this->repo->buyers($territory, $start, $end, $limit) : null;
+        $cnaes = $loadCnaes ? $this->repo->cnaes($territory, $start, $end, $limit) : null;
+        $invoices = $loadNfs ? $this->repo->invoices($territory, $start, $end, $limit) : null;
+        $vendors = $loadVendors ? $this->repo->vendors($territory, $start, $end, $limit) : null;
+        $timeline = $loadTimeline ? $this->repo->timeline($territory, $start, $end) : null;
 
-        $goldAt      = $this->repo->lastGoldMaterializedAt($neighborhoodKey);
+        $goldAt = $this->repo->lastGoldMaterializedAt($territory);
         $canonicalAt = $this->repo->lastCanonicalNfAt();
-        $officialName = $this->repo->officialNeighborhoodName($neighborhoodKey);
 
         $freshnessStatus = $this->freshnessStatus();
-        $goldFreshness   = $freshnessStatus($goldAt);
-        $canonFreshness  = $freshnessStatus($canonicalAt);
+        $goldFreshness = $freshnessStatus($goldAt);
+        $canonFreshness = $freshnessStatus($canonicalAt);
         $overallFreshness = $this->worstFreshness($goldFreshness, $canonFreshness);
 
-        $revenue    = (float) ($summary['revenue'] ?? 0);
+        $revenue = (float) ($summary['revenue'] ?? 0);
         $sourceFlag = $revenue > 0 ? 'gold_mart' : 'empty';
 
         $totalRevenue = array_sum(array_column($buyers ?? [], 'revenue'));
@@ -76,62 +96,86 @@ final class Geo360ReadService
         $timelineFormatted = null;
         if ($timeline !== null) {
             $timelineFormatted = array_map(static fn (array $row): array => [
-                'bucket'          => $row['bucket'],
-                'revenue'         => $row['revenue'],
-                'revenue_raw'     => (float) $row['revenue'],
-                'invoices_count'  => (int) $row['invoices_count'],
+                'bucket' => $row['bucket'],
+                'revenue' => $row['revenue'],
+                'revenue_raw' => (float) $row['revenue'],
+                'invoices_count' => (int) $row['invoices_count'],
                 'customers_count' => (int) $row['customers_count'],
             ], $timeline);
         }
 
+        $territoryKey = $bairroKey ?: $cidadeKey ?: $neighborhoodKey;
+        $scopeLabel = $isNeighborhood ? 'bairro' : 'municipio';
+
         $payload = [
-            'ok'     => true,
+            'ok' => true,
             'source' => $sourceFlag,
             'neighborhood' => [
-                'key'           => $neighborhoodKey,
-                'name'          => $officialName ?? $neighborhood,
-                'display_name'  => $officialName ?? $neighborhood,
-                'city'          => $city,
+                'key' => $territoryKey,
+                'name' => $displayName,
+                'display_name' => $displayName,
+                'city' => $city,
+            ],
+            'territory' => [
+                'type' => $territoryType,
+                'key' => $territoryKey,
+                'label' => $displayName,
+                'cidade_key' => $cidadeKey,
+                'bairro_key' => $bairroKey,
+                'layer' => (string) ($territory['layer'] ?? ''),
+                'scope_label' => $scopeLabel,
             ],
             'period' => ['start' => $start, 'end' => $end],
             'period_basis' => [
-                'realized'  => 'data_competencia',
-                'source'    => 'mart_compradores_por_geo',
+                'realized' => 'data_competencia',
+                'source' => 'mart_compradores_por_geo',
             ],
         ];
 
         if ($summary !== null) {
             $payload['summary'] = [
-                'neighborhood_key'   => $neighborhoodKey,
-                'neighborhood_name'  => $officialName ?? $neighborhood,
-                'city'               => $city,
-                'revenue'            => $summary['revenue'],
-                'invoices_count'     => (int) ($summary['invoices_count'] ?? 0),
-                'customers_count'    => (int) ($summary['customers_count'] ?? 0),
-                'cnaes_count'        => (int) ($summary['cnaes_count'] ?? 0),
-                'avg_ticket'         => $summary['avg_ticket'],
-                'first_sale_at'      => $summary['first_sale_at'] ?? null,
-                'last_sale_at'       => $summary['last_sale_at'] ?? null,
-                'source'             => $sourceFlag,
+                'neighborhood_key' => $territoryKey,
+                'neighborhood_name' => $displayName,
+                'city' => $city,
+                'territory_type' => $territoryType,
+                'scope_label' => $scopeLabel,
+                'revenue' => $summary['revenue'],
+                'invoices_count' => (int) ($summary['invoices_count'] ?? 0),
+                'customers_count' => (int) ($summary['customers_count'] ?? 0),
+                'cnaes_count' => (int) ($summary['cnaes_count'] ?? 0),
+                'avg_ticket' => $summary['avg_ticket'],
+                'first_sale_at' => $summary['first_sale_at'] ?? null,
+                'last_sale_at' => $summary['last_sale_at'] ?? null,
+                'source' => $sourceFlag,
                 'realized_period_basis' => 'data_competencia',
             ];
         }
 
-        if ($buyers !== null)  $payload['buyers']   = $buyers;
-        if ($cnaes !== null)   $payload['cnaes']    = $cnaes;
-        if ($invoices !== null) $payload['invoices'] = $invoices;
-        if ($vendors !== null) $payload['vendors']  = $vendors;
-        if ($timelineFormatted !== null) $payload['timeline'] = $timelineFormatted;
+        if ($buyers !== null) {
+            $payload['buyers'] = $buyers;
+        }
+        if ($cnaes !== null) {
+            $payload['cnaes'] = $cnaes;
+        }
+        if ($invoices !== null) {
+            $payload['invoices'] = $invoices;
+        }
+        if ($vendors !== null) {
+            $payload['vendors'] = $vendors;
+        }
+        if ($timelineFormatted !== null) {
+            $payload['timeline'] = $timelineFormatted;
+        }
 
         $payload['data_quality'] = [
-            'mart_rows_count'          => $this->repo->martRowCount($neighborhoodKey, $start, $end),
-            'source'                   => $sourceFlag,
-            'freshness_status'         => $overallFreshness,
-            'gold_freshness_status'    => $goldFreshness,
+            'mart_rows_count' => $this->repo->martRowCount($territory, $start, $end),
+            'source' => $sourceFlag,
+            'freshness_status' => $overallFreshness,
+            'gold_freshness_status' => $goldFreshness,
             'canonical_freshness_status' => $canonFreshness,
-            'last_gold_materialized_at'  => $goldAt,
-            'last_canonical_nf_at'       => $canonicalAt,
-            'warnings'                 => $this->buildWarnings($revenue, $goldAt),
+            'last_gold_materialized_at' => $goldAt,
+            'last_canonical_nf_at' => $canonicalAt,
+            'warnings' => $this->buildWarnings($revenue, $goldAt),
         ];
 
         $payload['empty_states'] = $this->buildEmptyStates($revenue, $goldAt, $overallFreshness);
@@ -142,10 +186,16 @@ final class Geo360ReadService
     private function freshnessStatus(): \Closure
     {
         return static function (?string $at): string {
-            if ($at === null || $at === '') return 'unknown';
+            if ($at === null || $at === '') {
+                return 'unknown';
+            }
             $age = time() - strtotime($at);
-            if ($age <= 86400)  return 'ok';
-            if ($age <= 259200) return 'warning';
+            if ($age <= 86400) {
+                return 'ok';
+            }
+            if ($age <= 259200) {
+                return 'warning';
+            }
             return 'critical';
         };
     }
@@ -160,10 +210,10 @@ final class Geo360ReadService
     {
         $warnings = [];
         if ($revenue <= 0.0 && $goldAt !== null) {
-            $warnings[] = 'Bairro sem receita no período — mart materializado mas sem vendas para este bairro.';
+            $warnings[] = 'Territorio sem receita no periodo; mart materializado mas sem vendas para este recorte.';
         }
         if ($goldAt === null) {
-            $warnings[] = 'mart_compradores_por_geo nunca foi materializado para este bairro.';
+            $warnings[] = 'mart_compradores_por_geo nunca foi materializado para este recorte.';
         }
         return $warnings;
     }
@@ -178,11 +228,11 @@ final class Geo360ReadService
 
         return [
             'sales' => [
-                'is_empty'    => $salesEmpty,
+                'is_empty' => $salesEmpty,
                 'reason_code' => $salesReason,
             ],
             'buyers' => [
-                'is_empty'    => $salesEmpty,
+                'is_empty' => $salesEmpty,
                 'reason_code' => $salesEmpty ? 'no_sales_in_period' : null,
             ],
         ];

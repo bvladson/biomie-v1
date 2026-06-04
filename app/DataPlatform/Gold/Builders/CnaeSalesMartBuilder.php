@@ -39,6 +39,17 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
         $hasCnaeDim = $this->tableExists('biomie_cnae_dim')
             && $this->columnExists('biomie_cnae_dim', 'cnae_codigo_normalizado')
             && $this->columnExists('biomie_cnae_dim', 'cnae_descricao');
+        $hasBairroOficial = $this->columnExists('biomie_clientes_geo_dim', 'bairro_oficial_nome_fortaleza');
+        $hasBairroNormDim = $this->columnExists('biomie_clientes_dim', 'bairro_normalizado');
+        $hasBairroRawDim  = !$hasBairroNormDim && $this->columnExists('biomie_clientes_dim', 'bairro');
+        $hasCidadeNormDim = $this->columnExists('biomie_clientes_dim', 'cidade_normalizada');
+        $hasCidadeRawDim  = !$hasCidadeNormDim && $this->columnExists('biomie_clientes_dim', 'cidade');
+        $hasUfDim         = $this->columnExists('biomie_clientes_dim', 'uf');
+
+        $bairroExpr = CompradoresPorGeo::bairroNormSql($hasBairroOficial, $hasBairroNormDim, $hasBairroRawDim, 'geo', 'dim');
+        $cidadeExpr = CompradoresPorGeo::cidadeNormSql($hasCidadeNormDim, $hasCidadeRawDim, 'geo', 'dim');
+        $ufExpr     = CompradoresPorGeo::ufSql($hasUfDim, 'geo', 'dim', 'NA');
+
         $cnaeDimJoin = $hasCnaeDim
             ? "LEFT JOIN biomie_cnae_dim cdim ON cdim.cnae_codigo_normalizado = REGEXP_REPLACE(COALESCE(dim.cnae_codigo, 'SEM_CNAE'), '[^0-9]', '')"
             : '';
@@ -60,9 +71,9 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
                 COALESCE(MAX(dim.cnae_codigo),    'SEM_CNAE'),
                 {$cnaeDescExpr},
                 COALESCE(MAX(dim.segmento_macro), 'Nao classificado'),
-                COALESCE(MAX(geo.uf), 'NA'),
-                COALESCE(MAX(geo.cidade_norm), 'NAO INFORMADA'),
-                COALESCE(MAX(geo.bairro_norm), 'NAO INFORMADO'),
+                MAX({$ufExpr}),
+                MAX({$cidadeExpr}),
+                MAX({$bairroExpr}),
                 COUNT(nf.id),
                 SUM({$nfBasisExpr}),
                 SUM({$nfBasisExpr}) / NULLIF(COUNT(nf.id), 0),
@@ -107,11 +118,16 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             return;
         }
 
+        $hasCidadeKey = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cidade_key');
+        $needsKeySql = $hasCidadeKey
+            ? "((bairro_key IS NULL OR bairro_key = '') OR (cidade_key IS NULL OR cidade_key = ''))"
+            : "(bairro_key IS NULL OR bairro_key = '')";
+
         $stmt = $this->pdo->prepare(
             "SELECT DISTINCT cidade_norm, bairro_norm
              FROM mart_vendas_por_cnae_cnpj
              WHERE competencia BETWEEN :start_comp AND :end_comp
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
         $stmt->execute(['start_comp' => $startComp, 'end_comp' => $endComp]);
         $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -120,10 +136,10 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             return;
         }
 
-        $hasCidadeKey = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cidade_key');
         $setFields = ['bairro_key = :bairro_key', 'bairro_norm = :bairro_norm'];
         if ($hasCidadeKey) {
             $setFields[] = 'cidade_key = :cidade_key';
+            $setFields[] = 'cidade_norm = :cidade_norm';
         }
 
         $update = $this->pdo->prepare(
@@ -132,7 +148,7 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
              WHERE competencia BETWEEN :start_comp AND :end_comp
                AND cidade_norm <=> :city_raw
                AND bairro_norm <=> :bairro_raw
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
 
         foreach ($pairs as $pair) {
@@ -141,10 +157,6 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             $cityText = $cityRaw === null ? '' : (string) $cityRaw;
             $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
             $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
-
-            if ($bairroKey === '') {
-                continue;
-            }
 
             $params = [
                 'bairro_key' => $bairroKey,
@@ -156,6 +168,7 @@ final class CnaeSalesMartBuilder extends AbstractMartBuilder
             ];
             if ($hasCidadeKey) {
                 $params['cidade_key'] = GeoKeyNormalizer::makeCityKey($cityText);
+                $params['cidade_norm'] = GeoKeyNormalizer::normalizeCity($cityText);
             }
 
             $update->execute($params);

@@ -25,6 +25,16 @@ use BIomie\Config;
 use BIomie\Database;
 use BIomie\DataPlatform\Gold\Builders\CnaeSalesMartBuilder;
 use BIomie\Logger;
+use BIomie\Support\FiscalValueBasis;
+
+function cnaeMartColumnExists(PDO $pdo, string $table, string $column): bool
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+    );
+    $stmt->execute([$table, $column]);
+    return (int) $stmt->fetchColumn() > 0;
+}
 
 $opts  = getopt('', ['start:', 'end:']);
 $start = isset($opts['start']) ? trim((string) $opts['start']) : '2026-02-01';
@@ -54,13 +64,26 @@ $afterRevenue = (float) $pdo->query('SELECT COALESCE(SUM(faturamento),0) FROM ma
 printf("Depois: %d linhas — R$ %s faturamento\n", $after, number_format($afterRevenue, 2, ',', '.'));
 printf("Rows afetados pelo refresh: %d\n\n", $inserted);
 
-// Compare against canonical commercial
+// Compare against the same canonical commercial basis used by CnaeSalesMartBuilder.
+$nfBasisExpr = cnaeMartColumnExists($pdo, 'biomie_notas_fiscais_canonicas', 'valor_base_comercial_nf')
+    ? FiscalValueBasis::preComputedBaseSql('nf')
+    : (cnaeMartColumnExists($pdo, 'biomie_notas_fiscais_canonicas', 'valor_frete')
+        ? FiscalValueBasis::commercialBaseSql('nf')
+        : 'nf.valor_total');
+$scopeFilter = cnaeMartColumnExists($pdo, 'biomie_notas_fiscais_canonicas', 'operation_scope')
+    ? " AND nf.operation_scope = 'commercial'"
+    : '';
+$visibilityFilter = cnaeMartColumnExists($pdo, 'biomie_notas_fiscais_canonicas', 'is_biomie_commercial_visible')
+    ? ' AND COALESCE(nf.is_biomie_commercial_visible, 1) = 1'
+    : (cnaeMartColumnExists($pdo, 'biomie_notas_fiscais_canonicas', 'nome_vendedor')
+        ? " AND NOT UPPER(nf.nome_vendedor) LIKE '%LICITAC%'"
+        : '');
+
 $canonStmt = $pdo->prepare(
-    "SELECT COALESCE(SUM(valor_total),0)
-     FROM biomie_notas_fiscais_canonicas
-     WHERE status_fiscal = 'autorizada'
-       AND operation_scope = 'commercial'
-       AND COALESCE(data_competencia, data_emissao) BETWEEN :s AND :e"
+    "SELECT COALESCE(SUM({$nfBasisExpr}),0)
+     FROM biomie_notas_fiscais_canonicas nf
+     WHERE nf.status_fiscal = 'autorizada'
+       AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :s AND :e{$scopeFilter}{$visibilityFilter}"
 );
 $canonStmt->execute(['s' => $start, 'e' => $end]);
 $canonRevenue = (float) $canonStmt->fetchColumn();

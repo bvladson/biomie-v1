@@ -1,0 +1,156 @@
+# BIomie Data Source Contracts
+
+Status: fase inicial de migracao incremental.
+
+## Regra
+
+APIs executivas nao devem decidir SQL de negocio diretamente. O fluxo oficial passa a ser:
+
+```text
+Tela / JS
+  -> API fina
+  -> ReadModel do dominio
+  -> Repository do dominio
+  -> Gold ou Canonico conforme contrato
+  -> MariaDB
+```
+
+Diagnosticos, auditorias e materializadores podem consultar multiplas fontes, mas devem declarar que sao diagnosticos.
+
+## Contratos Iniciais
+
+Os contratos estao registrados em `BIomie\DataPlatform\Contracts\SourceContractRegistry`.
+
+| Contrato | Dominio | Fonte | Tabela | Uso |
+| --- | --- | --- | --- | --- |
+| `geo.sales_by_territory.v1` | geo | gold | `mart_compradores_por_geo` | resumo, segmentos, compradores e CNAEs do mapa |
+| `geo.map_payload.v1` | geo | gold | `mart_compradores_por_geo` | payload inicial consolidado do mapa |
+| `geo.sales_by_neighborhood.v1` | geo | gold | `mart_compradores_por_geo` | vendas por bairro/municipio conforme foco |
+| `geo.territory_buyers.v1` | geo | gold | `mart_compradores_por_geo` | compradores por territorio |
+| `geo.territory_cnaes.v1` | geo | gold | `mart_compradores_por_geo` | CNAEs por territorio |
+| `geo.territory_invoices.v1` | geo | canonical | `biomie_notas_fiscais_canonicas` | NFs do territorio filtradas pelo mart geo |
+| `cnae.sales_by_cnpj.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | ranking CNAE e B2B por documento |
+| `fiscal.invoice_drilldown.v1` | fiscal | canonical | `biomie_notas_fiscais_canonicas` | detalhe e auditoria de NF |
+| `customer.profile.v1` | customers | silver | `biomie_clientes_dim` | perfil do cliente com fallback declarado |
+
+## Migracao Incremental
+
+1. Criar o ReadModel sem alterar endpoints.
+2. Transformar endpoints antigos em adaptadores finos.
+3. Criar endpoint consolidado quando os adaptadores estiverem equivalentes.
+4. Ativar por feature flag.
+5. Rodar shadow comparison antes de trocar o front.
+6. Habilitar guard estrito somente apos reduzir o legado.
+
+## Flags e Endpoints Geo
+
+Flags em `config/env.php`:
+
+| Flag | Padrao | Efeito |
+| --- | --- | --- |
+| `BIOMIE_GEO_READMODEL_V2` | `0` | Faz `geo_composite_sales.php` e `geo_summary.php` tentarem o `GeoReadModel` antes do legado. |
+| `BIOMIE_GEO_SINGLE_PAYLOAD` | `0` | Permite que o front do mapa composto consuma `api/geo_map_payload.php`. |
+| `BIOMIE_GEO_PERFORMANCE_LOG` | `1` | Registra logs leves JSONL dos endpoints Geo ReadModel em `storage/logs/performance/`. |
+
+Endpoints finos criados/adaptados:
+
+| Endpoint | Estado |
+| --- | --- |
+| `api/geo_map_payload.php` | Novo payload consolidado via `GeoReadModel::mapPayload()`. |
+| `api/geo_composite_sales.php` | Adaptador opcional por flag/`?readmodel=1`; legado preservado. |
+| `api/geo_summary.php` | Adaptador opcional por flag/`?readmodel=1`; legado preservado. |
+| `api/sales_by_neighborhood.php` | Adaptador opcional por flag/`?readmodel=1`; legado preservado. |
+| `api/geo_territory_invoices.php` | Adaptador opcional por flag/`?readmodel=1`; legado preservado. |
+| `api/geo_territory_buyers.php` | Adaptador opcional por flag/`?readmodel=1`; legado preservado. |
+| `api/geo_territory_cnaes.php` | Adaptador opcional por flag/`?readmodel=1`; legado preservado. |
+
+Para teste manual sem ativar globalmente, usuarios admin podem usar:
+
+```text
+api/geo_composite_sales.php?readmodel=1&date_from=2026-01-01&date_to=2026-06-03
+api/geo_summary.php?readmodel=1&date_from=2026-01-01&date_to=2026-06-03&layer=mapa_composto_ceara
+api/sales_by_neighborhood.php?readmodel=1&date_from=2026-01-01&date_to=2026-06-03&layer=fortaleza_bairros
+api/geo_territory_buyers.php?readmodel=1&date_from=2026-01-01&date_to=2026-06-03&territory_type=fortaleza_bairro&cidade_key=fortaleza&bairro_key=centro
+api/geo_territory_cnaes.php?readmodel=1&date_from=2026-01-01&date_to=2026-06-03&territory_type=fortaleza_bairro&cidade_key=fortaleza&bairro_key=centro
+api/geo_territory_invoices.php?readmodel=1&date_from=2026-01-01&date_to=2026-06-03&territory_type=fortaleza_bairro&cidade_key=fortaleza&bairro_key=centro
+mapa_vendas.php?single_payload=1
+```
+
+`api/geo_map_payload.php` deve permanecer magro. Na primeira carga ele carrega apenas resumo, territorios, ranking, escalas e qualidade. Compradores, CNAEs detalhados, NFs e diagnosticos completos continuam em lazy-load ou CLI.
+
+## Ativacao em Producao GEO.R2.2
+
+Ordem recomendada:
+
+```text
+Estado 0: BIOMIE_GEO_READMODEL_V2=0 e BIOMIE_GEO_SINGLE_PAYLOAD=0
+Estado 1: smoke autenticado com /mapa_vendas.php?single_payload=1
+Estado 2: BIOMIE_GEO_READMODEL_V2=1 e BIOMIE_GEO_SINGLE_PAYLOAD=0
+Estado 3: BIOMIE_GEO_READMODEL_V2=1 e BIOMIE_GEO_SINGLE_PAYLOAD=1
+```
+
+Rollback operacional:
+
+```text
+BIOMIE_GEO_READMODEL_V2=0
+BIOMIE_GEO_SINGLE_PAYLOAD=0
+```
+
+Sem rollback de banco.
+
+## Observabilidade Geo
+
+Os endpoints migrados registram uma linha JSON por chamada em:
+
+```text
+storage/logs/performance/geo_readmodel_YYYY-MM-DD.log
+```
+
+Campos principais:
+
+```json
+{
+  "request_id": "geo_...",
+  "endpoint": "geo_map_payload",
+  "source_contract": "geo.map_payload.v1",
+  "mode": "readmodel",
+  "duration_ms": 486,
+  "payload_kb": 78,
+  "sql_queries": 2,
+  "sql_time_ms": 117.36,
+  "date_from": "2026-01-01",
+  "date_to": "2026-06-04",
+  "ok": true
+}
+```
+
+O release guard inclui `D45 Geo ReadModel Performance Budget`:
+
+- `PASS`: `geo_map_payload` ate 800ms, ate 150KB e ate 5 queries SQL.
+- `WARN`: ate 1500ms, ate 500KB e ate 10 queries SQL.
+- `FAIL`: acima da zona WARN, JSON invalido ou medicao ausente.
+
+## Auditoria
+
+```bash
+php tools/dev/source_contract_audit.php
+php tools/dev/source_contract_audit.php --json
+php tools/dev/source_contract_audit.php --strict --json
+php tools/dev/geo_readmodel_probe.php --json
+php tools/dev/geo_readmodel_shadow_compare.php --json
+php tools/dev/geo_map_performance_probe.php --json
+php bin/biomie map:probe --json
+php bin/biomie map:shadow --json
+php bin/biomie map:contract --json
+php bin/biomie map:performance --json
+```
+
+Sem `--strict`, a ferramenta apenas mede o legado. Com `--strict`, findings viram falha de contrato para uso futuro no release guard.
+
+O release guard inclui `D44 ReadModel Source Governance` como informacional. Ele deve virar bloqueante somente quando os endpoints de maior fan-out ja estiverem atras dos ReadModels.
+
+Escalonamento recomendado do D44:
+
+- `D44.1` informacional: mostra leituras diretas legadas.
+- `D44.2` warning: bloqueia novas leituras diretas em APIs novas.
+- `D44.3` blocking: bloqueia leitura direta em dominios ja migrados.

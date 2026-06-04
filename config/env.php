@@ -113,6 +113,9 @@ return [
         'canonical_fiscal_ready' => (bool) env('CANONICAL_FISCAL_READY', '1', $secrets),
         'canonical_reads_finance_overview' => true,
         'operation_scope_enforced' => true,
+        'geo_readmodel_v2' => in_array(strtolower(env('BIOMIE_GEO_READMODEL_V2', '0', $secrets)), ['1', 'true', 'yes', 'y', 'sim', 'on'], true),
+        'geo_single_payload' => in_array(strtolower(env('BIOMIE_GEO_SINGLE_PAYLOAD', '0', $secrets)), ['1', 'true', 'yes', 'y', 'sim', 'on'], true),
+        'geo_performance_log' => in_array(strtolower(env('BIOMIE_GEO_PERFORMANCE_LOG', '1', $secrets)), ['1', 'true', 'yes', 'y', 'sim', 'on'], true),
     ],
     'flight_plan' => [
         'saturday_weight' => 0.33,

@@ -601,6 +601,9 @@ function buildChecks(string $root): array
         // GEO.R1.9.5 — Territory Buyers API
         checkContains('geo_r195_buyers_api',          file_exists($root . '/api/geo_territory_buyers.php') ? 'ok' : '', 'ok', 'api/geo_territory_buyers.php existe (R1.9.5).'),
         checkContains('geo_r195_load_panel_new',      readFileSafe($root . '/assets/js/biomie-map.js'), 'geo_territory_buyers.php', 'loadPanelData usa geo_territory_buyers.php (R1.9.5).'),
+        checkContains('geo_r195_cnae_doc_filters',    readFileSafe($root . '/views/mapa_vendas.html'), 'data-geo-cnae-document-type="cnpj"', 'Drawer de compradores CNAE tem filtro Empresas CNPJ.'),
+        checkContains('geo_r195_cnae_export_btn',     readFileSafe($root . '/views/mapa_vendas.html'), 'geoExportCnaeBuyersCsvBtn', 'Drawer de compradores CNAE tem botao Exportar CSV.'),
+        checkContains('geo_r195_cnae_export_api',     file_exists($root . '/api/geo_territory_cnae_buyers_export.php') ? 'ok' : '', 'ok', 'api/geo_territory_cnae_buyers_export.php existe.'),
 
         // GEO.R1.9.6 — Rich Tooltip
         checkContains('geo_r196_rich_tooltip',        readFileSafe($root . '/assets/js/biomie-map.js'), 'biomie-map-tooltip--rich', 'Tooltip rico implementado (R1.9.6).'),

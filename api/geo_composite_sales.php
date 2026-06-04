@@ -23,6 +23,10 @@ declare(strict_types=1);
 
 use BIomie\Auth;
 use BIomie\Database;
+use BIomie\DataPlatform\Query\GeoQuery;
+use BIomie\DataPlatform\ReadModel\GeoReadModelFactory;
+use BIomie\DataPlatform\Support\FeatureFlags;
+use BIomie\DataPlatform\Support\ReadModelPerformanceLogger;
 use BIomie\Http;
 use BIomie\RequestContext;
 use BIomie\Support\Geo\GeoKeyNormalizer;
@@ -31,6 +35,49 @@ use BIomie\Support\MapFilterSupport;
 require __DIR__ . '/bootstrap.php';
 
 Auth::requireModule('geo', true);
+
+$useReadModel = FeatureFlags::geoReadModelV2($config) || FeatureFlags::adminRequestOverride('readmodel');
+$forceReadModel = FeatureFlags::adminRequestOverride('readmodel');
+$forceLegacy = FeatureFlags::adminRequestOverride('legacy');
+if ($useReadModel && !$forceLegacy) {
+    try {
+        $startedAt = microtime(true);
+        $query = GeoQuery::fromRequest($_GET);
+        $geo = GeoReadModelFactory::make($config);
+        $payload = $geo->legacyCompositePayload($query);
+        $payload['read_model'] = 'GeoReadModel';
+        $payload['feature_flag_active'] = FeatureFlags::geoReadModelV2($config);
+        $payload['request_id'] = RequestContext::id();
+
+        ReadModelPerformanceLogger::logGeo(
+            $config,
+            $geo,
+            $query,
+            'geo_composite_sales',
+            'geo.map_payload.v1',
+            'readmodel',
+            $startedAt,
+            $payload
+        );
+
+        Http::json($payload);
+    } catch (\Throwable $exception) {
+        global $logger;
+        $logger?->error('geo_composite_sales readmodel fallback', [
+            'exception' => $exception->getMessage(),
+            'request_id' => RequestContext::id(),
+        ]);
+
+        if ($forceReadModel) {
+            Http::json([
+                'ok' => false,
+                'error' => 'geo_readmodel_error',
+                'message' => 'Nao foi possivel carregar o endpoint composto pelo ReadModel.',
+                'request_id' => RequestContext::id(),
+            ], 500);
+        }
+    }
+}
 
 try {
     $f     = MapFilterSupport::fromRequest($_GET);

@@ -215,7 +215,11 @@ final class GeoPeriodRebuildService
             && (int) ($before['mart_compradores_por_geo_outside_period'] ?? -1) === (int) ($after['mart_compradores_por_geo_outside_period'] ?? -2);
 
         $duplicatesCliente = $this->duplicateCount('mart_cliente_periodo', ['competencia', 'codigo_cliente_omie'], $window);
-        $duplicatesGeo = $this->duplicateCount('mart_compradores_por_geo', ['competencia', 'codigo_cliente_omie', 'uf', 'cidade_norm', 'bairro_norm'], $window);
+        $geoDuplicateColumns = ['competencia', 'codigo_cliente_omie', 'uf', 'cidade_norm', 'bairro_norm'];
+        if ($this->columnExists('mart_compradores_por_geo', 'codigo_vendedor_omie')) {
+            array_splice($geoDuplicateColumns, 1, 0, ['codigo_vendedor_omie']);
+        }
+        $duplicatesGeo = $this->duplicateCount('mart_compradores_por_geo', $geoDuplicateColumns, $window);
         $reconciliation = $this->reconciliation($source, $after);
 
         $checks = [
@@ -265,15 +269,31 @@ final class GeoPeriodRebuildService
     /** @return array<string,mixed> */
     private function sourceSnapshot(MartRefreshWindow $window): array
     {
+        $operationScopeFilter = $this->columnExists('biomie_notas_fiscais_canonicas', 'operation_scope')
+            ? "\n               AND nf.operation_scope = 'commercial'"
+            : '';
+        if ($this->columnExists('biomie_notas_fiscais_canonicas', 'is_biomie_commercial_visible')) {
+            $visibilityFilter = "\n               AND COALESCE(nf.is_biomie_commercial_visible, 1) = 1";
+        } elseif ($this->columnExists('biomie_notas_fiscais_canonicas', 'nome_vendedor')) {
+            $visibilityFilter = "\n               AND NOT UPPER(nf.nome_vendedor) LIKE '%LICITAC%'";
+        } else {
+            $visibilityFilter = '';
+        }
+
+        $nfBasisExpr = $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
+            ? \BIomie\Support\FiscalValueBasis::commercialBaseSql('nf')
+            : 'nf.valor_total';
+
         $row = $this->fetchOne(
             "SELECT
                 COUNT(*) AS canonical_nfs_autorizadas,
-                COUNT(DISTINCT codigo_cliente_omie) AS canonical_clientes,
-                COALESCE(SUM(valor_total), 0) AS canonical_valor_total,
-                COALESCE(SUM(valor_mercadorias), 0) AS canonical_valor_mercadorias
-             FROM biomie_notas_fiscais_canonicas
-             WHERE status_fiscal = 'autorizada'
-               AND COALESCE(data_competencia, data_emissao) BETWEEN :start AND :end",
+                COUNT(DISTINCT nf.codigo_cliente_omie) AS canonical_clientes,
+                COALESCE(SUM(nf.valor_total), 0) AS canonical_valor_total_raw,
+                COALESCE(SUM({$nfBasisExpr}), 0) AS canonical_valor_total,
+                COALESCE(SUM(nf.valor_mercadorias), 0) AS canonical_valor_mercadorias
+             FROM biomie_notas_fiscais_canonicas nf
+             WHERE nf.status_fiscal = 'autorizada'
+               AND COALESCE(nf.data_competencia, nf.data_emissao) BETWEEN :start AND :end{$operationScopeFilter}{$visibilityFilter}",
             ['start' => $window->effectiveStart, 'end' => $window->effectiveEnd]
         );
 
@@ -282,7 +302,11 @@ final class GeoPeriodRebuildService
             'canonical_nfs_autorizadas' => (int) ($row['canonical_nfs_autorizadas'] ?? 0),
             'canonical_clientes' => (int) ($row['canonical_clientes'] ?? 0),
             'canonical_valor_total' => (float) ($row['canonical_valor_total'] ?? 0),
+            'canonical_valor_total_raw' => (float) ($row['canonical_valor_total_raw'] ?? 0),
             'canonical_valor_mercadorias' => (float) ($row['canonical_valor_mercadorias'] ?? 0),
+            'canonical_basis' => $this->columnExists('biomie_notas_fiscais_canonicas', 'valor_frete')
+                ? 'commercial_base'
+                : 'valor_total',
         ];
     }
 
@@ -454,6 +478,19 @@ final class GeoPeriodRebuildService
                 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table'
             );
             $stmt->execute(['table' => $table]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column'
+            );
+            $stmt->execute(['table' => $table, 'column' => $column]);
             return (int) $stmt->fetchColumn() > 0;
         } catch (Throwable) {
             return false;

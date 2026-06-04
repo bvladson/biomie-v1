@@ -20,12 +20,67 @@ declare(strict_types=1);
 
 use BIomie\Auth;
 use BIomie\Database;
+use BIomie\DataPlatform\Query\GeoQuery;
+use BIomie\DataPlatform\ReadModel\GeoReadModelFactory;
+use BIomie\DataPlatform\Support\FeatureFlags;
+use BIomie\DataPlatform\Support\ReadModelPerformanceLogger;
 use BIomie\Http;
+use BIomie\RequestContext;
 use BIomie\Support\MapFilterSupport;
 
 require __DIR__ . '/bootstrap.php';
 
 Auth::requireModule('geo', true);
+
+$useReadModel = FeatureFlags::geoReadModelV2($config) || FeatureFlags::adminRequestOverride('readmodel');
+$forceReadModel = FeatureFlags::adminRequestOverride('readmodel');
+$forceLegacy = FeatureFlags::adminRequestOverride('legacy');
+if ($useReadModel && !$forceLegacy) {
+    try {
+        $startedAt = microtime(true);
+        $cidadeKey = strtolower(trim((string) ($_GET['cidade_key'] ?? '')));
+        $bairroKey = strtolower(trim((string) ($_GET['bairro_key'] ?? '')));
+        $ttype = trim((string) ($_GET['territory_type'] ?? ''));
+        $isNoGeo = in_array($ttype, ['sem_geo', 'sem_bairro'], true) || $bairroKey === '__sem_bairro__';
+        if ($cidadeKey === '' && !$isNoGeo) {
+            Http::json(['ok' => false, 'error' => 'missing_cidade_key'], 400);
+        }
+
+        $query = GeoQuery::fromRequest($_GET);
+        $geo = GeoReadModelFactory::make($config);
+        $payload = $geo->legacyTerritoryCnaesPayload($query, $_GET);
+        $payload['feature_flag_active'] = FeatureFlags::geoReadModelV2($config);
+        $payload['request_id'] = RequestContext::id();
+
+        ReadModelPerformanceLogger::logGeo(
+            $config,
+            $geo,
+            $query,
+            'geo_territory_cnaes',
+            'geo.territory_cnaes.v1',
+            'readmodel',
+            $startedAt,
+            $payload
+        );
+
+        Http::json($payload);
+    } catch (\Throwable $exception) {
+        global $logger;
+        $logger?->error('geo_territory_cnaes readmodel fallback', [
+            'exception' => $exception->getMessage(),
+            'request_id' => RequestContext::id(),
+        ]);
+
+        if ($forceReadModel) {
+            Http::json([
+                'ok' => false,
+                'error' => 'geo_readmodel_error',
+                'message' => 'Nao foi possivel carregar CNAEs do territorio pelo ReadModel.',
+                'request_id' => RequestContext::id(),
+            ], 500);
+        }
+    }
+}
 
 try {
     $f         = MapFilterSupport::fromRequest($_GET);

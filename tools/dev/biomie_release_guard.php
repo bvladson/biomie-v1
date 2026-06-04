@@ -3429,6 +3429,105 @@ $domains[] = [
 ];
 
 // ── D9 — Cache clear ─────────────────────────────────────────────────────────
+// D44 — ReadModel Source Governance [informacional]
+$d44Issues = [];
+$d44Summary = 'source_contract_audit.php ausente';
+$sourceAudit = $toolsDir . '/source_contract_audit.php';
+if (is_file($sourceAudit)) {
+    $r = rg_run($php, $sourceAudit, ['--json']);
+    $decoded = json_decode($r['output'], true);
+    if (is_array($decoded)) {
+        $findings = (int) ($decoded['findings_count'] ?? 0);
+        $d44Summary = $findings === 0
+            ? 'Nenhuma leitura direta governada encontrada em APIs'
+            : "{$findings} leitura(s) direta(s) legada(s) ainda fora de ReadModel";
+        foreach (array_slice((array) ($decoded['findings'] ?? []), 0, 8) as $finding) {
+            if (is_array($finding)) {
+                $d44Issues[] = ($finding['file'] ?? 'api/?') . ':' . ($finding['line'] ?? '?')
+                    . ' consulta ' . ($finding['table'] ?? 'tabela governada');
+            }
+        }
+    } else {
+        $d44Issues[] = 'Falha ao ler JSON do source_contract_audit.php';
+        $d44Summary = 'Auditoria executou, mas retornou JSON invalido';
+    }
+} else {
+    $d44Issues[] = 'tools/dev/source_contract_audit.php nao existe';
+}
+
+$domains[] = [
+    'label'         => 'D44 ReadModel Source Governance',
+    'guard'         => 'source_contract_audit.php --json',
+    'pass'          => true,
+    'warn'          => count($d44Issues) > 0,
+    'informational' => true,
+    'summary'       => $d44Summary . ' [informacional]',
+    'issues'        => $d44Issues,
+];
+
+// D45 — Geo ReadModel Performance Budget
+$d45Issues = [];
+$d45Warns = [];
+$d45Pass = true;
+$d45Summary = 'geo_map_performance_probe.php ausente';
+$geoPerfProbe = $toolsDir . '/geo_map_performance_probe.php';
+if (is_file($geoPerfProbe)) {
+    $r = rg_run($php, $geoPerfProbe, ['--json']);
+    $decoded = json_decode($r['output'], true);
+    if (is_array($decoded)) {
+        $measurements = (array) ($decoded['measurements'] ?? []);
+        $mapMeasurement = null;
+        foreach ($measurements as $measurement) {
+            if (is_array($measurement) && (string) ($measurement['label'] ?? '') === 'geo_map_payload_readmodel') {
+                $mapMeasurement = $measurement;
+                break;
+            }
+        }
+
+        if ($mapMeasurement === null) {
+            $d45Pass = false;
+            $d45Issues[] = 'geo_map_payload_readmodel nao encontrado na probe de performance';
+            $d45Summary = 'Probe executou, mas nao retornou geo_map_payload_readmodel';
+        } else {
+            $durationMs = (int) ($mapMeasurement['php_time_ms'] ?? 0);
+            $jsonBytes = (int) ($mapMeasurement['json_size_bytes'] ?? 0);
+            $queries = (int) ($mapMeasurement['sql_queries'] ?? 0);
+            $ok = (bool) ($mapMeasurement['ok'] ?? false);
+            $jsonKb = round($jsonBytes / 1024, 1);
+
+            if (!$ok || $durationMs > 1500 || $jsonBytes > 512000 || $queries > 10) {
+                $d45Pass = false;
+                $d45Issues[] = "geo_map_payload fora do limite FAIL: {$durationMs}ms, {$jsonKb}KB, {$queries} SQL";
+            } elseif ($durationMs > 800 || $jsonBytes > 153600 || $queries > 5) {
+                $d45Warns[] = "geo_map_payload em zona WARN: {$durationMs}ms, {$jsonKb}KB, {$queries} SQL";
+            }
+
+            foreach ((array) ($decoded['warnings'] ?? []) as $warning) {
+                $d45Warns[] = (string) $warning;
+            }
+
+            $d45Summary = "geo_map_payload: {$durationMs}ms, {$jsonKb}KB, {$queries} SQL";
+        }
+    } else {
+        $d45Pass = false;
+        $d45Issues[] = 'Falha ao ler JSON do geo_map_performance_probe.php';
+        $d45Summary = 'Probe executou, mas retornou JSON invalido';
+    }
+} else {
+    $d45Pass = false;
+    $d45Issues[] = 'tools/dev/geo_map_performance_probe.php nao existe';
+}
+
+$domains[] = [
+    'label'   => 'D45 Geo ReadModel Performance Budget',
+    'guard'   => 'geo_map_performance_probe.php --json',
+    'pass'    => $d45Pass,
+    'warn'    => $d45Pass && $d45Warns !== [],
+    'summary' => $d45Summary,
+    'issues'  => array_merge($d45Issues, $d45Warns),
+];
+if (!$d45Pass) $allPass = false;
+
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
     $deleted   = 0;

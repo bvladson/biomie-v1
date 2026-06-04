@@ -2,7 +2,7 @@
  * BIomie — Geo 360 Drawer.
  * Drawer de detalhe de bairro com lazy loading por aba.
  *
- * API: window.BIomieGeoDetail.open({ neighborhoodKey, neighborhood, city, start, end })
+ * API: window.BIomieGeoDetail.open({ neighborhoodKey, neighborhood, city, start, end, territoryType, cidadeKey, bairroKey, layer })
  */
 (function () {
   'use strict';
@@ -30,6 +30,12 @@
     neighborhoodKey: '',
     neighborhood: '',
     city: '',
+    territoryType: '',
+    cidadeKey: '',
+    bairroKey: '',
+    layer: '',
+    territoryLabel: '',
+    joinKey: '',
     params: {},
     abortCtrl: null,
     openerEl: null,
@@ -40,7 +46,7 @@
   // ── Cache ─────────────────────────────────────────────────────────────────
 
   function cacheKey(key, params, tab) {
-    return 'gd_v1:' + key + ':' + (params.start || '') + ':' + (params.end || '') + ':' + (tab || 'all');
+    return 'gd_v2:' + (state.territoryType || '') + ':' + (state.cidadeKey || '') + ':' + (state.bairroKey || key || '') + ':' + (params.start || '') + ':' + (params.end || '') + ':' + (tab || 'all');
   }
 
   function fromCache(k) {
@@ -77,9 +83,9 @@
           '<div class="biomie-drawer__title" id="gd-title">Carregando...</div>' +
           '<div class="biomie-drawer__subtitle" id="gd-subtitle"></div>' +
         '</div>' +
-        '<button class="biomie-drawer__close" id="gd-close" aria-label="Fechar painel do bairro"><span class="material-symbols-rounded">close</span></button>' +
+        '<button class="biomie-drawer__close" id="gd-close" aria-label="Fechar painel Geo 360"><span class="material-symbols-rounded">close</span></button>' +
       '</div>' +
-      '<div class="biomie-drawer__tabs" id="gd-tabs" role="tablist" aria-label="Secoes do bairro"></div>' +
+      '<div class="biomie-drawer__tabs" id="gd-tabs" role="tablist" aria-label="Secoes do territorio"></div>' +
       '<div class="biomie-drawer__body" id="gd-body">' +
         '<div class="biomie-drawer__loading" id="gd-loading" aria-live="polite">Carregando...</div>' +
         '<div id="gd-content" style="display:none;"></div>' +
@@ -127,14 +133,14 @@
     var er = document.getElementById('gd-error');
     if (ld) ld.style.display = 'none';
     if (co) co.style.display = 'none';
-    if (er) { er.textContent = msg || 'Erro ao carregar dados do bairro.'; er.style.display = ''; }
+    if (er) { er.textContent = msg || 'Erro ao carregar dados do territorio.'; er.style.display = ''; }
   }
 
   function updateHeader() {
     var titleEl = document.getElementById('gd-title');
     var subtitleEl = document.getElementById('gd-subtitle');
-    var name = state.neighborhood || state.neighborhoodKey;
-    if (titleEl) titleEl.textContent = name || 'Bairro';
+    var name = state.territoryLabel || state.neighborhood || state.neighborhoodKey;
+    if (titleEl) titleEl.textContent = name || 'Territorio';
     if (subtitleEl) subtitleEl.textContent = state.city ? (state.city + ' · ' + (state.params.start || '') + ' a ' + (state.params.end || '')) : '';
   }
 
@@ -149,6 +155,12 @@
   function apiUrl(tab) {
     var p = new URLSearchParams({
       neighborhood_key: state.neighborhoodKey,
+      bairro_key: state.bairroKey || state.neighborhoodKey,
+      cidade_key: state.cidadeKey,
+      territory_type: state.territoryType,
+      territory_label: state.territoryLabel || state.neighborhood,
+      layer: state.layer,
+      join_key: state.joinKey,
       neighborhood: state.neighborhood,
       city: state.city,
       start: state.params.start || '',
@@ -229,9 +241,15 @@
   function open(opts) {
     opts = opts || {};
     state.neighborhoodKey = String(opts.neighborhoodKey || '').trim();
-    if (!state.neighborhoodKey) return;
+    state.territoryType  = String(opts.territoryType || opts.territory_type || '').trim();
+    state.cidadeKey      = String(opts.cidadeKey || opts.cidade_key || opts.cityKey || opts.city_key || '').trim();
+    state.bairroKey      = String(opts.bairroKey || opts.bairro_key || opts.neighborhoodKey || '').trim();
+    state.layer          = String(opts.layer || '').trim();
+    state.territoryLabel = String(opts.territoryLabel || opts.territory_label || opts.neighborhood || opts.city || '').trim();
+    state.joinKey        = String(opts.joinKey || opts.join_key || '').trim();
+    if (!state.neighborhoodKey && !state.cidadeKey && !state.bairroKey) return;
 
-    state.neighborhood = String(opts.neighborhood || opts.neighborhoodKey || '').trim();
+    state.neighborhood = String(opts.neighborhood || opts.territoryLabel || opts.neighborhoodKey || opts.city || '').trim();
     state.city         = String(opts.city || 'Fortaleza').trim();
     state.params       = { start: opts.start || '', end: opts.end || '' };
     state.tab          = 'resumo';
@@ -253,11 +271,12 @@
 
     showLoading();
     fetchTab('resumo', function (err, data) {
-      if (err) { showError('Falha ao carregar bairro.'); return; }
+      if (err) { showError('Falha ao carregar territorio.'); return; }
       state.tabData['resumo'] = data;
 
       if (data.neighborhood && data.neighborhood.display_name) {
         state.neighborhood = data.neighborhood.display_name;
+        state.territoryLabel = data.neighborhood.display_name;
         updateHeader();
       }
 

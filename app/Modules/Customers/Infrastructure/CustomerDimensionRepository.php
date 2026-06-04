@@ -6,6 +6,7 @@ namespace BIomie\Modules\Customers\Infrastructure;
 
 use BIomie\GeoNameNormalizer;
 use BIomie\Logger;
+use BIomie\Support\CnaeCodeNormalizer;
 use PDO;
 use Throwable;
 
@@ -60,10 +61,14 @@ final class CustomerDimensionRepository
     private function buildMissingWhere(string $target, string $alias = ''): string
     {
         $p = $alias !== '' ? $alias . '.' : '';
+        $cnaeMissing = "({$p}cnae_codigo IS NULL OR {$p}cnae_codigo = '')";
+        if ($this->col('biomie_clientes_dim', 'cnae_unknown_reason')) {
+            $cnaeMissing = "({$cnaeMissing} AND ({$p}cnae_unknown_reason IS NULL OR {$p}cnae_unknown_reason = ''))";
+        }
         return match ($target) {
             'geo'   => "({$p}cidade IS NULL OR {$p}cidade = '' OR {$p}bairro IS NULL OR {$p}bairro = '')",
-            'cnae'  => "({$p}cnae_codigo IS NULL OR {$p}cnae_codigo = '')",
-            default => "({$p}cidade IS NULL OR {$p}cidade = '' OR {$p}bairro IS NULL OR {$p}bairro = '' OR {$p}cnae_codigo IS NULL OR {$p}cnae_codigo = '')",
+            'cnae'  => $cnaeMissing,
+            default => "({$p}cidade IS NULL OR {$p}cidade = '' OR {$p}bairro IS NULL OR {$p}bairro = '' OR {$cnaeMissing})",
         };
     }
 
@@ -562,7 +567,11 @@ final class CustomerDimensionRepository
         $bairro     = $fields['bairro'];
         $cep        = $fields['cep'];
         $cnae       = $fields['cnae_codigo'];
+        $cnaeSource = $this->resolveCnaeSource($fields['cnae_source'] ?? '');
+        $cnaeConfidence = $this->resolveCnaeConfidence($fields['cnae_source'] ?? '');
+        $beforeCnae = $this->fetchCnaeContext($codigoOmie);
         if ($cidade === '' && $bairro === '' && $cnae === '') {
+            $this->markUnknownCnae($codigoOmie, $beforeCnae, 'omie_sem_dados_cadastrais');
             return ['changed' => false, 'bairro_result' => 'none', 'field_updates' => $fieldUpdates, 'bairro_norm' => null, 'oficial_bairro' => null];
         }
         $bairroNorm = $bairro !== '' ? GeoNameNormalizer::normalizeNeighborhood($bairro) : null;
@@ -587,8 +596,40 @@ final class CustomerDimensionRepository
             $sets[] = 'bairro_normalizado = :bairro_norm'; $params['bairro_norm'] = $bairroNorm;
         }
         if ($cnae !== '' && $this->col('biomie_clientes_dim', 'cnae_codigo')) {
+            $cnaeConflict = $this->hasCnaeConflict($beforeCnae['cnae_codigo'] ?? null, $cnae);
             $sets[] = "cnae_codigo = COALESCE(NULLIF(cnae_codigo, ''), :cnae_codigo)";
-            $params['cnae_codigo'] = $cnae; $fieldUpdates['cnae'] = true;
+            $params['cnae_codigo'] = $cnae;
+
+            $cnaeDescription = $this->findOfficialCnaeDescription($cnae);
+            if ($cnaeDescription !== null && $this->col('biomie_clientes_dim', 'cnae_descricao')) {
+                $sets[] = "cnae_descricao = COALESCE(NULLIF(cnae_descricao, ''), :cnae_descricao)";
+                $params['cnae_descricao'] = $cnaeDescription;
+            }
+            if ($this->col('biomie_clientes_dim', 'cnae_source')) {
+                $sets[] = "cnae_source = COALESCE(NULLIF(cnae_source, ''), :cnae_source)";
+                $params['cnae_source'] = $cnaeSource;
+            }
+            if ($this->col('biomie_clientes_dim', 'cnae_confidence')) {
+                $sets[] = 'cnae_confidence = IF(cnae_confidence = 0, :cnae_confidence, cnae_confidence)';
+                $params['cnae_confidence'] = $cnaeConfidence;
+            }
+            if ($this->col('biomie_clientes_dim', 'cnae_captured_at')) {
+                $sets[] = 'cnae_captured_at = IF(cnae_captured_at IS NULL, NOW(), cnae_captured_at)';
+            }
+            if ($this->col('biomie_clientes_dim', 'cnae_unknown_reason')) {
+                $sets[] = 'cnae_unknown_reason = NULL';
+            }
+            if ($cnaeConflict && $this->col('biomie_clientes_dim', 'cnae_conflict_flag')) {
+                $sets[] = 'cnae_conflict_flag = 1';
+            }
+        } elseif ($this->col('biomie_clientes_dim', 'cnae_unknown_reason')) {
+            $sets[] = "cnae_unknown_reason = IF(cnae_codigo IS NULL OR cnae_codigo = '', 'omie_sem_cnae', cnae_unknown_reason)";
+            if ($this->col('biomie_clientes_dim', 'cnae_source')) {
+                $sets[] = "cnae_source = IF((cnae_codigo IS NULL OR cnae_codigo = '') AND (cnae_source IS NULL OR cnae_source = ''), 'omie_sem_cnae', cnae_source)";
+            }
+            if ($this->col('biomie_clientes_dim', 'cnae_captured_at')) {
+                $sets[] = "cnae_captured_at = IF((cnae_codigo IS NULL OR cnae_codigo = '') AND cnae_captured_at IS NULL, NOW(), cnae_captured_at)";
+            }
         }
         if ($fields['endereco'] !== '' && $this->col('biomie_clientes_dim', 'logradouro')) {
             $sets[] = 'logradouro = :logradouro'; $params['logradouro'] = $fields['endereco'];
@@ -619,6 +660,16 @@ final class CustomerDimensionRepository
         );
         $stmt->execute($params);
         $changed = $stmt->rowCount() > 0;
+        $afterCnae = $this->fetchCnaeContext($codigoOmie);
+        $fieldUpdates['cnae'] = $this->auditCnaeResult(
+            $codigoOmie,
+            $beforeCnae,
+            $afterCnae,
+            $cnae,
+            $cnaeSource,
+            $cnaeConfidence,
+            $raw
+        );
 
         // ── Bairro matching and queuing ───────────────────────────────────────
         $bairroResult  = 'none';
@@ -646,6 +697,208 @@ final class CustomerDimensionRepository
     }
 
     // ── Bairro matching ───────────────────────────────────────────────────────
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function fetchCnaeContext(int $codigoOmie): array
+    {
+        if ($codigoOmie <= 0 || !$this->tableExists('biomie_clientes_dim')) {
+            return [];
+        }
+
+        $columns = ['codigo_cliente_omie'];
+        foreach ([
+            'documento_normalizado',
+            'cnae_codigo',
+            'cnae_descricao',
+            'cnae_source',
+            'cnae_confidence',
+            'cnae_unknown_reason',
+        ] as $column) {
+            if ($this->col('biomie_clientes_dim', $column)) {
+                $columns[] = $column;
+            }
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT `' . implode('`, `', $columns) . '` FROM biomie_clientes_dim WHERE codigo_cliente_omie = :codigo LIMIT 1'
+            );
+            $stmt->execute(['codigo' => $codigoOmie]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return is_array($row) ? $row : [];
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     */
+    private function markUnknownCnae(int $codigoOmie, array $context, string $reason): void
+    {
+        if ($codigoOmie <= 0
+            || !$this->col('biomie_clientes_dim', 'cnae_unknown_reason')
+            || CnaeCodeNormalizer::digits((string) ($context['cnae_codigo'] ?? '')) !== '') {
+            return;
+        }
+
+        try {
+            $sets = ['cnae_unknown_reason = :reason'];
+            $params = ['codigo' => $codigoOmie, 'reason' => $reason];
+            if ($this->col('biomie_clientes_dim', 'cnae_source')) {
+                $sets[] = "cnae_source = IF(cnae_source IS NULL OR cnae_source = '', 'omie_sem_cnae', cnae_source)";
+            }
+            if ($this->col('biomie_clientes_dim', 'cnae_captured_at')) {
+                $sets[] = 'cnae_captured_at = IF(cnae_captured_at IS NULL, NOW(), cnae_captured_at)';
+            }
+            $stmt = $this->pdo->prepare(
+                'UPDATE biomie_clientes_dim SET ' . implode(', ', $sets) . ' WHERE codigo_cliente_omie = :codigo'
+            );
+            $stmt->execute($params);
+
+            $after = $this->fetchCnaeContext($codigoOmie);
+            $this->recordCnaeAudit($codigoOmie, $context, $after, null, 'omie_sem_cnae', 0, $reason, []);
+        } catch (Throwable $e) {
+            $this->logger->warning('CustomerDimensionRepository: falha ao marcar CNAE desconhecido.', [
+                'codigo_cliente_omie' => $codigoOmie,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @param array<string,mixed> $before
+     * @param array<string,mixed> $after
+     * @param array<string,mixed> $raw
+     */
+    private function auditCnaeResult(
+        int $codigoOmie,
+        array $before,
+        array $after,
+        string $omieCnae,
+        string $source,
+        int $confidence,
+        array $raw
+    ): bool {
+        $old = CnaeCodeNormalizer::digits((string) ($before['cnae_codigo'] ?? ''));
+        $new = CnaeCodeNormalizer::digits((string) ($after['cnae_codigo'] ?? ''));
+        $omie = CnaeCodeNormalizer::digits($omieCnae);
+
+        if ($omie !== '' && $old === '' && $new === $omie) {
+            $this->recordCnaeAudit($codigoOmie, $before, $after, $omie, $source, $confidence, 'omie_cnae_preenchido', $raw);
+            return true;
+        }
+
+        if ($omie !== '' && $old !== '' && $old !== $omie) {
+            $this->recordCnaeAudit($codigoOmie, $before, $after, $omie, $source, $confidence, 'omie_cnae_conflito_preservado', $raw);
+            return false;
+        }
+
+        $beforeReason = trim((string) ($before['cnae_unknown_reason'] ?? ''));
+        $afterReason = trim((string) ($after['cnae_unknown_reason'] ?? ''));
+        if ($omie === '' && $old === '' && $afterReason !== '' && $beforeReason !== $afterReason) {
+            $this->recordCnaeAudit($codigoOmie, $before, $after, null, 'omie_sem_cnae', 0, $afterReason, $raw);
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string,mixed> $before
+     * @param array<string,mixed> $after
+     * @param array<string,mixed> $raw
+     */
+    private function recordCnaeAudit(
+        int $codigoOmie,
+        array $before,
+        array $after,
+        ?string $newCnae,
+        string $source,
+        int $confidence,
+        string $reason,
+        array $raw
+    ): void {
+        if (!$this->tableExists('biomie_cliente_cnae_audit')) {
+            return;
+        }
+
+        try {
+            $payloadJson = $raw === [] ? '' : json_encode($raw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO biomie_cliente_cnae_audit
+                     (codigo_cliente_omie, documento_normalizado, old_cnae, new_cnae,
+                      source, confidence, reason, payload_hash, actor)
+                 VALUES
+                     (:codigo, :documento, :old_cnae, :new_cnae,
+                      :source, :confidence, :reason, :payload_hash, 'customer_omie_enrichment')"
+            );
+            $stmt->execute([
+                'codigo' => $codigoOmie,
+                'documento' => (string) (($after['documento_normalizado'] ?? '') ?: ($before['documento_normalizado'] ?? '')),
+                'old_cnae' => CnaeCodeNormalizer::digits((string) ($before['cnae_codigo'] ?? '')) ?: null,
+                'new_cnae' => $newCnae !== null ? (CnaeCodeNormalizer::digits($newCnae) ?: null) : null,
+                'source' => mb_substr($source, 0, 40),
+                'confidence' => max(0, min(100, $confidence)),
+                'reason' => mb_substr($reason, 0, 160),
+                'payload_hash' => $payloadJson !== '' ? hash('sha256', $payloadJson) : null,
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->warning('CustomerDimensionRepository: falha ao auditar CNAE.', [
+                'codigo_cliente_omie' => $codigoOmie,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function findOfficialCnaeDescription(string $cnae): ?string
+    {
+        $digits = CnaeCodeNormalizer::digits($cnae);
+        if ($digits === '' || !$this->tableExists('biomie_cnae_dim')) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COALESCE(NULLIF(cnae_descricao, ''), NULLIF(descricao_oficial, ''), NULLIF(subclasse_descricao, '')) AS descricao
+                 FROM biomie_cnae_dim
+                 WHERE cnae_codigo_normalizado = :digits
+                 LIMIT 1"
+            );
+            $stmt->execute(['digits' => $digits]);
+            $desc = trim((string) $stmt->fetchColumn());
+            return $desc !== '' ? $desc : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveCnaeSource(string $rawSource): string
+    {
+        $source = trim($rawSource);
+        if ($source === '') {
+            return 'omie_consultar_cliente';
+        }
+
+        return mb_substr('omie_' . preg_replace('/[^a-zA-Z0-9_]+/', '_', $source), 0, 40);
+    }
+
+    private function resolveCnaeConfidence(string $rawSource): int
+    {
+        return match (trim($rawSource)) {
+            'cnae_fiscal' => 95,
+            'cnae' => 90,
+            default => 85,
+        };
+    }
+
+    private function hasCnaeConflict(?string $current, string $incoming): bool
+    {
+        $old = CnaeCodeNormalizer::digits($current);
+        $new = CnaeCodeNormalizer::digits($incoming);
+        return $old !== '' && $new !== '' && $old !== $new;
+    }
 
     /** @return array{id:int,nome:string}|null */
     public function findBairroOficial(string $bairroNorm): ?array

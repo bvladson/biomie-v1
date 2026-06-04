@@ -66,6 +66,12 @@ final class CnaeAggregateBuilder
         $hasSourceCol    = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cnae_source');
         $hasConfCol      = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cnae_confidence');
         $hasUpdatedAt    = $this->columnExists('mart_vendas_por_cnae_cnpj', 'updated_at');
+        $hasBairroOficial = $this->columnExists('biomie_clientes_geo_dim', 'bairro_oficial_nome_fortaleza');
+        $hasBairroNormDim = $this->columnExists('biomie_clientes_dim', 'bairro_normalizado');
+        $hasBairroRawDim  = !$hasBairroNormDim && $this->columnExists('biomie_clientes_dim', 'bairro');
+        $hasCidadeNormDim = $this->columnExists('biomie_clientes_dim', 'cidade_normalizada');
+        $hasCidadeRawDim  = !$hasCidadeNormDim && $this->columnExists('biomie_clientes_dim', 'cidade');
+        $hasUfDim         = $this->columnExists('biomie_clientes_dim', 'uf');
         $hasCnaeDim      = $this->tableHealth->tableExists('biomie_cnae_dim')
             && $this->columnExists('biomie_cnae_dim', 'cnae_codigo_normalizado')
             && $this->columnExists('biomie_cnae_dim', 'cnae_descricao');
@@ -74,6 +80,20 @@ final class CnaeAggregateBuilder
             ? 'COALESCE(cd.cliente_nome_exibicao, cd.nome_cliente, cp.nome_cliente)'
             : 'COALESCE(cd.nome_cliente, cp.nome_cliente)';
         $docExpr  = $hasDocNorm ? 'cd.documento_normalizado' : 'NULL';
+        $bairroExpr = \BIomie\DataPlatform\Gold\Builders\CompradoresPorGeo::bairroNormSql(
+            $hasBairroOficial,
+            $hasBairroNormDim,
+            $hasBairroRawDim,
+            'g',
+            'cd'
+        );
+        $cidadeExpr = \BIomie\DataPlatform\Gold\Builders\CompradoresPorGeo::cidadeNormSql(
+            $hasCidadeNormDim,
+            $hasCidadeRawDim,
+            'g',
+            'cd'
+        );
+        $ufExpr = \BIomie\DataPlatform\Gold\Builders\CompradoresPorGeo::ufSql($hasUfDim, 'g', 'cd', '');
 
         $joinFragments  = [];
         $coalesceFields = ['cd.cnae_codigo'];
@@ -151,10 +171,9 @@ final class CnaeAggregateBuilder
                  {$cnaeCoalesce}                                                      AS cnae_codigo,
                  {$cnaeDescExpr},
                  COALESCE(cd.segmento_macro, 'PJ_SEM_CNAE')                          AS segmento_macro,
-                 COALESCE(g.uf, '')                                                   AS uf,
-                 COALESCE(g.cidade_norm, '')                                          AS cidade_norm,
-                 COALESCE(NULLIF(g.bairro_oficial_nome_fortaleza, ''),
-                           NULLIF(g.bairro_norm, ''), '')                             AS bairro_norm,
+                 {$ufExpr}                                                            AS uf,
+                 {$cidadeExpr}                                                        AS cidade_norm,
+                 {$bairroExpr}                                                        AS bairro_norm,
                  cp.nfes_emitidas                                                     AS qtd_notas,
                  cp.valor_nfe                                                         AS faturamento,
                  IF(cp.nfes_emitidas > 0, cp.valor_nfe / cp.nfes_emitidas, 0)       AS ticket_medio,
@@ -165,8 +184,8 @@ final class CnaeAggregateBuilder
              FROM mart_cliente_periodo AS cp
              LEFT JOIN biomie_clientes_dim AS cd ON cd.codigo_cliente_omie = cp.codigo_cliente_omie
              LEFT JOIN biomie_clientes_geo_dim AS g  ON g.codigo_cliente_omie = cp.codigo_cliente_omie
-             {$cnaeDimJoin}
              {$joinSql}
+             {$cnaeDimJoin}
              WHERE (cp.nfes_emitidas > 0 OR cp.valor_nfe > 0)
                AND {$cnaeCoalesce} IS NOT NULL
                AND {$cnaeCoalesce} != ''"
@@ -184,10 +203,15 @@ final class CnaeAggregateBuilder
             return;
         }
 
+        $hasCidadeKey = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cidade_key');
+        $needsKeySql = $hasCidadeKey
+            ? "((bairro_key IS NULL OR bairro_key = '') OR (cidade_key IS NULL OR cidade_key = ''))"
+            : "(bairro_key IS NULL OR bairro_key = '')";
+
         $stmt = $this->pdo->query(
             "SELECT DISTINCT cidade_norm, bairro_norm
              FROM mart_vendas_por_cnae_cnpj
-             WHERE bairro_key IS NULL OR bairro_key = ''"
+             WHERE {$needsKeySql}"
         );
         $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -195,10 +219,10 @@ final class CnaeAggregateBuilder
             return;
         }
 
-        $hasCidadeKey = $this->columnExists('mart_vendas_por_cnae_cnpj', 'cidade_key');
         $upFields = ['bairro_key = :bk', 'bairro_norm = :bn'];
         if ($hasCidadeKey) {
             $upFields[] = 'cidade_key = :ck';
+            $upFields[] = 'cidade_norm = :cn';
         }
 
         $up = $this->pdo->prepare(
@@ -206,7 +230,7 @@ final class CnaeAggregateBuilder
              SET " . implode(', ', $upFields) . "
              WHERE cidade_norm <=> :city_raw
                AND bairro_norm <=> :bairro_raw
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
 
         foreach ($pairs as $pair) {
@@ -216,10 +240,6 @@ final class CnaeAggregateBuilder
             $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
             $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
 
-            if ($bairroKey === '') {
-                continue;
-            }
-
             $params = [
                 ':bk' => $bairroKey,
                 ':bn' => GeoKeyNormalizer::normalizeNeighborhood($bairroText),
@@ -228,6 +248,7 @@ final class CnaeAggregateBuilder
             ];
             if ($hasCidadeKey) {
                 $params[':ck'] = GeoKeyNormalizer::makeCityKey($cityText);
+                $params[':cn'] = GeoKeyNormalizer::normalizeCity($cityText);
             }
 
             $up->execute($params);

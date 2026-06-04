@@ -360,6 +360,7 @@
               <button type="button" id="geo360Btn" class="row-inline-link" style="display:none;font-size:0.72rem;"
                 data-biomie-action="open-neighborhood"
                 data-neighborhood-key="" data-neighborhood-name="" data-city="Fortaleza"
+                data-territory-type="" data-cidade-key="" data-bairro-key="" data-layer="" data-territory-label="" data-join-key=""
                 title="Geo 360 — detalhe analítico do território">
                 <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;">open_in_new</span>
                 Geo 360
@@ -399,6 +400,17 @@
             </div>
             <div class="biomie-panel-section">
               <div id="buyersSourceBadge" style="display:none;margin-bottom:6px;"></div>
+              <div id="cnaeBuyerTools" class="geo-cnae-buyer-tools is-hidden" aria-live="polite">
+                <div class="geo-cnae-buyer-tools__filters" role="group" aria-label="Filtrar compradores do CNAE por tipo de documento">
+                  <span class="geo-cnae-buyer-tools__label">Compradores do CNAE</span>
+                  <button type="button" class="geo-cnae-doc-filter geo-cnae-doc-filter--active" data-geo-cnae-document-type="all">Todos</button>
+                  <button type="button" class="geo-cnae-doc-filter" data-geo-cnae-document-type="cnpj">Empresas CNPJ</button>
+                  <button type="button" class="geo-cnae-doc-filter" data-geo-cnae-document-type="cpf">Clientes CPF</button>
+                </div>
+                <button type="button" id="geoExportCnaeBuyersCsvBtn" class="btn-secondary geo-cnae-export-btn">
+                  <span class="material-symbols-rounded" aria-hidden="true">download</span>Exportar CSV
+                </button>
+              </div>
               <table class="mag-table mag-table-clean" data-mobile-card-table>
                 <thead><tr><th>Cliente</th><th>Notas</th><th>Faturamento</th></tr></thead>
                 <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um território para ver os compradores." data-empty-icon="group_off"></tbody>
@@ -540,8 +552,11 @@
 <script src="assets/js/modules/order-detail/index.js"></script>
 <script src="assets/js/modules/invoice-detail/index.js"></script>
 <script src="assets/js/modules/customer-detail/index.js"></script>
-<script src="assets/js/biomie-map-panel.js?v=20260601-map100-semgeo-cnae"></script>
+<script src="assets/js/modules/geo-detail/tabs.js?v=20260602-geo360-territory"></script>
+<script src="assets/js/modules/geo-detail/charts.js?v=20260602-geo360-territory"></script>
+<script src="assets/js/modules/geo-detail/index.js?v=20260602-geo360-territory"></script>
+<script src="assets/js/biomie-map-panel.js?v=20260602-geo360-territory"></script>
 <script src="assets/js/geo-normalizer.js?v=20260513-mapfix2"></script>
-<script src="assets/js/biomie-map.js?v=20260601-map100-semgeo-cnae"></script>
+<script src="assets/js/biomie-map.js?v=20260602-geo360-territory"></script>
 </body>
 </html>

@@ -36,6 +36,7 @@ try {
     if (!Http::tableExists($pdo, 'mart_vendas_por_cnae_cnpj')) {
         Http::jsonConflictMissingTable('mart_vendas_por_cnae_cnpj');
     }
+    $officialCnaeDescriptionExpr = "COALESCE(NULLIF(TRIM(cnae_descricao), ''), 'PJ sem CNAE')";
 
     $where = ['competencia BETWEEN :start_comp AND :end_comp'];
     $params = [
@@ -82,7 +83,7 @@ try {
     $sql = '
         SELECT
             COALESCE(NULLIF(TRIM(cnae_codigo), \'\'), \'SEM_CNAE\') AS cnae,
-            COALESCE(NULLIF(TRIM(cnae_descricao), \'\'), \'PJ sem CNAE\') AS cnae_description,
+            ' . $officialCnaeDescriptionExpr . ' AS cnae_description,
             COALESCE(NULLIF(TRIM(segmento_macro), \'\'), \'Nao classificado\') AS segment,
             SUM(faturamento) AS revenue,
             COUNT(DISTINCT COALESCE(CAST(codigo_cliente_omie AS CHAR), documento_normalizado, cliente_nome)) AS customers,
@@ -153,10 +154,12 @@ try {
             }
         }
 
+        $officialGeoCnaeDescriptionExpr = "COALESCE(NULLIF(MAX(TRIM(cnae_descricao)), ''), 'PJ sem CNAE')";
+
         $fallbackSql = '
             SELECT
                 COALESCE(NULLIF(TRIM(cnae_codigo), \'\'), \'SEM_CNAE\') AS cnae,
-                COALESCE(NULLIF(MAX(TRIM(cnae_descricao)), \'\'), \'PJ sem CNAE\') AS cnae_description,
+                ' . $officialGeoCnaeDescriptionExpr . ' AS cnae_description,
                 COALESCE(NULLIF(MAX(TRIM(segmento_macro)), \'\'), \'Nao classificado\') AS segment,
                 SUM(faturamento) AS revenue,
                 COUNT(DISTINCT COALESCE(CAST(codigo_cliente_omie AS CHAR), documento, cliente_nome)) AS customers,

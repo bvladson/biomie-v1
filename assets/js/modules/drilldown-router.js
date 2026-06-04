@@ -9,7 +9,7 @@
  *   open-invoice       → BIomieInvoiceDetail.open({ numero_nf, nota_key, chave_nfe })
  *   open-customer      → BIomieCustomerDetail.open(payload)
  *   open-product       → BIomieProductDetail.open({ productCode, productName, start, end })
- *   open-neighborhood  → BIomieGeoDetail.open({ neighborhoodKey, neighborhood, city, start, end })
+ *   open-neighborhood  → BIomieGeoDetail.open({ neighborhoodKey, neighborhood, city, start, end, territory context })
  */
 (function () {
   'use strict';
@@ -110,7 +110,9 @@
 
     if (action === 'open-neighborhood') {
       var neighborhoodKey = strAttr(trigger, 'data-neighborhood-key');
-      if (!neighborhoodKey) return;
+      var cidadeKey = strAttr(trigger, 'data-cidade-key') || strAttr(trigger, 'data-city-key');
+      var bairroKey = strAttr(trigger, 'data-bairro-key') || neighborhoodKey;
+      if (!neighborhoodKey && !cidadeKey && !bairroKey) return;
       e.preventDefault();
       var rangeGeo = getDateRange();
       if (window.BIomieGeoDetail) {
@@ -118,6 +120,12 @@
           neighborhoodKey: neighborhoodKey,
           neighborhood: strAttr(trigger, 'data-neighborhood-name'),
           city: strAttr(trigger, 'data-city') || 'Fortaleza',
+          territoryType: strAttr(trigger, 'data-territory-type'),
+          cidadeKey: cidadeKey,
+          bairroKey: bairroKey,
+          layer: strAttr(trigger, 'data-layer'),
+          territoryLabel: strAttr(trigger, 'data-territory-label') || strAttr(trigger, 'data-neighborhood-name'),
+          joinKey: strAttr(trigger, 'data-join-key'),
           start: rangeGeo.start,
           end: rangeGeo.end
         });

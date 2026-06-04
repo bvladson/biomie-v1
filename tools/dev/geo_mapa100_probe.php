@@ -78,8 +78,10 @@ function phpLint(string $path): bool
 
 $mapJs    = readSafe($root . '/assets/js/biomie-map.js');
 $panelJs  = readSafe($root . '/assets/js/biomie-map-panel.js');
+$mapHtml  = readSafe($root . '/views/mapa_vendas.html');
 $cnaePHP  = readSafe($root . '/api/geo_territory_cnaes.php');
 $buyerPHP = readSafe($root . '/api/geo_territory_buyers.php');
+$exportPHP = readSafe($root . '/api/geo_territory_cnae_buyers_export.php');
 $dimRepo  = readSafe($root . '/app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php');
 $runner   = readSafe($root . '/app/Modules/Customers/Application/CustomerEnrichmentRunner.php');
 $registry = readSafe($root . '/app/Geo/GeoMapLayerRegistry.php');
@@ -249,6 +251,31 @@ probe($checks, $pass, $fail, 'M22',
 );
 
 // ── Output ───────────────────────────────────────────────────────────────────
+
+probe($checks, $pass, $fail, 'M23',
+    file_exists($root . '/api/geo_territory_cnae_buyers_export.php') && phpLint($root . '/api/geo_territory_cnae_buyers_export.php'),
+    'api/geo_territory_cnae_buyers_export.php existe e tem sintaxe valida'
+);
+
+probe($checks, $pass, $fail, 'M24',
+    str_contains($buyerPHP, 'document_type_filter') && str_contains($buyerPHP, 'document_type') && str_contains($buyerPHP, 'buyer_kind'),
+    'geo_territory_buyers.php retorna segmentacao CNPJ/CPF/Documento para compradores'
+);
+
+probe($checks, $pass, $fail, 'M25',
+    str_contains($mapHtml, 'cnaeBuyerTools') && str_contains($mapHtml, 'data-geo-cnae-document-type="cnpj"') && str_contains($mapHtml, 'data-geo-cnae-document-type="cpf"'),
+    'Drawer do mapa tem controles Todos / Empresas CNPJ / Clientes CPF para compradores do CNAE'
+);
+
+probe($checks, $pass, $fail, 'M26',
+    str_contains($mapJs, 'exportSelectedCnaeBuyersCsv') && str_contains($mapJs, 'geo_territory_cnae_buyers_export.php') && str_contains($mapHtml, 'geoExportCnaeBuyersCsvBtn'),
+    'Mapa exporta CSV de compradores do CNAE selecionado'
+);
+
+probe($checks, $pass, $fail, 'M27',
+    str_contains($exportPHP, 'AuditLogger::logExport') && str_contains($exportPHP, 'Auth::canExport') && str_contains($exportPHP, 'canViewFullDocuments'),
+    'Exportacao de compradores CNAE tem permissao, auditoria e mascara de documento'
+);
 
 foreach ($checks as $c) {
     $icon = $c['status'] === 'PASS' ? '✔' : '✘';

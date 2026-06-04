@@ -20,6 +20,10 @@ return [
     'APP_DEBUG'       => '0',
     // Feature flag: imagens de produto via Omie (desabilitado por padrão)
     'BIOMIE_PRODUCT_IMAGES_ENABLED' => 'false',
+    // Feature flags Geo ReadModel v2: mantenha desligado ate validar shadow/probes.
+    'BIOMIE_GEO_READMODEL_V2' => '0',
+    'BIOMIE_GEO_SINGLE_PAYLOAD' => '0',
+    'BIOMIE_GEO_PERFORMANCE_LOG' => '1',
 
     // Unsplash — wallpaper dinâmico do login.
     // Obtenha a Access Key em https://unsplash.com/developers (nunca use a Secret Key aqui).

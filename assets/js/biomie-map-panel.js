@@ -113,6 +113,56 @@
     ].join(' ');
   }
 
+  function documentTypeLabel(type) {
+    if (type === 'cnpj') return 'CNPJ';
+    if (type === 'cpf') return 'CPF';
+    return 'Doc';
+  }
+
+  function documentTypeClass(type) {
+    if (type === 'cnpj') return 'geo-doc-badge--cnpj';
+    if (type === 'cpf') return 'geo-doc-badge--cpf';
+    return 'geo-doc-badge--unknown';
+  }
+
+  function renderBuyersSourceBadge(sourceMode, meta, formatters) {
+    const headerEl = document.getElementById('buyersSourceBadge');
+    if (!headerEl) return;
+
+    const chips = [];
+    const summary = meta && meta.summary ? meta.summary : null;
+    const cnae = meta && meta.cnae_filter ? meta.cnae_filter : null;
+
+    if (cnae && cnae.code) {
+      const label = cnae.description ? `${cnae.code} - ${cnae.description}` : cnae.code;
+      chips.push(`<span class="geo-buyer-chip geo-buyer-chip--cnae">CNAE ${escapeHtml(label)}</span>`);
+    }
+
+    if (summary && summary.cnpj && summary.cnpj.count) {
+      chips.push(`<span class="geo-buyer-chip geo-buyer-chip--cnpj">B2B CNPJ: ${escapeHtml(formatters.number(summary.cnpj.count))} | ${escapeHtml(formatters.money(summary.cnpj.revenue || 0))}</span>`);
+    }
+
+    if (summary && summary.cpf && summary.cpf.count) {
+      chips.push(`<span class="geo-buyer-chip geo-buyer-chip--cpf">Clientes CPF: ${escapeHtml(formatters.number(summary.cpf.count))} | ${escapeHtml(formatters.money(summary.cpf.revenue || 0))}</span>`);
+    }
+
+    if (summary && summary.unknown && summary.unknown.count) {
+      chips.push(`<span class="geo-buyer-chip geo-buyer-chip--unknown">Documento pendente: ${escapeHtml(formatters.number(summary.unknown.count))}</span>`);
+    }
+
+    if (sourceMode === 'canonical_fallback') {
+      chips.push('<span class="geo-buyer-chip geo-buyer-chip--warning">Fonte: NF direta</span>');
+    }
+
+    if (chips.length) {
+      headerEl.innerHTML = chips.join('');
+      headerEl.style.display = '';
+    } else {
+      headerEl.innerHTML = '';
+      headerEl.style.display = 'none';
+    }
+  }
+
   // GEO.R1.8.1 — territory type labels and colors
   const TERRITORY_TYPE_LABELS = {
     fortaleza_bairro:       { label: 'Bairro · Fortaleza',          color: '#1D4ED8' },
@@ -171,9 +221,19 @@
     const geo360El = document.getElementById('geo360Btn');
     if (geo360El && _nbKey) {
       const cityForBtn = data.city || data.municipio_nome || '';
-      geo360El.setAttribute('data-neighborhood-key', _nbKey);
+      const isBairroTerritory = ttype === 'fortaleza_bairro' || ttype === 'metro_bairro';
+      const cidadeKey = data.city_key || data.cidade_key || normalizeKey(cityForBtn);
+      const bairroKey = isBairroTerritory ? (data.bairro_key || data.neighborhood_key || _nbKey) : '';
+      const territoryKey = isBairroTerritory ? (bairroKey || _nbKey) : (cidadeKey || _nbKey);
+      geo360El.setAttribute('data-neighborhood-key', territoryKey);
       geo360El.setAttribute('data-neighborhood-name', nbName);
+      geo360El.setAttribute('data-territory-label', nbName);
       geo360El.setAttribute('data-city', cityForBtn);
+      geo360El.setAttribute('data-cidade-key', cidadeKey);
+      geo360El.setAttribute('data-bairro-key', bairroKey);
+      geo360El.setAttribute('data-territory-type', ttype);
+      geo360El.setAttribute('data-layer', data.layer_id || data.layer || '');
+      geo360El.setAttribute('data-join-key', data.join_key || '');
       geo360El.style.display = '';
     }
 
@@ -214,35 +274,34 @@
     window.BIomieChartHelpers?.destroy('buyerChartCanvas');
   }
 
-  function renderBuyers(rows, formatters, sourceMode) {
+  function renderBuyers(rows, formatters, sourceMode, meta) {
     const dataRows = Array.isArray(rows) ? rows.slice(0, 10) : [];
     if (!dataRows.length) {
+      clearBuyersSourceBadge();
       renderEmptyTable('topBuyersTable', 'Sem compradores neste bairro no periodo.', 3);
       document.getElementById('buyerChartBlock')?.classList.add('is-hidden');
       window.BIomieChartHelpers?.destroy('buyerChartCanvas');
       return;
     }
 
-    const isFallback = sourceMode === 'canonical_fallback';
-    if (isFallback) {
-      const headerEl = document.getElementById('buyersSourceBadge');
-      if (headerEl) {
-        headerEl.innerHTML = '<span style="font-size:10px;font-weight:600;color:var(--warning,#d97706);background:var(--warning-soft,rgba(217,119,6,.14));border-radius:4px;padding:2px 6px;">Fonte: NF direta (mart nao materializado)</span>';
-        headerEl.style.display = '';
-      }
-    } else {
-      const headerEl = document.getElementById('buyersSourceBadge');
-      if (headerEl) headerEl.style.display = 'none';
-    }
+    renderBuyersSourceBadge(sourceMode, meta || null, formatters);
 
     html('topBuyersTable', dataRows.map((row) => {
       const attrs = buyerAttrs(row);
       const name = row.customer_name || row.cliente || row.cliente_nome || 'Sem nome';
+      const documentType = row.document_type || row.tipo_documento || '';
+      const documentLabel = row.document_label || documentTypeLabel(documentType);
+      const documentValue = row.document_masked || row.documento_mascarado || row.document_raw || 'Nao informado';
+      const place = [row.bairro || row.bairro_norm || '', row.cidade || row.cidade_norm || ''].filter(Boolean).join(' - ');
       return `
       <tr class="geo-buyer-row" ${attrs} tabindex="0" style="cursor:pointer;" title="Abrir Cliente 360">
         <td>
           <button type="button" class="row-inline-link" ${attrs} style="font-weight:700;text-align:left;">${escapeHtml(name)}</button>
-          <div style="color:var(--mag-muted);font-size:12px;">${escapeHtml(row.document_masked || row.documento_mascarado || 'Nao informado')}</div>
+          <div class="geo-buyer-document">
+            <span class="geo-doc-badge ${documentTypeClass(documentType)}">${escapeHtml(documentLabel)}</span>
+            <span>${escapeHtml(documentValue)}</span>
+          </div>
+          ${place ? `<div class="geo-buyer-place">${escapeHtml(place)}</div>` : ''}
         </td>
         <td style="text-align:right;">${formatters.number(row.invoices || row.qtd_notas)}</td>
         <td style="text-align:right;"><strong>${formatters.money(row.revenue || row.faturamento)}</strong></td>

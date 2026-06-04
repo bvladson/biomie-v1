@@ -80,6 +80,9 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
         $hasBairroOficial = $this->columnExists('biomie_clientes_geo_dim', 'bairro_oficial_nome_fortaleza');
         $hasBairroNormDim = $this->columnExists('biomie_clientes_dim', 'bairro_normalizado');
         $hasBairroRawDim  = !$hasBairroNormDim && $this->columnExists('biomie_clientes_dim', 'bairro');
+        $hasCidadeNormDim = $this->columnExists('biomie_clientes_dim', 'cidade_normalizada');
+        $hasCidadeRawDim  = !$hasCidadeNormDim && $this->columnExists('biomie_clientes_dim', 'cidade');
+        $hasUfDim         = $this->columnExists('biomie_clientes_dim', 'uf');
 
         // geo_quality and geo_scope are optional columns added by migration.
         $hasGeoQualityCol = $this->columnExists('mart_compradores_por_geo', 'geo_quality');
@@ -107,8 +110,10 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
 
         // In this builder the geo_dim alias is 'geo' and clientes_dim is 'dim'.
         $bairroExpr     = CompradoresPorGeo::bairroNormSql($hasBairroOficial, $hasBairroNormDim, $hasBairroRawDim, 'geo', 'dim');
-        $geoQualityExpr = CompradoresPorGeo::geoQualitySql($hasBairroOficial, 'geo');
-        $geoScopeExpr   = CompradoresPorGeo::geoScopeSql('geo');
+        $cidadeExpr     = CompradoresPorGeo::cidadeNormSql($hasCidadeNormDim, $hasCidadeRawDim, 'geo', 'dim');
+        $ufExpr         = CompradoresPorGeo::ufSql($hasUfDim, 'geo', 'dim', 'NA');
+        $geoQualityExpr = CompradoresPorGeo::geoQualitySql($hasBairroOficial, 'geo', $bairroExpr, $cidadeExpr);
+        $geoScopeExpr   = CompradoresPorGeo::geoScopeSql('geo', $cidadeExpr, $ufExpr);
 
         // ── Dynamic column lists ───────────────────────────────────────────────
 
@@ -156,8 +161,8 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
                 nf.codigo_cliente_omie,
                 MAX(nf.nome_cliente),
                 MAX(nf.documento_cliente),
-                COALESCE(geo.uf, 'NA'),
-                COALESCE(geo.cidade_norm, ''),
+                {$ufExpr},
+                {$cidadeExpr},
                 {$bairroExpr},
                 {$regiaoExpression},
                 MAX(dim.cnae_codigo),
@@ -177,8 +182,8 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             GROUP BY
                 DATE_FORMAT(COALESCE(nf.data_competencia, nf.data_emissao), '%Y-%m'),
                 nf.codigo_cliente_omie,
-                COALESCE(geo.uf, 'NA'),
-                COALESCE(geo.cidade_norm, ''),
+                {$ufExpr},
+                {$cidadeExpr},
                 {$bairroExpr}{$extraGroupByCols}
             ON DUPLICATE KEY UPDATE
                 cliente_nome   = VALUES(cliente_nome),
@@ -206,11 +211,16 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             return;
         }
 
+        $hasCidadeKey = $this->columnExists('mart_compradores_por_geo', 'cidade_key');
+        $needsKeySql = $hasCidadeKey
+            ? "((bairro_key IS NULL OR bairro_key = '') OR (cidade_key IS NULL OR cidade_key = ''))"
+            : "(bairro_key IS NULL OR bairro_key = '')";
+
         $stmt = $this->pdo->prepare(
             "SELECT DISTINCT cidade_norm, bairro_norm
              FROM mart_compradores_por_geo
              WHERE competencia BETWEEN :start_comp AND :end_comp
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
         $stmt->execute(['start_comp' => $startComp, 'end_comp' => $endComp]);
         $pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -219,13 +229,13 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             return;
         }
 
-        $hasCidadeKey = $this->columnExists('mart_compradores_por_geo', 'cidade_key');
         $hasBairroNome = $this->columnExists('mart_compradores_por_geo', 'bairro_nome');
         $hasCidadeNome = $this->columnExists('mart_compradores_por_geo', 'cidade_nome');
 
         $setFields = ['bairro_key = :bairro_key', 'bairro_norm = :bairro_norm'];
         if ($hasCidadeKey) {
             $setFields[] = 'cidade_key = :cidade_key';
+            $setFields[] = 'cidade_norm = :cidade_norm';
         }
         if ($hasBairroNome) {
             $setFields[] = 'bairro_nome = :bairro_nome';
@@ -240,7 +250,7 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
              WHERE competencia BETWEEN :start_comp AND :end_comp
                AND cidade_norm <=> :city_raw
                AND bairro_norm <=> :bairro_raw
-               AND (bairro_key IS NULL OR bairro_key = '')"
+               AND {$needsKeySql}"
         );
 
         foreach ($pairs as $pair) {
@@ -249,10 +259,6 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             $cityText = $cityRaw === null ? '' : (string) $cityRaw;
             $bairroText = $bairroRaw === null ? '' : (string) $bairroRaw;
             $bairroKey = GeoKeyNormalizer::makeNeighborhoodKey($bairroText);
-
-            if ($bairroKey === '') {
-                continue;
-            }
 
             $params = [
                 'bairro_key' => $bairroKey,
@@ -264,6 +270,7 @@ final class GeoBuyerMartBuilder extends AbstractMartBuilder
             ];
             if ($hasCidadeKey) {
                 $params['cidade_key'] = GeoKeyNormalizer::makeCityKey($cityText);
+                $params['cidade_norm'] = GeoKeyNormalizer::normalizeCity($cityText);
             }
             if ($hasBairroNome) {
                 $params['bairro_nome'] = GeoKeyNormalizer::displayName($bairroText);
