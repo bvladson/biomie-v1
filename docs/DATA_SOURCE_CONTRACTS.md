@@ -30,6 +30,11 @@ Os contratos estao registrados em `BIomie\DataPlatform\Contracts\SourceContractR
 | `geo.territory_cnaes.v1` | geo | gold | `mart_compradores_por_geo` | CNAEs por territorio |
 | `geo.territory_invoices.v1` | geo | canonical | `biomie_notas_fiscais_canonicas` | NFs do territorio filtradas pelo mart geo |
 | `cnae.sales_by_cnpj.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | ranking CNAE e B2B por documento |
+| `cnae.coverage.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | cobertura CNPJ/B2B, CPF nao aplicavel e impacto de CNPJ sem CNAE |
+| `cnae.ranking.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | ranking oficial de CNAEs por receita/clientes/NFs |
+| `cnae.opportunities.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | CNPJs sem CNAE priorizados por impacto comercial |
+| `cnae.customer_status.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | empresas/compradores por CNAE com status semantico |
+| `cnae.geo_distribution.v1` | cnae | gold | `mart_vendas_por_cnae_cnpj` | distribuicao CNAE por cidade/bairro |
 | `fiscal.invoice_drilldown.v1` | fiscal | canonical | `biomie_notas_fiscais_canonicas` | detalhe e auditoria de NF |
 | `customer.profile.v1` | customers | silver | `biomie_clientes_dim` | perfil do cliente com fallback declarado |
 
@@ -129,6 +134,46 @@ O release guard inclui `D45 Geo ReadModel Performance Budget`:
 - `PASS`: `geo_map_payload` ate 800ms, ate 150KB e ate 5 queries SQL.
 - `WARN`: ate 1500ms, ate 500KB e ate 10 queries SQL.
 - `FAIL`: acima da zona WARN, JSON invalido ou medicao ausente.
+
+## CNAE.R1 - CnaeReadModel & B2B Intelligence
+
+A leitura oficial de CNAE passa por `CnaeReadModel` e `CnaeReadRepository`.
+CPF sem CNAE nao e erro: entra em `not_applicable_cpf`. A pendencia comercial real e CNPJ com venda e sem CNAE valido: `missing_cnpj`.
+
+Estados oficiais:
+
+- `ok`: CNPJ com CNAE normalizado valido.
+- `missing_cnpj`: CNPJ sem CNAE valido.
+- `not_applicable_cpf`: CPF, CNAE nao aplicavel.
+- `invalid_document`: documento com tamanho invalido.
+- `unknown`: documento ausente ou desconhecido.
+
+Endpoints CNAE:
+
+| Endpoint | Contrato | Observacao |
+| --- | --- | --- |
+| `api/cnae_coverage.php` | `cnae.coverage.v1` | cobertura geral e B2B |
+| `api/cnae_ranking.php` | `cnae.ranking.v1` | ranking padrao B2B/CNPJ |
+| `api/cnae_opportunities.php` | `cnae.opportunities.v1` | CNPJs sem CNAE por impacto |
+| `api/company_cnae_ranking.php` | `cnae.customer_status.v1` | adaptador legado fino |
+| `api/sales_by_cnae.php` | `cnae.ranking.v1` | adaptador legado fino |
+
+CLI:
+
+```bash
+php bin/biomie cnae:coverage --json
+php bin/biomie cnae:ranking --document-type=cnpj --json
+php bin/biomie cnae:opportunities --json
+php bin/biomie cnae:audit --json
+```
+
+O release guard inclui `D46 CNAE Semantic Governance`, bloqueando regressao quando:
+
+- CPF volta a contar como erro de CNAE.
+- CNPJ sem CNAE nao tem bucket proprio.
+- API CNAE nova consulta `mart_vendas_por_cnae_cnpj` ou `biomie_cnae_dim` diretamente.
+- Payload/endpoint CNAE deixa de declarar `source_contract`.
+- Contratos CNAE somem do registry.
 
 ## Auditoria
 

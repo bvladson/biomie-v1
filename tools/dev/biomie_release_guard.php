@@ -3528,6 +3528,45 @@ $domains[] = [
 ];
 if (!$d45Pass) $allPass = false;
 
+// D46 — CNAE Semantic Governance
+$d46Issues = [];
+$d46Pass = true;
+$d46Summary = 'cnae_semantic_guard.php ausente';
+$cnaeSemanticGuard = $toolsDir . '/cnae_semantic_guard.php';
+if (is_file($cnaeSemanticGuard)) {
+    $r = rg_run($php, $cnaeSemanticGuard, ['--json']);
+    $decoded = json_decode($r['output'], true);
+    if (is_array($decoded)) {
+        $summary = (array) ($decoded['summary'] ?? []);
+        $fail = (int) ($summary['fail'] ?? 0);
+        $pass = (int) ($summary['pass'] ?? 0);
+        $d46Pass = $fail === 0 && (bool) ($decoded['ok'] ?? false);
+        $d46Summary = "{$pass} checks pass / {$fail} fail";
+        foreach ((array) ($decoded['checks'] ?? []) as $check) {
+            if (is_array($check) && !($check['pass'] ?? false)) {
+                $d46Issues[] = (string) ($check['message'] ?? $check['id'] ?? 'check CNAE falhou');
+            }
+        }
+    } else {
+        $d46Pass = false;
+        $d46Issues[] = 'Falha ao ler JSON do cnae_semantic_guard.php';
+        $d46Summary = 'Guard executou, mas retornou JSON invalido';
+    }
+} else {
+    $d46Pass = false;
+    $d46Issues[] = 'tools/dev/cnae_semantic_guard.php nao existe';
+}
+
+$domains[] = [
+    'label'   => 'D46 CNAE Semantic Governance',
+    'guard'   => 'cnae_semantic_guard.php --json',
+    'pass'    => $d46Pass,
+    'warn'    => false,
+    'summary' => $d46Summary,
+    'issues'  => $d46Issues,
+];
+if (!$d46Pass) $allPass = false;
+
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
     $deleted   = 0;

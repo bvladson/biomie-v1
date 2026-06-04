@@ -3,201 +3,56 @@
 declare(strict_types=1);
 
 /**
- * api/company_cnae_ranking.php
+ * Ranking de empresas/compradores por CNAE.
  *
- * GEO.R1.9.1 - Ranking de empresas por CNAE no periodo.
- *
- * Retorna top clientes agrupados por CNAE e empresa para uso no mapa,
- * index e pedidos.
- *
- * Parametros:
- *   date_from, date_to, scope, vendor, city, territory_key
- *   limit (default 20, max 50)
- *   mode = by_cnae|by_company|top_cnaes (default by_cnae)
- *   document_type = all|cnpj|cpf (opcional)
+ * CNAE.R1: endpoint fino. Regra semantica, CPF nao aplicavel e CNPJ sem CNAE
+ * ficam centralizados no CnaeReadModel.
  */
 
 use BIomie\Auth;
-use BIomie\Database;
+use BIomie\DataPlatform\Contracts\CnaeSourceContracts;
+use BIomie\DataPlatform\Query\CnaeQuery;
+use BIomie\DataPlatform\ReadModel\CnaeReadModelFactory;
+use BIomie\DataPlatform\Support\ReadModelPerformanceLogger;
 use BIomie\Http;
-use BIomie\Support\DocumentMask;
-use BIomie\Support\MapFilterSupport;
+use BIomie\RequestContext;
 
 require __DIR__ . '/bootstrap.php';
 
+/** @var \BIomie\Config $config */
 Auth::requireModule('geo', true);
 
 try {
-    $f      = MapFilterSupport::fromRequest($_GET);
-    $limit  = min(50, max(1, (int)($_GET['limit'] ?? 20)));
-    $mode   = in_array($_GET['mode'] ?? '', ['by_cnae', 'by_company', 'top_cnaes'], true)
-            ? ($_GET['mode'] ?? 'by_cnae')
-            : 'by_cnae';
-    $documentTypeFilter = strtolower(trim((string) ($_GET['document_type'] ?? 'all')));
-    $documentTypeFilter = match ($documentTypeFilter) {
-        'pj' => 'cnpj',
-        'pf' => 'cpf',
-        'cnpj', 'cpf' => $documentTypeFilter,
-        default => 'all',
-    };
+    $startedAt = microtime(true);
+    $query = CnaeQuery::fromRequest($_GET);
+    $model = CnaeReadModelFactory::make($config);
+    $payload = $model->legacyCompanyRankingPayload(
+        $query,
+        method_exists(Auth::class, 'canViewFullDocuments')
+            ? Auth::canViewFullDocuments()
+            : false
+    );
+    $payload['request_id'] = RequestContext::id();
 
-    $startComp = substr($f['date_from'], 0, 7);
-    $endComp   = substr($f['date_to'],   0, 7);
+    ReadModelPerformanceLogger::logCnae(
+        $config,
+        $model,
+        $query,
+        'company_cnae_ranking',
+        CnaeSourceContracts::CUSTOMER_STATUS,
+        'readmodel_legacy_adapter',
+        $startedAt,
+        $payload
+    );
 
-    $connectionData = Database::getGeoConnection($config);
-    $pdo = $connectionData[0];
-
-    $mart = 'mart_compradores_por_geo';
-
-    if (!Http::tableExists($pdo, $mart)) {
-        Http::json([
-            'ok'      => true,
-            'summary' => ['cnaes' => 0, 'empresas' => 0, 'faturamento' => 0],
-            'items'   => [],
-            'empty_reason' => 'mart_compradores_por_geo nao materializado',
-        ]);
-        return;
-    }
-
-    $hasCnae = Http::columnExists($pdo, $mart, 'cnae_codigo');
-    if (!$hasCnae) {
-        Http::json(['ok' => true, 'summary' => ['cnaes' => 0, 'empresas' => 0, 'faturamento' => 0], 'items' => [], 'empty_reason' => 'cnae_codigo nao disponivel no mart']);
-        return;
-    }
-
-    $hasCnaeDim = Http::tableExists($pdo, 'biomie_cnae_dim')
-        && Http::columnExists($pdo, 'biomie_cnae_dim', 'cnae_codigo_normalizado')
-        && Http::columnExists($pdo, 'biomie_cnae_dim', 'cnae_descricao');
-    $descExpr = $hasCnaeDim
-        ? "COALESCE((SELECT NULLIF(TRIM(cdim.cnae_descricao), '') FROM biomie_cnae_dim cdim WHERE cdim.cnae_codigo_normalizado = REGEXP_REPLACE(COALESCE(m.cnae_codigo, ''), '[^0-9]', '') LIMIT 1), NULLIF(TRIM(m.cnae_descricao), ''), 'CNAE nao informado')"
-        : "COALESCE(NULLIF(TRIM(m.cnae_descricao),''),'CNAE nao informado')";
-
-    $where  = ['m.competencia BETWEEN :s AND :e'];
-    $params = [':s' => $startComp, ':e' => $endComp];
-
-    // Filtro vendedor
-    if (!empty($f['seller_id'])) {
-        if (Http::columnExists($pdo, $mart, 'nome_vendedor')) {
-            $where[] = 'LOWER(m.nome_vendedor) LIKE :vendedor';
-            $params[':vendedor'] = '%' . mb_strtolower(trim($f['seller_id'])) . '%';
-        }
-    }
-
-    if ($documentTypeFilter !== 'all' && Http::columnExists($pdo, $mart, 'documento')) {
-        $documentDigitsExpr = "REGEXP_REPLACE(COALESCE(m.documento, ''), '[^0-9]', '')";
-        $where[] = $documentTypeFilter === 'cnpj'
-            ? "CHAR_LENGTH({$documentDigitsExpr}) = 14"
-            : "CHAR_LENGTH({$documentDigitsExpr}) = 11";
-    }
-
-    $whereSql = implode(' AND ', $where);
-    $canViewDocs = class_exists('BIomie\\Auth') && method_exists('BIomie\\Auth', 'canViewFullDocuments')
-        ? \BIomie\Auth::canViewFullDocuments()
-        : false;
-    $maskFn = class_exists('BIomie\\Support\\DocumentMask') && method_exists(DocumentMask::class, 'maskDocument')
-        ? [DocumentMask::class, 'maskDocument']
-        : null;
-
-    if ($mode === 'top_cnaes') {
-        // Apenas CNAEs agregados (sem empresa)
-        $stmt = $pdo->prepare("
-            SELECT
-                COALESCE(NULLIF(TRIM(m.cnae_codigo),''),'SEM_CNAE')        AS cnae_codigo,
-                {$descExpr} AS cnae_descricao,
-                COUNT(DISTINCT COALESCE(CAST(m.codigo_cliente_omie AS CHAR), m.documento, m.cliente_nome)) AS empresas,
-                SUM(m.faturamento)  AS faturamento,
-                SUM(m.qtd_notas)    AS notas
-            FROM {$mart} m
-            WHERE {$whereSql}
-            GROUP BY cnae_codigo, cnae_descricao
-            ORDER BY faturamento DESC
-            LIMIT :lim
-        ");
-        $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-        $stmt->execute();
-        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        $items = array_map(fn($r) => [
-            'cnae_codigo'   => $r['cnae_codigo'],
-            'cnae_descricao'=> $r['cnae_descricao'],
-            'empresas'      => (int)$r['empresas'],
-            'faturamento'   => (float)$r['faturamento'],
-            'notas'         => (int)$r['notas'],
-        ], $rows);
-
-    } else {
-        // by_cnae or by_company - empresa + CNAE
-        $stmt = $pdo->prepare("
-            SELECT
-                COALESCE(NULLIF(TRIM(m.cnae_codigo),''),'SEM_CNAE')             AS cnae_codigo,
-                {$descExpr} AS cnae_descricao,
-                COALESCE(NULLIF(TRIM(m.segmento_macro),''),'Outros')             AS segmento_macro,
-                COALESCE(m.cliente_nome,'Sem nome')  AS cliente_nome,
-                COALESCE(m.documento,'')             AS documento,
-                LOWER(TRIM(COALESCE(m.cidade_norm,''))) AS cidade_key,
-                SUM(m.faturamento)   AS faturamento,
-                SUM(m.qtd_notas)     AS notas,
-                MAX(m.ultima_compra) AS ultima_compra
-            FROM {$mart} m
-            WHERE {$whereSql}
-            GROUP BY cnae_codigo, cnae_descricao, segmento_macro, cliente_nome, documento, cidade_key
-            ORDER BY faturamento DESC
-            LIMIT :lim
-        ");
-        $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-        $stmt->execute();
-        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        $items = array_map(function($r) use ($canViewDocs, $maskFn) {
-            $doc = (string)($r['documento'] ?? '');
-            $digits = preg_replace('/\D+/', '', $doc) ?? '';
-            $documentType = strlen($digits) === 14 ? 'cnpj' : (strlen($digits) === 11 ? 'cpf' : 'unknown');
-            $documentLabel = $documentType === 'cnpj' ? 'CNPJ' : ($documentType === 'cpf' ? 'CPF' : 'Documento');
-            $masked = $canViewDocs
-                ? $doc
-                : ($maskFn ? (string) call_user_func($maskFn, $doc, 'Nao informado') : (strlen($doc) > 6 ? substr($doc, 0, 3) . '***' : 'Nao informado'));
-            return [
-                'cnae_codigo'   => $r['cnae_codigo'],
-                'cnae_descricao'=> $r['cnae_descricao'],
-                'segmento_macro'=> $r['segmento_macro'],
-                'cliente_nome'  => $r['cliente_nome'],
-                'documento'     => $masked,
-                'documento_mascarado' => $masked,
-                'document_type' => $documentType,
-                'document_label'=> $documentLabel,
-                'buyer_kind'    => $documentType === 'cnpj' ? 'b2b' : ($documentType === 'cpf' ? 'cpf' : 'unknown'),
-                'is_b2b'        => $documentType === 'cnpj',
-                'cidade_key'    => $r['cidade_key'],
-                'faturamento'   => (float)$r['faturamento'],
-                'notas'         => (int)$r['notas'],
-                'ultima_compra' => $r['ultima_compra'],
-            ];
-        }, $rows);
-    }
-
-    // Summary
-    $stmtSum = $pdo->prepare("
-        SELECT
-            COUNT(DISTINCT NULLIF(TRIM(COALESCE(m.cnae_codigo,'')),'')),
-            COUNT(DISTINCT COALESCE(CAST(m.codigo_cliente_omie AS CHAR), m.documento, m.cliente_nome)),
-            COALESCE(SUM(m.faturamento), 0)
-        FROM {$mart} m
-        WHERE {$whereSql}
-    ");
-    foreach ($params as $k => $v) $stmtSum->bindValue($k, $v);
-    $stmtSum->execute();
-    [$cnaes, $empresas, $totalFat] = $stmtSum->fetch(\PDO::FETCH_NUM) ?: [0, 0, 0];
-
+    Http::json($payload);
+} catch (\Throwable $exception) {
+    global $logger;
+    $logger?->error('company_cnae_ranking api error', ['exception' => $exception->getMessage()]);
     Http::json([
-        'ok'      => true,
-        'mode'    => $mode,
-        'document_type_filter' => $documentTypeFilter,
-        'summary' => ['cnaes' => (int)$cnaes, 'empresas' => (int)$empresas, 'faturamento' => (float)$totalFat],
-        'items'   => $items,
-    ]);
-
-} catch (\Throwable $e) {
-    Http::jsonError('company_cnae_ranking_error', $e->getMessage());
+        'ok' => false,
+        'error' => 'company_cnae_ranking_error',
+        'message' => 'Nao foi possivel carregar compradores por CNAE agora.',
+        'request_id' => RequestContext::id(),
+    ], 500);
 }

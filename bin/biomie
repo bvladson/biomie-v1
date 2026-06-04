@@ -42,7 +42,11 @@ try {
         'map:probe' => runTool($root, 'tools/dev/geo_readmodel_probe.php', ['--json']),
         'map:shadow' => runTool($root, 'tools/dev/geo_readmodel_shadow_compare.php', shadowArgs($args)),
         'map:performance' => runTool($root, 'tools/dev/geo_map_performance_probe.php', performanceArgs($args)),
-        'cnae:coverage' => runTool($root, 'tools/dev/cnae_coverage_probe.php', ['--json']),
+        'cnae:coverage' => runTool($root, 'tools/dev/cnae_readmodel_probe.php', cnaeReadModelArgs($args, 'coverage')),
+        'cnae:coverage-legacy' => runTool($root, 'tools/dev/cnae_coverage_probe.php', ['--json']),
+        'cnae:audit' => runTool($root, 'tools/dev/cnae_semantic_guard.php', ['--json']),
+        'cnae:ranking' => runTool($root, 'tools/dev/cnae_readmodel_probe.php', cnaeReadModelArgs($args, 'ranking')),
+        'cnae:opportunities' => runTool($root, 'tools/dev/cnae_readmodel_probe.php', cnaeReadModelArgs($args, 'opportunities')),
         default => runAdminCommand($registry, $pdo, $config, $commandName, $args),
     };
 
@@ -171,6 +175,22 @@ function performanceArgs(array $args): array
             $out[] = '--' . str_replace('_', '-', $key) . '=' . $args[$key];
         }
     }
+    return $out;
+}
+
+/**
+ * @param array<string,string> $args
+ * @return list<string>
+ */
+function cnaeReadModelArgs(array $args, string $mode): array
+{
+    $out = ['--json', '--mode=' . $mode];
+    foreach (['start', 'end', 'city', 'neighborhood', 'cnae', 'seller_id', 'document_type', 'status', 'sort', 'direction', 'limit'] as $key) {
+        if (isset($args[$key]) && trim($args[$key]) !== '') {
+            $out[] = '--' . str_replace('_', '-', $key) . '=' . $args[$key];
+        }
+    }
+
     return $out;
 }
 

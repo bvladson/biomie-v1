@@ -90,6 +90,56 @@ final class SourceContractRegistry
                 requiredFilters: ['competencia_between'],
                 allowedFallbacks: ['empty', 'not_applicable_cpf']
             ),
+            CnaeSourceContracts::COVERAGE => new SourceContract(
+                id: CnaeSourceContracts::COVERAGE,
+                domain: 'cnae',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_vendas_por_cnae_cnpj',
+                periodColumn: 'competencia',
+                grain: 'competencia + documento + cnae_status',
+                requiredFilters: ['competencia_between'],
+                allowedFallbacks: ['empty', 'not_applicable_cpf', 'missing_cnpj']
+            ),
+            CnaeSourceContracts::RANKING => new SourceContract(
+                id: CnaeSourceContracts::RANKING,
+                domain: 'cnae',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_vendas_por_cnae_cnpj',
+                periodColumn: 'competencia',
+                grain: 'competencia + cnae',
+                requiredFilters: ['competencia_between'],
+                allowedFallbacks: ['empty', 'sem_cnae']
+            ),
+            CnaeSourceContracts::OPPORTUNITIES => new SourceContract(
+                id: CnaeSourceContracts::OPPORTUNITIES,
+                domain: 'cnae',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_vendas_por_cnae_cnpj',
+                periodColumn: 'competencia',
+                grain: 'competencia + cnpj sem cnae',
+                requiredFilters: ['competencia_between', 'cnae_status = missing_cnpj'],
+                allowedFallbacks: ['empty']
+            ),
+            CnaeSourceContracts::CUSTOMER_STATUS => new SourceContract(
+                id: CnaeSourceContracts::CUSTOMER_STATUS,
+                domain: 'cnae',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_vendas_por_cnae_cnpj',
+                periodColumn: 'competencia',
+                grain: 'competencia + cliente',
+                requiredFilters: ['competencia_between', 'customer_identity'],
+                allowedFallbacks: ['empty', 'not_applicable_cpf']
+            ),
+            CnaeSourceContracts::GEO_DISTRIBUTION => new SourceContract(
+                id: CnaeSourceContracts::GEO_DISTRIBUTION,
+                domain: 'cnae',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_vendas_por_cnae_cnpj',
+                periodColumn: 'competencia',
+                grain: 'competencia + cnae + cidade + bairro',
+                requiredFilters: ['competencia_between'],
+                allowedFallbacks: ['empty', 'sem_geo']
+            ),
             'fiscal.invoice_drilldown.v1' => new SourceContract(
                 id: 'fiscal.invoice_drilldown.v1',
                 domain: 'fiscal',
