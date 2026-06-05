@@ -53,6 +53,7 @@ try {
         'customer:opportunities' => runTool($root, 'tools/dev/customer_readmodel_probe.php', customerReadModelArgs($args, 'opportunities')),
         'customer:audit' => runTool($root, 'tools/dev/customer_readmodel_probe.php', customerReadModelArgs($args, 'audit')),
         'customer:shadow' => runTool($root, 'tools/dev/customer_readmodel_probe.php', customerReadModelArgs($args, 'shadow')),
+        'customer:adoption', 'customer:adapter-audit' => runTool($root, 'tools/dev/customer_adoption_audit.php', ['--json']),
         default => runAdminCommand($registry, $pdo, $config, $commandName, $args),
     };
 

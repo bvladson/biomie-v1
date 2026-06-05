@@ -36,6 +36,10 @@ require __DIR__ . '/bootstrap.php';
 use BIomie\Commercial\ClientPortfolio360Resolver;
 use BIomie\Config;
 use BIomie\Database;
+use BIomie\DataPlatform\Query\CustomerQuery;
+use BIomie\DataPlatform\ReadModel\CustomerReadModel;
+use BIomie\DataPlatform\ReadModel\CustomerReadModelFactory;
+use BIomie\DataPlatform\Support\CustomerLegacyAdapter;
 use BIomie\Http;
 use BIomie\Support\SecretMask;
 
@@ -71,8 +75,14 @@ if (!in_array($mode, $validModes, true)) {
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
 $resolver = new ClientPortfolio360Resolver($pdo);
+$customerModel = CustomerReadModelFactory::make($config);
 
-$output = ['ok' => true, 'mode' => $mode, 'period' => ['start' => $startDate, 'end' => $endDate]];
+$output = [
+    'ok' => true,
+    'mode' => $mode,
+    'period' => ['start' => $startDate, 'end' => $endDate],
+    'customer_source_contract' => 'customer.profile.v1',
+];
 
 try {
     switch ($mode) {
@@ -88,7 +98,7 @@ try {
             $output['summary']           = $summary;
             $output['top_vendors']       = $byVendor;
             $output['top_conflitos']     = $resolver->resolveConflicts($startDate, $endDate, null, 5);
-            $output['top_recorrentes']   = $resolver->resolveRecurring($startDate, $endDate, null, 5);
+            $output['top_recorrentes']   = CustomerLegacyAdapter::enrichRows($customerModel, $resolver->resolveRecurring($startDate, $endDate, null, 5));
             break;
 
         // ── By vendor ─────────────────────────────────────────────────────────
@@ -105,7 +115,10 @@ try {
                 $output['ok'] = false;
                 break;
             }
-            $output['clients'] = $resolver->resolvePortfolioByVendor($vendor, $startDate, $endDate, $limit, $offset);
+            $output['clients'] = CustomerLegacyAdapter::enrichRows(
+                $customerModel,
+                $resolver->resolvePortfolioByVendor($vendor, $startDate, $endDate, $limit, $offset)
+            );
             $output['summary'] = $resolver->resolveSummary($startDate, $endDate, $vendor);
             break;
 
@@ -119,12 +132,18 @@ try {
         // ── Recurring ─────────────────────────────────────────────────────────
         case 'recurring':
             $vendor = $vendorName !== '' ? $vendorName : null;
-            $output['recurring'] = $resolver->resolveRecurring($startDate, $endDate, $vendor, $limit);
+            $output['recurring'] = CustomerLegacyAdapter::enrichRows(
+                $customerModel,
+                $resolver->resolveRecurring($startDate, $endDate, $vendor, $limit)
+            );
             break;
 
         // ── New customers ─────────────────────────────────────────────────────
         case 'new':
-            $output['new_customers'] = $resolver->resolveNewCustomers($startDate, $endDate, $limit);
+            $output['new_customers'] = CustomerLegacyAdapter::enrichRows(
+                $customerModel,
+                $resolver->resolveNewCustomers($startDate, $endDate, $limit)
+            );
             break;
 
         // ── Drawer ────────────────────────────────────────────────────────────
@@ -134,7 +153,7 @@ try {
                 $output['ok'] = false;
                 break;
             }
-            $output['client'] = clientDrawerData($pdo, $clientId, $startDate, $endDate);
+            $output['client'] = clientDrawerData($pdo, $customerModel, $clientId, $startDate, $endDate);
             break;
     }
 } catch (\Throwable $e) {
@@ -183,16 +202,23 @@ function portfolioByVendorQuery(\PDO $pdo, string $start, string $end, int $limi
  *
  * @return array<string,mixed>
  */
-function clientDrawerData(\PDO $pdo, int $clientId, string $start, string $end): array
+function clientDrawerData(\PDO $pdo, CustomerReadModel $customerModel, int $clientId, string $start, string $end): array
 {
     $visCond = \BIomie\Support\BiVisibilityScope::getCondition($pdo, 'biomie_notas_fiscais_canonicas', 'nf');
+    $customerQuery = CustomerQuery::fromRequest([
+        'date_from' => $start,
+        'date_to' => $end,
+        'customer' => (string) $clientId,
+        'limit' => '1',
+    ]);
+    $customerPayload = $customerModel->profile($customerQuery, false)->toArray();
+    $customer = (array) (($customerPayload['data']['customer'] ?? []) ?: []);
 
     // Client info
     $clientInfo = [];
     try {
         $stmt = $pdo->prepare(
             "SELECT nf.codigo_cliente_omie, MAX(nf.nome_cliente) AS nome_cliente,
-                    MAX(nf.documento_cliente) AS documento_cliente,
                     MIN(COALESCE(nf.data_competencia, nf.data_emissao)) AS primeira_nf,
                     MAX(COALESCE(nf.data_competencia, nf.data_emissao)) AS ultima_nf,
                     COUNT(DISTINCT DATE_FORMAT(COALESCE(nf.data_competencia, nf.data_emissao), '%Y-%m')) AS meses_distintos,
@@ -206,21 +232,35 @@ function clientDrawerData(\PDO $pdo, int $clientId, string $start, string $end):
         $clientInfo = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
     } catch (\Throwable) {}
 
-    // Ownership
-    $ownership = ['owner' => '', 'source' => 'sem_dono', 'confidence' => 0];
-    if (in_array('biomie_clientes_dim', array_column(
-        $pdo->query("SHOW TABLES LIKE 'biomie_clientes_dim'")->fetchAll(\PDO::FETCH_COLUMN),
-        0
-    ), true)) {
-        try {
-            $stmt = $pdo->prepare("SELECT vendedor_responsavel_nome FROM biomie_clientes_dim WHERE codigo_cliente_omie = :cli LIMIT 1");
-            $stmt->execute([':cli' => $clientId]);
-            $dimRow = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
-            if (!empty($dimRow['vendedor_responsavel_nome'])) {
-                $ownership = ['owner' => $dimRow['vendedor_responsavel_nome'], 'source' => 'dim_responsavel', 'confidence' => 100];
-            }
-        } catch (\Throwable) {}
-    }
+    $document = (array) ($customer['document'] ?? []);
+    $geo = (array) ($customer['geo'] ?? []);
+    $cnae = (array) ($customer['cnae'] ?? []);
+    $ownershipProfile = (array) ($customer['ownership'] ?? []);
+    $quality = (array) ($customer['quality'] ?? []);
+    $clientInfo = $clientInfo + [
+        'codigo_cliente_omie' => $clientId,
+        'nome_cliente' => (string) ($customer['nome'] ?? 'Cliente'),
+    ];
+    $clientInfo['nome_cliente'] = (string) (($customer['nome'] ?? '') ?: ($clientInfo['nome_cliente'] ?? 'Cliente'));
+    $clientInfo['documento_cliente'] = (string) (($document['masked'] ?? '') ?: 'Nao informado');
+    $clientInfo['documento_mascarado'] = $clientInfo['documento_cliente'];
+    $clientInfo['document_type'] = (string) ($document['type'] ?? 'unknown');
+    $clientInfo['cnae_status'] = (string) ($cnae['status'] ?? 'unknown');
+    $clientInfo['cnae_codigo'] = $cnae['codigo'] ?? null;
+    $clientInfo['cnae_descricao'] = $cnae['descricao'] ?? null;
+    $clientInfo['cidade_key'] = (string) ($geo['cidade_key'] ?? '');
+    $clientInfo['cidade_label'] = (string) ($geo['cidade_label'] ?? '');
+    $clientInfo['bairro_key'] = (string) ($geo['bairro_key'] ?? '');
+    $clientInfo['bairro_label'] = (string) ($geo['bairro_label'] ?? '');
+    $clientInfo['geo_quality'] = (string) ($geo['quality'] ?? 'geo_desconhecido');
+    $clientInfo['customer_quality_status'] = (string) ($quality['status'] ?? 'unknown');
+    $clientInfo['customer_quality_missing'] = (array) ($quality['missing'] ?? []);
+
+    $ownership = [
+        'owner' => (string) ($ownershipProfile['seller_name'] ?? ''),
+        'source' => (string) ($ownershipProfile['owner_source'] ?? 'missing'),
+        'confidence' => (int) ($ownershipProfile['confidence'] ?? 0),
+    ];
 
     // NFs in period
     $nfs = [];
@@ -246,5 +286,7 @@ function clientDrawerData(\PDO $pdo, int $clientId, string $start, string $end):
         'client_info' => $clientInfo,
         'ownership'   => $ownership,
         'nfs_periodo' => $nfs,
+        'customer_profile' => $customer,
+        'customer_source_contract' => 'customer.profile.v1',
     ];
 }

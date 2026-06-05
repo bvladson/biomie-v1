@@ -39,6 +39,116 @@ final class CustomerReadRepository
         $this->sqlTimeMs = 0.0;
     }
 
+    /**
+     * @param list<string|int|null> $codes
+     * @return array<string,array<string,mixed>>
+     */
+    public function profilesByCustomerCodes(array $codes): array
+    {
+        if (!$this->tableExists('biomie_clientes_dim')) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($codes as $code) {
+            $value = trim((string) ($code ?? ''));
+            if ($value !== '') {
+                $normalized[$value] = $value;
+            }
+        }
+        $normalized = array_slice(array_values($normalized), 0, 200);
+        if ($normalized === []) {
+            return [];
+        }
+
+        $geoJoin = $this->tableExists('biomie_clientes_geo_dim')
+            ? 'LEFT JOIN biomie_clientes_geo_dim g ON g.codigo_cliente_omie = d.codigo_cliente_omie'
+            : '';
+
+        $placeholders = [];
+        $params = [];
+        foreach ($normalized as $idx => $code) {
+            $placeholder = ':customer_code_' . $idx;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = $code;
+        }
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                d.codigo_cliente_omie,
+                d.cpf_cnpj,
+                d.documento_normalizado,
+                d.documento_mascarado,
+                d.tipo_documento,
+                d.tipo_pessoa,
+                d.nome_cliente,
+                d.nome_fantasia,
+                d.cliente_nome_exibicao,
+                d.natureza_cliente,
+                d.cnae_codigo,
+                d.cnae_descricao,
+                d.cnae_source,
+                d.cnae_confidence,
+                d.cnae_captured_at,
+                d.cnae_unknown_reason,
+                d.segmento_macro,
+                d.primeira_compra_em,
+                d.ultima_compra_em,
+                d.notas_12m,
+                d.faturado_12m,
+                d.is_recorrente,
+                d.recorrencia_faixa,
+                d.cidade,
+                d.uf,
+                d.bairro,
+                d.cep,
+                d.cidade_normalizada,
+                d.bairro_normalizado,
+                d.geo_status,
+                d.cidade_key,
+                d.bairro_key,
+                d.vendedor_responsavel_codigo_omie,
+                d.vendedor_responsavel_nome,
+                d.vendedor_responsavel_origem,
+                d.vendedor_responsavel_confidence,
+                d.enrichment_status,
+                d.enrichment_source,
+                d.updated_at,
+                g.cidade_norm AS geo_cidade_norm,
+                g.bairro_norm AS geo_bairro_norm,
+                g.cidade_key AS geo_cidade_key,
+                g.bairro_key AS geo_bairro_key,
+                g.uf AS geo_uf,
+                g.cep AS geo_cep,
+                g.match_source AS geo_match_source,
+                g.match_confidence AS geo_match_confidence,
+                g.geo_status AS geo_dim_status
+            FROM biomie_clientes_dim d
+            {$geoJoin}
+            WHERE d.codigo_cliente_omie IN (" . implode(',', $placeholders) . ')
+        ');
+        $this->execute($stmt, $params);
+
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $code = (string) ($row['codigo_cliente_omie'] ?? '');
+            if ($code === '') {
+                continue;
+            }
+            $out[$code] = [
+                'source' => 'clientes_dim',
+                'has_dim_profile' => true,
+                'identity' => $row,
+                'geo' => $this->geoFromDimRow($row),
+                'cnae' => $this->cnaeFromRow($row),
+                'commercial' => $this->commercialFromDimRow($row),
+                'ownership' => $this->ownershipFromDimRow($row),
+            ];
+        }
+
+        return $out;
+    }
+
     /** @return array<string,mixed> */
     public function profile(CustomerQuery $query): array
     {
@@ -582,6 +692,42 @@ final class CustomerReadRepository
             'source' => (string) ($row['cnae_source'] ?? 'clientes_dim'),
             'confidence' => isset($row['cnae_confidence']) ? (int) $row['cnae_confidence'] : null,
             'unknown_reason' => (string) ($row['cnae_unknown_reason'] ?? ''),
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private function commercialFromDimRow(array $row): array
+    {
+        return [
+            'first_purchase_date' => $row['primeira_compra_em'] ?? null,
+            'last_purchase_date' => $row['ultima_compra_em'] ?? null,
+            'revenue_period' => (float) ($row['faturado_12m'] ?? 0),
+            'invoices_period' => (int) ($row['notas_12m'] ?? 0),
+            'orders_period' => 0,
+            'active_months' => 0,
+            'recurrence_status' => ((int) ($row['is_recorrente'] ?? 0)) === 1
+                ? 'recorrente'
+                : (string) (($row['recorrencia_faixa'] ?? '') ?: 'sem_historico'),
+            'open_amount' => 0.0,
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private function ownershipFromDimRow(array $row): array
+    {
+        $sellerName = trim((string) ($row['vendedor_responsavel_nome'] ?? ''));
+
+        return [
+            'seller_id' => (string) ($row['vendedor_responsavel_codigo_omie'] ?? ''),
+            'seller_name' => $sellerName,
+            'owner_source' => $sellerName !== '' ? (string) ($row['vendedor_responsavel_origem'] ?? 'clientes_dim') : 'missing',
+            'confidence' => isset($row['vendedor_responsavel_confidence']) ? (int) $row['vendedor_responsavel_confidence'] : ($sellerName !== '' ? 100 : 0),
         ];
     }
 

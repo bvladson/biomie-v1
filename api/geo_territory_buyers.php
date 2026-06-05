@@ -20,8 +20,10 @@ declare(strict_types=1);
 
 use BIomie\Auth;
 use BIomie\Database;
+use BIomie\DataPlatform\ReadModel\CustomerReadModelFactory;
 use BIomie\DataPlatform\Query\GeoQuery;
 use BIomie\DataPlatform\ReadModel\GeoReadModelFactory;
+use BIomie\DataPlatform\Support\CustomerLegacyAdapter;
 use BIomie\DataPlatform\Support\FeatureFlags;
 use BIomie\DataPlatform\Support\ReadModelPerformanceLogger;
 use BIomie\Http;
@@ -32,6 +34,7 @@ use BIomie\Support\MapFilterSupport;
 
 require __DIR__ . '/bootstrap.php';
 
+/** @var \BIomie\Config $config */
 Auth::requireModule('geo', true);
 
 if (!function_exists('biomieGeoBuyerDocumentDigits')) {
@@ -65,16 +68,28 @@ if (!function_exists('biomieGeoBuyerDocumentLabel')) {
     }
 }
 
+if (!function_exists('biomieGeoBuyerColumnExists')) {
+    function biomieGeoBuyerColumnExists(\PDO $pdo, string $table, string $column): bool
+    {
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column'
+            );
+            $stmt->execute([':table' => $table, ':column' => $column]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+}
+
 if (!function_exists('biomieGeoBuyerMaskDocument')) {
     function biomieGeoBuyerMaskDocument(?string $document, bool $canViewDocs, ?callable $maskFn): string
     {
         $digits = biomieGeoBuyerDocumentDigits($document);
         if ($digits === '') {
             return 'Nao informado';
-        }
-
-        if ($canViewDocs) {
-            return (string) $document;
         }
 
         if ($maskFn) {
@@ -140,6 +155,11 @@ if ($useReadModel && !$forceLegacy) {
         $query = GeoQuery::fromRequest($_GET);
         $geo = GeoReadModelFactory::make($config);
         $payload = $geo->legacyTerritoryBuyersPayload($query, $_GET, Auth::canViewFullDocuments());
+        $customerModel = CustomerReadModelFactory::make($config);
+        $payload['data'] = CustomerLegacyAdapter::enrichRows($customerModel, (array) $payload['data']);
+        $payload['meta']['summary'] = biomieGeoBuyerBuildSummary((array) $payload['data']);
+        $payload['meta']['customer_source_contract'] = 'customer.profile.v1';
+        $payload['meta']['customer_read_model'] = 'CustomerReadModel';
         $payload['feature_flag_active'] = FeatureFlags::geoReadModelV2($config);
         $payload['request_id'] = RequestContext::id();
 
@@ -191,11 +211,11 @@ try {
 
     if ($cidadeKey === '' && !$isNoGeo) {
         Http::json(['ok' => false, 'error' => 'missing_cidade_key'], 400);
-        return;
     }
 
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
+    $customerModel = CustomerReadModelFactory::make($config);
 
     $canViewDocs = class_exists('BIomie\\Auth') && method_exists('BIomie\\Auth', 'canViewFullDocuments')
         ? \BIomie\Auth::canViewFullDocuments()
@@ -209,36 +229,15 @@ try {
     if (Http::tableExists($pdo, $martTable)) {
         $startComp = substr($f['date_from'], 0, 7);
         $endComp   = substr($f['date_to'],   0, 7);
-        $hasClientDim = Http::tableExists($pdo, 'biomie_clientes_dim');
-        $dimJoin = $hasClientDim
-            ? 'LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = m.codigo_cliente_omie'
-            : '';
-        $martDocExpr = Http::columnExists($pdo, $martTable, 'documento') ? "NULLIF(TRIM(m.documento), '')" : 'NULL';
-        $dimDocPieces = [];
-        if ($hasClientDim && Http::columnExists($pdo, 'biomie_clientes_dim', 'documento_normalizado')) {
-            $dimDocPieces[] = "NULLIF(TRIM(dim.documento_normalizado), '')";
-        }
-        if ($hasClientDim && Http::columnExists($pdo, 'biomie_clientes_dim', 'documento')) {
-            $dimDocPieces[] = "NULLIF(TRIM(dim.documento), '')";
-        }
-        $dimDocExpr = $dimDocPieces ? ('COALESCE(' . implode(', ', $dimDocPieces) . ')') : 'NULL';
-        $documentExpr = $hasClientDim
-            ? "COALESCE({$martDocExpr}, {$dimDocExpr})"
-            : $martDocExpr;
-        $martCnaeExpr = Http::columnExists($pdo, $martTable, 'cnae_codigo') ? "NULLIF(TRIM(m.cnae_codigo), '')" : 'NULL';
-        $dimCnaeExpr = $hasClientDim ? "NULLIF(TRIM(dim.cnae_codigo), '')" : 'NULL';
-        $rawCnaeExpr = $hasClientDim
-            ? "COALESCE({$martCnaeExpr}, {$dimCnaeExpr})"
-            : $martCnaeExpr;
-        $martDescExpr = Http::columnExists($pdo, $martTable, 'cnae_descricao')
+        $dimJoin = '';
+        $martDocExpr = biomieGeoBuyerColumnExists($pdo, $martTable, 'documento') ? "NULLIF(TRIM(m.documento), '')" : 'NULL';
+        $documentExpr = $martDocExpr;
+        $martCnaeExpr = biomieGeoBuyerColumnExists($pdo, $martTable, 'cnae_codigo') ? "NULLIF(TRIM(m.cnae_codigo), '')" : 'NULL';
+        $rawCnaeExpr = $martCnaeExpr;
+        $martDescExpr = biomieGeoBuyerColumnExists($pdo, $martTable, 'cnae_descricao')
             ? "NULLIF(NULLIF(TRIM(m.cnae_descricao), ''), 'CNAE não informado')"
             : 'NULL';
-        $dimDescExpr = $hasClientDim
-            ? "NULLIF(NULLIF(TRIM(dim.cnae_descricao), ''), 'CNAE não informado')"
-            : 'NULL';
-        $descExpr = $hasClientDim
-            ? "COALESCE({$martDescExpr}, {$dimDescExpr})"
-            : $martDescExpr;
+        $descExpr = $martDescExpr;
 
         $where = ['m.competencia BETWEEN :s AND :e'];
         $params = [':s' => $startComp, ':e' => $endComp];
@@ -263,7 +262,7 @@ try {
             $params[':cidade'] = $cidadeKey;
         }
 
-        if (!empty($f['seller_id']) && Http::columnExists($pdo, $martTable, 'nome_vendedor')) {
+        if (!empty($f['seller_id']) && biomieGeoBuyerColumnExists($pdo, $martTable, 'nome_vendedor')) {
             $where[] = 'LOWER(m.nome_vendedor) LIKE :vendedor';
             $params[':vendedor'] = '%' . mb_strtolower(trim($f['seller_id'])) . '%';
         }
@@ -345,6 +344,7 @@ try {
                     'bairro_norm'    => $row['bairro_norm'] ?? '',
                 ];
             }, $martRows);
+            $data = CustomerLegacyAdapter::enrichRows($customerModel, $data);
             $summary = biomieGeoBuyerBuildSummary($data);
 
             Http::json([
@@ -356,13 +356,14 @@ try {
                     'territory_type' => $ttype,
                     'document_type_filter' => $documentTypeFilter,
                     'summary'        => $summary,
+                    'customer_source_contract' => 'customer.profile.v1',
+                    'customer_read_model' => 'CustomerReadModel',
                     'cnae_filter'    => [
                         'code' => (string) ($f['cnae'] ?? ''),
                         'description' => '',
                     ],
                 ],
             ]);
-            return;
         }
     }
 
@@ -376,37 +377,20 @@ try {
             'meta' => ['source_mode' => 'unavailable', 'count' => 0, 'territory_type' => $ttype],
             'empty_reason' => 'Tabelas de canonical/geo não disponíveis',
         ]);
-        return;
     }
 
     // Detectar colunas opcionais
-    $hasVendedor = Http::columnExists($pdo, $nfTable, 'nome_vendedor');
-    $hasCnaeNf   = Http::columnExists($pdo, $nfTable, 'cnae_codigo');
-    $hasCnaeGeo  = Http::columnExists($pdo, $geoTable, 'cnae_codigo');
-    $hasClientDimFallback = Http::tableExists($pdo, 'biomie_clientes_dim');
-    $clientDimJoinFallback = $hasClientDimFallback
-        ? 'LEFT JOIN biomie_clientes_dim dim ON dim.codigo_cliente_omie = nf.codigo_cliente_omie'
-        : '';
-    $nfDocExpr = Http::columnExists($pdo, $nfTable, 'documento_cliente') ? "NULLIF(TRIM(nf.documento_cliente), '')" : 'NULL';
-    $dimDocPiecesFallback = [];
-    if ($hasClientDimFallback && Http::columnExists($pdo, 'biomie_clientes_dim', 'documento_normalizado')) {
-        $dimDocPiecesFallback[] = "NULLIF(TRIM(dim.documento_normalizado), '')";
-    }
-    if ($hasClientDimFallback && Http::columnExists($pdo, 'biomie_clientes_dim', 'documento')) {
-        $dimDocPiecesFallback[] = "NULLIF(TRIM(dim.documento), '')";
-    }
-    $dimDocExprFallback = $dimDocPiecesFallback ? ('COALESCE(' . implode(', ', $dimDocPiecesFallback) . ')') : 'NULL';
-    $documentExprFallback = $hasClientDimFallback
-        ? "COALESCE({$nfDocExpr}, {$dimDocExprFallback})"
-        : $nfDocExpr;
+    $hasVendedor = biomieGeoBuyerColumnExists($pdo, $nfTable, 'nome_vendedor');
+    $hasCnaeNf   = biomieGeoBuyerColumnExists($pdo, $nfTable, 'cnae_codigo');
+    $hasCnaeGeo  = biomieGeoBuyerColumnExists($pdo, $geoTable, 'cnae_codigo');
+    $clientDimJoinFallback = '';
+    $nfDocExpr = biomieGeoBuyerColumnExists($pdo, $nfTable, 'documento_cliente') ? "NULLIF(TRIM(nf.documento_cliente), '')" : 'NULL';
+    $documentExprFallback = $nfDocExpr;
     $nfCnaeExprFallback = $hasCnaeNf ? "NULLIF(TRIM(nf.cnae_codigo), '')" : 'NULL';
     $geoCnaeExprFallback = $hasCnaeGeo ? "NULLIF(TRIM(geo.cnae_codigo), '')" : 'NULL';
-    $dimCnaeExprFallback = $hasClientDimFallback && Http::columnExists($pdo, 'biomie_clientes_dim', 'cnae_codigo')
-        ? "NULLIF(TRIM(dim.cnae_codigo), '')"
-        : 'NULL';
-    $rawCnaeExprFallback = "COALESCE({$nfCnaeExprFallback}, {$geoCnaeExprFallback}, {$dimCnaeExprFallback})";
-    $hasValorNfe = Http::columnExists($pdo, $nfTable, 'valor_total') ? 'valor_total'
-                 : (Http::columnExists($pdo, $nfTable, 'valor_nfe') ? 'valor_nfe' : null);
+    $rawCnaeExprFallback = "COALESCE({$nfCnaeExprFallback}, {$geoCnaeExprFallback})";
+    $hasValorNfe = biomieGeoBuyerColumnExists($pdo, $nfTable, 'valor_total') ? 'valor_total'
+                 : (biomieGeoBuyerColumnExists($pdo, $nfTable, 'valor_nfe') ? 'valor_nfe' : null);
     if (!$hasValorNfe) {
         Http::json([
             'ok'   => true,
@@ -414,7 +398,6 @@ try {
             'meta' => ['source_mode' => 'no_value_col', 'count' => 0, 'territory_type' => $ttype],
             'empty_reason' => 'Coluna de valor não encontrada',
         ]);
-        return;
     }
 
     // Visibilidade comercial
@@ -588,6 +571,7 @@ try {
             'bairro_norm'    => $row['bairro_norm'] ?? '',
         ];
     }, $buyerRows);
+    $data = CustomerLegacyAdapter::enrichRows($customerModel, $data);
     $summary = biomieGeoBuyerBuildSummary($data);
 
     $sourceMode = $useMartLookup ? 'geo_territory_mart' : 'geo_territory_join';
@@ -601,6 +585,8 @@ try {
             'territory_type' => $ttype,
             'document_type_filter' => $documentTypeFilter,
             'summary'        => $summary,
+            'customer_source_contract' => 'customer.profile.v1',
+            'customer_read_model' => 'CustomerReadModel',
             'cnae_filter'    => [
                 'code' => (string) ($_GET['cnae'] ?? ''),
                 'description' => '',
@@ -609,5 +595,10 @@ try {
     ]);
 
 } catch (\Throwable $e) {
-    Http::jsonError('geo_territory_buyers_error', $e->getMessage());
+    Http::json([
+        'ok' => false,
+        'error' => 'geo_territory_buyers_error',
+        'message' => 'Nao foi possivel carregar compradores do territorio.',
+        'request_id' => RequestContext::id(),
+    ], 500);
 }

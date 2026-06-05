@@ -32,6 +32,7 @@ $files = [
     'opportunities_api' => 'api/customer_opportunities.php',
     'history_api' => 'api/customer_commercial_history.php',
     'probe' => 'tools/dev/customer_readmodel_probe.php',
+    'adoption_audit' => 'tools/dev/customer_adoption_audit.php',
 ];
 
 foreach ($files as $id => $path) {
@@ -101,6 +102,14 @@ foreach ($shadowChecks as $check) {
 }
 $add('customer_shadow_pass', $shadowOk, 'customer:shadow PASS e sem documento completo no payload publico');
 
+$adoption = customerGuardRunTool($root, 'tools/dev/customer_adoption_audit.php', ['--json']);
+$adoptionOk = (bool) ($adoption['ok'] ?? false);
+$adoptionSummary = (array) (($adoption['data']['summary'] ?? []) ?: []);
+$add('customer_adoption_pass', $adoptionOk, 'customer:adoption PASS para adapters legados');
+$add('customer_adoption_migrated_targets', (int) ($adoptionSummary['migrated_targets'] ?? 0) >= 3, '3 adapters legados migrados para CustomerReadModel');
+$add('customer_adoption_no_raw_documents', (int) ($adoptionSummary['raw_document_findings'] ?? 1) === 0, 'payloads migrados sem padrao de documento bruto');
+$add('customer_adoption_no_direct_customer_dim', (int) ($adoptionSummary['direct_customer_dim_findings'] ?? 1) === 0, 'adapters migrados sem leitura direta de dimensao de cliente');
+
 $pass = count(array_filter($checks, static fn (array $check): bool => !$check['pass'])) === 0;
 $payload = [
     'ok' => $pass,
@@ -129,7 +138,16 @@ exit($pass ? 0 : 1);
  */
 function customerGuardRunProbe(string $root, string $mode, array $args = []): array
 {
-    $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($root . '/tools/dev/customer_readmodel_probe.php') . ' --json --mode=' . escapeshellarg($mode);
+    return customerGuardRunTool($root, 'tools/dev/customer_readmodel_probe.php', array_merge(['--json', '--mode=' . $mode], $args));
+}
+
+/**
+ * @param list<string> $args
+ * @return array<string,mixed>
+ */
+function customerGuardRunTool(string $root, string $script, array $args = []): array
+{
+    $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($root . '/' . $script);
     foreach ($args as $arg) {
         $cmd .= ' ' . escapeshellarg($arg);
     }

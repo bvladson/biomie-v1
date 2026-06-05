@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use BIomie\Auth;
 use BIomie\Database;
+use BIomie\DataPlatform\ReadModel\CustomerReadModelFactory;
+use BIomie\DataPlatform\Support\CustomerLegacyAdapter;
 use BIomie\Http;
 use BIomie\RequestContext;
 use BIomie\Support\DocumentMask;
@@ -13,6 +15,7 @@ use BIomie\Support\MapFilterSupport;
 
 require __DIR__ . '/bootstrap.php';
 
+/** @var \BIomie\Config $config */
 Auth::requireModule('geo', true);
 
 try {
@@ -33,6 +36,7 @@ try {
 
     $connectionData = Database::getGeoConnection($config);
     $pdo = $connectionData[0];
+    $customerModel = CustomerReadModelFactory::make($config);
 
     if (!Http::tableExists($pdo, 'mart_compradores_por_geo')) {
         Http::jsonConflictMissingTable('mart_compradores_por_geo');
@@ -101,7 +105,6 @@ try {
         $nbStmt->execute();
 
         $semBairroData = [];
-        $canViewFullDocuments = Auth::canViewFullDocuments();
         foreach ($nbStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $documentRaw    = is_string($row['document_raw'] ?? null) ? $row['document_raw'] : '';
             $documentNorm   = topBuyersDocumentDigits($documentRaw);
@@ -118,8 +121,8 @@ try {
                 'document_masked'     => $documentMasked,
                 'codigo_cliente_omie' => $codigoCliente,
                 'cliente_nome'        => $customerName,
-                'cliente_documento'   => $canViewFullDocuments ? $documentRaw : $documentMasked,
-                'documento_norm'      => $canViewFullDocuments ? $documentNorm : '',
+                'cliente_documento'   => $documentMasked,
+                'documento_norm'      => '',
                 'bairro_norm'         => '',
                 'cidade_norm'         => (string) ($row['cidade_norm'] ?? ''),
                 'revenue'             => $revenue,
@@ -141,6 +144,8 @@ try {
                 'segmento_macro'      => $row['segment'] ?? null,
             ];
         }
+
+        $semBairroData = CustomerLegacyAdapter::enrichRows($customerModel, $semBairroData);
 
         Http::json([
             'ok'   => true,
@@ -165,6 +170,8 @@ try {
                 'generated_at' => date(DATE_ATOM),
                 'source_table' => 'mart_compradores_por_geo',
                 'source_mode'  => 'no_neighborhood',
+                'customer_source_contract' => 'customer.profile.v1',
+                'customer_read_model' => 'CustomerReadModel',
                 'count'        => count($semBairroData),
             ],
         ]);
@@ -238,7 +245,6 @@ try {
 
     $data = [];
     $sourceMode = 'gold_mart';
-    $canViewFullDocuments = Auth::canViewFullDocuments();
     $canProbeInvoices = Http::tableExists($pdo, 'biomie_notas_fiscais_canonicas');
     $canProbeGeo = Http::tableExists($pdo, 'biomie_clientes_geo_dim');
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -262,8 +268,8 @@ try {
             'document_masked'     => $documentMasked,
             'codigo_cliente_omie' => $codigoCliente,
             'cliente_nome'        => $customerName,
-            'cliente_documento'   => $canViewFullDocuments ? $documentRaw : $documentMasked,
-            'documento_norm'      => $canViewFullDocuments ? $documentNorm : '',
+            'cliente_documento'   => $documentMasked,
+            'documento_norm'      => '',
             'bairro_norm'         => (string) ($row['bairro_norm'] ?? ''),
             'cidade_norm'         => (string) ($row['cidade_norm'] ?? ''),
             'revenue'             => $revenue,
@@ -271,8 +277,8 @@ try {
             'average_ticket'      => $averageTicket,
             'last_purchase'       => $row['last_purchase'] ?? null,
             'ultima_compra'       => $row['last_purchase'] ?? null,
-            'vendedor_principal'  => (string) ($latestInvoice['vendedor_principal'] ?? ''),
-            'top_nf'              => (string) ($latestInvoice['top_nf'] ?? ''),
+            'vendedor_principal'  => $latestInvoice['vendedor_principal'],
+            'top_nf'              => $latestInvoice['top_nf'],
             'cnae'                => $row['cnae'] ?? null,
             'segment'             => $row['segment'] ?? null,
             'cliente'             => $customerName,
@@ -308,8 +314,8 @@ try {
                     'document_masked'     => $documentMasked,
                     'codigo_cliente_omie' => $codigoCliente,
                     'cliente_nome'        => $customerName,
-                    'cliente_documento'   => $canViewFullDocuments ? $documentRaw : $documentMasked,
-                    'documento_norm'      => $canViewFullDocuments ? $documentNorm : '',
+                    'cliente_documento'   => $documentMasked,
+                    'documento_norm'      => '',
                     'bairro_norm'         => (string) ($row['bairro_norm'] ?? ''),
                     'cidade_norm'         => (string) ($row['cidade_norm'] ?? ''),
                     'revenue'             => $revenue,
@@ -358,6 +364,10 @@ try {
     if ($data === []) {
         $payload['empty_state'] = GeoMapSupport::emptyState();
     }
+
+    $payload['data'] = CustomerLegacyAdapter::enrichRows($customerModel, (array) $payload['data']);
+    $payload['meta']['customer_source_contract'] = 'customer.profile.v1';
+    $payload['meta']['customer_read_model'] = 'CustomerReadModel';
 
     Http::json($payload);
 } catch (\Throwable $exception) {

@@ -230,6 +230,32 @@ php bin/biomie customer:audit --json
 php bin/biomie customer:shadow --json
 ```
 
+### CLIENTE.R1.1 - Customer Adoption & Legacy Adapter Migration
+
+Adapters legados migrados para consumir a verdade oficial do cliente:
+
+| API legada | Regra do dominio | Fonte de cliente |
+| --- | --- | --- |
+| `api/client_portfolio_360.php` | Comercial/portfolio calcula carteira; Cliente decide identidade, documento, geo, CNAE e qualidade | `CustomerReadModel` + `customer.profile.v1` |
+| `api/top_buyers_by_geo.php` | Geo decide territorio; Cliente decide comprador | `CustomerLegacyAdapter` + batch CustomerReadModel |
+| `api/geo_territory_buyers.php` | Geo decide territorio/ranking; Cliente decide identidade/CNAE/qualidade do comprador | `CustomerLegacyAdapter` + batch CustomerReadModel |
+
+Regras de payload migrado:
+
+- Documento sai mascarado por padrao, inclusive para payload legado.
+- `documento_norm` fica vazio em respostas publicas migradas.
+- Cada comprador/cliente enriquecido declara `customer_source_contract = customer.profile.v1`.
+- Campos adicionados: `customer_profile`, `customer_quality_status`, `customer_quality_missing`, `geo_quality`, `cnae_status`.
+- `geo_territory_buyers.php` nao consulta `biomie_clientes_dim` diretamente; o enriquecimento fica no CustomerReadModel.
+
+CLI de adocao:
+
+```bash
+php bin/biomie customer:adoption --json
+php bin/biomie customer:adapter-audit --json
+php tools/dev/customer_adoption_audit.php --json
+```
+
 O release guard inclui `D47 Customer Source Governance`, bloqueando regressao quando:
 
 - `CustomerReadModel`, `CustomerReadRepository`, `CustomerQuery` ou contratos somem.
@@ -238,6 +264,9 @@ O release guard inclui `D47 Customer Source Governance`, bloqueando regressao qu
 - `geo.quality` deixa de existir no profile.
 - CPF volta a ser tratado como erro de CNAE.
 - `customer:audit` ou `customer:shadow` falham.
+- adapters R1.1 deixam de usar `CustomerReadModel`.
+- payload migrado volta a ter padrao de documento bruto.
+- adapters migrados voltam a consultar dimensao de cliente diretamente.
 
 ## Auditoria
 
@@ -254,6 +283,8 @@ php bin/biomie map:contract --json
 php bin/biomie map:performance --json
 php bin/biomie customer:audit --json
 php bin/biomie customer:shadow --json
+php bin/biomie customer:adoption --json
+php bin/biomie customer:adapter-audit --json
 ```
 
 Sem `--strict`, a ferramenta apenas mede o legado. Com `--strict`, findings viram falha de contrato para uso futuro no release guard.

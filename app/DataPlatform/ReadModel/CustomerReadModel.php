@@ -29,6 +29,20 @@ final class CustomerReadModel
         $this->repo->resetMetrics();
     }
 
+    /**
+     * @param list<string|int|null> $codes
+     * @return array<string,array<string,mixed>>
+     */
+    public function profilesByCustomerCodes(array $codes, bool $canViewFullDocument = false): array
+    {
+        $profiles = [];
+        foreach ($this->repo->profilesByCustomerCodes($codes) as $code => $raw) {
+            $profiles[(string) $code] = $this->buildCustomerPayload($raw, $canViewFullDocument);
+        }
+
+        return $profiles;
+    }
+
     public function profile(CustomerQuery $query, bool $canViewFullDocument = false): ReadModelResponse
     {
         $raw = $this->repo->profile($query);
