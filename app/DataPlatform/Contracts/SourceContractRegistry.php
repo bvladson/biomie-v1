@@ -150,8 +150,8 @@ final class SourceContractRegistry
                 requiredFilters: ["status_fiscal = 'autorizada'", 'BiVisibilityScope'],
                 allowedFallbacks: []
             ),
-            'customer.profile.v1' => new SourceContract(
-                id: 'customer.profile.v1',
+            CustomerSourceContracts::PROFILE => new SourceContract(
+                id: CustomerSourceContracts::PROFILE,
                 domain: 'customers',
                 sourceTier: DataSourceTruth::SILVER,
                 table: 'biomie_clientes_dim',
@@ -159,6 +159,76 @@ final class SourceContractRegistry
                 grain: 'codigo_cliente_omie',
                 requiredFilters: ['customer_identity'],
                 allowedFallbacks: ['canonical_nf_minimal_profile', 'mart_minimal_profile']
+            ),
+            CustomerSourceContracts::IDENTITY => new SourceContract(
+                id: CustomerSourceContracts::IDENTITY,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::SILVER,
+                table: 'biomie_clientes_dim',
+                periodColumn: 'updated_at',
+                grain: 'codigo_cliente_omie + documento_normalizado',
+                requiredFilters: ['customer_identity'],
+                allowedFallbacks: ['unknown_document']
+            ),
+            CustomerSourceContracts::COMMERCIAL_HISTORY => new SourceContract(
+                id: CustomerSourceContracts::COMMERCIAL_HISTORY,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_cliente_periodo',
+                periodColumn: 'competencia',
+                grain: 'competencia + codigo_cliente_omie',
+                requiredFilters: ['competencia_between', 'customer_identity'],
+                allowedFallbacks: ['empty']
+            ),
+            CustomerSourceContracts::GEO_STATUS => new SourceContract(
+                id: CustomerSourceContracts::GEO_STATUS,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::SILVER,
+                table: 'biomie_clientes_geo_dim',
+                periodColumn: 'updated_at',
+                grain: 'codigo_cliente_omie + cidade_key + bairro_key',
+                requiredFilters: ['customer_identity'],
+                allowedFallbacks: ['geo_sem_cidade', 'geo_sem_bairro']
+            ),
+            CustomerSourceContracts::CNAE_STATUS => new SourceContract(
+                id: CustomerSourceContracts::CNAE_STATUS,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_vendas_por_cnae_cnpj',
+                periodColumn: 'competencia',
+                grain: 'codigo_cliente_omie + cnae_status',
+                requiredFilters: ['customer_identity'],
+                allowedFallbacks: ['not_applicable_cpf', 'missing_cnpj']
+            ),
+            CustomerSourceContracts::QUALITY => new SourceContract(
+                id: CustomerSourceContracts::QUALITY,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::SILVER,
+                table: 'biomie_clientes_dim',
+                periodColumn: 'updated_at',
+                grain: 'cliente + quality_status',
+                requiredFilters: ['optional_period'],
+                allowedFallbacks: ['empty']
+            ),
+            CustomerSourceContracts::SEARCH => new SourceContract(
+                id: CustomerSourceContracts::SEARCH,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::SILVER,
+                table: 'biomie_clientes_dim',
+                periodColumn: 'updated_at',
+                grain: 'codigo_cliente_omie',
+                requiredFilters: ['search_or_filters'],
+                allowedFallbacks: ['empty']
+            ),
+            CustomerSourceContracts::OPPORTUNITIES => new SourceContract(
+                id: CustomerSourceContracts::OPPORTUNITIES,
+                domain: 'customers',
+                sourceTier: DataSourceTruth::GOLD,
+                table: 'mart_cliente_periodo',
+                periodColumn: 'competencia',
+                grain: 'competencia + cliente + quality_gap',
+                requiredFilters: ['competencia_between'],
+                allowedFallbacks: ['empty']
             ),
         ];
 

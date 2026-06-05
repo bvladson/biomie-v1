@@ -175,6 +175,70 @@ O release guard inclui `D46 CNAE Semantic Governance`, bloqueando regressao quan
 - Payload/endpoint CNAE deixa de declarar `source_contract`.
 - Contratos CNAE somem do registry.
 
+## CLIENTE.R1 - CustomerReadModel & Customer Truth
+
+A leitura oficial de cliente passa por `CustomerReadModel` e `CustomerReadRepository`.
+O objetivo e formar um golden record operacional do cliente sem reescrever o legado: documento, geo, CNAE, dono comercial e historico no periodo passam a ter uma fonte declarada.
+
+Contratos oficiais:
+
+| Contrato | Fonte oficial | Grao | Uso |
+| --- | --- | --- | --- |
+| `customer.profile.v1` | `biomie_clientes_dim` + `biomie_clientes_geo_dim` + Gold | `codigo_cliente_omie` | perfil 360 do cliente |
+| `customer.identity.v1` | `biomie_clientes_dim` | cliente + documento | identidade e tipo CPF/CNPJ |
+| `customer.commercial_history.v1` | `mart_cliente_periodo` | competencia + cliente | historico comercial |
+| `customer.geo_status.v1` | `biomie_clientes_geo_dim` | cliente + cidade/bairro | qualidade geografica |
+| `customer.cnae_status.v1` | `mart_vendas_por_cnae_cnpj`/CNAE resolver | cliente + status CNAE | governanca B2B |
+| `customer.quality.v1` | `CustomerQualityResolver` | cliente + quality_status | auditoria cadastral |
+| `customer.search.v1` | `biomie_clientes_dim` | cliente | busca governada |
+| `customer.opportunities.v1` | `mart_cliente_periodo` + dimensoes | cliente + lacuna | oportunidade de saneamento |
+
+Estados oficiais de qualidade:
+
+- `complete`
+- `missing_document`
+- `invalid_document`
+- `missing_city`
+- `missing_neighborhood`
+- `missing_geo`
+- `missing_cnae_cnpj`
+- `not_applicable_cpf`
+- `missing_owner`
+- `no_commercial_history`
+- `orphan_commercial_history`
+
+CPF sem CNAE preserva o estado CNAE `not_applicable_cpf`. CNPJ com faturamento e sem CNAE preserva `missing_cnpj`.
+
+Endpoints Cliente:
+
+| Endpoint | Contrato | Observacao |
+| --- | --- | --- |
+| `api/customer_profile.php` | `customer.profile.v1` | perfil oficial mascarado por padrao |
+| `api/customer_search.php` | `customer.search.v1` | busca com filtros controlados |
+| `api/customer_quality.php` | `customer.quality.v1` | cobertura e impacto de qualidade |
+| `api/customer_opportunities.php` | `customer.opportunities.v1` | clientes com impacto e cadastro incompleto |
+| `api/customer_commercial_history.php` | `customer.commercial_history.v1` | resumo e meses do cliente |
+
+CLI:
+
+```bash
+php bin/biomie customer:profile --customer=123456 --json
+php bin/biomie customer:search --q="hospital" --json
+php bin/biomie customer:quality --json
+php bin/biomie customer:opportunities --json
+php bin/biomie customer:audit --json
+php bin/biomie customer:shadow --json
+```
+
+O release guard inclui `D47 Customer Source Governance`, bloqueando regressao quando:
+
+- `CustomerReadModel`, `CustomerReadRepository`, `CustomerQuery` ou contratos somem.
+- API nova de cliente consulta `biomie_clientes_dim`/`biomie_clientes_geo_dim` diretamente.
+- Payload de perfil deixa de declarar `source_contract`.
+- `geo.quality` deixa de existir no profile.
+- CPF volta a ser tratado como erro de CNAE.
+- `customer:audit` ou `customer:shadow` falham.
+
 ## Auditoria
 
 ```bash
@@ -188,6 +252,8 @@ php bin/biomie map:probe --json
 php bin/biomie map:shadow --json
 php bin/biomie map:contract --json
 php bin/biomie map:performance --json
+php bin/biomie customer:audit --json
+php bin/biomie customer:shadow --json
 ```
 
 Sem `--strict`, a ferramenta apenas mede o legado. Com `--strict`, findings viram falha de contrato para uso futuro no release guard.

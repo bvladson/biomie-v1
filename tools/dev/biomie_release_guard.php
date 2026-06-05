@@ -3567,6 +3567,45 @@ $domains[] = [
 ];
 if (!$d46Pass) $allPass = false;
 
+// D47 — Customer Source Governance
+$d47Issues = [];
+$d47Pass = true;
+$d47Summary = 'customer_source_guard.php ausente';
+$customerSourceGuard = $toolsDir . '/customer_source_guard.php';
+if (is_file($customerSourceGuard)) {
+    $r = rg_run($php, $customerSourceGuard, ['--json']);
+    $decoded = json_decode($r['output'], true);
+    if (is_array($decoded)) {
+        $summary = (array) ($decoded['summary'] ?? []);
+        $fail = (int) ($summary['fail'] ?? 0);
+        $pass = (int) ($summary['pass'] ?? 0);
+        $d47Pass = $fail === 0 && (bool) ($decoded['ok'] ?? false);
+        $d47Summary = "{$pass} checks pass / {$fail} fail";
+        foreach ((array) ($decoded['checks'] ?? []) as $check) {
+            if (is_array($check) && !($check['pass'] ?? false)) {
+                $d47Issues[] = (string) ($check['message'] ?? $check['id'] ?? 'check Cliente falhou');
+            }
+        }
+    } else {
+        $d47Pass = false;
+        $d47Issues[] = 'Falha ao ler JSON do customer_source_guard.php';
+        $d47Summary = 'Guard executou, mas retornou JSON invalido';
+    }
+} else {
+    $d47Pass = false;
+    $d47Issues[] = 'tools/dev/customer_source_guard.php nao existe';
+}
+
+$domains[] = [
+    'label'   => 'D47 Customer Source Governance',
+    'guard'   => 'customer_source_guard.php --json',
+    'pass'    => $d47Pass,
+    'warn'    => false,
+    'summary' => $d47Summary,
+    'issues'  => $d47Issues,
+];
+if (!$d47Pass) $allPass = false;
+
 if ($clearCache) {
     $cacheDir  = $projectRoot . '/storage/cache';
     $deleted   = 0;

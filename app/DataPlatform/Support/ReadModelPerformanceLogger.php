@@ -6,8 +6,10 @@ namespace BIomie\DataPlatform\Support;
 
 use BIomie\Config;
 use BIomie\DataPlatform\Query\CnaeQuery;
+use BIomie\DataPlatform\Query\CustomerQuery;
 use BIomie\DataPlatform\Query\GeoQuery;
 use BIomie\DataPlatform\ReadModel\CnaeReadModel;
+use BIomie\DataPlatform\ReadModel\CustomerReadModel;
 use BIomie\DataPlatform\ReadModel\GeoReadModel;
 use BIomie\RequestContext;
 use Throwable;
@@ -83,6 +85,48 @@ final class ReadModelPerformanceLogger
             payload: $payload,
             period: $query->periodMeta(),
             filters: $query->filtersMeta(),
+            ok: $ok,
+            error: $error
+        );
+    }
+
+    /** @param array<string,mixed> $payload */
+    public static function logCustomer(
+        Config $config,
+        CustomerReadModel $model,
+        CustomerQuery $query,
+        string $endpoint,
+        string $sourceContract,
+        string $mode,
+        float $startedAt,
+        array $payload,
+        bool $ok = true,
+        ?string $error = null
+    ): void {
+        if (!self::enabled($config)) {
+            return;
+        }
+
+        self::logReadModel(
+            config: $config,
+            metrics: $model->performanceMetrics(),
+            domain: 'customer',
+            endpoint: $endpoint,
+            sourceContract: $sourceContract,
+            readModel: 'CustomerReadModel',
+            mode: $mode,
+            startedAt: $startedAt,
+            payload: $payload,
+            period: $query->periodMeta(),
+            filters: [
+                'city' => $query->city,
+                'neighborhood' => $query->neighborhood,
+                'cnae' => $query->cnae,
+                'seller_id' => $query->sellerId,
+                'document_type' => $query->documentType,
+                'status' => $query->qualityStatus,
+                'customer_key' => $query->customer !== null ? substr(hash('sha256', $query->customer), 0, 12) : null,
+            ],
             ok: $ok,
             error: $error
         );
