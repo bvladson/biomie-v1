@@ -134,7 +134,39 @@ function customerGuardRunProbe(string $root, string $mode, array $args = []): ar
         $cmd .= ' ' . escapeshellarg($arg);
     }
 
-    $output = shell_exec($cmd);
+    if (!function_exists('proc_open')) {
+        return ['ok' => false, 'error' => 'proc_open_unavailable'];
+    }
+
+    $pipes = [];
+    $process = proc_open(
+        $cmd,
+        [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ],
+        $pipes,
+        $root
+    );
+    if (!is_resource($process)) {
+        return ['ok' => false, 'error' => 'probe_process_unavailable'];
+    }
+
+    $output = stream_get_contents($pipes[1]);
+    $error = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exitCode = proc_close($process);
+
     $decoded = is_string($output) ? json_decode($output, true) : null;
-    return is_array($decoded) ? $decoded : ['ok' => false, 'error' => 'probe_json_invalid'];
+    if (!is_array($decoded)) {
+        return [
+            'ok' => false,
+            'error' => 'probe_json_invalid',
+            'exit_code' => $exitCode,
+            'stderr' => is_string($error) ? trim($error) : '',
+        ];
+    }
+
+    return $decoded;
 }
