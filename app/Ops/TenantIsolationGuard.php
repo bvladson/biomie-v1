@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace BIomie\Ops;
 
 use BIomie\Config;
+use BIomie\DataPlatform\Query\GeoQuery;
+use BIomie\DataPlatform\ReadModel\GeoReadModel;
+use BIomie\DataPlatform\ReadModel\GeoReadModelFactory;
 use BIomie\DataPlatform\Repository\CnaeReadRepository;
 use BIomie\GoldMartRepository;
 use BIomie\Logger;
@@ -49,6 +52,9 @@ final class TenantIsolationGuard
 
         $gold = new GoldMartRepository($this->pdo, $this->logger);
         $cnae = new CnaeReadRepository($this->pdo);
+        // GeoReadRepository so guarda o PDO; o filtro de tenant e resolvido na
+        // hora da query, entao instanciar uma vez fora do laco e seguro.
+        $geo = $this->safeGeoReadModel();
 
         $companies = $this->activeCompanies();
         $failures = [];
@@ -116,6 +122,32 @@ final class TenantIsolationGuard
                 // vazamento: reader devolve a contagem global em vez da da empresa
                 if ($repoRows !== $ownRows && $repoRows === $globalRows && $globalRows !== $ownRows) {
                     $failures[] = $this->leak($slug, 'cnae.freshness', 'rows_total', (float) $repoRows, (float) $ownRows);
+                }
+            }
+
+            // ── Probe 5: geo (mart_compradores_por_geo) ───────────────────────
+            // O mart do modulo geo ficou de fora das probes 1-4 desde a criacao
+            // deste guard (2026-06-27) — justamente a tabela por tras dos
+            // endpoints geo que ainda leem direto, fora do ReadModel (D44).
+            //
+            // Usa o layer padrao (mapa_composto_ceara), que e multi-cidade e
+            // portanto NAO aplica filtro de cidade: o reader agrega tudo o que
+            // a empresa enxerga. A comparacao e assimetrica (reader > fatia),
+            // igual as probes 1-3 — se o reader filtrar MAIS que a fatia, nao
+            // ha falso positivo; so contaminacao de outra empresa dispara.
+            if ($geo instanceof GeoReadModel) {
+                $checks++;
+                $summaryGeo = $this->safe(
+                    fn (): array => (array) ($geo->legacySummaryPayload(
+                        GeoQuery::fromRequest(['date_from' => $start, 'date_to' => $end])
+                    )['summary'] ?? [])
+                );
+                $repoGeo = (float) ($summaryGeo['revenue'] ?? 0);
+                if ($repoGeo > self::TOL) {
+                    $ownGeo = $this->ownGeoRevenue($cid, $competencias);
+                    if ($repoGeo > $ownGeo + max(self::TOL, $ownGeo * 0.005)) {
+                        $failures[] = $this->leak($slug, 'geo.summary', 'revenue', $repoGeo, $ownGeo);
+                    }
                 }
             }
         }
@@ -187,11 +219,63 @@ final class TenantIsolationGuard
         );
     }
 
+    /**
+     * Fatia da empresa no mart geo — teto do que qualquer reader escopado pode
+     * devolver no periodo. Reader acima disto = contaminacao.
+     *
+     * @param list<string> $competencias
+     */
+    private function ownGeoRevenue(int $cid, array $competencias): float
+    {
+        if ($competencias === []) {
+            return 0.0;
+        }
+        $ph = implode(',', array_map(static fn (int $i): string => ':m' . $i, array_keys($competencias)));
+        $params = [':c' => $cid];
+        foreach ($competencias as $i => $m) {
+            $params[':m' . $i] = $m;
+        }
+
+        return (float) $this->scalar(
+            "SELECT COALESCE(SUM(faturamento),0) FROM mart_compradores_por_geo
+              WHERE company_id = :c AND competencia IN ({$ph})",
+            $params
+        );
+    }
+
+    /**
+     * O guard roda dentro do OpsSentinel a cada ciclo: se o modulo geo nao
+     * estiver disponivel, a probe e pulada em vez de derrubar as outras.
+     */
+    private function safeGeoReadModel(): ?GeoReadModel
+    {
+        try {
+            return GeoReadModelFactory::make(new Config(), $this->pdo);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Fatia da empresa para a Probe 3.
+     *
+     * Precisa espelhar EXATAMENTE o SELECT de
+     * GoldMartRepository::summarizeInvoicesCommercial(), trocando apenas o
+     * scope de tenant por company_id explicito. Ate 2026-07-28 nao espelhava:
+     * somava `valor_faturado` filtrando `pedidos_faturados > 0` (grao de
+     * PEDIDO) enquanto o reader soma `valor_nfe` filtrando
+     * `nfes_emitidas > 0 OR valor_nfe <> 0` (grao de NOTA FISCAL). Como so 2
+     * das 1.414 linhas do mart tem pedidos_faturados > 0, a fatia dava ~R$0
+     * para toda empresa e o guard acusava VAZAMENTO em todas elas — deixando o
+     * OpsSentinel preso em severity=critical e tornando um vazamento de
+     * verdade indistinguivel do ruido.
+     */
     private function ownBilled(int $cid, string $start, string $end): float
     {
         return (float) $this->scalar(
-            'SELECT COALESCE(SUM(valor_faturado),0) FROM mart_vendedor_dia
-              WHERE company_id = :c AND dia BETWEEN :s AND :e AND pedidos_faturados > 0',
+            'SELECT COALESCE(SUM(valor_nfe),0) FROM mart_vendedor_dia
+              WHERE company_id = :c AND dia BETWEEN :s AND :e
+                AND (nfes_emitidas > 0 OR valor_nfe <> 0)',
             [':c' => $cid, ':s' => $start, ':e' => $end]
         );
     }
