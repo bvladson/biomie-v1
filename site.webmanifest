@@ -1,0 +1,50 @@
+{
+  "id": "/biomie/",
+  "name": "BIomie Comercial MAG",
+  "short_name": "BIomie",
+  "description": "Cockpit comercial integrado com Omie",
+  "lang": "pt-BR",
+  "start_url": "/biomie/index.php",
+  "scope": "/biomie/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#12151b",
+  "theme_color": "#96140a",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    { "src": "/biomie/images/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/biomie/images/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/biomie/images/pwa/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/biomie/images/pwa/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Painel Comercial",
+      "short_name": "Painel",
+      "description": "Dashboard com KPIs e visão geral do faturamento",
+      "url": "/biomie/index.php",
+      "icons": [{ "src": "/biomie/images/pwa/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "NF do Período",
+      "short_name": "NFs",
+      "description": "Notas fiscais emitidas no período",
+      "url": "/biomie/pedidos.php",
+      "icons": [{ "src": "/biomie/images/pwa/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Time Comercial",
+      "short_name": "Time",
+      "description": "Performance dos vendedores",
+      "url": "/biomie/vendedores.php",
+      "icons": [{ "src": "/biomie/images/pwa/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Financeiro",
+      "short_name": "Finan.",
+      "description": "Carteira, recebimentos e inadimplência",
+      "url": "/biomie/financeiro.php",
+      "icons": [{ "src": "/biomie/images/pwa/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

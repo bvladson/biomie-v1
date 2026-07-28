@@ -1,0 +1,10 @@
+# Respostas de API sao sempre estritamente no-store (nunca vao para bfcache
+# nem cache de disco). Sobrescreve o Cache-Control relaxado do .htaccess raiz,
+# que libera bfcache apenas para as paginas de view.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(php|json)$">
+    Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+  </FilesMatch>
+</IfModule>

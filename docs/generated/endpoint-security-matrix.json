@@ -1,0 +1,1905 @@
+{
+    "ok": true,
+    "generated_at_utc": "2026-07-25T21:28:21Z",
+    "method": "conservative_static_analysis",
+    "summary": {
+        "endpoints": 157,
+        "mutating_endpoints": 16,
+        "mutating_review_required": 0
+    },
+    "review_required": [],
+    "endpoints": [
+        {
+            "endpoint": "api/admin_clear_cache.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/admin_effective_access.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/admin_geo_rebuild.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/admin_health.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/admin_opcache_reset.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/admin_provision_user.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/admin_webhook_endpoints.php",
+            "methods": [
+                "UNDECLARED"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/avatar.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/board_consolidated.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/canonical_sync.php",
+            "methods": [
+                "POST",
+                "GET"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/canonical_vendors.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/client_cache_reset.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/client_portfolio_360.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/client_profile.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/cnae_coverage.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/cnae_opportunities.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/cnae_ranking.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/cockpit_summary.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/commercial_dashboard.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/commercial_health.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/company_access.php",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": true
+        },
+        {
+            "endpoint": "api/company_cnae_ranking.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/company_health_status.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/context_switch.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/cron_wrapper_status.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_commercial_history.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_opportunities.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_ownership_conflicts.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_profile.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_quality.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/customer_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/dashboard_boot.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/data_coverage.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/domain_entity_map.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/engine_health.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_collection_action.php",
+            "methods": [
+                "UNDECLARED"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_collection_by_vendor.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_collection_governance.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_overview.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_product_payment_methods.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_receivable_trace.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_sync.php",
+            "methods": [
+                "POST",
+                "HEAD"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_tax_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_tax_overview.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_titles.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/finance_visual_analytics.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_alerts.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_build_mart.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_context.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_entries.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_ncm.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_nf_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_nf_list.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_operation_summary.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_reform.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_settlement.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_summary.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_sync_entries.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/fiscal_tax_extract_run.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan_targets_editor.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan_targets_list.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan_targets_read.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan_targets_upsert.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/flight_plan_vendor_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/forecast.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_area_selection.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_cnae_materialize.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_compare_territories.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_composite_sales.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_data_quality.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_invoice_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_map_payload.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_materialize.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_neighborhood_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_opportunities.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_sales_coverage_audit.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_sales_layer.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_summary.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_alerts.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_buyers.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_cnae_buyers_export.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_cnaes.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_evolution.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_territory_invoices.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/geo_trace_nf.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/global_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/health.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/health_public.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/intelligence.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/invoice_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/live_stream.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/login_wallpaper.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "not_proven",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/materialize_clients.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/metric_catalog.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/nf_periodo_table.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/notifications.php",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_delta_sync.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_materialize_commercial.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_method_policy.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_reprocess_queue.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_status.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_test_connection.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/omie_webhook.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "external_webhook_token",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/operational_observability.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/order_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/orders.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/orders_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/overview.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/overview_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/performance_beacon.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/product_action_intelligence.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/product_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/product_stock_intelligence.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/products.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/products_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_calendar.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_charge.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_day.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_freshness.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_history.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_policy.php",
+            "methods": [
+                "UNDECLARED"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": true
+        },
+        {
+            "endpoint": "api/quote_agenda_refresh_request.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_self.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_summary.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_agenda_vendor.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/quote_seller_binding.php",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": true
+        },
+        {
+            "endpoint": "api/realtime_sync_status.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/reconciliation.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/reconciliation_pending.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/reconciliation_queue.php",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/reconciliation_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/refresh_status.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/sales_by_city.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/sales_by_cnae.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/sales_by_neighborhood.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/seller_visibility.php",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": true
+        },
+        {
+            "endpoint": "api/semantic_health.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/session_ping.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "not_proven",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/set_context.php",
+            "methods": [
+                "UNDECLARED"
+            ],
+            "mutates_data": false,
+            "authentication": "not_proven",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/status.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/sync.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": true,
+            "authentication": "proven_static",
+            "csrf": "proven_static",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/system_health.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/top_buyers_by_geo.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/top_clients_by_cnae.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/upload_avatar.php",
+            "methods": [
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/user_company_role.php",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/vendor_detail.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/vendors.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/vendors_list.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "present_static",
+            "seller_scope": "present_static",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/vendors_search.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        },
+        {
+            "endpoint": "api/weather.php",
+            "methods": [
+                "GET"
+            ],
+            "mutates_data": false,
+            "authentication": "proven_static",
+            "csrf": "not_applicable",
+            "company_scope": "review_required",
+            "seller_scope": "not_applicable_or_review",
+            "write_sql_detected": false
+        }
+    ]
+}

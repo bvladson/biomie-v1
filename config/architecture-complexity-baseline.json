@@ -1,0 +1,20 @@
+{
+    "created_at_utc": "2026-07-25T21:30:54Z",
+    "rule": "Existing files above 1000 lines may shrink but may not grow.",
+    "files": {
+        "app/Canonical/CanonicalWriteRepository.php": 1404,
+        "app/CanonicalRepository.php": 1027,
+        "app/CustomerDimensionMaterializationService.php": 1153,
+        "app/DataPlatform/Repository/CustomerReadRepository.php": 1271,
+        "app/DataPlatform/Repository/GeoReadRepository.php": 1416,
+        "app/FlightPlanV2Service.php": 1042,
+        "app/Migrations/MigrationRunner.php": 1658,
+        "app/Modules/Customers/Application/CustomerDetail/CustomerDetailBuilder.php": 1197,
+        "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php": 1023,
+        "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php": 1422,
+        "app/OmieStatusService.php": 1389,
+        "app/Support/FinanceReceivableIdentityResolver.php": 1063,
+        "views/financeiro.html": 1006,
+        "views/mercadorias.html": 1113
+    }
+}

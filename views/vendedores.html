@@ -1,0 +1,604 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Desempenho da equipe comercial — faturamento Orçamento-PD, carteira e cancelamentos. Remessas excluídas." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Desempenho da Equipe Orçamento-PD | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+</head>
+<body class="mag-page mag-clean-page" data-page="vendors">
+<main class="page">
+  <!-- Page Header (compact, minimalist) -->
+  <div class="biomie-page-header biomie-page-header--strip anim">
+    <div class="biomie-page-header__body">
+      <h1 class="biomie-page-header__title">
+        <span class="material-symbols-rounded">groups</span>
+        Desempenho da Equipe Orçamento-PD
+        <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:4px;vertical-align:middle;">remessas excluídas</span>
+      </h1>
+      <p class="biomie-page-header__subtitle">Faturamento Orçamento-PD, carteira e cancelamentos por vendedor. Remessas de produto não entram nesta visão.</p>
+      <div class="biomie-page-header__badges">
+        <span class="biomie-status-band biomie-status-band--billed">
+          <span class="biomie-status-band__label">NF Orç-PD</span>
+          <strong data-bind="status-billed-value">-</strong>
+          <span class="biomie-status-band__sub" data-bind="status-billed-orders">-</span>
+        </span>
+        <span class="biomie-status-band biomie-status-band--auth">
+          <span class="biomie-status-band__label">Carteira</span>
+          <strong data-bind="status-auth-value">-</strong>
+          <span class="biomie-status-band__sub" data-bind="status-auth-orders">-</span>
+        </span>
+        <span class="biomie-status-band biomie-status-band--cancel">
+          <span class="biomie-status-band__label">Canceladas</span>
+          <strong data-bind="status-cancel-value">-</strong>
+          <span class="biomie-status-band__sub" data-bind="status-cancel-orders">-</span>
+        </span>
+      </div>
+    </div>
+    <div class="biomie-page-header__actions">
+      <a href="plano_voo.php" class="biomie-btn biomie-btn--secondary">
+        <span class="material-symbols-rounded">flight</span>Rota Comercial
+      </a>
+    </div>
+  </div>
+
+  <!-- Meta Context Band (populated by JS) -->
+  <div id="vendedoresMetaBand" style="display:none;padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border);"></div>
+
+  <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" data-mobile-filter-sheet>
+    <div class="filter-group"><label class="filter-label">Periodo inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+    <div class="filter-group"><label class="filter-label">Periodo final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+    <div class="filter-actions">
+      <button class="btn-preset" data-range-preset="month">Mes atual</button>
+      <button class="btn-preset" data-range-preset="year">Ano atual</button>
+      <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
+      <button id="applyFilters" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span> Aplicar</button>
+      <button id="syncNow" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">sync</span> Atualizar visao</button>
+    </div>
+  </div>
+  <div id="syncFeedback"></div>
+  <div id="vendorStatusGapAlert" class="module-alert module-alert--warning" style="display:none;margin:10px 24px 0;">
+    <strong>Status de vendedores em validação</strong>
+    <span>há divergência entre cadastro Omie e BIomie.</span>
+  </div>
+  <div id="pageError" class="d-none"></div>
+  <div id="pageLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
+    <div class="module-loading-grid cols-3">
+      <span class="skeleton-block"></span>
+      <span class="skeleton-block"></span>
+      <span class="skeleton-block"></span>
+    </div>
+    <div class="module-loading-grid cols-2">
+      <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+      <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+    </div>
+    <div class="module-loading-card table">
+      <div class="module-loading-table">
+        <div class="module-loading-row"><span class="skeleton-line md" style="width:26%"></span><span class="skeleton-line md" style="width:16%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+        <div class="module-loading-row"><span class="skeleton-line md" style="width:34%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+        <div class="module-loading-row"><span class="skeleton-line md" style="width:30%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label anim d2" id="pipeline">Indicadores Orçamento-PD</div>
+  <section class="biomie-kpi-grid anim d2">
+    <div class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__label">Notas faturadas Orç-PD</div><div class="biomie-kpi-card__value" data-bind="status-billed-value">-</div><div class="biomie-kpi-card__sub" data-bind="status-billed-orders">-</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__label">Pedidos aguardando faturamento</div><div class="biomie-kpi-card__value" data-bind="status-auth-value">-</div><div class="biomie-kpi-card__sub" data-bind="status-auth-orders">-</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__label">Canceladas</div><div class="biomie-kpi-card__value" data-bind="status-cancel-value">-</div><div class="biomie-kpi-card__sub" data-bind="status-cancel-orders">-</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__label">Pedidos que viraram nota</div><div class="biomie-kpi-card__value" data-bind="status-conversion-rate">-</div><div class="biomie-kpi-card__sub">Percentual dos pedidos faturados</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--neutral"><div class="biomie-kpi-card__label">Pedidos sem nota fiscal</div><div class="biomie-kpi-card__value" data-bind="status-backlog-value">-</div><div class="biomie-kpi-card__sub">Aguardando faturamento</div></div>
+    <div class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__label">Venda média Orç-PD</div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Valor médio por nota faturada</div></div>
+  </section>
+
+  <!-- COM.R1.4 — Carteirização KPIs -->
+  <div id="ownershipKpiSection" style="display:none;margin-top:8px;">
+    <div class="section-label" style="margin-top:16px;">Carteirização</div>
+    <section class="biomie-kpi-grid" style="margin-bottom:0;">
+      <div class="biomie-kpi-card biomie-kpi-card--neutral" title="Meta proporcional ao período selecionado (dias corridos)"><div class="biomie-kpi-card__label">Meta do período</div><div class="biomie-kpi-card__value" id="kpiMetaProporcional">-</div><div class="biomie-kpi-card__sub">Período selecionado</div></div>
+      <div class="biomie-kpi-card biomie-kpi-card--success" title="Vendas por notas fiscais autorizadas"><div class="biomie-kpi-card__label">Vendas faturadas</div><div class="biomie-kpi-card__value" id="kpiRealizadoNF">-</div><div class="biomie-kpi-card__sub">Notas autorizadas Orç-PD</div></div>
+      <div class="biomie-kpi-card biomie-kpi-card--warning" id="kpiConflictCard" title="Vendas onde o vendedor da NF é diferente do dono da carteira do cliente"><div class="biomie-kpi-card__label">Fora da carteira</div><div class="biomie-kpi-card__value" id="kpiConflictCount">-</div><div class="biomie-kpi-card__sub" id="kpiConflictValue">-</div></div>
+    </section>
+  </div>
+
+  <section class="alerts-op anim d3" id="alertsOperational"></section>
+
+  <div class="section-label anim d3" id="graficos">Analises</div>
+  <section class="charts-grid">
+    <div class="chart-card anim d4">
+      <div class="chart-card-header"><div><h3>Ranking comercial — Orç-PD</h3><small>Faturamento Orçamento-PD, carteira e cancelamentos por vendedor (remessas excluídas)</small></div></div>
+      <div class="chart-body"><div class="chart-container-fixed mag-chart-container mag-chart-md"><canvas id="vendorGroupedBar"></canvas></div></div>
+    </div>
+    <details class="mag-secondary-charts anim d5">
+      <summary>Pulso diario complementar</summary>
+      <div class="chart-card">
+        <div class="chart-card-header"><div><h3>Pulso diario</h3><small>Ritmo de faturamento, carteira e cancelamentos</small></div></div>
+        <div class="chart-body"><div class="chart-container-fixed mag-chart-container mag-chart-md"><canvas id="dailyMixedChart"></canvas></div></div>
+      </div>
+    </details>
+  </section>
+
+  <div class="section-label anim d4" id="tabelas">Detalhamento da equipe — Orçamento-PD</div>
+  <section class="table-card commercial-panel commercial-panel--vendor anim d5">
+    <div class="table-card-header"><h3>Base por vendedor Orçamento-PD</h3><small>Faturamento Orç-PD, meta, atingimento, risco, carteira e cancelamentos. Remessas excluídas. Clique para detalhar.</small></div>
+
+    <!-- Fase Q.3 — quick sort + search chips -->
+    <div class="nf-quick-filter-bar" id="vendorQuickFilters" style="padding:8px 16px 0;flex-wrap:wrap;gap:6px;">
+      <span style="font-size:0.78rem;color:var(--text-3);font-weight:600;margin-right:4px;">Ordenar:</span>
+      <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-vendor-sort="base_comercial" data-vendor-dir="desc">Maiores</button>
+      <button class="nf-quick-filter-btn" data-vendor-sort="nfs" data-vendor-dir="desc">Mais NFs</button>
+      <button class="nf-quick-filter-btn" data-vendor-sort="clientes" data-vendor-dir="desc">Mais clientes</button>
+      <button class="nf-quick-filter-btn" data-vendor-sort="ticket_medio" data-vendor-dir="desc">Maior ticket</button>
+      <!-- COM.R1.5 — Incluir inativos toggle -->
+      <button id="vendorIncludeInactiveBtn" type="button" class="nf-quick-filter-btn" data-include-inactive="0" title="Por padrão apenas vendedores ativos são exibidos. Clique para incluir inativos." style="margin-left:auto;color:var(--text-3);border-color:var(--border);">
+        <span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;margin-right:2px;">visibility_off</span>Incluir inativos
+      </button>
+    </div>
+
+    <!-- COM.R2 — Filtro de canal comercial -->
+    <div id="vendorChannelFilters" style="padding:4px 16px 6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
+      <span style="font-size:0.74rem;color:var(--text-3);font-weight:600;margin-right:2px;">Canal:</span>
+      <button type="button" class="nf-quick-filter-btn nf-quick-filter-btn--active" id="vendorChannelAll"
+        data-vendor-channel="" title="Orçamento-PD padrão: exclui Licitação e Remessa por padrão">Orç-PD</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="revenda"
+        title="Apenas vendedores do canal Revenda (sufixo REV)">Revenda</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="varejo"
+        title="Apenas vendedores do canal Varejo (sufixo VAR)">Varejo</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="representante"
+        title="Apenas representantes comerciais (sufixo REP)">Representante</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="licitacao"
+        title="Licitação: escopo separado do Orç-PD padrão" style="color:var(--text-3);">Licitação</button>
+      <button type="button" class="nf-quick-filter-btn" data-vendor-channel="remessa"
+        title="Remessa: escopo operacional separado — não entra no faturamento comercial" style="color:var(--text-3);">Remessa</button>
+      <span id="vendorChannelAllWarning" style="display:none;font-size:0.72rem;color:var(--warning-text,#b45309);padding:2px 6px;background:var(--warning-bg-light,#fffbeb);border-radius:4px;border:1px solid var(--warning-border,#fde68a);">
+        Visão combinada: inclui escopos separados. Use com cuidado.
+      </span>
+    </div>
+    <div id="vendorFilterChips" style="display:none;padding:4px 16px 0;"></div>
+    <div id="vendorFilterFeedback" style="display:none;padding:6px 16px;font-size:0.82rem;"></div>
+    <div id="vendorSearchFeedback"></div>
+
+    <div class="biomie-table-wrap commercial-table-wrap">
+      <table class="mag-table mag-table-clean commercial-table commercial-table--vendor" data-mobile-card-table>
+        <thead>
+          <tr>
+            <th id="th-vendor-vendedor" data-filter-header="vendedor">Vendedor</th>
+            <th id="th-vendor-bc" class="nf-th-sortable" data-sort-field="base_comercial">Merc. Orç-PD <span class="nf-sort-icon">↓</span></th>
+            <th title="Meta proporcional ao período (dias corridos)">Meta prop.</th>
+            <th title="Percentual da meta já alcançado">% da meta</th>
+            <th>Risco</th>
+            <th>Carteira</th>
+            <th>Canceladas</th>
+            <th>Conversão</th>
+            <th id="th-vendor-ticket" class="nf-th-sortable" data-sort-field="ticket_medio">Ticket <span class="nf-sort-icon">↕</span></th>
+            <th title="Vendas onde o vendedor da NF ≠ dono da carteira" style="font-size:11px;">Carteira</th>
+          </tr>
+          <tr class="nf-filter-row" id="vendorFilterRow">
+            <th colspan="2">
+              <input type="search" id="f_vendor_q" class="nf-col-filter" placeholder="Buscar vendedor…" />
+            </th>
+            <th colspan="4"></th>
+            <th colspan="2">
+              <div class="nf-col-filter-range">
+                <input type="number" id="f_vendor_bc_min" class="nf-col-filter" placeholder="Min Base" min="0" step="100" />
+                <input type="number" id="f_vendor_bc_max" class="nf-col-filter" placeholder="Max Base" min="0" step="100" />
+              </div>
+            </th>
+            <th>
+              <div class="nf-col-filter-range">
+                <input type="number" id="f_vendor_tk_min" class="nf-col-filter" placeholder="Min Ticket" min="0" step="100" />
+                <input type="number" id="f_vendor_tk_max" class="nf-col-filter" placeholder="Max Ticket" min="0" step="100" />
+              </div>
+            </th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="vendorsTable" data-empty-title="Sem vendedores" data-empty-message="Nenhum vendedor com faturamento Orçamento-PD no periodo." data-empty-icon="groups"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination (shown only when filter is active) -->
+    <div id="vendorPagination" style="display:none;padding:12px 16px;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;"></div>
+  </section>
+</main>
+
+<div class="flight-drawer-backdrop detail-drawer-backdrop" id="flightDrawerBackdrop" style="display:none;"></div>
+<div class="flight-drawer detail-drawer" id="flightDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerVendorName">
+  <div class="detail-drawer-head">
+    <div>
+      <h3 id="drawerVendorName" style="margin:0;font-size:18px">Carregando...</h3>
+      <small id="drawerVendorStatus" style="color:var(--text-secondary)">-</small>
+      <span id="drawerSyncing" class="material-symbols-rounded spin-icon" aria-hidden="true" style="font-size:14px;display:none;margin-left:8px;vertical-align:middle;color:var(--text-secondary)">sync</span>
+    </div>
+    <button class="btn-icon detail-drawer-close" id="closeDrawerBtn" aria-label="Fechar detalhamento"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+  </div>
+  <!-- COM.R2 — Tab navigation Vendor 360 -->
+  <div id="drawerTabNav" style="display:flex;border-bottom:1px solid var(--border);padding:0 16px;gap:0;overflow-x:auto;flex-shrink:0;">
+    <button type="button" class="v360-tab v360-tab--active" data-v360-tab="resumo" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--page-accent);color:var(--page-accent);">Resumo</button>
+    <button type="button" class="v360-tab" data-v360-tab="realizado" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Vendas faturadas</button>
+    <button type="button" class="v360-tab" data-v360-tab="carteira" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Carteira</button>
+    <button type="button" class="v360-tab" data-v360-tab="orcamentos" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Orçamentos</button>
+    <button type="button" class="v360-tab" data-v360-tab="escopos" style="flex:none;padding:8px 14px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-2);">Escopos</button>
+  </div>
+  <div class="detail-drawer-content" id="drawerContent">
+    <!-- ── Aba Resumo ───────────────────────────────────────────────── -->
+    <div id="drawerSection-resumo" class="v360-section">
+      <div class="detail-drawer-stats">
+        <div class="detail-drawer-stat"><small>Vendas faturadas</small><strong id="drawerRealized">-</strong></div>
+        <div class="detail-drawer-stat"><small>Meta do período</small><strong id="drawerTarget">-</strong></div>
+        <div class="detail-drawer-stat"><small>Quanto falta</small><strong id="drawerGap">-</strong></div>
+        <div class="detail-drawer-stat"><small>% da meta</small><strong id="drawerPct">-</strong></div>
+      </div>
+      <div class="detail-drawer-section">
+        <h4>FECHAMENTO</h4>
+        <div id="drawerForecastWrap" class="detail-drawer-panel"></div>
+      </div>
+      <div class="detail-drawer-section">
+        <h4>RITMO DO MÊS</h4>
+        <div class="detail-drawer-canvas mag-chart-container mag-chart-sm"><canvas id="drawerDailyChart"></canvas></div>
+      </div>
+    </div>
+    <!-- ── Aba Realizado NF ─────────────────────────────────────────── -->
+    <div id="drawerSection-realizado" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>REALIZADO POR NF AUTORIZADA</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Base Comercial NF. Exclui Licitação, Remessa e Entrega Finalizada.</p>
+        <div id="drawerNFList" class="detail-drawer-list"></div>
+      </div>
+    </div>
+    <!-- ── Aba Carteira ─────────────────────────────────────────────────
+         Semântica nova (2026-07-27): Carteira = venda para cliente que JÁ
+         comprou antes (recorrente). A antiga "carteira aceita" (pedido
+         autorizado não faturado) foi descontinuada, e a Carteirização foi
+         ABSORVIDA aqui — era o mesmo assunto dito duas vezes. -->
+    <div id="drawerSection-carteira" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>CARTEIRA — CLIENTES RECORRENTES</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">
+          Receita vinda de clientes que <strong>já haviam comprado antes</strong> deste período e voltaram a comprar.
+          O complemento são os clientes novos (primeira compra) &mdash; os dois somam as vendas faturadas.
+        </p>
+        <div class="detail-drawer-stats" id="drawerCarteiraStats">
+          <div class="detail-drawer-stat"><small>Carteira (recorrentes)</small><strong id="drawerCarteiraValue">-</strong></div>
+          <div class="detail-drawer-stat"><small>% do faturado</small><strong id="drawerCarteiraPct">-</strong></div>
+          <div class="detail-drawer-stat"><small>Clientes que voltaram</small><strong id="drawerCarteiraClientes">-</strong></div>
+          <div class="detail-drawer-stat"><small>Novos (1ª compra)</small><strong id="drawerNovosValue">-</strong></div>
+        </div>
+      </div>
+      <!-- Carteirização absorvida: quem é "dono" do cliente e onde a venda saiu
+           por outro vendedor. É detalhe DA carteira, não um conceito à parte. -->
+      <div id="drawerOwnershipSection" style="margin-top:4px;">
+        <div class="detail-drawer-section">
+          <h4>CLIENTES PRÓPRIOS &amp; VENDAS FORA DA CARTEIRA</h4>
+          <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Quando a NF sai por um vendedor diferente do dono do cliente.</p>
+          <div id="drawerOwnershipContent" style="font-size:0.82rem;color:var(--text-secondary);"></div>
+        </div>
+      </div>
+      <div class="detail-drawer-section">
+        <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">PEDIDOS RECENTES</h4>
+        <div id="drawerOrdersList" class="detail-drawer-list"></div>
+      </div>
+    </div>
+    <!-- ── Aba Orçamentos (Agenda) — propostas em aberto do vendedor ──── -->
+    <div id="drawerSection-orcamentos" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>ORÇAMENTOS EM ABERTO</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Propostas feitas no Omie (etapa Orçamento) ainda não convertidas em pedido nem faturadas. Fonte: Agenda de Orçamentos (snapshot vivo).</p>
+        <div id="drawerQuotesFreshness" style="font-size:0.72rem;color:var(--text-3);margin-bottom:8px;"></div>
+        <div class="detail-drawer-stats" id="drawerQuotesStats" style="display:none;">
+          <div class="detail-drawer-stat"><small>Em aberto</small><strong id="drawerQuotesOpen">-</strong></div>
+          <div class="detail-drawer-stat"><small>Atrasados</small><strong id="drawerQuotesOverdue">-</strong></div>
+          <div class="detail-drawer-stat"><small>Críticos</small><strong id="drawerQuotesCritical">-</strong></div>
+        </div>
+        <div id="drawerQuotesList" class="detail-drawer-list" style="margin-top:10px;"></div>
+        <div style="margin-top:16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;">Calendário de cobranças</div>
+          <div id="drawerQuotesCalendar"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Aba "Carteirização" REMOVIDA: absorvida pela aba Carteira (definição
+         redundante). O bloco #drawerOwnershipSection vive lá agora. -->
+    <!-- ── Aba Escopos separados ────────────────────────────────────── -->
+    <div id="drawerSection-escopos" class="v360-section" style="display:none;">
+      <div class="detail-drawer-section">
+        <h4>ESCOPOS SEPARADOS DO ORÇ-PD</h4>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">Licitação e Remessa são escopos separados — não entram no realizado ou metas comerciais.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:10px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Licitação</div>
+            <div id="drawerLicitacaoInfo" style="font-size:0.82rem;color:var(--text-secondary);">Escopo separado — não entra no Orç-PD padrão.</div>
+          </div>
+          <div style="padding:10px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Remessa</div>
+            <div id="drawerRemessaInfo" style="font-size:0.82rem;color:var(--text-secondary);">Escopo operacional — movimentação fiscal/logística.</div>
+          </div>
+          <div style="padding:10px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Entrega Finalizada</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);">Etapa pós-venda (etapa 60). Não duplica faturamento.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  // COM.R1.5 — inactive vendor toggle
+  window.BIomieVendorsIncludeInactive = false;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('vendorIncludeInactiveBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      window.BIomieVendorsIncludeInactive = !window.BIomieVendorsIncludeInactive;
+      btn.setAttribute('data-include-inactive', window.BIomieVendorsIncludeInactive ? '1' : '0');
+      if (window.BIomieVendorsIncludeInactive) {
+        btn.classList.add('nf-quick-filter-btn--active');
+        btn.style.color = '';
+      } else {
+        btn.classList.remove('nf-quick-filter-btn--active');
+        btn.style.color = 'var(--text-3)';
+      }
+      // Re-apply filters to reload data with updated active_only param
+      var applyBtn = document.getElementById('applyFilters');
+      if (applyBtn) applyBtn.click();
+    });
+  });
+
+  var fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  function currentYearMonth() {
+    var now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  }
+
+  function renderBand(vendors, ym) {
+    var band = document.getElementById('vendedoresMetaBand');
+    if (!band) return;
+
+    var teamTarget = vendors.reduce(function (s, v) {
+      return s + Number(v.target_amount || v.target_month || 0);
+    }, 0);
+    var withTarget = vendors.filter(function (v) {
+      return Number(v.target_amount || v.target_month || 0) > 0;
+    }).length;
+
+    if (!vendors.length || teamTarget <= 0) {
+      band.innerHTML = '<div style="display:flex;align-items:center;gap:10px;font-size:0.82rem;color:var(--text-2);">'
+        + '<span class="material-symbols-rounded" style="font-size:16px;color:var(--warning,#c58c00)">warning</span>'
+        + '<span>Metas nao configuradas para <strong>' + ym + '</strong>.</span>'
+        + '<a href="plano_voo_metas.php" style="color:var(--page-accent);font-weight:600;text-decoration:none;white-space:nowrap;">'
+        + '<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle">edit</span> Definir metas</a>'
+        + '</div>';
+      band.style.display = 'block';
+      return;
+    }
+
+    var monthLabel = (function () {
+      var parts = ym.split('-');
+      var d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+      return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    }());
+
+    band.innerHTML = '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+      + '<span class="material-symbols-rounded" style="font-size:18px;color:var(--page-accent);flex-shrink:0">target</span>'
+      + '<div style="display:flex;flex-direction:column;gap:1px;">'
+      + '<span style="font-size:0.82rem;color:var(--text-2);">Meta do time &mdash; ' + monthLabel + '</span>'
+      + '<strong style="font-size:1rem;color:var(--text-1);">' + fmt.format(teamTarget) + '</strong>'
+      + '</div>'
+      + '<span style="font-size:0.78rem;color:var(--text-3);padding:3px 8px;background:var(--surface-muted);border-radius:4px;">'
+      + withTarget + ' de ' + vendors.length + ' vendedor(es) com meta'
+      + '</span>'
+      + '<div style="flex-grow:1"></div>'
+      + '<a href="plano_voo.php" style="display:inline-flex;align-items:center;gap:5px;font-size:0.82rem;color:var(--page-accent);text-decoration:none;font-weight:600;white-space:nowrap;">'
+      + '<span class="material-symbols-rounded" style="font-size:15px">flight</span>Ver Rota Comercial'
+      + '</a>'
+      + '<a href="plano_voo_metas.php" style="display:inline-flex;align-items:center;gap:5px;font-size:0.82rem;color:var(--text-2);text-decoration:none;white-space:nowrap;">'
+      + '<span class="material-symbols-rounded" style="font-size:15px">edit</span>Editar metas'
+      + '</a>'
+      + '</div>';
+    band.style.display = 'block';
+  }
+
+  function loadMetaBand() {
+    var ym = currentYearMonth();
+    fetch('api/flight_plan_targets_read.php?year_month=' + encodeURIComponent(ym))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        renderBand(data.vendors || [], ym);
+      })
+      .catch(function () {});
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMetaBand);
+  } else {
+    loadMetaBand();
+  }
+
+  // COM.R2 — Vendor 360 tab navigation
+  document.addEventListener('DOMContentLoaded', function () {
+    var tabNav = document.getElementById('drawerTabNav');
+    if (!tabNav) return;
+    tabNav.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-v360-tab]');
+      if (!btn) return;
+      var target = btn.getAttribute('data-v360-tab');
+      // Update tab active styles
+      tabNav.querySelectorAll('.v360-tab').forEach(function (t) {
+        var isActive = t === btn;
+        t.style.borderBottomColor = isActive ? 'var(--page-accent)' : 'transparent';
+        t.style.color = isActive ? 'var(--page-accent)' : 'var(--text-2)';
+      });
+      // Show/hide sections
+      document.querySelectorAll('.v360-section').forEach(function (s) {
+        s.style.display = s.id === 'drawerSection-' + target ? '' : 'none';
+      });
+      // Aba Orçamentos: carrega a carteira parada do vendedor sob demanda.
+      if (target === 'orcamentos') loadV360Quotes();
+    });
+  });
+
+  // ── Aba Orçamentos (Agenda de Orçamentos, escopada ao vendedor) ────────────
+  function loadV360Quotes() {
+    if (window._v360QuotesLoaded) return;            // uma vez por abertura
+    var sellerId = String(window._v360VendorId || '').trim();
+    var list  = document.getElementById('drawerQuotesList');
+    var stats = document.getElementById('drawerQuotesStats');
+    var fresh = document.getElementById('drawerQuotesFreshness');
+    var calEl = document.getElementById('drawerQuotesCalendar');
+    if (!list) return;
+
+    // Sem codigo Omie, o endpoint de lista devolve zero por seguranca, mas o
+    // calendario sem seller_id significaria "empresa inteira". Nunca monte o
+    // widget do drawer nesse estado: evita misturar a carteira de outro vendedor.
+    if (!sellerId || sellerId === '0' || sellerId === 'undefined') {
+      if (window._v360Calendar && window._v360Calendar.destroy) window._v360Calendar.destroy();
+      window._v360Calendar = null;
+      list.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:10px 0">Vendedor sem código Omie vinculado. Não é possível carregar a carteira de orçamentos.</div>';
+      if (calEl) calEl.innerHTML = '<div class="qcw-msg qcw-msg--err" role="status">Calendário indisponível para vendedor sem vínculo.</div>';
+      if (stats) stats.style.display = 'none';
+      if (fresh) fresh.textContent = '';
+      return;
+    }
+
+    window._v360QuotesLoaded = true;
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:10px 0">Carregando orcamentos...</div>';
+    if (stats) stats.style.display = 'none';
+    if (fresh) fresh.textContent = '';
+
+    // Calendário de cobranças do vendedor (escopado por seller_id).
+    if (calEl && window.QuoteCalendarWidget) {
+      if (window._v360Calendar && window._v360Calendar.destroy) window._v360Calendar.destroy();
+      calEl.innerHTML = '';
+      window._v360Calendar = window.QuoteCalendarWidget.mount(calEl, { sellerId: sellerId });
+    }
+
+    var esc = function (s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; };
+    var brl = function (v) {
+      if (v == null) return 'sem valor';
+      try { return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      catch (e) { return 'R$ ' + v; }
+    };
+    // Cor da urgência vem de tokens da UI (o servidor só manda a semântica).
+    var urgLabel = { critical: 'Crítica', overdue: 'Atrasada', today: 'Vence hoje', future: 'No prazo' };
+    var urgColor = { critical: 'var(--danger,#dc2626)', overdue: 'var(--warning,#d97706)', today: 'var(--state-info,#2563eb)', future: 'var(--text-3,#94a3b8)' };
+
+    if (window._v360QuotesAbort) {
+      try { window._v360QuotesAbort.abort(); } catch (abortError) {}
+    }
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    window._v360QuotesAbort = ctrl;
+
+    fetch('api/quote_agenda_vendor.php?seller_id=' + encodeURIComponent(sellerId), {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' },
+      signal: ctrl ? ctrl.signal : undefined
+    })
+      .then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (body) {
+          if (!r.ok || !body || body.ok === false) {
+            var error = new Error((body && body.message) || ('Falha HTTP ' + r.status));
+            error.status = r.status;
+            error.code = (body && body.error) || ('http_' + r.status);
+            throw error;
+          }
+          return body;
+        });
+      })
+      .then(function (resp) {
+        // O usuario pode abrir outro vendedor antes desta resposta chegar.
+        if (String(window._v360VendorId || '').trim() !== sellerId) return;
+        var d = (resp && resp.data) || {};
+        var items = d.items || [];
+        var k = d.kpis || {};
+        var f = resp.freshness || {};
+
+        if (fresh) {
+          if (f.is_stale) {
+            fresh.innerHTML = '<span style="color:var(--warning,#d97706)">Dados do Omie desatualizados' +
+              (f.age_minutes != null ? ' (ha ' + f.age_minutes + ' min)' : '') + '</span>';
+          } else if (f.last_successful_at) {
+            fresh.textContent = 'Atualizado ' + (f.age_minutes != null ? ('ha ' + f.age_minutes + ' min') : 'agora');
+          }
+        }
+        if (stats && k.open) {
+          stats.style.display = '';
+          var setT = function (id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+          setT('drawerQuotesOpen',     brl(k.open.total_value) + ' (' + (k.open.count || 0) + ')');
+          setT('drawerQuotesOverdue',  String((k.overdue && k.overdue.count) || 0));
+          setT('drawerQuotesCritical', String((k.critical && k.critical.count) || 0));
+        }
+
+        if (!items.length) {
+          list.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:10px 0">Nenhum orcamento em aberto para este vendedor.</div>';
+          return;
+        }
+        list.innerHTML = items.map(function (it) {
+          var urg = String(it.urgency || 'future');
+          var due = it.next_followup_on || '';
+          var dueLabel = due ? (due.slice(8, 10) + '/' + due.slice(5, 7)) : '--/--';
+          var ageNote = it.date_is_official === false ? ' aprox.' : '';
+          return '<div class="detail-drawer-list-item">' +
+            '<div style="display:flex;flex-direction:column;gap:4px">' +
+              '<strong>' + esc(it.customer || 'Cliente nao identificado') + '</strong>' +
+              '<span style="font-size:11px;color:var(--text-3)">' +
+                'Orcamento ' + esc(it.numero_pedido || it.omie_order_id || '-') +
+                ' | aberto ha ' + esc(it.age_days != null ? it.age_days : '?') + ' dias' + ageNote +
+                ' | proxima cobranca ' + esc(dueLabel) +
+              '</span>' +
+            '</div>' +
+            '<div style="text-align:right">' +
+              '<div style="font-size:13px;font-weight:700">' + esc(brl(it.value)) + '</div>' +
+              '<small style="color:' + (urgColor[urg] || 'var(--text-3)') + ';font-weight:700">' + esc(urgLabel[urg] || urg) + '</small>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      })
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') return;
+        var code = String((err && err.code) || '');
+        var msg = code === 'feature_disabled'
+          ? 'A Agenda de Orçamentos está temporariamente pausada.'
+          : (code === 'company_feature_disabled' || code === 'company_feature_not_configured')
+            ? 'A Agenda de Orçamentos ainda não foi ativada para esta empresa.'
+            : code === 'seller_not_authorized'
+              ? 'Este vendedor não está no seu escopo de acesso.'
+              : 'Não foi possível carregar os orçamentos.';
+        list.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:10px 0">' + msg +
+          ' <button type="button" onclick="window._v360QuotesLoaded=false;loadV360Quotes()" style="border:none;background:none;color:var(--page-accent);cursor:pointer;font-weight:600">Tentar novamente</button></div>';
+      });
+  }
+  window.loadV360Quotes = loadV360Quotes;
+
+  // Reset tabs when drawer opens
+  window.BIomieV360ResetTabs = function () {
+    var tabNav = document.getElementById('drawerTabNav');
+    if (!tabNav) return;
+    var first = tabNav.querySelector('[data-v360-tab]');
+    if (first) first.click();
+  };
+}());
+</script>
+</body>
+</html>

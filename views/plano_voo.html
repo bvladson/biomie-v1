@@ -1,0 +1,268 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Rota comercial com meta, ritmo, carteira e acompanhamento do fechamento do periodo." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Plano de Voo | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-p17" />
+  <link rel="stylesheet" href="assets/css/flight-plan-clean.css" />
+  <link rel="stylesheet" href="assets/css/filters.css" />
+  <script src="assets/js/chart.umd.js"></script>
+  <script src="assets/js/shell.js?v=20260425-ui1"></script>
+  <script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+  <script src="assets/js/biomie-states.js?v=20260502-p16"></script>
+  
+  <!-- Fase Q — motor global de filtros -->
+  <script src="assets/js/core/utils.js" defer></script>
+  <script src="assets/js/core/render-helpers.js" defer></script>
+  <script src="assets/js/core/request-controller.js" defer></script>
+  <script src="assets/js/core/filter-state.js" defer></script>
+  <script src="assets/js/core/filter-url.js" defer></script>
+  <script src="assets/js/core/filter-chips.js" defer></script>
+  <script src="assets/js/core/server-table.js" defer></script>
+
+  <!-- Flight Plan Modules -->
+  <script src="assets/js/modules/flight-plan/formatters.js" defer></script>
+  <script src="assets/js/modules/flight-plan/dom.js" defer></script>
+  <script src="assets/js/modules/flight-plan/state.js" defer></script>
+  <script src="assets/js/modules/flight-plan/api.js" defer></script>
+  <script src="assets/js/modules/flight-plan/filters.js" defer></script>
+  <script src="assets/js/modules/flight-plan/kpis.js" defer></script>
+  <script src="assets/js/modules/flight-plan/charts.js" defer></script>
+  <script src="assets/js/modules/flight-plan/vendor-table.js" defer></script>
+  <script src="assets/js/modules/flight-plan/alerts.js" defer></script>
+  <script src="assets/js/modules/flight-plan/index.js" defer></script>
+  <script src="assets/js/modules/flight-plan/search-drilldown.js" defer></script>
+
+  <script src="assets/js/flight-plan-v2.js?v=20260415sk1" defer></script>
+  <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+</head>
+<body class="mag-page" data-page="rota-comercial">
+<main class="page biomie-shell-bg" style="padding:0;">
+      <!-- Page Header -->
+      <div class="biomie-page-header biomie-page-header--strip anim">
+        <div class="biomie-page-header__body">
+          <h1 class="biomie-page-header__title">
+            <span class="material-symbols-rounded">flight</span>
+            Plano de Voo Comercial
+          </h1>
+          <p class="biomie-page-header__subtitle">Metas, carteira, faturamento e risco por vendedor.</p>
+          <div class="biomie-page-header__badges">
+            <span class="fp-status-badge fp-status-none" data-bind="period-label">Período</span>
+            <span class="fp-status-badge fp-status-none" data-bind="last-sync">-</span>
+            <span class="fp-status-badge fp-status-none">NF Autorizada</span>
+            <span data-bind="sync-warning"></span>
+          </div>
+        </div>
+        <div class="biomie-page-header__actions">
+          <a href="vendedores.php" class="biomie-btn biomie-btn--secondary">
+            <span class="material-symbols-rounded">groups</span>Ver equipe
+          </a>
+          <a href="plano_voo_metas.php" class="biomie-btn biomie-btn--secondary" data-fp-edit-targets hidden>
+            <span class="material-symbols-rounded">edit</span>Editar metas
+          </a>
+          <button id="syncNow" type="button" class="biomie-btn biomie-btn--primary">
+            <span class="material-symbols-rounded">sync</span>Atualizar
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact Filters -->
+      <div class="fp-filters-clean anim d1" data-mobile-filter-sheet>
+        <div class="filter-group"><label class="filter-label">Data Inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Data Final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+        <div class="filter-actions" style="display:flex;gap:8px;align-items:center;margin-bottom:2px;">
+          <button type="button" class="row-inline-link btn-preset" data-preset="month">Mes</button>
+          <button type="button" class="row-inline-link btn-preset" data-preset="year">Ano</button>
+          <button type="button" class="row-inline-link btn-preset" data-preset="rolling12">12M</button>
+        </div>
+        <div class="biomie-flex-spacer"></div>
+        <button id="applyFilters" type="button" class="biomie-btn biomie-btn--primary"><span class="material-symbols-rounded" style="font-size:18px">filter_alt</span>Aplicar filtros</button>
+      </div>
+
+      <!-- Q.8 Extra Filters -->
+      <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" id="fpExtraFilters" style="margin-top:6px;">
+        <div class="filter-group">
+          <label class="filter-label">Buscar vendedor</label>
+          <input id="f_fp_q" type="text" class="filter-input" placeholder="Nome do vendedor..." autocomplete="off" />
+          <input id="f_fp_vendedor_id" type="hidden" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="f_fp_channel">Canal</label>
+          <select id="f_fp_channel" class="filter-input">
+            <option value="">Todos os canais</option>
+            <option value="varejo">Varejo</option>
+            <option value="revenda">Revenda</option>
+            <option value="representante">Representante</option>
+            <option value="outro">Não definido</option>
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-fp-status="acima_meta">Acima da meta</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-fp-status="abaixo_meta">Abaixo da meta</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-fp-status="sem_venda">Sem venda</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-fp-status="com_venda">Com venda</button>
+          <button type="button" class="btn-preset nf-quick-filter-btn" data-fp-status="sem_meta">Meta pendente</button>
+          <button type="button" class="btn-secondary" id="fpClearFilters" style="font-size:12px;">Limpar</button>
+        </div>
+      </div>
+      <div id="fpFilterChips" class="filter-chips-container" style="display:none;padding:4px 0;"></div>
+
+      <!-- Toggle de Operação (varejo/licitação) — só aparece em contexto mixed.
+           "Operação" ≠ o filtro "Canal" acima (varejo/revenda/representante). -->
+      <div data-commercial-channel-toggle hidden style="margin-top:6px;"></div>
+
+      <!-- Compact KPI Strip -->
+      <div class="fp-kpi-strip anim d2">
+        <div class="biomie-kpi-card" title="Meta proporcional aos dias úteis do período. Sábado possui peso reduzido e domingo não entra no ritmo.">
+          <div class="biomie-kpi-card__label">Meta do período</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-meta-total">-</div>
+          <div class="biomie-kpi-card__sub">Proporcional ao período</div>
+        </div>
+        <div class="biomie-kpi-card biomie-kpi-card--accent" title="Vendas confirmadas por notas fiscais autorizadas. Não inclui pedidos aguardando faturamento ou orçamentos.">
+          <div class="biomie-kpi-card__label">Vendas faturadas</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-realizado">-</div>
+          <div class="biomie-kpi-card__sub" data-bind="fp-notas">0 NFs</div>
+        </div>
+        <div class="biomie-kpi-card" title="Diferença entre a meta do período e as vendas faturadas.">
+          <div class="biomie-kpi-card__label">Quanto falta para a meta</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-gap-total">-</div>
+          <div class="biomie-kpi-card__sub" data-bind="fp-atingimento-total">Atingimento 0%</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Previsão de fechamento</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-projecao">-</div>
+          <div class="biomie-kpi-card__sub">Vendas faturadas + oportunidades em andamento</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Carteira</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-carteira-valor">-</div>
+          <div class="biomie-kpi-card__sub"><span data-bind="fp-pedidos-carteira">-</span> pedidos aguardando faturamento</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Sem vendas</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-vendedores-risco">-</div>
+          <div class="biomie-kpi-card__sub">Com meta definida</div>
+        </div>
+        <div class="biomie-kpi-card">
+          <div class="biomie-kpi-card__label">Metas pendentes</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-vendedores-sem-meta">-</div>
+          <div class="biomie-kpi-card__sub">Vendedores com atividade sem meta</div>
+        </div>
+        <div class="biomie-kpi-card" id="fp-vendedores-acima" style="display:none;">
+          <div class="biomie-kpi-card__label">Acima da meta</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-vendedores-acima">-</div>
+          <div class="biomie-kpi-card__sub">Vendedores</div>
+        </div>
+        <div class="biomie-kpi-card" id="fp-vendedores-abaixo" style="display:none;">
+          <div class="biomie-kpi-card__label">Abaixo da meta</div>
+          <div class="biomie-kpi-card__value" data-bind="fp-vendedores-abaixo">-</div>
+          <div class="biomie-kpi-card__sub">Com venda, sem atingir</div>
+        </div>
+      </div>
+
+      <!-- Main Layout Grid -->
+      <div class="fp-grid-layout anim d3">
+        <!-- Left Column: Alerts & Table -->
+        <div class="fp-main-column">
+          
+          <!-- Alerts Panel -->
+          <div id="flightAlerts" class="fp-alerts-panel" role="region" aria-label="Alertas do Plano de Voo" aria-live="polite" style="margin-bottom: 24px; display: none;">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="fp-card">
+            <div class="fp-card-header">
+              <h3>Vendedores</h3>
+              <small>Clique em uma linha para abrir o Vendor 360.</small>
+            </div>
+            <div class="fp-table-wrapper">
+              <table class="fp-table" data-mobile-card-table>
+                <thead>
+                  <tr>
+                    <th>Vendedor</th>
+                    <th title="Canal comercial: Varejo, Revenda, Licitação, Representante" style="font-size:11px;">Canal</th>
+                    <th>Status</th>
+                    <th title="Vendas confirmadas por notas fiscais autorizadas">Vendas faturadas</th>
+                    <th title="Meta proporcional ao período selecionado">Meta do período</th>
+                    <th title="Percentual da meta já alcançado">% da meta</th>
+                    <th title="Diferença entre a meta e as vendas faturadas">Quanto falta</th>
+                    <th>Previsão</th>
+                    <th data-mobile-skip title="Pedidos aceitos não faturados (carteira aceita)">Carteira</th>
+                    <th data-mobile-skip>NFs</th>
+                    <th data-mobile-skip>Pedidos</th>
+                    <th>Clientes</th>
+                    <th data-mobile-skip>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="flightVendorsTable"
+                  data-empty-title="Nenhum vendedor encontrado"
+                  data-empty-message="Não há vendedores com meta ou atividade comercial no período selecionado."
+                  data-empty-icon="person_off">
+                  <tr>
+                    <td colspan="13">
+                      <div class="biomie-drawer__stats" style="margin-top:10px;">
+                        <div class="biomie-drawer__stat"><div style="background:var(--skeleton-base);border-radius:4px;height:12px;width:100%">&nbsp;</div><div style="background:var(--skeleton-base);border-radius:4px;height:18px;width:100%;margin-top:4px">&nbsp;</div></div>
+                        <div class="biomie-drawer__stat"><div style="background:var(--skeleton-base);border-radius:4px;height:12px;width:100%">&nbsp;</div><div style="background:var(--skeleton-base);border-radius:4px;height:18px;width:100%;margin-top:4px">&nbsp;</div></div>
+                        <div class="biomie-drawer__stat"><div style="background:var(--skeleton-base);border-radius:4px;height:12px;width:100%">&nbsp;</div><div style="background:var(--skeleton-base);border-radius:4px;height:18px;width:100%;margin-top:4px">&nbsp;</div></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="fpSearchPagination" style="display:none;padding:12px 0;"></div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="fp-charts-row">
+          <div class="fp-card" id="fpDailyChartCard">
+            <div class="fp-card-header">
+              <h3>Ritmo diário de vendas</h3>
+              <small>Vendas acumuladas versus meta ponderada por dia útil</small>
+            </div>
+            <div class="fp-chart-container">
+              <canvas id="flightPlanChart"></canvas>
+            </div>
+          </div>
+
+          <div class="fp-card" id="fpAchievementChartCard">
+            <div class="fp-card-header">
+              <h3>Vendas versus meta</h3>
+              <small id="fpAchievementChartSubtitle">Prioridades comerciais por vendedor</small>
+            </div>
+            <div class="fp-chart-container">
+              <canvas id="achievementChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+</main>
+
+<!-- Mobile FAB: editar metas (visível somente em telas <= 768px e para quem pode editar) -->
+<a href="plano_voo_metas.php" class="fp-mobile-metas-fab" aria-label="Editar metas" data-fp-edit-targets hidden>
+  <span class="material-symbols-rounded">edit</span>
+</a>
+
+</body>
+</html>

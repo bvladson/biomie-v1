@@ -1,0 +1,4 @@
+# Company packages contain manifests and sync policies — block direct web access.
+# Only PHP code reads these files via Bootstrap::rootPath().
+Order Deny,Allow
+Deny from all

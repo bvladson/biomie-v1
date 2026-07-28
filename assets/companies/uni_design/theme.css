@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Uni Design — Theme Package
+   Conceito: design moderno, mobiliário corporativo criativo, inovação
+   Personalidade: CRIATIVO E OUSADO. Vermelho design + índigo criativo.
+   Primary: #C8242A (vermelho design) · Acento: #4338CA (índigo criativo)
+
+   WCAG:
+     #C8242A sobre branco = 5.6:1 ✅ (AA)
+     #A01D22 sobre branco = 7.2:1 ✅
+     #4338CA sobre branco = 5.9:1 ✅
+
+   DIFERENCIAL ÚNICO: botão primário com gradiente vermelho→índigo.
+   Nenhuma outra empresa na plataforma tem dois tons tão distintos num botão.
+   Charts: oportunidade em índigo (#4338CA) — criatividade/design como pipeline.
+   Carregado inline por views/layouts/app.php após todos os <link>.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-company="UNI_DESIGN"] {
+
+  /* ── Identidade de marca ── */
+  --company-primary:        #C8242A;
+  --company-primary-dark:   #A01D22;
+  --company-primary-soft:   #FEF0F0;
+  --company-secondary:      #1A1A1A;
+  --company-secondary-soft: #F1F1F1;
+  --company-accent:         #4338CA;
+  --company-accent-soft:    #EEF0FD;
+  --company-accent-dark:    #3730A3;
+
+  /* ── Superfícies — quase-branco com leve calor, design não é frio ── */
+  --company-bg:             #FDFBFB;
+  --company-surface:        #FFFFFF;
+  --company-surface-soft:   #FDF3F3;
+  --company-border:         #F0D6D7;
+
+  /* ── Texto ── */
+  --company-text:           #1A1A1A;
+  --company-text-muted:     #64748B;
+  --company-text-inverse:   #FFFFFF;
+
+  /* ── Bridge → Core ── */
+  --company-color:          #C8242A;
+  --company-color-2:        #4338CA;
+  --brand:                  #C8242A;
+  --brand-primary:          #C8242A;
+  --brand-dark:             #A01D22;
+  --brand-primary-soft:     rgba(200, 36, 42, 0.10);
+  --focus-ring:             rgba(200, 36, 42, 0.34);
+  --focus-ring-soft:        rgba(200, 36, 42, 0.16);
+  --border-acc:             rgba(200, 36, 42, 0.26);
+  --selection-bg:           rgba(200, 36, 42, 0.12);
+  --hero-spot-red:          rgba(200, 36, 42, 0.10);
+
+  /* ── Acento sistêmico ── */
+  --page-accent:            #C8242A;
+  --page-accent-soft:       rgba(200, 36, 42, 0.10);
+  --page-accent-border:     rgba(200, 36, 42, 0.22);
+  --page-accent-text:       #A01D22;
+
+  /* ── Bridge → MAG global vars ── */
+  --mag-bg:                 var(--company-bg);
+  --mag-surface-2:          var(--company-surface-soft);
+  --mag-border:             var(--company-border);
+  --mag-radius:             16px;
+  --biomie-card-radius:     16px;
+
+  /* ── Botão primário — gradiente vermelho→índigo: o mais ÚNICO da plataforma ──
+     Comunica: passado (vermelho clássico) → futuro criativo (índigo design).
+     Visualmente impossível de confundir com qualquer outra empresa. ── */
+  --button-gradient:        linear-gradient(135deg, #C8242A 0%, #4338CA 100%);
+  --button-shadow:          0 4px 16px rgba(200, 36, 42, 0.22);
+  --button-shadow-hover:    0 6px 22px rgba(67, 56, 202, 0.28);
+
+  /* ── Personalidade visual: textura e microinterações ── */
+  /* Sombra índigo: design premium com profundidade criativa */
+  --company-card-shadow:    0 8px 30px rgba(67, 56, 202, 0.12);
+  --company-hover-bg:       rgba(200, 36, 42, 0.04);
+  /* Radius design-forward: o mais arredondado do grupo MAG = estética moderna */
+  --company-card-radius:    16px;
+
+  /* ── Sidebar decoration ──
+     Vermelho design → Índigo criativo: a linha vertical do sidebar
+     conta a história da marca (energia→criatividade). ── */
+  --sidebar-bar-gradient:   linear-gradient(180deg, #C8242A 0%, #4338CA 55%, transparent 100%);
+
+  /* ── Paleta de gráficos ──
+     DIFERENCIAL: oportunidade em índigo (#4338CA) — pipeline de design.
+     Info também em índigo para reforçar a identidade criativa.
+     Neutro em tom roxo-cinza — único na plataforma. ── */
+  --page-chart-1:           #C8242A;
+  --page-chart-2:           #4338CA;
+
+  --chart-revenue:          #C8242A;
+  --chart-target:           #16A34A;
+  --chart-opportunity:      #4338CA;
+  --chart-pending:          #F59E0B;
+  --chart-cancelled:        #EF4444;
+  --chart-neutral:          #7171A0;
+  --chart-success:          #16A34A;
+  --chart-warning:          #F59E0B;
+  --chart-danger:           #EF4444;
+  --chart-info:             #4338CA;
+
+  /* ── Tooltip chart — tom índigo suave ── */
+  --chart-tooltip-border:   rgba(67, 56, 202, 0.16);
+
+  /* ── Badges / pills ── */
+  --badge-bg:               #EEF0FD;
+  --badge-text:             #4338CA;
+  --badge-border:           #C7D2FE;
+}
+
+/* Barra de acento da sidebar: ver --sidebar-bar-gradient (renderizada pela
+   regra global em mag-design-system.css, escopo body[data-company]). */

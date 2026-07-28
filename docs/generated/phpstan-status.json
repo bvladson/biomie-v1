@@ -1,0 +1,13 @@
+{
+    "generated_at_utc": "2026-07-25T21:19:55Z",
+    "command": "php vendor/phpstan/phpstan/phpstan analyse -c phpstan.core.neon --error-format=json",
+    "exit_code": 0,
+    "result": {
+        "totals": {
+            "errors": 0,
+            "file_errors": 0
+        },
+        "files": [],
+        "errors": []
+    }
+}

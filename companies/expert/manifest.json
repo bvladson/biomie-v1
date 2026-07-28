@@ -1,0 +1,35 @@
+{
+  "company_id": 2,
+  "slug": "expert",
+  "code": "EXPERT",
+  "name": "Expert",
+  "legal_name": "Expert Servicos, Comercio de Moveis e Licitacoes LTDA",
+  "active": true,
+  "default_channel": "licitacao",
+  "channels": ["licitacao"],
+  "legal": {
+    "cnpj": "40.914.338/0001-73",
+    "type": "matriz"
+  },
+  "brand": {
+    "name": "Expert",
+    "logo_icon": "images/logos/expert.png",
+    "logo_wide": "images/logos/expert.png",
+    "color": "#1B4F72",
+    "color_dark": "#154060"
+  },
+  "features": {
+    "geo": true,
+    "fiscal": true,
+    "finance": true,
+    "flight_plan": true,
+    "stock": true,
+    "commercial_pipeline": true
+  },
+  "sync": {
+    "rate_limit_per_minute": 5,
+    "from_date": "2025-07",
+    "channels": ["licitacao"],
+    "_note": "rate_limit=5 (12s/call) — EXPERT tem volume extremo em ListarPedidos; quota Omie esgota rápido"
+  }
+}

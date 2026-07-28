@@ -1,0 +1,21 @@
+{
+  "company": "uni_design",
+  "version": "1.0",
+  "note": "Referência de design. Runtime usa CSS variables (--chart-*) lidas por B.chartTheme().",
+  "semantic": {
+    "revenue":     { "color": "#C8242A", "label": "Faturamento / dado principal",     "css": "--chart-revenue" },
+    "target":      { "color": "#16A34A", "label": "Meta / crescimento / sucesso",     "css": "--chart-target" },
+    "opportunity": { "color": "#4338CA", "label": "Pipeline criativo / oportunidade", "css": "--chart-opportunity" },
+    "pending":     { "color": "#F59E0B", "label": "Pendente / atenção",               "css": "--chart-pending" },
+    "cancelled":   { "color": "#DC2626", "label": "Cancelado / perda",                "css": "--chart-cancelled" },
+    "neutral":     { "color": "#64748B", "label": "Neutro / histórico",               "css": "--chart-neutral" }
+  },
+  "rule": "Vermelho UNI = dado. Índigo = oportunidade criativa (único na plataforma). Verde = bom. Âmbar = atenção.",
+  "config": {
+    "barRadius": 6,
+    "lineTension": 0.3,
+    "gridColor": "#E2E8F0",
+    "labelColor": "#64748B",
+    "titleColor": "#1A1A1A"
+  }
+}

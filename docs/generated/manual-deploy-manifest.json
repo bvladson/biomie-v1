@@ -1,0 +1,125 @@
+{
+    "release_id": "biomie-local-20260726-091210",
+    "generated_at_utc": "2026-07-26T09:12:10Z",
+    "git_commit": null,
+    "git_status": "unavailable_empty_metadata",
+    "migration_state": "80/86",
+    "deployment_owner": "user",
+    "files": [
+        {
+            "path": "DIAGNOSTICO.md",
+            "bytes": 1932,
+            "sha256": "fd3b83314ca429ab78b1ae727b5e59b56cc9095065d0faa66767de7b09ccc263"
+        },
+        {
+            "path": "composer.json",
+            "bytes": 3558,
+            "sha256": "afe959dbf3b1ab4f4e527e62ee3eae6f08737f5128238dd66433f82bb55683eb"
+        },
+        {
+            "path": "api/quote_agenda_policy.php",
+            "bytes": 4129,
+            "sha256": "40c9be2ce2d625680153741783127b5ba0baa5ea4ce0e71eb5d51974a8620675"
+        },
+        {
+            "path": "app/Http/RequestInput.php",
+            "bytes": 3805,
+            "sha256": "50653d1336635b371d6bdfd2808a0f8d0412fed08857907f2e9591733c78b8bb"
+        },
+        {
+            "path": "app/Observability/EndpointMetricsCollector.php",
+            "bytes": 14030,
+            "sha256": "ec417e08775e5433ad4494377a6099e428a73232eb69f12cafc504d5bac53176"
+        },
+        {
+            "path": "app/QuoteAgenda/QuoteAgendaReadService.php",
+            "bytes": 24984,
+            "sha256": "638fa59b849b0839374f766943611825938b8117be8e4a43cf86c7812d8b59fe"
+        },
+        {
+            "path": "app/QuoteAgenda/QuoteFollowupChargeService.php",
+            "bytes": 18754,
+            "sha256": "b722a00bed3f3f3e7e35b8da5fd50093027572b6321bb194f685f7d3940cfafd"
+        },
+        {
+            "path": "app/QuoteAgenda/QuoteLiveSnapshotService.php",
+            "bytes": 11965,
+            "sha256": "2d44b6cde04cc4a50c529f05bf1b8a00c98b2ecc45b05b1cb1582a14db5816ed"
+        },
+        {
+            "path": "app/Support/OmieDateParser.php",
+            "bytes": 3793,
+            "sha256": "48c0e782e27bc39eae329378c0190e7d4a4d12d1d907d82e94398bc6ff811a13"
+        },
+        {
+            "path": "app/Sync/WebhookInboxProcessor.php",
+            "bytes": 21597,
+            "sha256": "7422f50bcb1fdd9e3100723a0f8fa4ff0ffeaa3b18d02e18c399928b8ada96f0"
+        },
+        {
+            "path": "config/architecture-complexity-baseline.json",
+            "bytes": 1001,
+            "sha256": "e2ab84565f098a14de48deed531915a7fb6d507d133e3c36f5905d18a8d72651"
+        },
+        {
+            "path": "config/asset-budget-baseline.json",
+            "bytes": 28880,
+            "sha256": "0869352bd879b501de2d9efa8ece09c784aa982d957c0ee959385143c0c7a95f"
+        },
+        {
+            "path": "config/security-html-allowlist.json",
+            "bytes": 33140,
+            "sha256": "3464695fec730be9a11f0596c20ed7b4ff981caf68cf9d7835a43fc6ef3fdd18"
+        },
+        {
+            "path": "tools/dev/architecture_debt_inventory.php",
+            "bytes": 4223,
+            "sha256": "47aab0dae689920eec65b48242604bb67eaa02138e2cf216b5a765cd22215b7e"
+        },
+        {
+            "path": "tools/dev/asset_budget.php",
+            "bytes": 3131,
+            "sha256": "aec511f7be87a427ef007867286113f97c62b4bab240ec9cc85052b65dab628a"
+        },
+        {
+            "path": "tools/dev/build_manual_deploy_manifest.php",
+            "bytes": 2105,
+            "sha256": "b01888a25fd5f0f08b7ce370eff242578822a8424562d60eaad8dc882cd96b0c"
+        },
+        {
+            "path": "tools/dev/company_id_inventory.php",
+            "bytes": 4092,
+            "sha256": "46657f270eaea1310b500cc4ab367e606a222679ea73e9acc899fdbcf9420fa4"
+        },
+        {
+            "path": "tools/dev/endpoint_security_inventory.php",
+            "bytes": 4290,
+            "sha256": "9d6ceb267a274923b724f7da2fa366b54099b70a20dfae73751d19768b343586"
+        },
+        {
+            "path": "tools/dev/frontend_security_inventory.php",
+            "bytes": 4347,
+            "sha256": "a2dca037a643796e8bbb19bd090dc74b1eccb5e991a65c89804502c7685555c6"
+        },
+        {
+            "path": "tools/dev/generate_runtime_diagnostics.php",
+            "bytes": 5491,
+            "sha256": "aeff1b18ab82431db9514ebd481b8eb5513dab56f3e02de49238151cbba69896"
+        },
+        {
+            "path": "tools/dev/retention_dry_run.php",
+            "bytes": 5314,
+            "sha256": "e4db65b9243f326cf634c5f2ad286d160c744c5239badbcfb27fcfb9e28efcf0"
+        },
+        {
+            "path": "tests/run_request_input_contract.php",
+            "bytes": 1506,
+            "sha256": "0302c600105e63b26bf4666d23fd3ca80ceb09538148168b8aad9b7c054df587"
+        },
+        {
+            "path": "tests/run_quote_agenda_policy_cache_contract.php",
+            "bytes": 1764,
+            "sha256": "5c6e74b372884179bf5b36c8e5d19ef45a3080d214da9c3ef75b932f1c453f64"
+        }
+    ]
+}

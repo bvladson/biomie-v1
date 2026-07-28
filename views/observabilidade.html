@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f7f8fa" />
+  <meta name="description" content="Saúde operacional, qualidade, atualização e desempenho dos dados do BIomie." />
+  <title>Observabilidade | BIomie MAG</title>
+</head>
+<body class="mag-page mag-clean-page obs-page-body" data-page="observabilidade">
+<main class="page obs-page" id="obsDashboardRoot" aria-busy="true">
+  <section class="obs-commandbar" aria-label="Controles da observabilidade">
+    <div class="obs-commandbar__status" id="obsHealthStatus" data-level="loading" aria-live="polite">
+      <span class="obs-commandbar__status-icon material-symbols-rounded" id="obsHealthIcon" aria-hidden="true">progress_activity</span>
+      <div>
+        <span class="obs-commandbar__eyebrow">Estado geral</span>
+        <strong id="obsHealthLabel">Verificando os sinais…</strong>
+        <small id="obsHealthSummary">Consolidando qualidade, filas e desempenho.</small>
+      </div>
+    </div>
+
+    <div class="obs-commandbar__controls">
+      <label class="obs-control" for="obsWindowSelect">
+        <span>Período analisado</span>
+        <select id="obsWindowSelect" class="obs-select">
+          <option value="1">Última hora</option>
+          <option value="6">Últimas 6 horas</option>
+          <option value="24" selected>Últimas 24 horas</option>
+          <option value="72">Últimos 3 dias</option>
+          <option value="168">Últimos 7 dias</option>
+          <option value="720">Últimos 30 dias</option>
+        </select>
+      </label>
+
+      <label class="obs-auto-refresh" for="obsAutoRefresh">
+        <input id="obsAutoRefresh" type="checkbox" />
+        <span aria-hidden="true"></span>
+        Atualizar a cada 5 min
+      </label>
+
+      <button class="btn-secondary obs-refresh-button" id="obsRefreshButton" type="button">
+        <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
+        <span>Atualizar agora</span>
+      </button>
+    </div>
+
+    <div class="obs-commandbar__meta">
+      <span>Janela <strong id="obsWindowHours">24h</strong></span>
+      <span>Atualizado <time id="obsGeneratedAt" datetime="">—</time></span>
+      <span id="obsCacheStatus">Consulta inicial</span>
+      <button class="obs-trace-button" id="obsCopyTrace" type="button" title="Copiar referência técnica">
+        Referência <code id="obsTraceId">—</code>
+        <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
+      </button>
+    </div>
+  </section>
+
+  <nav class="obs-section-nav" aria-label="Seções da página">
+    <a href="#obs-overview"><span class="material-symbols-rounded" aria-hidden="true">monitor_heart</span>Visão geral</a>
+    <a href="#obs-alerts"><span class="material-symbols-rounded" aria-hidden="true">notifications_active</span>Alertas <span class="obs-nav-count" id="obsAlertsNavCount">0</span></a>
+    <a href="#obs-data"><span class="material-symbols-rounded" aria-hidden="true">database</span>Bases</a>
+    <a href="#obs-processing"><span class="material-symbols-rounded" aria-hidden="true">account_tree</span>Processamentos</a>
+    <a href="#obs-quality"><span class="material-symbols-rounded" aria-hidden="true">rule</span>Qualidade</a>
+    <a href="#obs-performance"><span class="material-symbols-rounded" aria-hidden="true">speed</span>Desempenho</a>
+  </nav>
+
+  <div id="obsError" class="obs-feedback obs-feedback--error" role="alert" hidden>
+    <span class="material-symbols-rounded" aria-hidden="true">cloud_off</span>
+    <div><strong>Não foi possível atualizar a observabilidade.</strong><p id="obsErrorMessage">Tente novamente em alguns instantes.</p></div>
+    <button class="btn-secondary" type="button" data-obs-retry>Tentar novamente</button>
+  </div>
+
+  <div id="obsLoading" class="obs-loading" role="status" aria-live="polite">
+    <span class="obs-loading__spinner material-symbols-rounded" aria-hidden="true">progress_activity</span>
+    <div><strong>Montando o diagnóstico operacional</strong><small>Leitura das bases, filas, regras e tempos de resposta.</small></div>
+    <div class="obs-loading__grid" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <div id="obsContent" class="obs-content" hidden>
+    <section class="obs-overview" id="obs-overview" aria-labelledby="obsOverviewTitle">
+      <article class="obs-health-card" id="obsHealthCard" data-level="loading">
+        <div class="obs-health-card__head">
+          <span class="obs-health-card__icon material-symbols-rounded" aria-hidden="true">monitor_heart</span>
+          <div>
+            <span class="obs-eyebrow">Leitura executiva</span>
+            <h2 id="obsOverviewTitle">Saúde dos dados</h2>
+          </div>
+          <span class="obs-health-card__badge" id="obsHealthBadge">Analisando</span>
+        </div>
+        <p class="obs-health-card__message" id="obsRecommendation">Aguarde a consolidação dos sinais para saber onde agir primeiro.</p>
+        <ul class="obs-priority-list" id="obsPriorityList" aria-label="Prioridades recomendadas"></ul>
+        <div class="obs-pressure" aria-label="Pressão operacional">
+          <div><span>Pressão operacional</span><strong id="obsPressureValue">0%</strong></div>
+          <div class="obs-pressure__track"><span id="obsProgressFill" style="width:0%"></span></div>
+          <div class="obs-pressure__signals">
+            <span><strong id="obsPendingTotal">0</strong> pendentes</span>
+            <span><strong id="obsShadowCritical">0</strong> comparações críticas</span>
+            <span><strong id="obsDivergenceTotal">0</strong> divergências</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="obs-kpi-grid" id="obsCards">
+        <article class="obs-kpi" id="obsKpiPending" data-level="neutral">
+          <span class="obs-kpi__icon material-symbols-rounded" aria-hidden="true">pending_actions</span>
+          <div><span class="obs-kpi__label">Itens pendentes</span><strong class="obs-kpi__value" id="cardPending">—</strong><small id="cardPendingAge">—</small></div>
+        </article>
+        <article class="obs-kpi" id="obsKpiFailures" data-level="neutral">
+          <span class="obs-kpi__icon material-symbols-rounded" aria-hidden="true">error_med</span>
+          <div><span class="obs-kpi__label">Ocorrências recentes</span><strong class="obs-kpi__value" id="cardFailedSpans">—</strong><small>Erros e alertas na janela</small></div>
+        </article>
+        <article class="obs-kpi" id="obsKpiShadow" data-level="neutral">
+          <span class="obs-kpi__icon material-symbols-rounded" aria-hidden="true">compare_arrows</span>
+          <div><span class="obs-kpi__label">Comparações críticas</span><strong class="obs-kpi__value" id="cardShadow">—</strong><small>Diferenças relevantes entre leituras</small></div>
+        </article>
+        <article class="obs-kpi" id="obsKpiStale" data-level="neutral">
+          <span class="obs-kpi__icon material-symbols-rounded" aria-hidden="true">database_off</span>
+          <div><span class="obs-kpi__label">Bases com atraso</span><strong class="obs-kpi__value" id="cardStale">—</strong><small>Leituras degradadas agora</small></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="obs-section obs-alerts" id="obs-alerts" aria-labelledby="obsAlertsTitle">
+      <div class="obs-section__header">
+        <div><span class="obs-eyebrow">Ação prioritária</span><h2 id="obsAlertsTitle">Alertas ativos</h2><p>Ocorrências ordenadas por impacto e resolvidas quando a situação normaliza.</p></div>
+        <span class="obs-section__count" id="obsAlertsCount">0 alertas</span>
+      </div>
+      <div id="obsAlertsSection" aria-live="polite"></div>
+    </section>
+
+    <details class="page-reading-guide obs-reading-guide">
+      <summary>
+        <span class="material-symbols-rounded">help</span>
+        Como interpretar este painel
+        <small>Conceitos e critérios de decisão</small>
+        <span class="material-symbols-rounded prg-chevron">expand_more</span>
+      </summary>
+      <div class="page-reading-guide__body">
+        <div class="page-reading-guide__grid">
+          <div class="page-reading-guide__item"><span class="material-symbols-rounded">compare_arrows</span><div><strong>Consistência</strong><p>Confere se as leituras internas fecham entre si. Divergências podem distorcer os painéis.</p></div></div>
+          <div class="page-reading-guide__item"><span class="material-symbols-rounded">schedule</span><div><strong>Atualização</strong><p>Mede quanto tempo passou desde a última sincronização das bases críticas.</p></div></div>
+          <div class="page-reading-guide__item"><span class="material-symbols-rounded">crisis_alert</span><div><strong>Comparação crítica</strong><p>Indica diferenças graves entre a origem e o dado salvo, exigindo validação imediata.</p></div></div>
+          <div class="page-reading-guide__item"><span class="material-symbols-rounded">rule</span><div><strong>Regras de negócio</strong><p>Aponta registros que violam premissas e reduzem a qualidade das análises.</p></div></div>
+        </div>
+        <div class="page-reading-guide__note">Estado saudável indica que não há sinais críticos conhecidos. Um alerta não significa indisponibilidade total: use a recomendação executiva e a seção correspondente para priorizar a ação.</div>
+      </div>
+    </details>
+
+    <div class="obs-table-tools" role="search" aria-label="Filtrar detalhes técnicos">
+      <label class="obs-table-search"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="obsTableSearch" type="search" placeholder="Filtrar processos, bases, regras ou endpoints…" autocomplete="off" /></label>
+      <label class="obs-level-filter">Exibir<select id="obsLevelFilter"><option value="all">Todos os sinais</option><option value="attention">Somente atenção</option><option value="critical">Somente críticos</option><option value="healthy">Somente saudáveis</option></select></label>
+      <span class="obs-filter-summary" id="obsFilterSummary" aria-live="polite">Todos os registros</span>
+    </div>
+
+    <section class="obs-section obs-deferred" id="obs-data" aria-labelledby="obsDataTitle">
+      <div class="obs-section__header">
+        <div><span class="obs-eyebrow">Confiabilidade</span><h2 id="obsDataTitle">Cobertura e atualização das bases</h2><p>Completude dos cadastros e defasagem das fontes usadas nos painéis.</p></div>
+      </div>
+      <div class="obs-coverage-grid" id="obsCoverageCards">
+        <article class="obs-coverage" id="obsCoverageClients" data-level="neutral"><span class="material-symbols-rounded" aria-hidden="true">groups</span><div><span>Total de clientes</span><strong id="cardTotalClients">—</strong><small>Base dimensional consolidada</small></div></article>
+        <article class="obs-coverage" id="obsCoverageGeo" data-level="neutral"><span class="material-symbols-rounded" aria-hidden="true">location_on</span><div><span>Cobertura geográfica</span><strong id="cardGeoCoveragePct">—</strong><small id="cardGeoCoverageSub">Clientes geocodificados</small></div></article>
+        <article class="obs-coverage" id="obsCoverageCnae" data-level="neutral"><span class="material-symbols-rounded" aria-hidden="true">category</span><div><span>Cobertura CNAE</span><strong id="cardCnaeCoveragePct">—</strong><small id="cardCnaeCoverageSub">Clientes classificados</small></div></article>
+        <article class="obs-coverage" id="obsCoverageEnriched" data-level="neutral"><span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span><div><span>Clientes enriquecidos</span><strong id="cardEnrichedPct">—</strong><small id="cardEnrichedSub">Cadastros complementados</small></div></article>
+      </div>
+      <article class="obs-table-card" data-obs-table-card>
+        <div class="obs-table-card__header"><div><h3>Bases acompanhadas</h3><p>Estado atual, atraso e conferência das fontes críticas.</p></div><span class="obs-table-count" id="obsDatasetsCount">0 bases</span></div>
+        <div class="table-wrap"><table class="data-table obs-table"><caption>Atualização e completude das bases</caption><thead><tr><th>Base</th><th>Modo</th><th>Atraso</th><th>Conferência</th><th>Motivo</th><th>Divergências</th></tr></thead><tbody id="obsDatasetsBody" data-obs-body data-colspan="6"></tbody></table></div>
+      </article>
+    </section>
+
+    <section class="obs-section obs-deferred" id="obs-processing" aria-labelledby="obsProcessingTitle">
+      <div class="obs-section__header">
+        <div><span class="obs-eyebrow">Operação</span><h2 id="obsProcessingTitle">Processamentos e integrações</h2><p>Execuções internas, atualizações das visões e chamadas ao Omie.</p></div>
+      </div>
+      <div class="obs-table-grid">
+        <article class="obs-table-card" data-obs-table-card>
+          <div class="obs-table-card__header"><div><h3>Fluxos por domínio</h3><p>Último estado e duração por processamento.</p></div><span class="obs-table-count" id="obsJobsCount">0 fluxos</span></div>
+          <div class="table-wrap"><table class="data-table obs-table"><caption>Fluxos por domínio</caption><thead><tr><th>Domínio</th><th>Status</th><th>Execuções</th><th>Média</th><th>P95</th><th>Fim</th></tr></thead><tbody id="obsJobsBody" data-obs-body data-colspan="6"></tbody></table></div>
+        </article>
+        <article class="obs-table-card" data-obs-table-card>
+          <div class="obs-table-card__header"><div><h3>Chamadas ao Omie</h3><p>Volume, erros e latência por método.</p></div><span class="obs-table-count" id="obsOmieCount">0 métodos</span></div>
+          <div class="table-wrap"><table class="data-table obs-table"><caption>Chamadas ao Omie</caption><thead><tr><th>Método</th><th>Leituras</th><th>Erros</th><th>Média</th><th>P95</th></tr></thead><tbody id="obsOmieBody" data-obs-body data-colspan="5"></tbody></table></div>
+        </article>
+      </div>
+      <article class="obs-table-card" data-obs-table-card>
+        <div class="obs-table-card__header"><div><h3>Saúde das atualizações</h3><p>Último estado, duração e taxa de erro nos últimos 7 dias.</p></div><span class="obs-table-count" id="obsPipelineCount">0 processos</span></div>
+        <div class="table-wrap"><table class="data-table obs-table"><caption>Saúde das atualizações</caption><thead><tr><th>Processo</th><th>Status</th><th>Última atualização</th><th>Idade</th><th>Tempo</th><th>Execuções 7d</th><th>Falhas 7d</th></tr></thead><tbody id="obsPipelineHealthBody" data-obs-body data-colspan="7"></tbody></table></div>
+      </article>
+    </section>
+
+    <section class="obs-section obs-deferred" id="obs-quality" aria-labelledby="obsQualityTitle">
+      <div class="obs-section__header"><div><span class="obs-eyebrow">Qualidade</span><h2 id="obsQualityTitle">Divergências e comparações</h2><p>Pontos que podem alterar a interpretação dos indicadores.</p></div></div>
+      <div class="obs-table-grid">
+        <article class="obs-table-card" data-obs-table-card><div class="obs-table-card__header"><div><h3>Divergências por regra</h3><p>Fila ativa priorizada por severidade.</p></div><span class="obs-table-count" id="obsRulesCount">0 regras</span></div><div class="table-wrap"><table class="data-table obs-table"><caption>Divergências por regra</caption><thead><tr><th>Regra</th><th>Total</th><th>Severidade</th></tr></thead><tbody id="obsRulesBody" data-obs-body data-colspan="3"></tbody></table></div></article>
+        <article class="obs-table-card" data-obs-table-card><div class="obs-table-card__header"><div><h3>Comparativo por origem</h3><p>Onde as leituras ainda apresentam diferenças.</p></div><span class="obs-table-count" id="obsShadowCount">0 origens</span></div><div class="table-wrap"><table class="data-table obs-table"><caption>Comparações por origem</caption><thead><tr><th>Origem</th><th>Total</th><th>Críticos</th></tr></thead><tbody id="obsShadowBody" data-obs-body data-colspan="3"></tbody></table></div></article>
+      </div>
+    </section>
+
+    <section class="obs-section obs-deferred" id="obs-performance" aria-labelledby="obsPerformanceTitle">
+      <div class="obs-section__header"><div><span class="obs-eyebrow">Desempenho</span><h2 id="obsPerformanceTitle">Tempo de resposta e ocorrências</h2><p>Endpoints lentos, taxas de erro e sinais técnicos recentes.</p></div></div>
+      <article class="obs-table-card" data-obs-table-card>
+        <div class="obs-table-card__header"><div><h3>Fontes monitoradas</h3><p id="obsLatencyWindowLabel">p50 e p95 na janela selecionada.</p></div><span class="obs-table-count" id="obsLatencyCount">0 endpoints</span></div>
+        <div class="table-wrap"><table class="data-table obs-table"><caption>Latência dos endpoints monitorados</caption><thead><tr><th>Origem</th><th>Método</th><th>Leituras</th><th>Erros</th><th>Erro %</th><th>Média</th><th>P50</th><th>P95</th><th>Máximo</th></tr></thead><tbody id="obsLatencyBody" data-obs-body data-colspan="9"></tbody></table></div>
+      </article>
+      <article class="obs-table-card" data-obs-table-card>
+        <div class="obs-table-card__header"><div><h3>Ocorrências registradas</h3><p>Últimos processamentos e eventos com erro ou alerta.</p></div><span class="obs-table-count" id="obsFailuresCount">0 ocorrências</span></div>
+        <div class="table-wrap"><table class="data-table obs-table"><caption>Ocorrências recentes</caption><thead><tr><th>Tipo</th><th>Nome</th><th>Status</th><th>Referência</th><th>Quando</th></tr></thead><tbody id="obsFailuresBody" data-obs-body data-colspan="5"></tbody></table></div>
+      </article>
+    </section>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,197 @@
+{
+    "periodo": {
+        "start": "2026-01-01",
+        "end": "2026-05-31"
+    },
+    "sem_titulo_filter": "items",
+    "base_stats": {
+        "total_nfs": 57,
+        "soma_base_comercial": "140378.62",
+        "media_base_comercial": "2462.78",
+        "min_base_comercial": "60.92",
+        "max_base_comercial": "36660.00"
+    },
+    "por_vendedor": [
+        {
+            "nome_vendedor": "CAIO BRUNO - REV",
+            "qtd_nfs": 21,
+            "soma_base_comercial": "31539.63"
+        },
+        {
+            "nome_vendedor": "GABRIEL BENÍCIO",
+            "qtd_nfs": 9,
+            "soma_base_comercial": "10366.21"
+        },
+        {
+            "nome_vendedor": "CAIO - REV",
+            "qtd_nfs": 7,
+            "soma_base_comercial": "16778.70"
+        },
+        {
+            "nome_vendedor": "SAMANTHA ROCHA",
+            "qtd_nfs": 7,
+            "soma_base_comercial": "14831.22"
+        },
+        {
+            "nome_vendedor": "ROBERTO SIQ.",
+            "qtd_nfs": 5,
+            "soma_base_comercial": "51696.71"
+        },
+        {
+            "nome_vendedor": "ALEXANDRE SOUZA - REV",
+            "qtd_nfs": 3,
+            "soma_base_comercial": "651.02"
+        },
+        {
+            "nome_vendedor": "ALEXANDRE SOUZA",
+            "qtd_nfs": 2,
+            "soma_base_comercial": "2019.00"
+        },
+        {
+            "nome_vendedor": "JÚLIO - REPRESENTANTE",
+            "qtd_nfs": 1,
+            "soma_base_comercial": "7980.20"
+        },
+        {
+            "nome_vendedor": "ANA KARYNE",
+            "qtd_nfs": 1,
+            "soma_base_comercial": "4319.93"
+        },
+        {
+            "nome_vendedor": "CAIO - VAR",
+            "qtd_nfs": 1,
+            "soma_base_comercial": "196.00"
+        }
+    ],
+    "por_cliente": [
+        {
+            "nome_cliente": "64.556.445 YARA ARAUJO DE ALENCAR",
+            "qtd_nfs": 6,
+            "soma_base_comercial": "2974.12"
+        },
+        {
+            "nome_cliente": "JORA OFFICE E DECOR LTDA",
+            "qtd_nfs": 4,
+            "soma_base_comercial": "13206.23"
+        },
+        {
+            "nome_cliente": "PEDRO GUILHERME SOUZA SILVA",
+            "qtd_nfs": 4,
+            "soma_base_comercial": "720.02"
+        },
+        {
+            "nome_cliente": "INSTITUTO CULTURAL IRACEMA - ICI",
+            "qtd_nfs": 3,
+            "soma_base_comercial": "50501.74"
+        },
+        {
+            "nome_cliente": "B K COMERCIO E SERVICOS DE MOVEIS DE ESCRITORIO LTDA",
+            "qtd_nfs": 3,
+            "soma_base_comercial": "7440.74"
+        },
+        {
+            "nome_cliente": "MOVEIS SAARA LTDA",
+            "qtd_nfs": 3,
+            "soma_base_comercial": "3996.81"
+        },
+        {
+            "nome_cliente": "BIG GUINDASTES &amp; LOCACOES LTDA",
+            "qtd_nfs": 2,
+            "soma_base_comercial": "5498.22"
+        },
+        {
+            "nome_cliente": "ANA LIVIA DE MENEZES ALBUQUERQUE",
+            "qtd_nfs": 2,
+            "soma_base_comercial": "1219.00"
+        },
+        {
+            "nome_cliente": "61.160.742 ALANA LIMA FERREIRA",
+            "qtd_nfs": 2,
+            "soma_base_comercial": "449.50"
+        },
+        {
+            "nome_cliente": "MOVEIS INTELIGENTES PARA ESCRITORIO LTDA",
+            "qtd_nfs": 2,
+            "soma_base_comercial": "215.28"
+        }
+    ],
+    "por_mes": [
+        {
+            "mes": "2026-02",
+            "qtd_nfs": 28,
+            "soma_base_comercial": "44451.60"
+        },
+        {
+            "mes": "2026-04",
+            "qtd_nfs": 8,
+            "soma_base_comercial": "12675.82"
+        },
+        {
+            "mes": "2026-05",
+            "qtd_nfs": 21,
+            "soma_base_comercial": "83251.20"
+        }
+    ],
+    "por_faixa_valor": {
+        "ate_500": "15",
+        "de_500_2k": "25",
+        "de_2k_10k": "15",
+        "de_10k_50k": "2",
+        "acima_50k": "0",
+        "soma_ate_500": "2904.63",
+        "soma_500_2k": "27958.21",
+        "soma_2k_10k": "62730.04",
+        "soma_10k_50k": "46785.74",
+        "soma_acima_50k": "0.00"
+    },
+    "caracteristicas": {
+        "total": 57,
+        "com_chave_nfe_valida": "57",
+        "sem_chave_nfe_valida": "0",
+        "com_pedido": "57",
+        "sem_pedido": "0",
+        "chave_e_pedido": "57",
+        "chave_sem_pedido": "0",
+        "pedido_sem_chave": "0",
+        "sem_chave_nem_pedido": "0"
+    },
+    "candidatos_por_estrategia": {
+        "E1_numero_nf_no_documento": 0,
+        "E2_cliente_valor_exato_3d": 0,
+        "E3_cliente_valor_exato_10d": 0,
+        "E4_cliente_valor_aprox_5pct_15d": 0,
+        "E5_pedido_no_documento": 0,
+        "E6_cliente_sem_titulo_no_banco": 0,
+        "E7_titulo_sem_chave_nfe_para_cliente": 0,
+        "E8_payload_bruto_bronze": null
+    },
+    "candidatos_por_pedido": {
+        "P1_pedido_id_omie": 0,
+        "P2_pedido_numero_documento": 0,
+        "P3_codigo_pedido_origem": 0,
+        "P4_documento_origem_ref": 2,
+        "P5_cliente_pedido_valor": 0,
+        "P6_cliente_mes_valor": 0
+    },
+    "classificacao_provavel": [
+        {
+            "classificacao": "titulo_nao_lancado",
+            "qtd": 57,
+            "soma_base_comercial": "140378.62"
+        }
+    ],
+    "top_nfs_sem_titulo": {
+        "error": "SQLSTATE[HY093]: Invalid parameter number"
+    },
+    "detalhe_nfs_focus": {
+        "error": "SQLSTATE[HY093]: Invalid parameter number"
+    },
+    "recomendacao": {
+        "total_sem_titulo": 57,
+        "soma_impactada": 140378.62,
+        "candidato_forte": 0,
+        "candidato_medio": 0,
+        "sem_candidato": 57,
+        "proximo_patch": "Investigar manualmente — sem candidatos automáticos claros."
+    }
+}

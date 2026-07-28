@@ -1,0 +1,3249 @@
+{
+    "generated_at_utc": "2026-07-25T21:28:21Z",
+    "inner_html": {
+        "total": 524,
+        "dynamic_review_required": 457,
+        "occurrences": [
+            {
+                "file": "assets/js/app.js",
+                "line": 176,
+                "classification": "dynamic_review_required",
+                "source": "wrapper.innerHTML = `"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 220,
+                "classification": "dynamic_review_required",
+                "source": "if (grid) grid.innerHTML = B.renderInvoiceDetailGrid(entry);"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 224,
+                "classification": "dynamic_review_required",
+                "source": "note.innerHTML = `<strong>Leitura rapida, sem nova consulta.</strong><span>Este detalhe foi montado com os dados ja carregados na tela atual.${vendorAction}</span>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 283,
+                "classification": "dynamic_review_required",
+                "source": "if (feedback.dataset.dashboardNotice === '1') { feedback.innerHTML = ''; delete feedback.dataset.dashboardNotice; }"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 287,
+                "classification": "dynamic_review_required",
+                "source": "feedback.innerHTML = '<div class=\"module-alert module-alert--warning\"><strong>Leitura parcial detectada</strong><span>O resumo principal veio com pouco sinal fiscal. O painel usou a camada operacional para manter a leitura do periodo, mas vale revisar a competencia historica.</span></div>';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 519,
+                "classification": "dynamic_review_required",
+                "source": "empty.innerHTML = `"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 564,
+                "classification": "dynamic_review_required",
+                "source": "empty.innerHTML = `"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 690,
+                "classification": "dynamic_review_required",
+                "source": "document.querySelectorAll(`[data-bind=\"${binding}\"]`).forEach((el) => { if (!el.querySelector('.bmie-delta')) el.insertAdjacentHTML('afterend', delta); });"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 919,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = '<span style=\"color:var(--text-3); font-size:16px;\" title=\"Erro de carregamento\">-</span>';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1201,
+                "classification": "dynamic_review_required",
+                "source": "freshnessEl.innerHTML = '<span class=\"product-freshness-badge' + (isStale ? ' product-freshness-badge--stale' : '') + '\">'"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1227,
+                "classification": "escaped_or_sanitized",
+                "source": "if (notes) notes.innerHTML = (data.notes || []).map((n) => `<li>${escapeHtml(n)}</li>`).join('');"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1303,
+                "classification": "dynamic_review_required",
+                "source": "fw.innerHTML = bar('Commit',  getCssVar('--text-3')    || '#adb5bd', f.commit)"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1334,
+                "classification": "dynamic_review_required",
+                "source": "ow.innerHTML = renderList(invoices, 'NF autorizadas', 'Nenhuma NF no periodo.', 'NF')"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1343,
+                "classification": "dynamic_review_required",
+                "source": "nfEl.innerHTML = '<div style=\"font-size:12px;color:var(--text-3);padding:10px 0\">Nenhuma NF autorizada encontrada no período selecionado.</div>';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1345,
+                "classification": "dynamic_review_required",
+                "source": "nfEl.innerHTML = nfRows.slice(0, 50).map((x) => {"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1367,
+                "classification": "dynamic_review_required",
+                "source": "ownershipContent.innerHTML = '<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;\">'"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1383,
+                "classification": "escaped_or_sanitized",
+                "source": "if (ow) ow.innerHTML = `<div class=\"module-alert module-alert--danger\" style=\"margin-top:10px\">${escapeHtml(err.message)}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1525,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = `<div class=\"product-mini-list__row\"><strong>${escapeHtml(emptyText)}</strong><small>-</small></div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1528,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map((row) => ("
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1540,
+                "classification": "dynamic_review_required",
+                "source": "summary.innerHTML = ["
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1576,
+                "classification": "static_template",
+                "source": "if (meta)    meta.innerHTML  = '';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1579,
+                "classification": "static_template",
+                "source": "if (summary) summary.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1580,
+                "classification": "static_template",
+                "source": "if (clients) clients.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1581,
+                "classification": "static_template",
+                "source": "if (vendors) vendors.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1582,
+                "classification": "static_template",
+                "source": "body.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1589,
+                "classification": "dynamic_review_required",
+                "source": "meta.innerHTML = ["
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1597,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = B.renderProductBreakdownRows(rows);"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1625,
+                "classification": "dynamic_review_required",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-secondary\">${stateLabel}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1636,
+                "classification": "dynamic_review_required",
+                "source": "if (feedback) feedback.innerHTML = '<div class=\"alert alert-secondary\">Agendando sincronizacao comercial...</div>';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1639,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-success\">${escapeHtml((payload && payload.message) || 'Sincronizacao iniciada.')}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1644,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-danger\">${escapeHtml(error.message + extra)}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1645,
+                "classification": "dynamic_review_required",
+                "source": "} finally { window.setTimeout(() => { if (feedback) feedback.innerHTML = ''; }, 5000); }"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1656,
+                "classification": "dynamic_review_required",
+                "source": "if (feedback) feedback.innerHTML = '<div class=\"alert alert-secondary\">Iniciando sync canônico — buscando dados no Omie. Isso pode levar alguns minutos...</div>';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1659,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-success\">${escapeHtml((payload && payload.message) || 'Sync canonico concluido.')}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1663,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-danger\">${escapeHtml(error.message)}${extra}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1666,
+                "classification": "dynamic_review_required",
+                "source": "window.setTimeout(() => { if (feedback) feedback.innerHTML = ''; }, 8000);"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1678,
+                "classification": "dynamic_review_required",
+                "source": "if (feedback) feedback.innerHTML = '<div class=\"alert alert-secondary\">Agendando sync financeiro...</div>';"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1681,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-success\">${escapeHtml((payload && payload.message) || 'Sync financeiro iniciado.')}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1685,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = `<div class=\"alert alert-danger\">${escapeHtml(error.message)}</div>`;"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1688,
+                "classification": "dynamic_review_required",
+                "source": "window.setTimeout(() => { if (feedback) feedback.innerHTML = ''; }, 8000);"
+            },
+            {
+                "file": "assets/js/app.js",
+                "line": 1763,
+                "classification": "escaped_or_sanitized",
+                "source": "errorTarget.innerHTML = `<div class=\"alert alert-danger mb-0\">${escapeHtml(error.message)}${extra}</div>`;"
+            },
+            {
+                "file": "assets/js/biomie-map-panel.js",
+                "line": 11,
+                "classification": "dynamic_review_required",
+                "source": "if (node) node.innerHTML = value;"
+            },
+            {
+                "file": "assets/js/biomie-map-panel.js",
+                "line": 158,
+                "classification": "dynamic_review_required",
+                "source": "headerEl.innerHTML = chips.join('');"
+            },
+            {
+                "file": "assets/js/biomie-map-panel.js",
+                "line": 161,
+                "classification": "static_template",
+                "source": "headerEl.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/biomie-map-panel.js",
+                "line": 220,
+                "classification": "escaped_or_sanitized",
+                "source": "eyebrow.innerHTML = `<span style=\"display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:${ttDef.color}\">${escapeHtml(ttDef.label)}</span>`;"
+            },
+            {
+                "file": "assets/js/biomie-map-panel.js",
+                "line": 258,
+                "classification": "dynamic_review_required",
+                "source": "if (el) { el.innerHTML = ''; el.style.display = 'none'; }"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 435,
+                "classification": "dynamic_review_required",
+                "source": "breadcrumb.innerHTML = parts.map((part, index) =>"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1023,
+                "classification": "static_template",
+                "source": "node.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1661,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = buckets.map((bucket, idx) => {"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1679,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = staticBuckets.map((b) => `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1759,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = '<div class=\"geo-ranking-empty\">Sem territórios no filtro.</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1788,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = '<div class=\"geo-ranking-empty\">Nenhum território corresponde à busca.</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1793,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = visibleRows.map((row, index) => {"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1843,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `<span class=\"material-symbols-rounded\" style=\"vertical-align:middle;font-size:16px;margin-right:6px;\">bar_chart</span>`"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1848,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `<span class=\"material-symbols-rounded\" style=\"vertical-align:middle;font-size:16px;margin-right:6px;\">check_circle</span>`"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 1962,
+                "classification": "dynamic_review_required",
+                "source": "if (alertsPanel) alertsPanel.innerHTML = '<div class=\"geo-alerts-empty\">Clique na aba Alertas para carregar.</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 2026,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 2560,
+                "classification": "static_template",
+                "source": "container.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 2565,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = chips.map((chip) =>"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3270,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3278,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3286,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3292,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3298,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3334,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = '<div class=\"geo-ranking-empty\">Sem territórios com venda no filtro.</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3371,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = visible.map((row, i) => {"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3579,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = insights.slice(0, 5).map(ins => `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3885,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = actions.map(a => `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3912,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = '<p style=\"color:var(--mag-muted);font-size:13px;padding:8px 0;\">Carregando notas fiscais…</p>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3923,
+                "classification": "escaped_or_sanitized",
+                "source": "panel.innerHTML = `<p style=\"color:var(--danger,#dc2626);font-size:13px;padding:8px 0;\">Erro ao carregar notas: ${escapeHtml(String(err.message || err))}</p>`;"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3938,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3945,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = `<div style=\"padding:20px;text-align:center;color:var(--mag-muted);\">"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 3992,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = summaryHtml + rowsHtml;"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4008,
+                "classification": "dynamic_review_required",
+                "source": "itemsDiv.innerHTML = '<em style=\"color:var(--mag-muted);\">Carregando itens…</em>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4017,
+                "classification": "dynamic_review_required",
+                "source": "itemsDiv.innerHTML = '<em style=\"color:var(--mag-muted);\">Sem itens disponíveis.</em>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4020,
+                "classification": "dynamic_review_required",
+                "source": "itemsDiv.innerHTML = itens.map(it => `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4026,
+                "classification": "dynamic_review_required",
+                "source": "itemsDiv.innerHTML = '<em style=\"color:var(--danger,#dc2626);\">Erro ao carregar itens.</em>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4039,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"3\" style=\"text-align:center;color:var(--mag-muted);padding:14px;\">Carregando CNAEs…</td></tr>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4050,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"3\" style=\"text-align:center;color:var(--mag-muted);padding:14px;\">Sem CNAEs para este território no período.</td></tr>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4063,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = `<tr><td colspan=\"3\" style=\"text-align:center;color:var(--danger,#dc2626);padding:14px;\">Erro ao carregar CNAEs.</td></tr>`;"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4451,
+                "classification": "dynamic_review_required",
+                "source": "chips.innerHTML = state.comparisonList.map(c => `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4494,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = state.comparisonList.map((c) => {"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4671,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4829,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4883,
+                "classification": "dynamic_review_required",
+                "source": "trendEl.innerHTML = `<span>${sign}${abs}%</span><span style=\"font-weight:400;font-size:10px;color:#6b7280;\">${prevText}</span>`;"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4914,
+                "classification": "dynamic_review_required",
+                "source": "revTrendEl.innerHTML = renderTrendBadge(pct);"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4923,
+                "classification": "dynamic_review_required",
+                "source": "cliTrendEl.innerHTML = renderTrendBadge(pct);"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4967,
+                "classification": "dynamic_review_required",
+                "source": "alertsPanel.innerHTML = '<div class=\"geo-alerts-loading\"><span class=\"material-symbols-rounded\" style=\"animation:spin 1s linear infinite;display:block;margin:0 auto 6px;\">progress_activity</span>Analisando alertas…</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 4998,
+                "classification": "dynamic_review_required",
+                "source": "alertsPanel.innerHTML = '<div class=\"geo-alerts-empty\">Não foi possível carregar os alertas.</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5022,
+                "classification": "dynamic_review_required",
+                "source": "alertsPanel.innerHTML = '<div class=\"geo-alerts-empty\"><span class=\"material-symbols-rounded\" style=\"font-size:28px;display:block;margin:0 auto 6px;color:#d1fae5;\">check_circle</span>Nenhum alerta para este território no período.</div>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5033,
+                "classification": "dynamic_review_required",
+                "source": "alertsPanel.innerHTML = alerts.map((alert) => {"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5092,
+                "classification": "dynamic_review_required",
+                "source": "sel.innerHTML = '<option value=\"\">Todos — dominância</option>';"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5108,
+                "classification": "dynamic_review_required",
+                "source": "legend.innerHTML = vendors.slice(0, 8).map((v) =>"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5148,
+                "classification": "dynamic_review_required",
+                "source": "statsEl.innerHTML = `"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5167,
+                "classification": "dynamic_review_required",
+                "source": "rankEl.innerHTML = sorted.map((item) => {"
+            },
+            {
+                "file": "assets/js/biomie-map.js",
+                "line": 5234,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/biomie-states.js",
+                "line": 41,
+                "classification": "dynamic_review_required",
+                "source": "if (typeof children === 'string') node.innerHTML = children;"
+            },
+            {
+                "file": "assets/js/biomie-states.js",
+                "line": 61,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/biomie-states.js",
+                "line": 87,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/biomie-states.js",
+                "line": 118,
+                "classification": "static_template",
+                "source": "container.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/biomie-states.js",
+                "line": 144,
+                "classification": "dynamic_review_required",
+                "source": "td.innerHTML ="
+            },
+            {
+                "file": "assets/js/biomie-states.js",
+                "line": 183,
+                "classification": "dynamic_review_required",
+                "source": "empty.innerHTML ="
+            },
+            {
+                "file": "assets/js/client_dossier.js",
+                "line": 23,
+                "classification": "dynamic_review_required",
+                "source": "drawerEl.innerHTML = `"
+            },
+            {
+                "file": "assets/js/client_dossier.js",
+                "line": 44,
+                "classification": "dynamic_review_required",
+                "source": "drawerEl.innerHTML = `"
+            },
+            {
+                "file": "assets/js/client_dossier.js",
+                "line": 99,
+                "classification": "dynamic_review_required",
+                "source": "drawerEl.innerHTML = `"
+            },
+            {
+                "file": "assets/js/client_dossier.js",
+                "line": 202,
+                "classification": "dynamic_review_required",
+                "source": "style.innerHTML = `"
+            },
+            {
+                "file": "assets/js/commercial-card-help.js",
+                "line": 1619,
+                "classification": "dynamic_review_required",
+                "source": "button.innerHTML = '<span class=\"material-symbols-rounded\" aria-hidden=\"true\">check</span> Explicação copiada';"
+            },
+            {
+                "file": "assets/js/commercial-card-help.js",
+                "line": 1622,
+                "classification": "dynamic_review_required",
+                "source": "button.innerHTML = original;"
+            },
+            {
+                "file": "assets/js/commercial-card-help.js",
+                "line": 1655,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/commercial-card-help.js",
+                "line": 1742,
+                "classification": "dynamic_review_required",
+                "source": "portal.innerHTML ="
+            },
+            {
+                "file": "assets/js/commercial-card-help.js",
+                "line": 1850,
+                "classification": "dynamic_review_required",
+                "source": "button.innerHTML = '<span class=\"material-symbols-rounded\" aria-hidden=\"true\">info</span>';"
+            },
+            {
+                "file": "assets/js/commercial-language.js",
+                "line": 235,
+                "classification": "dynamic_review_required",
+                "source": "guide.innerHTML ="
+            },
+            {
+                "file": "assets/js/core/chart-factory.js",
+                "line": 838,
+                "classification": "dynamic_review_required",
+                "source": "statsEl.innerHTML = chips.map(function (chip) {"
+            },
+            {
+                "file": "assets/js/core/chart-factory.js",
+                "line": 1041,
+                "classification": "dynamic_review_required",
+                "source": "if (!slices.length) { target.innerHTML = ''; return; }"
+            },
+            {
+                "file": "assets/js/core/chart-factory.js",
+                "line": 1042,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = slices.map(function (row, idx) {"
+            },
+            {
+                "file": "assets/js/core/chart-factory.js",
+                "line": 1075,
+                "classification": "static_template",
+                "source": "if (legend) legend.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/core/chart-governance.js",
+                "line": 147,
+                "classification": "dynamic_review_required",
+                "source": "target.insertAdjacentHTML('beforebegin', html);"
+            },
+            {
+                "file": "assets/js/core/chart-governance.js",
+                "line": 149,
+                "classification": "dynamic_review_required",
+                "source": "container.insertAdjacentHTML('afterbegin', html);"
+            },
+            {
+                "file": "assets/js/core/filter-chips.js",
+                "line": 35,
+                "classification": "static_template",
+                "source": "container.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/core/filter-chips.js",
+                "line": 40,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/core/filter-chips.js",
+                "line": 72,
+                "classification": "static_template",
+                "source": "container.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 248,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = '<tr><td colspan=\"' + columns.length + '\" class=\"text-center py-4 text-muted\">' + B.escapeHtml(emptyMessage || 'Sem dados no periodo.') + '</td></tr>';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 251,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 335,
+                "classification": "dynamic_review_required",
+                "source": "if (!diagnostics || typeof diagnostics !== 'object') { details.hidden = true; grid.innerHTML = ''; return; }"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 353,
+                "classification": "escaped_or_sanitized",
+                "source": "grid.innerHTML = rows.map(function (r) { return '<span>' + B.escapeHtml(r[0]) + '</span><strong>' + B.escapeHtml(String(r[1])) + '</strong>'; }).join('');"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 493,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<article class=\"insight-row\"><strong>Sem alerta critico</strong><span>Operacao sem desvios relevantes no periodo consultado.</span></article>';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 496,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = alerts.map(function (alert) {"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 505,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = '<div class=\"mag-signal mag-signal--success\"><div class=\"mag-signal__body\"><strong class=\"mag-signal__title\">Nenhum ponto critico no periodo</strong><p class=\"mag-signal__description\">Operacao sem desvios relevantes nos filtros atuais.</p></div></div>';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 566,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 572,
+                "classification": "dynamic_review_required",
+                "source": "if (!rows || !rows.length) { target.innerHTML = '<tr><td colspan=\"4\" class=\"text-center py-4 text-muted\">Sem clientes faturados no periodo.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 573,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 595,
+                "classification": "escaped_or_sanitized",
+                "source": "info.innerHTML     = '<strong>Sem enriquecimento financeiro</strong><span>' + B.escapeHtml((data && data.message) || 'Modulo financeiro Omie indisponivel para este painel.') + '</span>';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 596,
+                "classification": "dynamic_review_required",
+                "source": "table.innerHTML    = '<tr><td colspan=\"4\" class=\"text-center py-4 text-muted\">Sem dados financeiros adicionais.</td></tr>';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 604,
+                "classification": "dynamic_review_required",
+                "source": "info.innerHTML     = '<strong>Leitura de caixa pronta</strong><span>Recebido ' + B.formatCurrency(summary.received) + ' | em aberto ' + B.formatCurrency(summary.open) + ' | atraso ' + Number(summary.delinquency_rate || 0).toFixed(1) + '%.</span>';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 610,
+                "classification": "dynamic_review_required",
+                "source": "if (!overdueRows.length) { table.innerHTML = '<tr><td colspan=\"4\" class=\"text-center py-4 text-muted\">Sem clientes vencidos no periodo consultado.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 611,
+                "classification": "dynamic_review_required",
+                "source": "table.innerHTML = overdueRows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 655,
+                "classification": "dynamic_review_required",
+                "source": "if (!matrix.length) { target.innerHTML = '<tr><td colspan=\"10\" class=\"text-center py-4 text-muted\">Sem vendedor no periodo.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 656,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = matrix.map(function (row) {"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 726,
+                "classification": "dynamic_review_required",
+                "source": "if (!alerts || !alerts.length) { target.innerHTML = '<div class=\"module-alert module-alert--info\"><strong>Sem alerta</strong><span>Time sem alerta operacional no periodo.</span></div>'; return; }"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 727,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = alerts.map(function (alert) {"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 840,
+                "classification": "dynamic_review_required",
+                "source": "empty.innerHTML ="
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 858,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 913,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 929,
+                "classification": "static_template",
+                "source": "container.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/core/render-helpers.js",
+                "line": 986,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/core/server-table.js",
+                "line": 65,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html || '';"
+            },
+            {
+                "file": "assets/js/core/utils.js",
+                "line": 22,
+                "classification": "dynamic_review_required",
+                "source": "document.querySelectorAll(selector).forEach(function (el) { el.innerHTML = value; });"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 142,
+                "classification": "static_template",
+                "source": "container.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 147,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML ="
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 184,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML ="
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 283,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = html.join('');"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 307,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<span>' + formatNumber(shownRows) + ' de ' + formatNumber(totalRows) + ' linha(s)</span>' + (expandable ? '<button type=\"button\" class=\"fin-table-toggle\" data-table-toggle=\"' + tableId + '\">' + (_tableExpanded[tableId] ? 'Mostrar menos' : 'Ver todas') + '</button>' : '');"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 325,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = '<tr><td colspan=\"' + (visibleCols.length + 1) + '\" class=\"text-center py-4 text-muted\">' + escapeHtml(emptyMessage || 'Nenhum dado disponivel.') + '</td></tr>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 337,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = displayRows.map(function (row, index) {"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 450,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 489,
+                "classification": "escaped_or_sanitized",
+                "source": "if (list) list.innerHTML = (statusBreakdown || []).map(function (row) { return '<li><span>' + escapeHtml(row.label) + '</span><strong>' + formatCurrency(row.amount) + '</strong></li>'; }).join('');"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 523,
+                "classification": "dynamic_review_required",
+                "source": "if (!message) { target.classList.add('d-none'); target.innerHTML = ''; return; }"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 525,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = '<div class=\"alert alert-danger mb-0\">' + escapeHtml(message) + '</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 562,
+                "classification": "dynamic_review_required",
+                "source": "if (feedback) feedback.innerHTML = '<div class=\"alert alert-secondary fin-alert\">Sincronizando modulo financeiro...</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 573,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = '<div class=\"alert alert-success fin-alert\">' + escapeHtml(data.message) + '</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 576,
+                "classification": "escaped_or_sanitized",
+                "source": "if (feedback) feedback.innerHTML = '<div class=\"alert alert-danger fin-alert\">' + escapeHtml(error.message) + '</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 676,
+                "classification": "dynamic_review_required",
+                "source": "if (el) el.innerHTML = loading;"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 689,
+                "classification": "escaped_or_sanitized",
+                "source": "if (el) el.innerHTML = '<div style=\"padding:40px;color:var(--text-3);\">Erro ao carregar: ' + escapeHtml(String(err && err.message || '')) + '</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 760,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 820,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = '<div style=\"padding:40px;text-align:center;color:var(--text-3);\">Sem dados mensais no período.</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 871,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 879,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = '<div style=\"padding:40px;text-align:center;color:var(--text-3);\">Sem NFs com dados tributários no período.</div>';"
+            },
+            {
+                "file": "assets/js/finance.js",
+                "line": 919,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 235,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = ["
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 577,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"10\" class=\"fis-loading-cell\">Carregando entradas de compras…</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 596,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"10\" class=\"fis-loading-cell\">Entradas de compras indisponíveis.</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 637,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = cards.map(card => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 653,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 659,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(row => {"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 696,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 722,
+                "classification": "dynamic_review_required",
+                "source": "button.innerHTML = '<span class=\"material-symbols-rounded fis-spin\">sync</span>Atualizando…';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 737,
+                "classification": "dynamic_review_required",
+                "source": "button.innerHTML = original;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 753,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML = '<tr><td class=\"fis-loading-cell\">Apuração indisponível.</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 762,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 848,
+                "classification": "dynamic_review_required",
+                "source": "head.innerHTML = '<tr><th>Competência</th><th class=\"fis-r\">ICMS/CE</th><th class=\"fis-r\">ICMS-ST</th><th class=\"fis-r\">DIFAL</th><th class=\"fis-r\">FECOP</th><th class=\"fis-r\">PIS</th><th class=\"fis-r\">COFINS</th><th class=\"fis-r\">IPI</th><th class=\"fis-r\">ISS</th></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 849,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.length ? rows.map(row => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 859,
+                "classification": "dynamic_review_required",
+                "source": "head.innerHTML = '<tr><th>Competência</th><th class=\"fis-r\">Faturamento</th><th class=\"fis-r\">Tributos brutos</th><th class=\"fis-r\">Créditos</th><th class=\"fis-r\">Retenções</th><th class=\"fis-r\">Saldo líquido</th><th class=\"fis-r\">Carga bruta</th><th class=\"fis-r\">Carga líquida</th><th>Cobertura</th></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 860,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.length ? rows.map(row => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 882,
+                "classification": "dynamic_review_required",
+                "source": "if (spheres) spheres.innerHTML = '<div class=\"fis-loading-cell\">Tributos por esfera indisponiveis.</div>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 884,
+                "classification": "dynamic_review_required",
+                "source": "if (el) el.innerHTML = '<div class=\"fis-loading-cell\">Contexto fiscal indisponível.</div>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 905,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = ["
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 919,
+                "classification": "dynamic_review_required",
+                "source": "regimeNote.innerHTML = regime.summary"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 926,
+                "classification": "dynamic_review_required",
+                "source": "if (strip) strip.innerHTML = (context.modules || []).map(module => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 975,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = blocks.map(block => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1039,
+                "classification": "dynamic_review_required",
+                "source": "if (row) row.innerHTML = [0,1,2,3,4,5].map(() => '<div class=\"fis-kpi-skeleton\"></div>').join('');"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1055,
+                "classification": "dynamic_review_required",
+                "source": ".catch(() => { if (row) row.innerHTML = '<div class=\"fis-loading-cell\">Erro ao carregar resumo.</div>'; });"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1070,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = cards.map(([label, value, icon, tone, helpKey]) => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1086,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1113,
+                "classification": "dynamic_review_required",
+                "source": "row.innerHTML = cards.map(c => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1200,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = items.map(i => {"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1224,
+                "classification": "dynamic_review_required",
+                "source": "if (!vendors.length) { grid.innerHTML = '<div class=\"fis-loading-cell\">Nenhum vendedor no período.</div>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1228,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = vendors.map(v => {"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1262,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = `<tr><td class=\"fis-loading-cell\" colspan=\"14\">Carregando...</td></tr>`;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1273,
+                "classification": "dynamic_review_required",
+                "source": "if (!d.ok) { tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"14\">Erro.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1278,
+                "classification": "dynamic_review_required",
+                "source": ".catch(() => { tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"14\">Erro de rede.</td></tr>'; });"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1284,
+                "classification": "dynamic_review_required",
+                "source": "if (!rows.length) { tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"14\">Nenhuma NF no período.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1286,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(r => {"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1321,
+                "classification": "dynamic_review_required",
+                "source": "if (total_pages <= 1) { el.innerHTML = `<span style=\"font-size:11px;color:var(--fis-muted)\">${total} registros</span>`; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1333,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1347,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML = `<tr><td class=\"fis-loading-cell\" colspan=\"9\">Carregando NCM...</td></tr>`;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1354,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML = `<tr><td class=\"fis-loading-cell\" colspan=\"9\">Erro ao carregar NCM.</td></tr>`;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1358,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML = `<tr><td class=\"fis-loading-cell\" colspan=\"9\">Mart não construído. Use o botão acima.</td></tr>`;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1365,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML = `<tr><td class=\"fis-loading-cell\" colspan=\"9\">Erro de rede.</td></tr>`;"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1372,
+                "classification": "dynamic_review_required",
+                "source": "if (!ranking.length) { tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"9\">Nenhum NCM.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1374,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = ranking.map(r => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1398,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = cfops.map(c => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1432,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1498,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = ncm.map(r => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1510,
+                "classification": "dynamic_review_required",
+                "source": "if (grid) grid.innerHTML = '<div class=\"fis-loading-cell\">Carregando alertas...</div>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1538,
+                "classification": "dynamic_review_required",
+                "source": "if (!keys.length) { grid.innerHTML = '<div class=\"fis-loading-cell\">Sem alertas.</div>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1540,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = keys.map(k => {"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1584,
+                "classification": "dynamic_review_required",
+                "source": "if (kpis)   kpis.innerHTML      = '<div class=\"fis-loading-cell\">Carregando...</div>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1585,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody)  tbody.innerHTML     = '<tr><td class=\"fis-loading-cell\" colspan=\"9\">Carregando itens...</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1590,
+                "classification": "dynamic_review_required",
+                "source": "if (!d.ok) { if (tbody) tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"9\">Erro.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1597,
+                "classification": "dynamic_review_required",
+                "source": ".catch(() => { if (tbody) tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"9\">Erro de rede.</td></tr>'; });"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1612,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = cards.map(c => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1635,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"13\">Itens disponíveis somente após construir o mart fiscal.</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1638,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = items.map(it => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1671,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML    = '<tr><td class=\"fis-loading-cell\" colspan=\"6\">Carregando...</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1677,
+                "classification": "dynamic_review_required",
+                "source": "if (tbody) tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"6\">Sem produtos.</td></tr>';"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1680,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = d.products.map(p => `"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1693,
+                "classification": "dynamic_review_required",
+                "source": ".catch(() => { if (tbody) tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"6\">Erro.</td></tr>'; });"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1719,
+                "classification": "dynamic_review_required",
+                "source": "if (!rows.length) { tbody.innerHTML = '<tr><td class=\"fis-loading-cell\" colspan=\"6\">Nenhum registro.</td></tr>'; return; }"
+            },
+            {
+                "file": "assets/js/fiscal.js",
+                "line": 1721,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(r => `"
+            },
+            {
+                "file": "assets/js/flight-plan-targets.js",
+                "line": 59,
+                "classification": "static_template",
+                "source": "target.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/flight-plan-targets.js",
+                "line": 65,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = `<strong>${escapeHtml(message)}</strong>`;"
+            },
+            {
+                "file": "assets/js/flight-plan-targets.js",
+                "line": 150,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = `<tr><td colspan=\"5\" class=\"empty-row\">${state.rows.length ? 'Nenhum vendedor encontrado para esse filtro.' : 'Sem vendedores disponíveis para esse mês.'}</td></tr>`;"
+            },
+            {
+                "file": "assets/js/flight-plan-targets.js",
+                "line": 155,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map((row) => {"
+            },
+            {
+                "file": "assets/js/flight-plan-targets.js",
+                "line": 201,
+                "classification": "dynamic_review_required",
+                "source": "item.innerHTML = `<label>Meta ${count + 2}</label>"
+            },
+            {
+                "file": "assets/js/flight-plan-targets.js",
+                "line": 264,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = `<tr><td colspan=\"5\" class=\"empty-row\" style=\"color:var(--danger)\">Erro ao carregar metas: ${escapeHtml(error.message || 'falha desconhecida')}</td></tr>`;"
+            },
+            {
+                "file": "assets/js/geo-feature-loader.js",
+                "line": 51,
+                "classification": "dynamic_review_required",
+                "source": "state.innerHTML = '<div class=\"module-alert module-alert--warning\">Nao foi possivel carregar o mapa. Recarregue a pagina.</div>';"
+            },
+            {
+                "file": "assets/js/global-search.js",
+                "line": 218,
+                "classification": "escaped_or_sanitized",
+                "source": "panel.innerHTML = stateHtml('<span class=\"biomie-omni-spinner\" aria-hidden=\"true\"></span>Buscando “' + esc(q) + '”…');"
+            },
+            {
+                "file": "assets/js/global-search.js",
+                "line": 223,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = stateHtml("
+            },
+            {
+                "file": "assets/js/global-search.js",
+                "line": 234,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = stateHtml("
+            },
+            {
+                "file": "assets/js/global-search.js",
+                "line": 319,
+                "classification": "escaped_or_sanitized",
+                "source": "panel.innerHTML = '<div class=\"biomie-omni-summary\"><span>' + esc(String(payload.total || 0)) + ' resultado(s)</span>'"
+            },
+            {
+                "file": "assets/js/global-search.js",
+                "line": 362,
+                "classification": "dynamic_review_required",
+                "source": "panel.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/index_geo.js",
+                "line": 111,
+                "classification": "dynamic_review_required",
+                "source": "fallback.innerHTML = `<strong>${title}</strong><span>${message}</span>`;"
+            },
+            {
+                "file": "assets/js/index_geo.js",
+                "line": 447,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"3\" class=\"text-muted\">Sem bairros no periodo.</td></tr>';"
+            },
+            {
+                "file": "assets/js/index_geo.js",
+                "line": 451,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = data.map((row) => {"
+            },
+            {
+                "file": "assets/js/index_geo.js",
+                "line": 511,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = `"
+            },
+            {
+                "file": "assets/js/login.js",
+                "line": 16,
+                "classification": "dynamic_review_required",
+                "source": "btn.innerHTML = SVG_EYE;"
+            },
+            {
+                "file": "assets/js/login.js",
+                "line": 22,
+                "classification": "dynamic_review_required",
+                "source": "btn.innerHTML = isShowing ? SVG_EYE : SVG_EYE_OFF;"
+            },
+            {
+                "file": "assets/js/mag-ui.js",
+                "line": 184,
+                "classification": "dynamic_review_required",
+                "source": "row.innerHTML = '<td class=\"mag-empty-cell\" colspan=\"' + colCount + '\">' + emptyStateHtml({ title: title, message: message, icon: icon }) + '</td>';"
+            },
+            {
+                "file": "assets/js/mobile-shell.js",
+                "line": 206,
+                "classification": "dynamic_review_required",
+                "source": "btn.innerHTML = '<span class=\"material-symbols-rounded\" aria-hidden=\"true\">tune</span> Filtros';"
+            },
+            {
+                "file": "assets/js/mobile-shell.js",
+                "line": 214,
+                "classification": "dynamic_review_required",
+                "source": "closeBtn.innerHTML = '<span class=\"material-symbols-rounded\">close</span>';"
+            },
+            {
+                "file": "assets/js/mobile-shell.js",
+                "line": 220,
+                "classification": "dynamic_review_required",
+                "source": "footer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/commercial/nf-periodo-table.js",
+                "line": 56,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/modules/commercial/nf-periodo-table.js",
+                "line": 188,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"5\" class=\"empty-state\">Nenhuma NF encontrada no periodo.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/commercial/nf-periodo-table.js",
+                "line": 192,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(renderRow).join('');"
+            },
+            {
+                "file": "assets/js/modules/commercial/nf-periodo-table.js",
+                "line": 290,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/modules/commercial/nf-periodo-table.js",
+                "line": 323,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/modules/commercial/nf-periodo-table.js",
+                "line": 349,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = `<tr><td colspan=\"5\" class=\"empty-state\" style=\"color:var(--danger,#dc2626);\">"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 100,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 117,
+                "classification": "dynamic_review_required",
+                "source": "tabs.innerHTML = TABS.map(function (tab) {"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 134,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = skeleton();"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 138,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\">' +"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 146,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\">' +"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 154,
+                "classification": "dynamic_review_required",
+                "source": "if (state.tab === 'resumo') body.innerHTML = renderResumo(d);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 155,
+                "classification": "dynamic_review_required",
+                "source": "else if (state.tab === 'nfs') body.innerHTML = renderInvoices(d.invoices || []);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 156,
+                "classification": "dynamic_review_required",
+                "source": "else if (state.tab === 'pedidos') body.innerHTML = renderOrders(d.orders || []);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 157,
+                "classification": "dynamic_review_required",
+                "source": "else if (state.tab === 'produtos') body.innerHTML = renderProducts(d.products || []);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 158,
+                "classification": "dynamic_review_required",
+                "source": "else if (state.tab === 'vendedores') body.innerHTML = renderVendors(d.vendors || []);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 159,
+                "classification": "dynamic_review_required",
+                "source": "else if (state.tab === 'financeiro') body.innerHTML = renderFinance(d.finance_titles || []);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 160,
+                "classification": "dynamic_review_required",
+                "source": "else if (state.tab === 'timeline') body.innerHTML = renderTimeline(d.timeline || []);"
+            },
+            {
+                "file": "assets/js/modules/customer-detail/index.js",
+                "line": 161,
+                "classification": "dynamic_review_required",
+                "source": "else body.innerHTML = '<div class=\"biomie-drawer__empty\">Aba desconhecida.</div>';"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 173,
+                "classification": "dynamic_review_required",
+                "source": "datalist.innerHTML = vendorDirectory.map(function (vendor) {"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 503,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"5\" class=\"text-center py-4 text-muted\">'"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 508,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 525,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"7\" class=\"text-center py-4 text-muted\">'"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 530,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 555,
+                "classification": "static_template",
+                "source": "element.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 560,
+                "classification": "dynamic_review_required",
+                "source": "element.innerHTML = '<button class=\"biomie-btn biomie-btn--secondary biomie-btn--sm\" id=\"dashPagPrev\"'"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 688,
+                "classification": "static_template",
+                "source": "element.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/dashboard/page-drilldown.js",
+                "line": 692,
+                "classification": "dynamic_review_required",
+                "source": "element.innerHTML = '<div class=\"module-alert module-alert--danger\">'"
+            },
+            {
+                "file": "assets/js/modules/drilldown-router.js",
+                "line": 130,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = '<span class=\"material-symbols-rounded\" aria-hidden=\"true\">progress_activity</span>' + (labels[feature] || 'Abrindo detalhes') + '…';"
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 126,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = (extraHtml || '') + '<div class=\"fin-chart-stage\"><canvas id=\"' + canvasId + '\"></canvas></div>';"
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 136,
+                "classification": "escaped_or_sanitized",
+                "source": "target.innerHTML = '<div class=\"fin-chart-empty\">' + escapeHtml(message || 'Sem dados suficientes para o grafico.') + '</div>';"
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 197,
+                "classification": "dynamic_review_required",
+                "source": "tgt.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 285,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 318,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<div class=\"fin-bar-list\">' + limited.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 411,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 486,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 651,
+                "classification": "static_template",
+                "source": "if (target && target.tagName !== 'CANVAS') target.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/charts.js",
+                "line": 798,
+                "classification": "dynamic_review_required",
+                "source": "distEl.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 197,
+                "classification": "static_template",
+                "source": "node.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 214,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = chips.map(function (chip) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 294,
+                "classification": "static_template",
+                "source": "node.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 307,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 345,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"8\" class=\"text-center py-4 text-muted\">Nenhum vendedor com pendencia para os filtros atuais.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 348,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 370,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"3\" class=\"text-center py-4 text-muted\">Nenhum titulo em aberto no recorte.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 373,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 403,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"8\" class=\"text-center py-4 text-muted\">Nenhum titulo acionavel para os filtros atuais.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 407,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 473,
+                "classification": "static_template",
+                "source": "node.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 486,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 494,
+                "classification": "dynamic_review_required",
+                "source": "icon.innerHTML = state.direction === 'asc' ? '&#8593;' : '&#8595;';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 497,
+                "classification": "static_template",
+                "source": "icon.innerHTML = '&#8597;';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 641,
+                "classification": "escaped_or_sanitized",
+                "source": "vendorEl.innerHTML = '<span class=\"fin-tag\" style=\"' + vColor + '\" title=\"' + escapeHtml(vSrc) + '\">' + escapeHtml(vNome) + '</span>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 643,
+                "classification": "dynamic_review_required",
+                "source": "vendorEl.innerHTML = '<span class=\"fin-badge fin-badge-gray\" style=\"font-size:11px;\">Sem vendedor</span>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 661,
+                "classification": "dynamic_review_required",
+                "source": "nfPedidoEl.innerHTML = chips.length ? chips.join('') : '<span style=\"color:var(--text-3,#9ca3af);font-size:11px;\">Sem vínculo NF/Pedido</span>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 672,
+                "classification": "dynamic_review_required",
+                "source": "traceEl.innerHTML = '<strong>Qualidade da identificação: ' + score + '/100</strong>' +"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 692,
+                "classification": "dynamic_review_required",
+                "source": "diagEl.innerHTML = parts.join('<br>');"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 718,
+                "classification": "dynamic_review_required",
+                "source": "listNode.innerHTML = '<p style=\"font-size:0.8rem;color:var(--text-3);font-style:italic;\">Carregando histórico...</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 731,
+                "classification": "dynamic_review_required",
+                "source": "listNode.innerHTML = '<p style=\"font-size:0.8rem;color:var(--text-3);font-style:italic;\">Nenhuma ação registrada para este título.</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 735,
+                "classification": "dynamic_review_required",
+                "source": "listNode.innerHTML = history.map(function (item) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-by-vendor.js",
+                "line": 751,
+                "classification": "escaped_or_sanitized",
+                "source": "listNode.innerHTML = '<p style=\"font-size:0.8rem;color:var(--text-danger,#ef4444);font-style:italic;\">Erro ao carregar histórico: ' + escapeHtml(err.message) + '</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 232,
+                "classification": "static_template",
+                "source": "node.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 249,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = chips.map(function (chip) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 274,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"10\" class=\"text-center py-3 text-muted\">Nenhuma produtividade registrada.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 277,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 301,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"5\" class=\"text-center py-3 text-muted\">Nenhum vendedor encontrado.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 304,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 320,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"5\" class=\"text-center py-3 text-muted\">Sem dados para calcular o prazo de atendimento.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 323,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 341,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"9\" class=\"text-center py-3 text-muted\">Nenhum retorno agendado.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 344,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = list.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 406,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = '<tr><td colspan=\"11\" class=\"text-center py-4 text-muted\">Nenhum título crítico na fila de risco operacional.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 409,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 456,
+                "classification": "static_template",
+                "source": "node.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 469,
+                "classification": "dynamic_review_required",
+                "source": "node.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 477,
+                "classification": "dynamic_review_required",
+                "source": "icon.innerHTML = state.direction === 'asc' ? '&#8593;' : '&#8595;';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 480,
+                "classification": "static_template",
+                "source": "icon.innerHTML = '&#8597;';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 607,
+                "classification": "dynamic_review_required",
+                "source": "listNode.innerHTML = '<p style=\"font-size:0.8rem;color:var(--text-3);font-style:italic;\">Carregando histórico...</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 620,
+                "classification": "dynamic_review_required",
+                "source": "listNode.innerHTML = '<p style=\"font-size:0.8rem;color:var(--text-3);font-style:italic;\">Nenhuma ação registrada para este título.</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 624,
+                "classification": "dynamic_review_required",
+                "source": "listNode.innerHTML = history.map(function (item) {"
+            },
+            {
+                "file": "assets/js/modules/finance/collection-governance.js",
+                "line": 640,
+                "classification": "escaped_or_sanitized",
+                "source": "listNode.innerHTML = '<p style=\"font-size:0.8rem;color:var(--text-danger,#ef4444);font-style:italic;\">Erro ao carregar histórico: ' + escapeHtml(err.message) + '</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/page-drilldown.js",
+                "line": 60,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/finance/page-drilldown.js",
+                "line": 87,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"9\" class=\"text-center py-4 text-muted\">Nenhum título encontrado para os filtros atuais.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/page-drilldown.js",
+                "line": 117,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/finance/page-drilldown.js",
+                "line": 330,
+                "classification": "static_template",
+                "source": "chipsEl.innerHTML     = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/product-payment-methods.js",
+                "line": 51,
+                "classification": "dynamic_review_required",
+                "source": "if (topNode) topNode.innerHTML = top.method_label ? methodBadge(top) : '-';"
+            },
+            {
+                "file": "assets/js/modules/finance/product-payment-methods.js",
+                "line": 77,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = products.length ? products.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 346,
+                "classification": "escaped_or_sanitized",
+                "source": "contextElement.innerHTML = '<strong>' + esc(context[0]) + '</strong><p>' + esc(context[1]) + '</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 348,
+                "classification": "dynamic_review_required",
+                "source": "document.getElementById('financeInsightMetrics').innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 355,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 609,
+                "classification": "dynamic_review_required",
+                "source": "noDataCard.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 621,
+                "classification": "static_template",
+                "source": "noDataCard.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 728,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"11\" style=\"text-align:center;color:var(--text-3);padding:18px;\">Nenhuma NF com recebível em aberto no período.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 731,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(function (r) {"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 858,
+                "classification": "escaped_or_sanitized",
+                "source": "if (traceContext) traceContext.innerHTML = '<strong>' + esc(traceDescription[0]) + '</strong><p>' + esc(traceDescription[1]) + '</p>';"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 904,
+                "classification": "dynamic_review_required",
+                "source": "document.getElementById('financeTraceMetrics').innerHTML = metrics;"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 911,
+                "classification": "static_template",
+                "source": "tbody.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/finance/visual-analytics.js",
+                "line": 913,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.slice(0, 80).map(function (r) {"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/alerts.js",
+                "line": 16,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = alerts.slice(0, 5).map(a => {"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/charts.js",
+                "line": 260,
+                "classification": "dynamic_review_required",
+                "source": "if (wrap) wrap.innerHTML = '<div style=\"display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px;text-align:center;color:var(--text-secondary)\"><span class=\"material-symbols-rounded\" style=\"font-size:40px;margin-bottom:12px;opacity:0.5\">query_stats</span><span>Sem histórico diário no período.</span></div>';"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/dom.js",
+                "line": 11,
+                "classification": "dynamic_review_required",
+                "source": "if (el) el.innerHTML = val;"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/kpis.js",
+                "line": 97,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = '<div style=\"color:var(--text-secondary);text-align:center;padding:24px;font-size:13px\"><span class=\"material-symbols-rounded\" style=\"font-size:32px;opacity:0.5;margin-bottom:8px\">hourglass_empty</span><br>Sem carteira para projecao.</div>';"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/kpis.js",
+                "line": 116,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = `"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/kpis.js",
+                "line": 142,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = '<div style=\"font-size:13px;color:var(--text-secondary);padding:12px 0;\">Time no alvo.</div>';"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/kpis.js",
+                "line": 146,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = sorted.map(v => {"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/search-drilldown.js",
+                "line": 153,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/search-drilldown.js",
+                "line": 172,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = chips.map(function (c) {"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/search-drilldown.js",
+                "line": 212,
+                "classification": "dynamic_review_required",
+                "source": "if (chips) { chips.style.display = 'none'; chips.innerHTML = ''; }"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/table.js",
+                "line": 42,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/flight-plan/table.js",
+                "line": 140,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = tableHtml + cardsHtml;"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/vendor-table.js",
+                "line": 48,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML = '<tr><td colspan=\"13\" class=\"mag-empty-cell\"><div class=\"mag-state mag-state-empty mag-state-compact mag-state-severity--info\" role=\"status\"><span class=\"material-symbols-rounded mag-state-icon\">person_off</span><strong class=\"mag-state-title\">Nenhum vendedor encontrado</strong><p class=\"mag-state-message\">Não há vendedores com meta ou atividade comercial no período selecionado.</p></div></td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/flight-plan/vendor-table.js",
+                "line": 63,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML = sorted.map(function (v) {"
+            },
+            {
+                "file": "assets/js/modules/geo-detail/index.js",
+                "line": 79,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/geo-detail/index.js",
+                "line": 127,
+                "classification": "dynamic_review_required",
+                "source": "if (co) { co.innerHTML = html; co.style.display = ''; }"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 89,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 104,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = TABS.map(function (t) {"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 114,
+                "classification": "dynamic_review_required",
+                "source": "if (state.loading) { body.innerHTML = skeleton(); return; }"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 116,
+                "classification": "escaped_or_sanitized",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\"><div class=\"mag-empty-icon\"><span class=\"material-symbols-rounded\" aria-hidden=\"true\">error</span></div><strong class=\"mag-empty-title\">Não foi possível abrir esta nota</strong><p class=\"mag-empty-text\">' + esc(state.error) + '</p></div>';"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 120,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\"><div class=\"mag-empty-icon\"><span class=\"material-symbols-rounded\" aria-hidden=\"true\">receipt_long</span></div><strong class=\"mag-empty-title\">Nota fiscal não encontrada</strong><p class=\"mag-empty-text\">Verifique se a NF foi sincronizada do Omie.</p></div>';"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 125,
+                "classification": "dynamic_review_required",
+                "source": "case 'resumo':     body.innerHTML = renderResumoPremium(d); break;"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 126,
+                "classification": "dynamic_review_required",
+                "source": "case 'itens':      body.innerHTML = renderItens(d.items); break;"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 127,
+                "classification": "dynamic_review_required",
+                "source": "case 'financeiro': body.innerHTML = renderFinanceiro(d.finance_titles); break;"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 128,
+                "classification": "dynamic_review_required",
+                "source": "case 'timeline':   body.innerHTML = renderTimelinePremium(d.timeline); break;"
+            },
+            {
+                "file": "assets/js/modules/invoice-detail/index.js",
+                "line": 129,
+                "classification": "dynamic_review_required",
+                "source": "default:           body.innerHTML = '<div class=\"biomie-drawer__empty\">Aba desconhecida.</div>';"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 68,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 83,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = TABS.map(function (t) {"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 93,
+                "classification": "dynamic_review_required",
+                "source": "if (state.loading) { body.innerHTML = skeleton(); return; }"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 94,
+                "classification": "escaped_or_sanitized",
+                "source": "if (state.error) { body.innerHTML = '<div class=\"mag-empty mag-empty--compact\"><div class=\"mag-empty-icon\"><span class=\"material-symbols-rounded\" aria-hidden=\"true\">error</span></div><strong class=\"mag-empty-title\">Não foi possível abrir este pedido</strong><p class=\"mag-empty-text\">' + esc(state.error) + '</p></div>'; return; }"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 95,
+                "classification": "dynamic_review_required",
+                "source": "if (!state.data)   { body.innerHTML = '<div class=\"biomie-drawer__empty\">Pedido não encontrado.</div>'; return; }"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 98,
+                "classification": "dynamic_review_required",
+                "source": "case 'resumo':   body.innerHTML = renderResumoPremium(d); break;"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 99,
+                "classification": "dynamic_review_required",
+                "source": "case 'itens':    body.innerHTML = renderItens(d.items); break;"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 100,
+                "classification": "dynamic_review_required",
+                "source": "case 'nfs':      body.innerHTML = renderNfs(d.invoices); break;"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 101,
+                "classification": "dynamic_review_required",
+                "source": "case 'parcelas': body.innerHTML = renderParcelas(d.installments); break;"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 102,
+                "classification": "dynamic_review_required",
+                "source": "case 'timeline': body.innerHTML = renderTimelinePremium(d.timeline); break;"
+            },
+            {
+                "file": "assets/js/modules/order-detail/index.js",
+                "line": 103,
+                "classification": "dynamic_review_required",
+                "source": "default:         body.innerHTML = '<div class=\"biomie-drawer__empty\">Aba desconhecida.</div>';"
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 184,
+                "classification": "dynamic_review_required",
+                "source": "summaryEl.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 197,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 203,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 250,
+                "classification": "dynamic_review_required",
+                "source": "pagEl.style.display = 'none'; pagEl.innerHTML = ''; return;"
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 253,
+                "classification": "dynamic_review_required",
+                "source": "pagEl.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 302,
+                "classification": "dynamic_review_required",
+                "source": "if (summaryEl) { summaryEl.style.display = 'none'; summaryEl.innerHTML = ''; }"
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 305,
+                "classification": "dynamic_review_required",
+                "source": "if (pagEl) { pagEl.style.display = 'none'; pagEl.innerHTML = ''; }"
+            },
+            {
+                "file": "assets/js/modules/orders/page-drilldown.js",
+                "line": 308,
+                "classification": "dynamic_review_required",
+                "source": "if (feedbackEl) { feedbackEl.style.display = 'none'; feedbackEl.innerHTML = ''; }"
+            },
+            {
+                "file": "assets/js/modules/overview/overview-detail-drawer.js",
+                "line": 69,
+                "classification": "static_template",
+                "source": "tabsEl.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/modules/overview/overview-detail-drawer.js",
+                "line": 70,
+                "classification": "dynamic_review_required",
+                "source": "bodyEl.innerHTML = renderSkeleton();"
+            },
+            {
+                "file": "assets/js/modules/overview/overview-detail-drawer.js",
+                "line": 183,
+                "classification": "dynamic_review_required",
+                "source": "bodyEl.innerHTML = '<div class=\"module-alert module-alert--info\">' +"
+            },
+            {
+                "file": "assets/js/modules/overview/overview-detail-drawer.js",
+                "line": 204,
+                "classification": "dynamic_review_required",
+                "source": "bodyEl.innerHTML = '<div class=\"dashboard-empty-state\">' +"
+            },
+            {
+                "file": "assets/js/modules/overview/overview-detail-drawer.js",
+                "line": 247,
+                "classification": "dynamic_review_required",
+                "source": "bodyEl.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 73,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 95,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = TABS.map(function (tab) {"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 114,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"biomie-drawer__empty\">Erro: modulos product-detail nao carregados.</div>';"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 119,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = skeleton();"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 123,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\">' +"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 131,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.empty('Sem dados disponiveis para este produto.');"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 141,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = skeleton();"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 151,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderResumo(merged);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 153,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderInvoices(merged.invoices || []);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 155,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderCustomers(merged.customers || []);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 157,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderVendors(merged.vendors || []);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 159,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderLinkedOrders(merged.linked_orders || [], merged.summary);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 162,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = C ? C.renderTimeline(merged) : T.empty('Modulo charts nao carregado.');"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 164,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderLtv(merged);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 166,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderEstoque ? T.renderEstoque(merged) : T.empty('Modulo estoque nao carregado.');"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 168,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderAcaoComercial ? T.renderAcaoComercial(merged) : T.empty('Modulo acao comercial nao carregado.');"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 170,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderDiagnostico(merged);"
+            },
+            {
+                "file": "assets/js/modules/product-detail/index.js",
+                "line": 172,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.empty('Aba desconhecida.');"
+            },
+            {
+                "file": "assets/js/modules/products/page-drilldown.js",
+                "line": 176,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"6\" style=\"text-align:center;padding:24px;color:var(--text-3);\">'"
+            },
+            {
+                "file": "assets/js/modules/products/page-drilldown.js",
+                "line": 183,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/products/page-drilldown.js",
+                "line": 211,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = '<button class=\"biomie-btn biomie-btn--secondary biomie-btn--sm\" id=\"prodPagPrev\"'"
+            },
+            {
+                "file": "assets/js/modules/products/page-drilldown.js",
+                "line": 244,
+                "classification": "dynamic_review_required",
+                "source": "if (!pag) { el.style.display = 'none'; el.innerHTML = ''; return; }"
+            },
+            {
+                "file": "assets/js/modules/products/page-drilldown.js",
+                "line": 245,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = '<span style=\"color:var(--text-2);\">'"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 139,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = `"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 208,
+                "classification": "dynamic_review_required",
+                "source": "if (grid) grid.innerHTML = '<div class=\"qa-grid-loading\">Carregando…</div>';"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 227,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = `<div class=\"qa-grid-error\">"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 292,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 362,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"qa-skeleton\"><div></div><div></div><div></div></div>';"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 370,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = `<div class=\"qa-panel-error\">"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 390,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<p class=\"qa-empty\">Nenhuma cobrança programada para este dia.</p>';"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 394,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = items.map((i) => {"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 456,
+                "classification": "dynamic_review_required",
+                "source": "box.innerHTML = '<p class=\"qa-muted\">Carregando histórico…</p>';"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 463,
+                "classification": "dynamic_review_required",
+                "source": "box.innerHTML = `<p class=\"qa-muted\">Não foi possível carregar o histórico."
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 470,
+                "classification": "dynamic_review_required",
+                "source": "box.innerHTML = '<p class=\"qa-muted\">Nenhuma cobrança registrada.</p>';"
+            },
+            {
+                "file": "assets/js/modules/quote-agenda/index.js",
+                "line": 474,
+                "classification": "dynamic_review_required",
+                "source": "box.innerHTML = `<ol class=\"qa-timeline\">${events.map((ev) => {"
+            },
+            {
+                "file": "assets/js/modules/quote-calendar-widget.js",
+                "line": 74,
+                "classification": "dynamic_review_required",
+                "source": "root.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/quote-calendar-widget.js",
+                "line": 130,
+                "classification": "dynamic_review_required",
+                "source": "gridEl.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/quote-calendar-widget.js",
+                "line": 139,
+                "classification": "dynamic_review_required",
+                "source": "gridEl.innerHTML = '<div class=\"qcw-msg\">Carregando…</div>';"
+            },
+            {
+                "file": "assets/js/modules/quote-calendar-widget.js",
+                "line": 200,
+                "classification": "dynamic_review_required",
+                "source": "if (f.is_stale) freshEl.innerHTML = '<span class=\"qcw-stale\">Dados do Omie desatualizados' + (f.age_minutes != null ? ' (há ' + f.age_minutes + ' min)' : '') + '</span>';"
+            },
+            {
+                "file": "assets/js/modules/quote-calendar-widget.js",
+                "line": 232,
+                "classification": "escaped_or_sanitized",
+                "source": "gridEl.innerHTML = '<div class=\"qcw-msg qcw-msg--err\" role=\"status\">' + esc(msg) +"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 201,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 211,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML = rows.map(function (r) {"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 263,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 280,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = chips.map(function (c) {"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 289,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 372,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML = '<tr><td colspan=\"8\" style=\"text-align:center;padding:24px;color:var(--text-2)\">Nenhuma pendência encontrada no período.</td></tr>';"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 375,
+                "classification": "dynamic_review_required",
+                "source": "tb.innerHTML = rows.map(function (r) {"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 405,
+                "classification": "dynamic_review_required",
+                "source": "wrap.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 428,
+                "classification": "dynamic_review_required",
+                "source": "if (tb) tb.innerHTML = '<tr><td colspan=\"8\" style=\"text-align:center;padding:24px;color:var(--danger)\">' +"
+            },
+            {
+                "file": "assets/js/modules/reconciliation/search-drilldown.js",
+                "line": 445,
+                "classification": "dynamic_review_required",
+                "source": "if (chips) { chips.style.display = 'none'; chips.innerHTML = ''; }"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 88,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 106,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = TABS.map(function (tab) {"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 125,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"biomie-drawer__empty\">Erro interno: modulos nao carregados.</div>';"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 129,
+                "classification": "dynamic_review_required",
+                "source": "if (state.loading) { body.innerHTML = skeleton(); return; }"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 131,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\">' +"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 139,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"mag-empty mag-empty--compact\">' +"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 151,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderResumo(data);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 153,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = B.VendorDetail.Composition"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 157,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderInvoices(data.invoices || []);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 160,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderLinkedOrders(data.linked_orders || [], data.summary);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 163,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderWalletOrders(data.wallet_orders || []);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 165,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderCustomers(data.customers || []);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 167,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderProducts(data.products || []);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 169,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = B.VendorDetail.Charts"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 173,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = T.renderTimeline(data);"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 175,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML = '<div class=\"biomie-drawer__empty\">Aba desconhecida.</div>';"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 276,
+                "classification": "dynamic_review_required",
+                "source": "drawer.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 305,
+                "classification": "dynamic_review_required",
+                "source": "body.innerHTML ="
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 318,
+                "classification": "dynamic_review_required",
+                "source": "if (body) body.innerHTML = '<div class=\"biomie-drawer__empty\">Erro ao carregar bucket sem vendedor.</div>';"
+            },
+            {
+                "file": "assets/js/modules/vendor-detail/index.js",
+                "line": 332,
+                "classification": "escaped_or_sanitized",
+                "source": "if (titleEl)    titleEl.innerHTML   = B.VendorDetail.Tabs.esc(name) + ' ' + risk;"
+            },
+            {
+                "file": "assets/js/modules/vendors/page-drilldown.js",
+                "line": 173,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = '<tr><td colspan=\"10\" style=\"text-align:center;padding:24px;color:var(--text-3);\">'"
+            },
+            {
+                "file": "assets/js/modules/vendors/page-drilldown.js",
+                "line": 177,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = rows.map(function (row) {"
+            },
+            {
+                "file": "assets/js/modules/vendors/page-drilldown.js",
+                "line": 217,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/modules/vendors/page-drilldown.js",
+                "line": 235,
+                "classification": "dynamic_review_required",
+                "source": "el.innerHTML = msg;"
+            },
+            {
+                "file": "assets/js/notifications.js",
+                "line": 108,
+                "classification": "dynamic_review_required",
+                "source": "a.innerHTML ="
+            },
+            {
+                "file": "assets/js/observability.js",
+                "line": 236,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = emptyRow(colspan, emptyMessage || 'Sem dados recentes.', false);"
+            },
+            {
+                "file": "assets/js/observability.js",
+                "line": 239,
+                "classification": "dynamic_review_required",
+                "source": "target.innerHTML = rows.map((row) => `<tr class=\"obs-data-row\" data-level=\"${h(row.level)}\">${row.html}</tr>`).join('');"
+            },
+            {
+                "file": "assets/js/observability.js",
+                "line": 449,
+                "classification": "dynamic_review_required",
+                "source": "els.alertsSection.innerHTML = '<div class=\"obs-healthy-empty\"><span class=\"material-symbols-rounded\" aria-hidden=\"true\">verified</span><div><strong>Nenhum alerta automático ativo</strong><small>As regras monitoradas não identificaram uma condição que exija ação agora.</small></div></div>';"
+            },
+            {
+                "file": "assets/js/observability.js",
+                "line": 462,
+                "classification": "dynamic_review_required",
+                "source": "els.alertsSection.innerHTML = `<div class=\"obs-alert-list\">${html}</div>`;"
+            },
+            {
+                "file": "assets/js/observability.js",
+                "line": 520,
+                "classification": "dynamic_review_required",
+                "source": "els.priorityList.innerHTML = health.priorities.map((item) => `<li><span class=\"material-symbols-rounded\" aria-hidden=\"true\">${h(item.icon)}</span><a href=\"${h(item.href)}\">${h(item.text)}</a></li>`).join('');"
+            },
+            {
+                "file": "assets/js/observability.js",
+                "line": 699,
+                "classification": "dynamic_review_required",
+                "source": "body.insertAdjacentHTML('beforeend', emptyRow(Number(body.dataset.colspan || 1), 'Nenhum registro corresponde aos filtros.', true));"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 150,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = primary.concat(ordered).map(c => {"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 171,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = items.map(key => {"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 200,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = '<div class=\"omie-no-actions\">Nenhum cursor operacional registrado ainda.</div>';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 204,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = domains.map(d => {"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 236,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = `<div class=\"omie-rate-summary\">"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 315,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 335,
+                "classification": "dynamic_review_required",
+                "source": "geoContainer.innerHTML = geoItems.map(key => {"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 394,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 404,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = '<div class=\"omie-no-actions\">Nenhuma acao pendente.</div>';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 408,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = '<ul class=\"omie-actions-list\">' + actions.map(a => {"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 425,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = '<div class=\"omie-no-actions\">Nenhuma sincronizacao recente.</div>';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 441,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 468,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = html;"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 476,
+                "classification": "dynamic_review_required",
+                "source": "container.insertAdjacentHTML('afterbegin', block);"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 533,
+                "classification": "dynamic_review_required",
+                "source": "btnTest.innerHTML = '<span class=\"material-symbols-rounded omie-spin\">sync</span>Testando...';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 551,
+                "classification": "dynamic_review_required",
+                "source": "btnTest.innerHTML = '<span class=\"material-symbols-rounded\">cable</span>Testar conexao Omie';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 560,
+                "classification": "dynamic_review_required",
+                "source": "btnSnapshot.innerHTML = '<span class=\"material-symbols-rounded omie-spin\">sync</span>Atualizando...';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 585,
+                "classification": "dynamic_review_required",
+                "source": "btnSnapshot.innerHTML = '<span class=\"material-symbols-rounded\">refresh</span>Atualizar visao comercial';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 594,
+                "classification": "dynamic_review_required",
+                "source": "btnDelta.innerHTML = '<span class=\"material-symbols-rounded omie-spin\">sync</span>Agendando...';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 610,
+                "classification": "dynamic_review_required",
+                "source": "btnDelta.innerHTML = '<span class=\"material-symbols-rounded\">sync_alt</span>Sincronizar delta';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 619,
+                "classification": "dynamic_review_required",
+                "source": "btnReprocess.innerHTML = '<span class=\"material-symbols-rounded omie-spin\">sync</span>Agendando...';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 633,
+                "classification": "dynamic_review_required",
+                "source": "btnReprocess.innerHTML = '<span class=\"material-symbols-rounded\">playlist_add_check</span>Reprocessar fila';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 643,
+                "classification": "dynamic_review_required",
+                "source": "btnMatClients.innerHTML = '<span class=\"material-symbols-rounded omie-spin\">sync</span>Materializando...';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 657,
+                "classification": "dynamic_review_required",
+                "source": "btnMatClients.innerHTML = '<span class=\"material-symbols-rounded\">people</span>Materializar clientes';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 667,
+                "classification": "dynamic_review_required",
+                "source": "btnMatGeo.innerHTML = '<span class=\"material-symbols-rounded omie-spin\">sync</span>Materializando Geo...';"
+            },
+            {
+                "file": "assets/js/omie-status.js",
+                "line": 681,
+                "classification": "dynamic_review_required",
+                "source": "btnMatGeo.innerHTML = '<span class=\"material-symbols-rounded\">map</span>Materializar Geo/CNAE';"
+            },
+            {
+                "file": "assets/js/performance-monitor.js",
+                "line": 148,
+                "classification": "dynamic_review_required",
+                "source": "grid.innerHTML = ["
+            },
+            {
+                "file": "assets/js/performance-monitor.js",
+                "line": 156,
+                "classification": "dynamic_review_required",
+                "source": "list.innerHTML = summary.requests.map((record) => ("
+            },
+            {
+                "file": "assets/js/pwa.js",
+                "line": 42,
+                "classification": "dynamic_review_required",
+                "source": "installButton.innerHTML = '<span class=\"material-symbols-rounded\">download</span>Instalar app';"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 166,
+                "classification": "dynamic_review_required",
+                "source": "if (!msg) { el.classList.add('d-none'); el.innerHTML = ''; return; }"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 168,
+                "classification": "escaped_or_sanitized",
+                "source": "el.innerHTML = `<div style=\"background:#fde8e8;border-radius:8px;padding:12px 16px;margin:8px 0;font-size:13px;color:#8b1a1a\">${esc(msg)}</div>`;"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 173,
+                "classification": "dynamic_review_required",
+                "source": "if (!msg) { el.innerHTML = ''; return; }"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 176,
+                "classification": "escaped_or_sanitized",
+                "source": "el.innerHTML = `<div style=\"background:${bg};border-radius:8px;padding:12px 16px;margin:8px 0;font-size:13px;color:${color}\">${esc(msg)}</div>`;"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 238,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = `<tr><td colspan=\"9\" style=\"padding:24px;text-align:center;color:var(--text-secondary)\">"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 244,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = vendors.map(v => `"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 272,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = `<tr><td colspan=\"8\" style=\"padding:24px;text-align:center;color:var(--text-secondary)\">"
+            },
+            {
+                "file": "assets/js/reconciliacao.js",
+                "line": 279,
+                "classification": "dynamic_review_required",
+                "source": "tbody.innerHTML = queue.map(item => {"
+            },
+            {
+                "file": "assets/js/shell.js",
+                "line": 698,
+                "classification": "dynamic_review_required",
+                "source": "_crumb.innerHTML = '<a href=\"' + _backUrl + '\">'"
+            },
+            {
+                "file": "assets/js/shell.js",
+                "line": 966,
+                "classification": "dynamic_review_required",
+                "source": "container.innerHTML = '<div class=\"bmie-empty\">'"
+            },
+            {
+                "file": "assets/js/tenant-tab-context.js",
+                "line": 359,
+                "classification": "dynamic_review_required",
+                "source": "skeleton.innerHTML = '<span class=\"skeleton-block\"></span>'"
+            },
+            {
+                "file": "assets/js/tv-board.js",
+                "line": 140,
+                "classification": "dynamic_review_required",
+                "source": "els.groupAnnualPctBadge.innerHTML ="
+            },
+            {
+                "file": "assets/js/tv-board.js",
+                "line": 145,
+                "classification": "static_template",
+                "source": "els.groupAnnualPctBadge.innerHTML = '';"
+            },
+            {
+                "file": "assets/js/tv-board.js",
+                "line": 242,
+                "classification": "dynamic_review_required",
+                "source": "els.grid.innerHTML = '<div class=\"tvb-skeleton\">Nenhuma empresa acessível com dados no período.</div>';"
+            },
+            {
+                "file": "assets/js/tv-board.js",
+                "line": 250,
+                "classification": "dynamic_review_required",
+                "source": "els.grid.innerHTML = sorted.map(cardHtml).join('');"
+            }
+        ]
+    },
+    "api_select_star": {
+        "total": 17,
+        "occurrences": [
+            {
+                "file": "api/client_profile.php",
+                "line": 29,
+                "source": "SELECT d.*, g.*,"
+            },
+            {
+                "file": "api/geo_trace_nf.php",
+                "line": 148,
+                "source": "SELECT *"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 51,
+                "source": "$stmt = $pdo->prepare(\"SELECT * FROM biomie_notas_fiscais_canonicas WHERE nota_key = :k AND {$tenantFilter} LIMIT 1\");"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 57,
+                "source": "$stmt = $pdo->prepare(\"SELECT * FROM biomie_notas_fiscais_canonicas WHERE chave_nfe = :k AND {$tenantFilter} LIMIT 1\");"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 74,
+                "source": "\"SELECT * FROM biomie_notas_fiscais_canonicas"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 84,
+                "source": "\"SELECT * FROM biomie_notas_fiscais_canonicas WHERE numero_nf = :n AND {$tenantFilter}"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 104,
+                "source": "\"SELECT * FROM biomie_notas_fiscais_itens_canonicos"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 114,
+                "source": "$stmtOrder = $pdo->prepare(\"SELECT * FROM biomie_pedidos_canonicos WHERE pedido_id_omie = :pid AND {$tenantFilter} LIMIT 1\");"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 119,
+                "source": "$stmtOrder = $pdo->prepare(\"SELECT * FROM biomie_pedidos_canonicos WHERE codigo_pedido = :c AND {$tenantFilter} LIMIT 1\");"
+            },
+            {
+                "file": "api/invoice_detail.php",
+                "line": 129,
+                "source": "\"SELECT * FROM biomie_titulos_financeiros_canonicos"
+            },
+            {
+                "file": "api/order_detail.php",
+                "line": 41,
+                "source": "\"SELECT * FROM biomie_pedidos_canonicos WHERE codigo_pedido = :codigo AND {$tenantFilter} LIMIT 1\""
+            },
+            {
+                "file": "api/order_detail.php",
+                "line": 57,
+                "source": "\"SELECT * FROM biomie_notas_fiscais_canonicas"
+            },
+            {
+                "file": "api/order_detail.php",
+                "line": 77,
+                "source": "\"SELECT * FROM biomie_notas_fiscais_itens_canonicos"
+            },
+            {
+                "file": "api/order_detail.php",
+                "line": 89,
+                "source": "\"SELECT * FROM biomie_titulos_financeiros_canonicos"
+            },
+            {
+                "file": "api/product_action_intelligence.php",
+                "line": 31,
+                "source": "* Sem CSV/manual. Sem SELECT *."
+            },
+            {
+                "file": "api/quote_agenda_policy.php",
+                "line": 37,
+                "source": "$st = $pdo->prepare('SELECT * FROM biomie_quote_followup_policy WHERE company_id = :c');"
+            },
+            {
+                "file": "api/reconciliation_search.php",
+                "line": 318,
+                "source": "$mainSql = \"SELECT * FROM ({$innerSql}) _raw {$whereStr}\";"
+            }
+        ]
+    },
+    "ratchet": {
+        "allowlist": "config/security-html-allowlist.json",
+        "current_entries": 434,
+        "new_unapproved_entries": 0,
+        "ok": true
+    }
+}

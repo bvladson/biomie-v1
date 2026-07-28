@@ -1,0 +1,137 @@
+{
+    "alerts_operational": [
+        {
+            "level": "warning",
+            "message": "Conversao do periodo abaixo do esperado.",
+            "title": "Bruno: conversao abaixo da meta"
+        }
+    ],
+    "daily_status": [
+        {
+            "authorized_orders": 0,
+            "authorized_value": 0,
+            "billed_orders": 1,
+            "billed_value": 1200,
+            "cancelled_orders": 0,
+            "cancelled_value": 0,
+            "date": "2026-03-02"
+        },
+        {
+            "authorized_orders": 1,
+            "authorized_value": 450,
+            "billed_orders": 2,
+            "billed_value": 1800,
+            "cancelled_orders": 0,
+            "cancelled_value": 0,
+            "date": "2026-03-29"
+        }
+    ],
+    "data_contract": {
+        "completeness_status": "complete",
+        "coverage_end": "2026-03-31",
+        "coverage_start": "2026-03-01",
+        "data_mode": "reconciled",
+        "dataset": "vendors",
+        "delay_present": false,
+        "freshness_at": "2026-04-01 08:00:00",
+        "has_retry_or_delay": false,
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "open_divergences": 0,
+        "origin": "historical-snapshot",
+        "pending_backlog_total": 0,
+        "reconcile_status": "reconciled",
+        "reconciled_until": "2026-03-31 23:59:59",
+        "reconciliation_pct": 100,
+        "retry_present": false,
+        "source": "legacy_fallback",
+        "source_of_truth": "legacy",
+        "staleness_reason": null
+    },
+    "funnel": {
+        "authorized": 2200,
+        "billed": 12450,
+        "cancelled": 180,
+        "received": 0
+    },
+    "last_reconcile_at": null,
+    "last_success_at": null,
+    "meta": {
+        "canonical_error": "Snapshot canonical sem sinal.",
+        "generated_at": "2026-04-01 08:00:00",
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "last_sync": "2026-04-01 08:00:00",
+        "served_from": "historical-snapshot",
+        "source_of_truth": "legacy"
+    },
+    "mode": "live",
+    "ok": true,
+    "period": {
+        "end": "2026-03-31",
+        "label": "01/03/2026 ate 31/03/2026",
+        "start": "2026-03-01"
+    },
+    "source": "legacy_fallback",
+    "source_of_truth": "legacy",
+    "summary": {
+        "active_vendors": 3,
+        "cancelled_orders": 1,
+        "cancelled_value": 180,
+        "forecast": 13800,
+        "goal_progress": 83,
+        "gross_revenue": 12450,
+        "orders": 14,
+        "pending_orders": 3,
+        "pending_value": 2200,
+        "revenue": 12450,
+        "target": 15000
+    },
+    "summary_status": {
+        "authorized_orders": 3,
+        "authorized_value": 2200,
+        "backlog_value": 2200,
+        "billed_orders": 14,
+        "billed_value": 12450,
+        "cancel_rate": 6.67,
+        "cancelled_orders": 1,
+        "cancelled_value": 180,
+        "conversion_rate": 82.35
+    },
+    "vendor_status_matrix": [
+        {
+            "authorized_orders": 1,
+            "authorized_value": 900,
+            "billed_orders": 7,
+            "billed_value": 6100,
+            "cancelled_orders": 0,
+            "cancelled_value": 0,
+            "vendor_id": "10",
+            "vendor_name": "Ana"
+        },
+        {
+            "authorized_orders": 1,
+            "authorized_value": 800,
+            "billed_orders": 4,
+            "billed_value": 4200,
+            "cancelled_orders": 1,
+            "cancelled_value": 180,
+            "vendor_id": "11",
+            "vendor_name": "Bruno"
+        }
+    ],
+    "vendors": [
+        {
+            "billed_orders": 7,
+            "billed_value": 6100,
+            "vendor_id": "10",
+            "vendor_name": "Ana"
+        },
+        {
+            "billed_orders": 4,
+            "billed_value": 4200,
+            "vendor_id": "11",
+            "vendor_name": "Bruno"
+        }
+    ]
+}

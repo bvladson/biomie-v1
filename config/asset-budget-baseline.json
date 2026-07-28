@@ -1,0 +1,978 @@
+{
+    "created_at_utc": "2026-07-25T21:42:46Z",
+    "maximum_growth_pct": 5,
+    "assets": {
+        "assets/css/admin-insights.css": {
+            "bytes": 4603,
+            "gzip_bytes": 1444
+        },
+        "assets/css/admin-insights.min.css": {
+            "bytes": 3557,
+            "gzip_bytes": 1178
+        },
+        "assets/css/biomie-drawer.css": {
+            "bytes": 6369,
+            "gzip_bytes": 1883
+        },
+        "assets/css/biomie-drawer.min.css": {
+            "bytes": 3215,
+            "gzip_bytes": 1152
+        },
+        "assets/css/biomie-map.css": {
+            "bytes": 65075,
+            "gzip_bytes": 11324
+        },
+        "assets/css/biomie-map.min.css": {
+            "bytes": 47010,
+            "gzip_bytes": 9300
+        },
+        "assets/css/commercial-card-help.css": {
+            "bytes": 20486,
+            "gzip_bytes": 3518
+        },
+        "assets/css/commercial-card-help.min.css": {
+            "bytes": 17720,
+            "gzip_bytes": 3331
+        },
+        "assets/css/commercial-documents.css": {
+            "bytes": 23509,
+            "gzip_bytes": 4374
+        },
+        "assets/css/commercial-documents.min.css": {
+            "bytes": 20111,
+            "gzip_bytes": 3871
+        },
+        "assets/css/commercial-language.css": {
+            "bytes": 5798,
+            "gzip_bytes": 1244
+        },
+        "assets/css/commercial-language.min.css": {
+            "bytes": 5273,
+            "gzip_bytes": 1169
+        },
+        "assets/css/context-filters.css": {
+            "bytes": 9726,
+            "gzip_bytes": 2224
+        },
+        "assets/css/context-filters.min.css": {
+            "bytes": 8060,
+            "gzip_bytes": 1949
+        },
+        "assets/css/filters.css": {
+            "bytes": 18529,
+            "gzip_bytes": 3929
+        },
+        "assets/css/filters.min.css": {
+            "bytes": 12990,
+            "gzip_bytes": 2973
+        },
+        "assets/css/finance-legacy-utilities.css": {
+            "bytes": 1553,
+            "gzip_bytes": 625
+        },
+        "assets/css/finance-legacy-utilities.min.css": {
+            "bytes": 1171,
+            "gzip_bytes": 484
+        },
+        "assets/css/finance-realizado.css": {
+            "bytes": 57196,
+            "gzip_bytes": 9225
+        },
+        "assets/css/finance-realizado.min.css": {
+            "bytes": 44197,
+            "gzip_bytes": 8028
+        },
+        "assets/css/fiscal.css": {
+            "bytes": 46909,
+            "gzip_bytes": 8492
+        },
+        "assets/css/fiscal.min.css": {
+            "bytes": 34360,
+            "gzip_bytes": 6615
+        },
+        "assets/css/flight-plan-clean.css": {
+            "bytes": 8676,
+            "gzip_bytes": 2108
+        },
+        "assets/css/flight-plan-clean.min.css": {
+            "bytes": 6008,
+            "gzip_bytes": 1639
+        },
+        "assets/css/global-search.css": {
+            "bytes": 12181,
+            "gzip_bytes": 3037
+        },
+        "assets/css/global-search.min.css": {
+            "bytes": 8884,
+            "gzip_bytes": 2241
+        },
+        "assets/css/internal-tools.css": {
+            "bytes": 3588,
+            "gzip_bytes": 731
+        },
+        "assets/css/internal-tools.min.css": {
+            "bytes": 3055,
+            "gzip_bytes": 684
+        },
+        "assets/css/login-wallpaper.css": {
+            "bytes": 10300,
+            "gzip_bytes": 2513
+        },
+        "assets/css/login-wallpaper.min.css": {
+            "bytes": 5721,
+            "gzip_bytes": 1846
+        },
+        "assets/css/mag-adminlte-clean.css": {
+            "bytes": 22534,
+            "gzip_bytes": 3602
+        },
+        "assets/css/mag-adminlte-clean.min.css": {
+            "bytes": 19273,
+            "gzip_bytes": 3259
+        },
+        "assets/css/mag-clean.css": {
+            "bytes": 20815,
+            "gzip_bytes": 3510
+        },
+        "assets/css/mag-clean.min.css": {
+            "bytes": 17511,
+            "gzip_bytes": 3214
+        },
+        "assets/css/mag-design-system.css": {
+            "bytes": 145424,
+            "gzip_bytes": 23471
+        },
+        "assets/css/mag-design-system.min.css": {
+            "bytes": 106713,
+            "gzip_bytes": 17070
+        },
+        "assets/css/mag-mobile-premium.css": {
+            "bytes": 13754,
+            "gzip_bytes": 2950
+        },
+        "assets/css/mag-mobile-premium.min.css": {
+            "bytes": 7777,
+            "gzip_bytes": 1974
+        },
+        "assets/css/mag-mobile.css": {
+            "bytes": 21040,
+            "gzip_bytes": 4839
+        },
+        "assets/css/mag-mobile.min.css": {
+            "bytes": 10971,
+            "gzip_bytes": 2639
+        },
+        "assets/css/mercadorias.css": {
+            "bytes": 8810,
+            "gzip_bytes": 2039
+        },
+        "assets/css/mercadorias.min.css": {
+            "bytes": 6589,
+            "gzip_bytes": 1653
+        },
+        "assets/css/module-pages.css": {
+            "bytes": 45302,
+            "gzip_bytes": 8184
+        },
+        "assets/css/module-pages.min.css": {
+            "bytes": 34524,
+            "gzip_bytes": 6777
+        },
+        "assets/css/notifications.css": {
+            "bytes": 8030,
+            "gzip_bytes": 2515
+        },
+        "assets/css/notifications.min.css": {
+            "bytes": 5951,
+            "gzip_bytes": 1631
+        },
+        "assets/css/observability.css": {
+            "bytes": 19424,
+            "gzip_bytes": 4099
+        },
+        "assets/css/observability.min.css": {
+            "bytes": 16721,
+            "gzip_bytes": 3660
+        },
+        "assets/css/quote-agenda.css": {
+            "bytes": 12311,
+            "gzip_bytes": 3796
+        },
+        "assets/css/quote-agenda.min.css": {
+            "bytes": 7121,
+            "gzip_bytes": 1896
+        },
+        "assets/css/quote-calendar-widget.css": {
+            "bytes": 4988,
+            "gzip_bytes": 1839
+        },
+        "assets/css/quote-calendar-widget.min.css": {
+            "bytes": 3304,
+            "gzip_bytes": 1018
+        },
+        "assets/css/shell-index.css": {
+            "bytes": 88704,
+            "gzip_bytes": 15340
+        },
+        "assets/css/shell-index.min.css": {
+            "bytes": 63509,
+            "gzip_bytes": 11620
+        },
+        "assets/css/theme-tokens.css": {
+            "bytes": 15475,
+            "gzip_bytes": 4600
+        },
+        "assets/css/theme-tokens.min.css": {
+            "bytes": 10244,
+            "gzip_bytes": 2967
+        },
+        "assets/css/tv-board.css": {
+            "bytes": 22969,
+            "gzip_bytes": 5129
+        },
+        "assets/css/tv-board.min.css": {
+            "bytes": 15049,
+            "gzip_bytes": 3897
+        },
+        "assets/js/app.js": {
+            "bytes": 109787,
+            "gzip_bytes": 25700
+        },
+        "assets/js/app.min.js": {
+            "bytes": 65454,
+            "gzip_bytes": 19612
+        },
+        "assets/js/biomie-formatters.js": {
+            "bytes": 3182,
+            "gzip_bytes": 1042
+        },
+        "assets/js/biomie-formatters.min.js": {
+            "bytes": 1646,
+            "gzip_bytes": 692
+        },
+        "assets/js/biomie-map-advanced.js": {
+            "bytes": 2231,
+            "gzip_bytes": 811
+        },
+        "assets/js/biomie-map-advanced.min.js": {
+            "bytes": 1597,
+            "gzip_bytes": 701
+        },
+        "assets/js/biomie-map-panel.js": {
+            "bytes": 19827,
+            "gzip_bytes": 4869
+        },
+        "assets/js/biomie-map-panel.min.js": {
+            "bytes": 13378,
+            "gzip_bytes": 4036
+        },
+        "assets/js/biomie-map.js": {
+            "bytes": 236086,
+            "gzip_bytes": 56897
+        },
+        "assets/js/biomie-map.min.js": {
+            "bytes": 134483,
+            "gzip_bytes": 40211
+        },
+        "assets/js/biomie-states.js": {
+            "bytes": 8314,
+            "gzip_bytes": 2482
+        },
+        "assets/js/biomie-states.min.js": {
+            "bytes": 4810,
+            "gzip_bytes": 1697
+        },
+        "assets/js/cache-refresh.js": {
+            "bytes": 2582,
+            "gzip_bytes": 960
+        },
+        "assets/js/cache-refresh.min.js": {
+            "bytes": 1341,
+            "gzip_bytes": 580
+        },
+        "assets/js/chart-helpers.js": {
+            "bytes": 16586,
+            "gzip_bytes": 4249
+        },
+        "assets/js/chart-helpers.min.js": {
+            "bytes": 9099,
+            "gzip_bytes": 3507
+        },
+        "assets/js/chart.umd.js": {
+            "bytes": 208518,
+            "gzip_bytes": 70552
+        },
+        "assets/js/client_dossier.js": {
+            "bytes": 8509,
+            "gzip_bytes": 2593
+        },
+        "assets/js/client_dossier.min.js": {
+            "bytes": 6826,
+            "gzip_bytes": 2356
+        },
+        "assets/js/commercial-card-help-loader.js": {
+            "bytes": 1816,
+            "gzip_bytes": 689
+        },
+        "assets/js/commercial-card-help-loader.min.js": {
+            "bytes": 1109,
+            "gzip_bytes": 560
+        },
+        "assets/js/commercial-card-help.js": {
+            "bytes": 113207,
+            "gzip_bytes": 25831
+        },
+        "assets/js/commercial-card-help.min.js": {
+            "bytes": 90387,
+            "gzip_bytes": 23827
+        },
+        "assets/js/commercial-language.js": {
+            "bytes": 14160,
+            "gzip_bytes": 4400
+        },
+        "assets/js/commercial-language.min.js": {
+            "bytes": 11526,
+            "gzip_bytes": 4074
+        },
+        "assets/js/context-filters.js": {
+            "bytes": 26667,
+            "gzip_bytes": 6334
+        },
+        "assets/js/context-filters.min.js": {
+            "bytes": 14361,
+            "gzip_bytes": 4399
+        },
+        "assets/js/core/chart-factory.js": {
+            "bytes": 62841,
+            "gzip_bytes": 14647
+        },
+        "assets/js/core/chart-factory.min.js": {
+            "bytes": 33240,
+            "gzip_bytes": 9655
+        },
+        "assets/js/core/chart-governance.js": {
+            "bytes": 17591,
+            "gzip_bytes": 4788
+        },
+        "assets/js/core/chart-governance.min.js": {
+            "bytes": 8400,
+            "gzip_bytes": 3258
+        },
+        "assets/js/core/chart-helpers.js": {
+            "bytes": 10434,
+            "gzip_bytes": 3110
+        },
+        "assets/js/core/chart-helpers.min.js": {
+            "bytes": 3906,
+            "gzip_bytes": 1660
+        },
+        "assets/js/core/drawer-manager.js": {
+            "bytes": 4956,
+            "gzip_bytes": 1711
+        },
+        "assets/js/core/drawer-manager.min.js": {
+            "bytes": 2250,
+            "gzip_bytes": 1038
+        },
+        "assets/js/core/filter-chips.js": {
+            "bytes": 2594,
+            "gzip_bytes": 986
+        },
+        "assets/js/core/filter-chips.min.js": {
+            "bytes": 1133,
+            "gzip_bytes": 585
+        },
+        "assets/js/core/filter-state.js": {
+            "bytes": 2773,
+            "gzip_bytes": 863
+        },
+        "assets/js/core/filter-state.min.js": {
+            "bytes": 965,
+            "gzip_bytes": 403
+        },
+        "assets/js/core/filter-url.js": {
+            "bytes": 4103,
+            "gzip_bytes": 1225
+        },
+        "assets/js/core/filter-url.min.js": {
+            "bytes": 1851,
+            "gzip_bytes": 743
+        },
+        "assets/js/core/render-helpers.js": {
+            "bytes": 67209,
+            "gzip_bytes": 15818
+        },
+        "assets/js/core/render-helpers.min.js": {
+            "bytes": 43652,
+            "gzip_bytes": 12467
+        },
+        "assets/js/core/request-controller.js": {
+            "bytes": 1775,
+            "gzip_bytes": 700
+        },
+        "assets/js/core/request-controller.min.js": {
+            "bytes": 455,
+            "gzip_bytes": 263
+        },
+        "assets/js/core/server-table.js": {
+            "bytes": 6113,
+            "gzip_bytes": 2163
+        },
+        "assets/js/core/server-table.min.js": {
+            "bytes": 2217,
+            "gzip_bytes": 1117
+        },
+        "assets/js/core/utils.js": {
+            "bytes": 16156,
+            "gzip_bytes": 4321
+        },
+        "assets/js/core/utils.min.js": {
+            "bytes": 8991,
+            "gzip_bytes": 3123
+        },
+        "assets/js/finance-feature-loader.js": {
+            "bytes": 3708,
+            "gzip_bytes": 1289
+        },
+        "assets/js/finance-feature-loader.min.js": {
+            "bytes": 2125,
+            "gzip_bytes": 991
+        },
+        "assets/js/finance.js": {
+            "bytes": 61638,
+            "gzip_bytes": 14290
+        },
+        "assets/js/finance.min.js": {
+            "bytes": 36533,
+            "gzip_bytes": 10842
+        },
+        "assets/js/fiscal.js": {
+            "bytes": 105389,
+            "gzip_bytes": 27757
+        },
+        "assets/js/fiscal.min.js": {
+            "bytes": 80426,
+            "gzip_bytes": 24580
+        },
+        "assets/js/flight-plan-targets.js": {
+            "bytes": 20578,
+            "gzip_bytes": 5408
+        },
+        "assets/js/flight-plan-targets.min.js": {
+            "bytes": 12142,
+            "gzip_bytes": 4180
+        },
+        "assets/js/flight-plan-v2.js": {
+            "bytes": 1571,
+            "gzip_bytes": 628
+        },
+        "assets/js/flight-plan-v2.min.js": {
+            "bytes": 892,
+            "gzip_bytes": 388
+        },
+        "assets/js/geo-feature-loader.js": {
+            "bytes": 3176,
+            "gzip_bytes": 1139
+        },
+        "assets/js/geo-feature-loader.min.js": {
+            "bytes": 1958,
+            "gzip_bytes": 908
+        },
+        "assets/js/geo-normalizer.js": {
+            "bytes": 11340,
+            "gzip_bytes": 2183
+        },
+        "assets/js/geo-normalizer.min.js": {
+            "bytes": 8436,
+            "gzip_bytes": 1819
+        },
+        "assets/js/global-search.js": {
+            "bytes": 24325,
+            "gzip_bytes": 6512
+        },
+        "assets/js/global-search.min.js": {
+            "bytes": 13088,
+            "gzip_bytes": 4554
+        },
+        "assets/js/index_geo.js": {
+            "bytes": 23948,
+            "gzip_bytes": 5901
+        },
+        "assets/js/index_geo.min.js": {
+            "bytes": 14155,
+            "gzip_bytes": 4668
+        },
+        "assets/js/login-wallpaper.js": {
+            "bytes": 9519,
+            "gzip_bytes": 2568
+        },
+        "assets/js/login-wallpaper.min.js": {
+            "bytes": 4113,
+            "gzip_bytes": 1545
+        },
+        "assets/js/login.js": {
+            "bytes": 3899,
+            "gzip_bytes": 1378
+        },
+        "assets/js/login.min.js": {
+            "bytes": 2405,
+            "gzip_bytes": 1052
+        },
+        "assets/js/mag-chart-defaults.js": {
+            "bytes": 6428,
+            "gzip_bytes": 2371
+        },
+        "assets/js/mag-chart-defaults.min.js": {
+            "bytes": 2993,
+            "gzip_bytes": 1436
+        },
+        "assets/js/mag-ui.js": {
+            "bytes": 8696,
+            "gzip_bytes": 2651
+        },
+        "assets/js/mag-ui.min.js": {
+            "bytes": 4915,
+            "gzip_bytes": 2046
+        },
+        "assets/js/mobile-shell.js": {
+            "bytes": 17626,
+            "gzip_bytes": 4771
+        },
+        "assets/js/mobile-shell.min.js": {
+            "bytes": 8398,
+            "gzip_bytes": 2739
+        },
+        "assets/js/modules/commercial/nf-periodo-table.js": {
+            "bytes": 18019,
+            "gzip_bytes": 4746
+        },
+        "assets/js/modules/commercial/nf-periodo-table.min.js": {
+            "bytes": 13691,
+            "gzip_bytes": 4278
+        },
+        "assets/js/modules/customer-detail/index.js": {
+            "bytes": 20460,
+            "gzip_bytes": 5614
+        },
+        "assets/js/modules/customer-detail/index.min.js": {
+            "bytes": 12593,
+            "gzip_bytes": 4525
+        },
+        "assets/js/modules/dashboard/page-drilldown.js": {
+            "bytes": 35388,
+            "gzip_bytes": 8735
+        },
+        "assets/js/modules/dashboard/page-drilldown.min.js": {
+            "bytes": 18515,
+            "gzip_bytes": 6371
+        },
+        "assets/js/modules/drilldown-router.js": {
+            "bytes": 11100,
+            "gzip_bytes": 2975
+        },
+        "assets/js/modules/drilldown-router.min.js": {
+            "bytes": 6306,
+            "gzip_bytes": 2313
+        },
+        "assets/js/modules/finance/charts.js": {
+            "bytes": 45250,
+            "gzip_bytes": 10164
+        },
+        "assets/js/modules/finance/charts.min.js": {
+            "bytes": 24990,
+            "gzip_bytes": 7759
+        },
+        "assets/js/modules/finance/collection-by-vendor.js": {
+            "bytes": 42223,
+            "gzip_bytes": 9859
+        },
+        "assets/js/modules/finance/collection-by-vendor.min.js": {
+            "bytes": 25570,
+            "gzip_bytes": 8005
+        },
+        "assets/js/modules/finance/collection-governance.js": {
+            "bytes": 33566,
+            "gzip_bytes": 8047
+        },
+        "assets/js/modules/finance/collection-governance.min.js": {
+            "bytes": 20819,
+            "gzip_bytes": 6538
+        },
+        "assets/js/modules/finance/information-architecture.js": {
+            "bytes": 6117,
+            "gzip_bytes": 1728
+        },
+        "assets/js/modules/finance/information-architecture.min.js": {
+            "bytes": 4109,
+            "gzip_bytes": 1436
+        },
+        "assets/js/modules/finance/page-drilldown.js": {
+            "bytes": 22189,
+            "gzip_bytes": 5550
+        },
+        "assets/js/modules/finance/page-drilldown.min.js": {
+            "bytes": 11230,
+            "gzip_bytes": 3980
+        },
+        "assets/js/modules/finance/product-payment-methods.js": {
+            "bytes": 5867,
+            "gzip_bytes": 2060
+        },
+        "assets/js/modules/finance/product-payment-methods.min.js": {
+            "bytes": 3823,
+            "gzip_bytes": 1743
+        },
+        "assets/js/modules/finance/visual-analytics.js": {
+            "bytes": 57040,
+            "gzip_bytes": 11425
+        },
+        "assets/js/modules/finance/visual-analytics.min.js": {
+            "bytes": 35536,
+            "gzip_bytes": 9181
+        },
+        "assets/js/modules/flight-plan/alerts.js": {
+            "bytes": 1175,
+            "gzip_bytes": 546
+        },
+        "assets/js/modules/flight-plan/alerts.min.js": {
+            "bytes": 884,
+            "gzip_bytes": 470
+        },
+        "assets/js/modules/flight-plan/api.js": {
+            "bytes": 1412,
+            "gzip_bytes": 463
+        },
+        "assets/js/modules/flight-plan/api.min.js": {
+            "bytes": 887,
+            "gzip_bytes": 363
+        },
+        "assets/js/modules/flight-plan/charts.js": {
+            "bytes": 11813,
+            "gzip_bytes": 3422
+        },
+        "assets/js/modules/flight-plan/charts.min.js": {
+            "bytes": 6541,
+            "gzip_bytes": 2606
+        },
+        "assets/js/modules/flight-plan/dom.js": {
+            "bytes": 1112,
+            "gzip_bytes": 462
+        },
+        "assets/js/modules/flight-plan/dom.min.js": {
+            "bytes": 772,
+            "gzip_bytes": 408
+        },
+        "assets/js/modules/flight-plan/filters.js": {
+            "bytes": 1844,
+            "gzip_bytes": 571
+        },
+        "assets/js/modules/flight-plan/filters.min.js": {
+            "bytes": 1072,
+            "gzip_bytes": 481
+        },
+        "assets/js/modules/flight-plan/formatters.js": {
+            "bytes": 3365,
+            "gzip_bytes": 1198
+        },
+        "assets/js/modules/flight-plan/formatters.min.js": {
+            "bytes": 2129,
+            "gzip_bytes": 1014
+        },
+        "assets/js/modules/flight-plan/index.js": {
+            "bytes": 4362,
+            "gzip_bytes": 1460
+        },
+        "assets/js/modules/flight-plan/index.min.js": {
+            "bytes": 2662,
+            "gzip_bytes": 1119
+        },
+        "assets/js/modules/flight-plan/kpis.js": {
+            "bytes": 8588,
+            "gzip_bytes": 2658
+        },
+        "assets/js/modules/flight-plan/kpis.min.js": {
+            "bytes": 6297,
+            "gzip_bytes": 2332
+        },
+        "assets/js/modules/flight-plan/search-drilldown.js": {
+            "bytes": 13195,
+            "gzip_bytes": 3285
+        },
+        "assets/js/modules/flight-plan/search-drilldown.min.js": {
+            "bytes": 7497,
+            "gzip_bytes": 2522
+        },
+        "assets/js/modules/flight-plan/state.js": {
+            "bytes": 2132,
+            "gzip_bytes": 792
+        },
+        "assets/js/modules/flight-plan/state.min.js": {
+            "bytes": 1800,
+            "gzip_bytes": 852
+        },
+        "assets/js/modules/flight-plan/table.js": {
+            "bytes": 5842,
+            "gzip_bytes": 1695
+        },
+        "assets/js/modules/flight-plan/table.min.js": {
+            "bytes": 3445,
+            "gzip_bytes": 1296
+        },
+        "assets/js/modules/flight-plan/vendor-table.js": {
+            "bytes": 7188,
+            "gzip_bytes": 2474
+        },
+        "assets/js/modules/flight-plan/vendor-table.min.js": {
+            "bytes": 4183,
+            "gzip_bytes": 1849
+        },
+        "assets/js/modules/geo-detail/charts.js": {
+            "bytes": 3320,
+            "gzip_bytes": 1276
+        },
+        "assets/js/modules/geo-detail/charts.min.js": {
+            "bytes": 1791,
+            "gzip_bytes": 974
+        },
+        "assets/js/modules/geo-detail/index.js": {
+            "bytes": 12648,
+            "gzip_bytes": 3129
+        },
+        "assets/js/modules/geo-detail/index.min.js": {
+            "bytes": 7083,
+            "gzip_bytes": 2349
+        },
+        "assets/js/modules/geo-detail/tabs.js": {
+            "bytes": 10671,
+            "gzip_bytes": 2817
+        },
+        "assets/js/modules/geo-detail/tabs.min.js": {
+            "bytes": 7633,
+            "gzip_bytes": 2462
+        },
+        "assets/js/modules/invoice-detail/index.js": {
+            "bytes": 29872,
+            "gzip_bytes": 8085
+        },
+        "assets/js/modules/invoice-detail/index.min.js": {
+            "bytes": 20330,
+            "gzip_bytes": 6392
+        },
+        "assets/js/modules/invoices/page-drilldown.js": {
+            "bytes": 1983,
+            "gzip_bytes": 925
+        },
+        "assets/js/modules/invoices/page-drilldown.min.js": {
+            "bytes": 704,
+            "gzip_bytes": 421
+        },
+        "assets/js/modules/order-detail/index.js": {
+            "bytes": 19699,
+            "gzip_bytes": 5206
+        },
+        "assets/js/modules/order-detail/index.min.js": {
+            "bytes": 13693,
+            "gzip_bytes": 4151
+        },
+        "assets/js/modules/orders/page-drilldown.js": {
+            "bytes": 22184,
+            "gzip_bytes": 5451
+        },
+        "assets/js/modules/orders/page-drilldown.min.js": {
+            "bytes": 10553,
+            "gzip_bytes": 3466
+        },
+        "assets/js/modules/overview/overview-detail-drawer.js": {
+            "bytes": 11707,
+            "gzip_bytes": 3566
+        },
+        "assets/js/modules/overview/overview-detail-drawer.min.js": {
+            "bytes": 6936,
+            "gzip_bytes": 2743
+        },
+        "assets/js/modules/product-detail/charts.js": {
+            "bytes": 3892,
+            "gzip_bytes": 1496
+        },
+        "assets/js/modules/product-detail/charts.min.js": {
+            "bytes": 2205,
+            "gzip_bytes": 1115
+        },
+        "assets/js/modules/product-detail/index.js": {
+            "bytes": 12845,
+            "gzip_bytes": 3369
+        },
+        "assets/js/modules/product-detail/index.min.js": {
+            "bytes": 7018,
+            "gzip_bytes": 2515
+        },
+        "assets/js/modules/product-detail/tabs.js": {
+            "bytes": 38387,
+            "gzip_bytes": 8566
+        },
+        "assets/js/modules/product-detail/tabs.min.js": {
+            "bytes": 24526,
+            "gzip_bytes": 6876
+        },
+        "assets/js/modules/products/page-drilldown.js": {
+            "bytes": 18848,
+            "gzip_bytes": 4183
+        },
+        "assets/js/modules/products/page-drilldown.min.js": {
+            "bytes": 9466,
+            "gzip_bytes": 3075
+        },
+        "assets/js/modules/quote-agenda/index.js": {
+            "bytes": 26200,
+            "gzip_bytes": 8164
+        },
+        "assets/js/modules/quote-agenda/index.min.js": {
+            "bytes": 14103,
+            "gzip_bytes": 5348
+        },
+        "assets/js/modules/quote-calendar-widget.js": {
+            "bytes": 14520,
+            "gzip_bytes": 4977
+        },
+        "assets/js/modules/quote-calendar-widget.min.js": {
+            "bytes": 7599,
+            "gzip_bytes": 3196
+        },
+        "assets/js/modules/reconciliation/search-drilldown.js": {
+            "bytes": 26069,
+            "gzip_bytes": 5584
+        },
+        "assets/js/modules/reconciliation/search-drilldown.min.js": {
+            "bytes": 15820,
+            "gzip_bytes": 4221
+        },
+        "assets/js/modules/vendor-detail/charts.js": {
+            "bytes": 8127,
+            "gzip_bytes": 2084
+        },
+        "assets/js/modules/vendor-detail/charts.min.js": {
+            "bytes": 4424,
+            "gzip_bytes": 1522
+        },
+        "assets/js/modules/vendor-detail/composition.js": {
+            "bytes": 4376,
+            "gzip_bytes": 1461
+        },
+        "assets/js/modules/vendor-detail/composition.min.js": {
+            "bytes": 3043,
+            "gzip_bytes": 1233
+        },
+        "assets/js/modules/vendor-detail/index.js": {
+            "bytes": 14361,
+            "gzip_bytes": 3794
+        },
+        "assets/js/modules/vendor-detail/index.min.js": {
+            "bytes": 8998,
+            "gzip_bytes": 3028
+        },
+        "assets/js/modules/vendor-detail/tabs.js": {
+            "bytes": 19488,
+            "gzip_bytes": 4939
+        },
+        "assets/js/modules/vendor-detail/tabs.min.js": {
+            "bytes": 11681,
+            "gzip_bytes": 3978
+        },
+        "assets/js/modules/vendors/page-drilldown.js": {
+            "bytes": 18529,
+            "gzip_bytes": 4263
+        },
+        "assets/js/modules/vendors/page-drilldown.min.js": {
+            "bytes": 8995,
+            "gzip_bytes": 2880
+        },
+        "assets/js/notifications.js": {
+            "bytes": 8510,
+            "gzip_bytes": 2706
+        },
+        "assets/js/notifications.min.js": {
+            "bytes": 5144,
+            "gzip_bytes": 1831
+        },
+        "assets/js/observability.js": {
+            "bytes": 38135,
+            "gzip_bytes": 10078
+        },
+        "assets/js/observability.min.js": {
+            "bytes": 25494,
+            "gzip_bytes": 8772
+        },
+        "assets/js/omie-status.js": {
+            "bytes": 36061,
+            "gzip_bytes": 8015
+        },
+        "assets/js/omie-status.min.js": {
+            "bytes": 21871,
+            "gzip_bytes": 6414
+        },
+        "assets/js/performance-monitor.js": {
+            "bytes": 5693,
+            "gzip_bytes": 1977
+        },
+        "assets/js/performance-monitor.min.js": {
+            "bytes": 3259,
+            "gzip_bytes": 1536
+        },
+        "assets/js/pwa.js": {
+            "bytes": 5379,
+            "gzip_bytes": 1667
+        },
+        "assets/js/pwa.min.js": {
+            "bytes": 2733,
+            "gzip_bytes": 1222
+        },
+        "assets/js/reconciliacao.js": {
+            "bytes": 21387,
+            "gzip_bytes": 5384
+        },
+        "assets/js/reconciliacao.min.js": {
+            "bytes": 13256,
+            "gzip_bytes": 4490
+        },
+        "assets/js/select-empresa.js": {
+            "bytes": 6248,
+            "gzip_bytes": 2101
+        },
+        "assets/js/select-empresa.min.js": {
+            "bytes": 3393,
+            "gzip_bytes": 1526
+        },
+        "assets/js/shell.js": {
+            "bytes": 39956,
+            "gzip_bytes": 10460
+        },
+        "assets/js/shell.min.js": {
+            "bytes": 20789,
+            "gzip_bytes": 7217
+        },
+        "assets/js/tenant-tab-context.js": {
+            "bytes": 30489,
+            "gzip_bytes": 7855
+        },
+        "assets/js/tenant-tab-context.min.js": {
+            "bytes": 15086,
+            "gzip_bytes": 5496
+        },
+        "assets/js/tv-board.js": {
+            "bytes": 14676,
+            "gzip_bytes": 3913
+        },
+        "assets/js/tv-board.min.js": {
+            "bytes": 7791,
+            "gzip_bytes": 2748
+        },
+        "assets/js/vendor-filter.js": {
+            "bytes": 19707,
+            "gzip_bytes": 5217
+        },
+        "assets/js/vendor-filter.min.js": {
+            "bytes": 10156,
+            "gzip_bytes": 3419
+        }
+    }
+}

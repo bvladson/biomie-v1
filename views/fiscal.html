@@ -1,0 +1,563 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Inteligência Fiscal — carga tributária, compras, créditos potenciais e alertas fiscais por período." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Inteligência Fiscal | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+</head>
+<body class="mag-page mag-clean-page fiscal-page" data-page="fiscal">
+<main class="page fis-shell">
+
+  <!-- ══ Page Header ═══════════════════════════════════════════════════ -->
+  <section class="biomie-page-header biomie-page-header--strip anim">
+    <div class="biomie-page-header__body">
+      <h1 class="biomie-page-header__title">
+        <span class="material-symbols-rounded">receipt</span>
+        Inteligência Fiscal
+      </h1>
+      <p class="biomie-page-header__subtitle">Carga tributária, compras, créditos potenciais e pendências que pedem ação contábil.</p>
+    </div>
+    <div class="biomie-page-header__actions fis-nav-actions">
+      <a class="btn-secondary fis-nav-link" href="#fis-section-nf"><span class="material-symbols-rounded">description</span><span class="fis-nav-label">Notas</span></a>
+      <a class="btn-secondary fis-nav-link" href="#fis-section-purchases"><span class="material-symbols-rounded">shopping_cart</span><span class="fis-nav-label">Compras</span></a>
+      <a class="btn-secondary fis-nav-link" href="#fis-section-ncm"><span class="material-symbols-rounded">category</span><span class="fis-nav-label">NCM</span></a>
+      <a class="btn-secondary fis-nav-link" href="#fis-section-reform"><span class="material-symbols-rounded">balance</span><span class="fis-nav-label">Reforma</span></a>
+      <a class="btn-secondary fis-nav-link" href="#fis-section-alerts"><span class="material-symbols-rounded">notification_important</span><span class="fis-nav-label">Alertas</span></a>
+    </div>
+  </section>
+
+  <!-- ══ Filter Bar ════════════════════════════════════════════════════ -->
+  <div class="filter-bar mag-report-toolbar mag-clean-toolbar fis-filter-bar anim d1" data-mobile-filter-sheet>
+    <div class="filter-group"><label class="filter-label">Período inicial</label><input id="fisDateStart" type="date" class="filter-input" /></div>
+    <div class="filter-group"><label class="filter-label">Período final</label><input id="fisDateEnd" type="date" class="filter-input" /></div>
+    <div class="filter-group">
+      <label class="filter-label">Status</label>
+      <select id="fisStatusTop" class="filter-input fis-select">
+        <option value="autorizada">Autorizadas</option>
+        <option value="cancelada">Canceladas</option>
+        <option value="todos">Todas</option>
+      </select>
+    </div>
+    <div class="filter-group"><label class="filter-label">Vendedor</label><input id="fisVendorTop" type="text" class="filter-input" placeholder="Todos" /></div>
+    <div class="filter-group"><label class="filter-label">Cliente</label><input id="fisClientTop" type="text" class="filter-input" placeholder="Todos" /></div>
+    <div class="filter-actions">
+      <button class="btn-preset" data-fis-preset="year">Ano</button>
+      <button class="btn-preset" data-fis-preset="month">Mês</button>
+      <button class="btn-preset" data-fis-preset="rolling12">12 meses</button>
+      <button id="fisApply" type="button" class="btn-primary mag-button-primary">
+        <span class="material-symbols-rounded">filter_alt</span>Aplicar
+      </button>
+      <button id="fisBuildMart" type="button" class="btn-secondary mag-button-secondary" title="Reconstruir mart de itens fiscais">
+        <span class="material-symbols-rounded">manufacturing</span>Construir Mart
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ Mart Status Banner ════════════════════════════════════════════ -->
+  <div id="fisMartBanner" class="fis-mart-banner">
+    <span class="material-symbols-rounded">info</span>
+    <span id="fisMartBannerText">Mart de itens fiscais não construído. NCM, CBS/IBS e itens por NF requerem o mart.</span>
+    <button type="button" class="fis-mart-build-btn" id="fisMartBuildBtn">Construir agora</button>
+  </div>
+
+  <!-- ══ 1 — KPIs Executivos ═══════════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-kpis">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">monitoring</span>Resumo Executivo</div>
+        <h2>Carga Tributária do Período</h2>
+      </div>
+      <div class="fis-section-meta" id="fisKpiMeta"></div>
+    </div>
+    <div class="fis-kpi-row" id="fisKpiRow">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+    <div class="fis-charts-row">
+      <div class="fis-chart-card" id="fisTrendCard">
+        <div class="fis-card-head">
+          <h3>Evolução Tributária</h3>
+          <div class="fis-legend" id="fisTrendLegend"></div>
+        </div>
+        <div class="fis-chart-stage" style="height:280px;"><canvas id="fisTrendCanvas"></canvas></div>
+      </div>
+      <div class="fis-chart-card fis-chart-card--narrow">
+        <div class="fis-card-head"><h3>Composição</h3></div>
+        <div id="fisCompositionPanel"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 2 — Inteligência Fiscal ══════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-intelligence">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">psychology_alt</span>Inteligência Fiscal</div>
+        <h2>Resumo Fiscal Executivo</h2>
+      </div>
+      <div class="fis-section-meta" id="fisIntelMeta"></div>
+    </div>
+    <div class="fis-intel-grid" id="fisIntelGrid">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+  </section>
+
+  <!-- ══ 3 — DRE Fiscal ════════════════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-dre">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">account_balance</span>DRE Fiscal</div>
+        <h2>Receita Bruta − Tributos = Receita Líquida</h2>
+      </div>
+    </div>
+    <div class="fis-dre-grid" id="fisDreGrid">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+  </section>
+
+  <!-- ══ 4 — Apuração Gerencial ════════════════════════════════════════ -->
+  <section class="fis-section fis-section--settlement" id="fis-section-settlement">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">calculate</span>Apuração gerencial</div>
+        <h2>Custo Tributário, Créditos e Saldo Líquido</h2>
+        <p class="fis-section-desc">Débitos destacados − créditos aproveitáveis − retenções = saldo líquido gerencial. Valores sem fonte aparecem como cobertura pendente.</p>
+      </div>
+      <span class="fis-coverage-badge" id="fisSettlementCoverage">Verificando créditos…</span>
+    </div>
+    <div class="fis-settlement-kpis" id="fisSettlementKpis">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+    <div class="fis-charts-row fis-charts-row--settlement">
+      <div class="fis-chart-card">
+        <div class="fis-card-head"><h3>Bruto × Créditos × Saldo Líquido por mês</h3></div>
+        <div class="fis-chart-stage" style="height:300px;"><canvas id="fisSettlementCanvas"></canvas></div>
+      </div>
+      <div class="fis-chart-card fis-chart-card--narrow">
+        <div class="fis-card-head"><h3>Composição dos Débitos</h3></div>
+        <div class="fis-chart-stage" style="height:300px;"><canvas id="fisSettlementCompositionCanvas"></canvas></div>
+      </div>
+    </div>
+    <div class="fis-settlement-toolbar">
+      <label>Detalhamento
+        <select id="fisSettlementDetail" class="fis-select">
+          <option value="summary">Resumo mensal</option>
+          <option value="taxes">Por imposto</option>
+        </select>
+      </label>
+      <input id="fisSettlementSearch" class="fis-search-input" type="search" placeholder="Filtrar competência…" />
+    </div>
+    <div class="fis-table-wrap">
+      <table class="fis-table" id="fisSettlementTable">
+        <thead id="fisSettlementHead"></thead>
+        <tbody id="fisSettlementTbody"><tr><td class="fis-loading-cell">Carregando apuração…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 5 — Esferas Tributárias ══════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-spheres">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">account_balance</span>Tributos por esfera</div>
+        <h2>Federal, Ceará, Fortaleza e Reforma Tributária</h2>
+      </div>
+    </div>
+    <div class="fis-sphere-grid" id="fisSphereGrid">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+  </section>
+
+  <!-- ══ 6 — Por Vendedor ══════════════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-vendors">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">group</span>Por Vendedor</div>
+        <h2>Carga Tributária por Vendedor</h2>
+      </div>
+    </div>
+    <div class="fis-vendor-grid" id="fisVendorGrid">
+      <div class="fis-kpi-skeleton" style="height:80px;"></div>
+      <div class="fis-kpi-skeleton" style="height:80px;"></div>
+      <div class="fis-kpi-skeleton" style="height:80px;"></div>
+    </div>
+  </section>
+
+  <!-- ══ 7 — Notas Fiscais ══════════════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-nf">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">description</span>Notas Fiscais</div>
+        <h2>Análise por Nota Fiscal</h2>
+      </div>
+      <div class="fis-nf-filters">
+        <div class="fis-filter-group">
+          <label class="filter-label" for="fisNfSearch">Buscar</label>
+          <input id="fisNfSearch" type="search" placeholder="Cliente, vendedor ou NF…" class="fis-search-input" />
+        </div>
+        <div class="fis-filter-group">
+          <label class="filter-label" for="fisNfStatus">Status</label>
+          <select id="fisNfStatus" class="fis-select">
+            <option value="autorizada">Autorizadas</option>
+            <option value="cancelada">Canceladas</option>
+            <option value="todos">Todas</option>
+          </select>
+        </div>
+        <div class="fis-filter-group">
+          <label class="filter-label" for="fisNfPerPage">Por pág.</label>
+          <select id="fisNfPerPage" class="fis-select">
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+        <div class="fis-nf-export-actions">
+          <button type="button" class="fis-export-btn" id="fisExportCsv"><span class="material-symbols-rounded">download</span>CSV</button>
+          <button type="button" class="fis-export-btn" id="fisExportPdf"><span class="material-symbols-rounded">picture_as_pdf</span>PDF</button>
+          <button type="button" class="fis-export-btn" id="fisSendAccountant"><span class="material-symbols-rounded">send</span>Contador</button>
+        </div>
+      </div>
+    </div>
+    <div class="fis-table-wrap" id="fisNfTableWrap">
+      <table class="fis-table" id="fisNfTable">
+        <thead>
+          <tr>
+            <th data-nf-sort="numero_nf">NF</th>
+            <th data-nf-sort="data_emissao">Data</th>
+            <th data-nf-sort="nome_cliente">Cliente</th>
+            <th data-nf-sort="nome_vendedor">Vendedor</th>
+            <th class="fis-r" data-nf-sort="valor_total">Faturamento</th>
+            <th class="fis-r fis-col-hide-sm">Receita pós-tributos</th>
+            <th class="fis-r fis-col-hide-md" style="color:#6366f1;">ICMS</th>
+            <th class="fis-r fis-col-hide-md" style="color:#0ea5e9;">PIS</th>
+            <th class="fis-r fis-col-hide-md" style="color:#10b981;">COFINS</th>
+            <th class="fis-r fis-col-hide-md" style="color:#f59e0b;">IPI</th>
+            <th class="fis-r fis-bold" data-nf-sort="valor_trib_total">Tributos</th>
+            <th class="fis-r" data-nf-sort="carga_pct">Carga%</th>
+            <th class="fis-col-hide-sm">Confiança</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="fisNfTbody">
+          <tr><td colspan="14" class="fis-loading-cell">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="fis-pagination" id="fisNfPagination"></div>
+  </section>
+
+  <!-- ══ 8 — Compras e Entradas Fiscais ════════════════════════════════ -->
+  <section class="fis-section fis-section--purchases" id="fis-section-purchases">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow fis-eyebrow--purchase"><span class="material-symbols-rounded">inventory_2</span>Compras e entradas fiscais</div>
+        <h2>Notas de Entrada Registradas no Omie</h2>
+        <p class="fis-section-desc">Visão gerencial das compras recebidas, tributos destacados e créditos que podem ser aproveitados após validação fiscal.</p>
+      </div>
+      <div class="fis-purchase-head-actions">
+        <span class="fis-source-status" id="fisPurchaseSource">Fonte ainda não sincronizada</span>
+        <button type="button" class="btn-secondary mag-button-secondary" id="fisSyncPurchases">
+          <span class="material-symbols-rounded">sync</span>Atualizar entradas
+        </button>
+      </div>
+    </div>
+    <div class="fis-rule-banner">
+      <span class="material-symbols-rounded">rule</span>
+      <div><strong>Regra de leitura:</strong> imposto destacado não significa crédito automático. CST, CFOP, finalidade da compra e escrituração contábil determinam o aproveitamento.</div>
+    </div>
+    <div class="fis-purchase-kpis" id="fisPurchaseKpis">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+    <div class="fis-dynamic-toolbar">
+      <div>
+        <label class="filter-label" for="fisPurchaseSearch">Localizar documento</label>
+        <input id="fisPurchaseSearch" class="fis-search-input" type="search" placeholder="Fornecedor, nota, NCM ou CFOP…" />
+      </div>
+      <div>
+        <label class="filter-label" for="fisPurchasePerPage">Linhas por página</label>
+        <select id="fisPurchasePerPage" class="fis-select">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+    <div class="fis-table-wrap">
+      <table class="fis-table fis-table--dynamic" id="fisPurchaseTable">
+        <thead>
+          <tr>
+            <th data-purchase-sort="numero_documento">Documento</th>
+            <th data-purchase-sort="data_entrada">Entrada</th>
+            <th data-purchase-sort="fornecedor_nome">Fornecedor</th>
+            <th class="fis-col-hide-sm">NCM / CFOP</th>
+            <th class="fis-r" data-purchase-sort="valor_total">Valor</th>
+            <th class="fis-r fis-col-hide-md">ICMS</th>
+            <th class="fis-r fis-col-hide-md">PIS/COFINS</th>
+            <th class="fis-r fis-col-hide-md">IPI</th>
+            <th class="fis-r" data-purchase-sort="credito_potencial">Crédito</th>
+            <th class="fis-col-hide-sm">Leitura fiscal</th>
+          </tr>
+        </thead>
+        <tbody id="fisPurchaseTbody">
+          <tr><td colspan="10" class="fis-loading-cell">Carregando entradas de compras…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="fis-pagination" id="fisPurchasePagination"></div>
+  </section>
+
+  <!-- ══ 9 — Por NCM ════════════════════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-ncm">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">category</span>NCM / Produto</div>
+        <h2>Tributação por NCM e Produto</h2>
+      </div>
+      <div id="fisNcmMartStatus"></div>
+    </div>
+    <div class="fis-ncm-grid">
+      <div class="fis-table-card">
+        <div class="fis-card-head"><h3>Ranking por NCM</h3></div>
+        <div class="fis-table-wrap" id="fisNcmTableWrap">
+          <table class="fis-table" id="fisNcmTable">
+            <thead>
+              <tr>
+                <th>NCM</th><th>Descrição</th>
+                <th class="fis-r">Faturamento</th>
+                <th class="fis-r fis-bold">Tributos</th>
+                <th class="fis-r">Carga%</th>
+                <th class="fis-r fis-col-hide-sm">Qtde NFs</th>
+                <th class="fis-col-hide-sm">Principal CFOP</th>
+                <th class="fis-r fis-col-hide-sm">Alíq. ICMS</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="fisNcmTbody">
+              <tr><td colspan="9" class="fis-loading-cell">Carregando mart...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="fis-chart-card fis-chart-card--cfop">
+        <div class="fis-card-head"><h3>CFOPs Utilizados</h3></div>
+        <div id="fisCfopList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 10 — Reforma CBS/IBS ══════════════════════════════════════════ -->
+  <section class="fis-section fis-section--reform" id="fis-section-reform">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow fis-eyebrow--reform">
+          <span class="material-symbols-rounded">balance</span>Reforma Tributária 2026
+        </div>
+        <h2>CBS/IBS — Simulação Informativa</h2>
+        <p class="fis-section-desc">Em 2026, CBS e IBS são destaques informativos. O comparativo não representa apuração definitiva nem obrigação de recolhimento.</p>
+        <p class="fis-section-desc" id="fisReformMsg"></p>
+      </div>
+    </div>
+    <div class="fis-reform-kpis" id="fisReformKpis">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+    <div class="fis-charts-row">
+      <div class="fis-chart-card">
+        <div class="fis-card-head"><h3>Carga Atual vs CBS/IBS por Mês</h3></div>
+        <div class="fis-chart-stage" style="height:260px;"><canvas id="fisReformCanvas"></canvas></div>
+      </div>
+      <div class="fis-chart-card fis-chart-card--narrow">
+        <div class="fis-card-head"><h3>Top NCMs — CBS Informativo</h3></div>
+        <div id="fisReformNcmList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 11 — Contexto Fiscal ══════════════════════════════════════════ -->
+  <section class="fis-section fis-context-section" id="fis-section-context">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">location_city</span>Contexto Fiscal</div>
+        <h2>BI Fiscal — Lucro Real | Fortaleza/CE</h2>
+      </div>
+      <span class="fis-coverage-badge" id="fisContextCoverage">Carregando cobertura…</span>
+    </div>
+    <div class="fis-context-grid" id="fisContextGrid">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+    <!-- Como ler a apuração desta empresa (varia por regime: Real/Presumido/Simples) -->
+    <p class="fis-regime-note" id="fisRegimeNote" hidden></p>
+    <div class="fis-module-strip" id="fisModuleStrip"></div>
+  </section>
+
+  <!-- ══ 12 — Alertas Fiscais ══════════════════════════════════════════ -->
+  <section class="fis-section" id="fis-section-alerts">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow fis-eyebrow--alert"><span class="material-symbols-rounded">notification_important</span>Alertas</div>
+        <h2>Alertas Fiscais</h2>
+      </div>
+    </div>
+    <div class="fis-alert-grid" id="fisAlertGrid">
+      <div class="fis-kpi-skeleton" style="height:120px;"></div>
+      <div class="fis-kpi-skeleton" style="height:120px;"></div>
+      <div class="fis-kpi-skeleton" style="height:120px;"></div>
+    </div>
+  </section>
+
+</main><!-- /main -->
+
+<!-- ══ DRAWER: NF Detail ══════════════════════════════════════════════ -->
+<div class="detail-drawer-backdrop" id="fisNfDrawerBackdrop"></div>
+<div class="detail-drawer biomie-drawer--wide" id="fisNfDrawer">
+  <div class="detail-drawer__header">
+    <div class="detail-drawer__header-left">
+      <div class="fis-drawer-badge">NF</div>
+      <div>
+        <h2 class="detail-drawer__title" id="fisNfDrawerTitle">Nota Fiscal</h2>
+        <p class="detail-drawer__subtitle" id="fisNfDrawerSub"></p>
+      </div>
+    </div>
+    <button class="btn-icon fis-drawer-close" id="fisNfDrawerClose" aria-label="Fechar">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </div>
+
+  <!-- NF Header KPIs -->
+  <div class="fis-drawer-kpis" id="fisNfDrawerKpis"></div>
+
+  <!-- Items Table -->
+  <div class="detail-drawer__body">
+    <h3 class="fis-drawer-section-title">Itens da Nota Fiscal</h3>
+    <div class="fis-table-wrap fis-table-wrap--items" id="fisNfItemsWrap">
+      <table class="fis-table fis-table--items">
+        <thead>
+          <tr>
+            <th>#</th><th>Produto</th><th>NCM</th><th>CFOP</th>
+            <th class="fis-r">Qtd</th>
+            <th class="fis-r">Valor</th>
+            <th class="fis-r" style="color:#6366f1;">ICMS</th>
+            <th class="fis-r" style="color:#0ea5e9;">PIS</th>
+            <th class="fis-r" style="color:#10b981;">COFINS</th>
+            <th class="fis-r" style="color:#f59e0b;">IPI</th>
+            <th class="fis-r fis-bold">Tributos</th>
+            <th class="fis-r" style="color:#8b5cf6;">CBS¹</th>
+            <th class="fis-r" style="color:#06b6d4;">IBS¹</th>
+          </tr>
+        </thead>
+        <tbody id="fisNfItemsTbody">
+          <tr><td colspan="13" class="fis-loading-cell">Carregando itens...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fis-footnote">¹ CBS e IBS são informativos (2026). Sem obrigação de recolhimento neste exercício.</p>
+  </div>
+</div>
+
+<!-- ══ DRAWER: NCM Detail ════════════════════════════════════════════ -->
+<div class="detail-drawer-backdrop" id="fisNcmDrawerBackdrop"></div>
+<div class="detail-drawer biomie-drawer--wide" id="fisNcmDrawer">
+  <div class="detail-drawer__header">
+    <div class="detail-drawer__header-left">
+      <div class="fis-drawer-badge fis-drawer-badge--ncm">NCM</div>
+      <div>
+        <h2 class="detail-drawer__title" id="fisNcmDrawerTitle">NCM</h2>
+        <p class="detail-drawer__subtitle" id="fisNcmDrawerSub"></p>
+      </div>
+    </div>
+    <button class="btn-icon fis-drawer-close" id="fisNcmDrawerClose" aria-label="Fechar">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </div>
+  <div class="detail-drawer__body">
+    <div class="fis-table-wrap" id="fisNcmProductsWrap">
+      <table class="fis-table">
+        <thead>
+          <tr>
+            <th>Código</th><th>Produto</th>
+            <th class="fis-r">Qtd</th>
+            <th class="fis-r">Faturamento</th>
+            <th class="fis-r" style="color:#6366f1;">ICMS</th>
+            <th class="fis-r fis-bold">Tributos</th>
+            <th class="fis-r">Carga%</th>
+            <th class="fis-r">Alíq. ICMS</th>
+          </tr>
+        </thead>
+        <tbody id="fisNcmProductsTbody">
+          <tr><td colspan="8" class="fis-loading-cell">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DRAWER: Alert Detail ══════════════════════════════════════════ -->
+<div class="detail-drawer-backdrop" id="fisAlertDrawerBackdrop"></div>
+<div class="detail-drawer biomie-drawer--wide" id="fisAlertDrawer">
+  <div class="detail-drawer__header">
+    <div class="detail-drawer__header-left">
+      <div class="fis-drawer-badge fis-drawer-badge--alert">
+        <span class="material-symbols-rounded">warning</span>
+      </div>
+      <div>
+        <h2 class="detail-drawer__title" id="fisAlertDrawerTitle">Alerta Fiscal</h2>
+        <p class="detail-drawer__subtitle" id="fisAlertDrawerSub"></p>
+      </div>
+    </div>
+    <button class="btn-icon fis-drawer-close" id="fisAlertDrawerClose" aria-label="Fechar">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </div>
+  <div class="detail-drawer__body">
+    <div class="fis-table-wrap" id="fisAlertRowsWrap">
+      <table class="fis-table" id="fisAlertRowsTable">
+        <thead id="fisAlertRowsHead"></thead>
+        <tbody id="fisAlertRowsTbody">
+          <tr><td colspan="6" class="fis-loading-cell">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ HELP Popover ══════════════════════════════════════════════ -->
+<div class="fis-help-backdrop" id="fisHelpBackdrop"></div>
+<div class="fis-help-popover" id="fisHelpPopover" role="dialog" aria-modal="true" aria-labelledby="fisHelpPopoverTitle">
+  <div class="fis-help-popover__header">
+    <div class="fis-help-popover__icon"><span class="material-symbols-rounded">help</span></div>
+    <h4 class="fis-help-popover__title" id="fisHelpPopoverTitle">Ajuda</h4>
+    <button class="btn-icon fis-help-popover__close" id="fisHelpPopoverClose" aria-label="Fechar">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </div>
+  <div class="fis-help-popover__body" id="fisHelpPopoverBody"></div>
+</div>
+
+</body>
+</html>

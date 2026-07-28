@@ -1,0 +1,34 @@
+{
+  "company_id": 1,
+  "slug": "mag_filial",
+  "code": "MAG_FILIAL",
+  "name": "MAG Filial",
+  "legal_name": "Magazine dos Moveis LTDA",
+  "active": true,
+  "default_channel": "varejo",
+  "channels": ["varejo", "licitacao"],
+  "legal": {
+    "cnpj": "26.537.584/0003-94",
+    "type": "filial"
+  },
+  "brand": {
+    "name": "MAG Móveis",
+    "logo_icon": "images/logos/mag.png",
+    "logo_wide": "images/logos/mag.png",
+    "color": "#9B1A1A",
+    "color_dark": "#7c1212"
+  },
+  "features": {
+    "geo": true,
+    "fiscal": true,
+    "finance": true,
+    "flight_plan": true,
+    "stock": true,
+    "commercial_pipeline": true
+  },
+  "sync": {
+    "rate_limit_per_minute": 10,
+    "from_date": "2022-01",
+    "channels": ["varejo", "licitacao"]
+  }
+}

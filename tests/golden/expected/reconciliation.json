@@ -1,0 +1,79 @@
+{
+    "data_contract": {
+        "completeness_status": "complete",
+        "coverage_end": "2026-03-31",
+        "coverage_start": "2026-03-01",
+        "data_mode": "reconciled",
+        "dataset": "reconciliation",
+        "delay_present": false,
+        "freshness_at": "2026-04-01 08:00:00",
+        "has_retry_or_delay": false,
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "open_divergences": 0,
+        "origin": "snapshot_fiscal",
+        "pending_backlog_total": 0,
+        "reconcile_status": "reconciled",
+        "reconciled_until": "2026-03-31 23:59:59",
+        "reconciliation_pct": 100,
+        "retry_present": false,
+        "source": "snapshot_fiscal",
+        "source_of_truth": "snapshot",
+        "staleness_reason": null
+    },
+    "divergences": [],
+    "divergences_count": 0,
+    "last_reconcile_at": null,
+    "last_success_at": null,
+    "last_sync": "2026-04-01 08:00:00",
+    "meta": {
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "source_of_truth": "snapshot"
+    },
+    "ok": true,
+    "period": {
+        "end": "2026-03-31",
+        "label": "01/03/2026 ate 31/03/2026",
+        "start": "2026-03-01"
+    },
+    "source": "snapshot_fiscal",
+    "source_of_truth": "snapshot",
+    "totals": {
+        "autorizado": 2200,
+        "cancelado": 180,
+        "faturado": 12450,
+        "pedidos_autorizados": 3,
+        "pedidos_cancelados": 1,
+        "pedidos_faturados": 14,
+        "realizado": 12450
+    },
+    "vendors": [
+        {
+            "autorizado": 900,
+            "autorizado_qtd": 1,
+            "cancelado": 0,
+            "cancelado_qtd": 0,
+            "codigo_vendedor": "10",
+            "faturado": 6100,
+            "faturado_qtd": 7,
+            "nome": "Ana",
+            "total_geral": 7000,
+            "total_pedidos": 8,
+            "ultima_sync": "2026-04-01 08:00:00"
+        },
+        {
+            "autorizado": 800,
+            "autorizado_qtd": 1,
+            "cancelado": 180,
+            "cancelado_qtd": 1,
+            "codigo_vendedor": "11",
+            "faturado": 4200,
+            "faturado_qtd": 4,
+            "nome": "Bruno",
+            "total_geral": 5180,
+            "total_pedidos": 6,
+            "ultima_sync": "2026-04-01 08:00:00"
+        }
+    ]
+}

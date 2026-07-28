@@ -1,0 +1,107 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Grupo MAG — Theme Package (slug: GRUPO_MAG)
+   Conceito: visão consolidada do grupo, diretoria, panorama executivo
+   Personalidade: NEUTRO E INSTITUCIONAL. Preto corporativo + vermelho MAG.
+
+   Usado quando o usuário está navegando em modo consolidado (todas as
+   empresas ao mesmo tempo), não em uma empresa específica.
+   Sinaliza claramente: "você está vendo o GRUPO, não uma empresa".
+
+   WCAG:
+     #111827 sobre branco = 15.8:1 ✅
+     #B01818 sobre branco = 6.2:1 ✅ (AA)
+
+   Carregado inline por views/layouts/app.php após todos os <link>.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-company="GRUPO_MAG"] {
+
+  /* ── Identidade de marca — escala cinza com vermelho institucional ── */
+  --company-primary:        #111827;
+  --company-primary-dark:   #030712;
+  --company-primary-soft:   #F3F4F6;
+  --company-secondary:      #B01818;
+  --company-secondary-soft: #FEF2F2;
+  --company-accent:         #B01818;
+  --company-accent-soft:    #FEF2F2;
+
+  /* ── Superfícies — neutro institucional, sem calor nem frescor ── */
+  --company-bg:             #F8F9FB;
+  --company-surface:        #FFFFFF;
+  --company-surface-soft:   #F1F3F6;
+  --company-border:         #E2E6EA;
+
+  /* ── Texto ── */
+  --company-text:           #0F172A;
+  --company-text-muted:     #64748B;
+  --company-text-inverse:   #FFFFFF;
+
+  /* ── Bridge → Core ── */
+  --company-color:          #111827;
+  --company-color-2:        #B01818;
+  --brand:                  #111827;
+  --brand-primary:          #111827;
+  --brand-dark:             #030712;
+  --brand-primary-soft:     rgba(17, 24, 39, 0.10);
+  --focus-ring:             rgba(17, 24, 39, 0.30);
+  --focus-ring-soft:        rgba(17, 24, 39, 0.12);
+  --border-acc:             rgba(17, 24, 39, 0.20);
+  --selection-bg:           rgba(17, 24, 39, 0.08);
+  --hero-spot-red:          rgba(176, 24, 24, 0.08);
+
+  /* ── Acento sistêmico — neutro com toque vermelho MAG ── */
+  --page-accent:            #111827;
+  --page-accent-soft:       rgba(17, 24, 39, 0.08);
+  --page-accent-border:     rgba(17, 24, 39, 0.18);
+  --page-accent-text:       #030712;
+
+  /* ── Bridge → MAG global vars ── */
+  --mag-bg:                 var(--company-bg);
+  --mag-surface-2:          var(--company-surface-soft);
+  --mag-border:             var(--company-border);
+  --mag-radius:             8px;
+  --biomie-card-radius:     8px;
+
+  /* ── Botão primário — preto institucional: autoridade do grupo ── */
+  --button-gradient:        linear-gradient(135deg, #111827 0%, #1F2937 100%);
+  --button-shadow:          0 3px 12px rgba(17, 24, 39, 0.18);
+  --button-shadow-hover:    0 5px 18px rgba(17, 24, 39, 0.26);
+
+  /* ── Personalidade visual ── */
+  /* Sombra neutra: cards do consolidado são sérios, sem personalidade colorida */
+  --company-card-shadow:    0 4px 16px rgba(15, 23, 42, 0.10);
+  --company-hover-bg:       rgba(17, 24, 39, 0.04);
+  /* Radius quadrado: executivo, institucional */
+  --company-card-radius:    8px;
+
+  /* ── Sidebar decoration ──
+     Preto institucional → Vermelho MAG: "grupo é preto, empresa é vermelha" ── */
+  --sidebar-bar-gradient:   linear-gradient(180deg, #111827 0%, #B01818 55%, transparent 100%);
+
+  /* ── Paleta de gráficos consolidados ──
+     Preto para o agregado do grupo. Vermelho MAG para destaque.
+     Demais empresas aparecem como comparativos em azul/verde/âmbar. ── */
+  --page-chart-1:           #111827;
+  --page-chart-2:           #B01818;
+
+  --chart-revenue:          #111827;
+  --chart-target:           #16A34A;
+  --chart-opportunity:      #2563EB;
+  --chart-pending:          #F59E0B;
+  --chart-cancelled:        #EF4444;
+  --chart-neutral:          #94A3B8;
+  --chart-success:          #16A34A;
+  --chart-warning:          #F59E0B;
+  --chart-danger:           #EF4444;
+  --chart-info:             #3B82F6;
+
+  /* ── Tooltip chart — neutro institucional ── */
+  --chart-tooltip-border:   rgba(17, 24, 39, 0.12);
+
+  /* ── Badges / pills ── */
+  --badge-bg:               #F3F4F6;
+  --badge-text:             #111827;
+  --badge-border:           #D1D5DB;
+}
+
+/* Barra de acento da sidebar: ver --sidebar-bar-gradient (renderizada pela
+   regra global em mag-design-system.css, escopo body[data-company]). */

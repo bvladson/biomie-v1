@@ -1,0 +1,23 @@
+{
+  "company": "expert",
+  "version": "1.0",
+  "note": "Referência de design. Runtime usa CSS variables (--chart-*) lidas por B.chartTheme().",
+  "semantic": {
+    "revenue":      { "color": "#0E5A73", "label": "Faturamento / dado principal",    "css": "--chart-revenue" },
+    "target":       { "color": "#8CC63F", "label": "Meta / crescimento / sucesso",    "css": "--chart-target" },
+    "opportunity":  { "color": "#2563EB", "label": "Oportunidade / pipeline",          "css": "--chart-opportunity" },
+    "pending":      { "color": "#F59E0B", "label": "Pendente / atenção / risco",       "css": "--chart-pending" },
+    "cancelled":    { "color": "#DC2626", "label": "Cancelado / perda / erro",         "css": "--chart-cancelled" },
+    "neutral":      { "color": "#64748B", "label": "Neutro / histórico / comparativo", "css": "--chart-neutral" }
+  },
+  "rule": "Azul = dado. Verde = bom. Âmbar = atenção. Vermelho = erro. Cinza = neutro. Nunca mais de 3 cores num mesmo gráfico sem legenda.",
+  "config": {
+    "barRadius": 6,
+    "lineTension": 0.3,
+    "gridColor": "#E2E8F0",
+    "labelColor": "#64748B",
+    "titleColor": "#0F172A",
+    "tooltipBg": "#FFFFFF",
+    "tooltipBorder": "#D8E6EA"
+  }
+}

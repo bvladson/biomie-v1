@@ -1,0 +1,458 @@
+/*
+ * BIomie theme tokens
+ *
+ * Neutral UI tokens live here. Brand reds stay separate from the neutral scale,
+ * keeping the interface light, readable and stable across modules.
+ */
+
+:root {
+  /* `only light` (não apenas `light`): além de declarar o esquema suportado,
+     bloqueia a adaptação automática para dark que alguns navegadores aplicam
+     por conta própria. O BIomie é light-only — nenhuma folha de página deve
+     ter `@media (prefers-color-scheme: dark)`. */
+  color-scheme: only light;
+
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --sidebar-w: 260px;
+  --topbar-h: 64px;
+
+  /* ── Escala de z-index (camadas de empilhamento) ──────────────────────────
+     Fonte única da verdade. Os valores espelham o stacking já existente, então
+     migrar `z-index: NNN` para `var(--z-*)` NÃO altera o resultado computado.
+     Ordem (baixo → alto):
+       base/raised → sticky(topbar) → overlay(scrim) → sidebar →
+       mobile-nav → drawer(+backdrop) → popover → toast/modal.            */
+  --z-deep:            -1;
+  --z-base:             1;
+  --z-raised:           2;
+  --z-sticky:         100;   /* topbar fixo/sticky */
+  --z-overlay:        150;   /* scrim / #overlay de fundo */
+  --z-sidebar:        220;   /* sidebar do app-shell */
+  --z-mobile-nav:     330;   /* topbar e bottom-nav mobile */
+  --z-drawer-backdrop:998;   /* backdrop dos detail-drawers */
+  --z-drawer:         999;   /* detail-drawers */
+  --z-popover:       9000;   /* dropdowns / pickers acima do drawer */
+  --z-toast:         9999;   /* toasts / modais — camada mais alta */
+
+  /* ── Breakpoints canônicos (referência) ───────────────────────────────────
+     CSS puro não permite var() em @media; use SEMPRE estes valores ao criar
+     novas media queries para manter consistência responsiva:
+       mobile  ≤ 640px   |  tablet  ≤ 768px
+       laptop  ≥ 992px   |  desktop ≥ 1200px  |  wide ≥ 1400px            */
+
+  --mag-bg: #f6f7fb;
+  --mag-surface: #ffffff;
+  --mag-surface-2: #f8fafc;
+  --mag-border: #e5e7eb;
+  --mag-border-strong: #d0d5dd;
+  --mag-text: #1f2937;
+  --mag-muted: #667085;
+  --mag-muted-2: #98a2b3;
+  --mag-radius: 16px;
+  --mag-radius-sm: 10px;
+  --mag-radius-lg: 22px;
+  --mag-shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --mag-shadow-card: 0 16px 38px rgba(15, 23, 42, 0.08);
+  --mag-sidebar-width: 260px;
+  --mag-sidebar-width-compact: 84px;
+  --mag-topbar-height: 64px;
+
+  --bg-app: #f7f4f3;
+  --bg-base: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f5f6f9;
+  --bg-muted: #eef1f5;
+  --bg-2: #f5f5f5;
+  --surface-1: #ffffff;
+  --surface-2: #fafafa;
+  --surface-3: #f0f2f5;
+
+  --text-1: #111318;
+  --text-2: #4b5263;
+  --text-3: #9099ac;
+  --text-secondary: var(--text-2);
+  --placeholder: #6b7280;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --border-acc: rgba(150, 20, 10, 0.28);
+
+  --overlay: rgba(7, 9, 12, 0.35);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --row-hover: rgba(17, 19, 24, 0.06);
+  --focus-ring: rgba(150, 20, 10, 0.34);
+  --focus-ring-soft: rgba(150, 20, 10, 0.16);
+  --selection-bg: rgba(150, 20, 10, 0.16);
+  --selection-text: #111318;
+
+  --shadow-sm: 0 6px 14px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 18px 40px rgba(17, 19, 24, 0.05);
+  --shadow-xl: 0 28px 70px rgba(15, 23, 42, 0.2);
+  --shadow-sidebar: 2px 0 16px rgba(0, 0, 0, 0.05);
+  --shadow-topbar: 0 10px 30px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 18px 40px rgba(17, 19, 24, 0.04);
+
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --topbar-border: rgba(0, 0, 0, 0.06);
+  --browser-theme-color: #f6f3f2;
+  --scrollbar-thumb: #d1d5db;
+
+  --hero-spot-red: rgba(150, 20, 10, 0.18);
+  --hero-spot-blue: rgba(37, 99, 235, 0.08);
+  --hero-grad-start: #ffffff;
+  --hero-grad-mid: #faf6f5;
+  --hero-grad-end: #f3eceb;
+  --panel-grad-start: #ffffff;
+  --panel-grad-end: #fcfcfd;
+  --metric-track: rgba(0, 0, 0, 0.08);
+  --drawer-bg: #ffffff;
+  --drawer-card-bg: #fafafa;
+  --drawer-card-border: #eaeaea;
+
+  --chart-grid: rgba(0, 0, 0, 0.08);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.97);
+  --chart-tooltip-border: rgba(15, 23, 42, 0.10);
+  --chart-tooltip-title: #0f172a;
+  --chart-tooltip-text: #475569;
+  --skeleton-base: #eceff4;
+  --skeleton-highlight: #ffffff;
+  --skeleton-edge: rgba(17, 19, 24, 0.05);
+  --skeleton-glow: rgba(255, 255, 255, 0.74);
+
+  --red: #96140a;
+  --red-light: #b91525;
+  --red-dim: rgba(150, 20, 10, 0.08);
+  --accent: var(--red);
+  --green: #16a34a;
+  --yellow: #d97706;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.12);
+  --success-strong: #15803d;
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.14);
+  --warning-strong: #92400e;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.12);
+  --danger-strong: #be123c;
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.1);
+  --info-strong: #1d4ed8;
+
+  --state-billed: #16a34a;
+  --state-billed-bg: rgba(22, 163, 74, 0.12);
+  --state-auth: #d97706;
+  --state-auth-bg: rgba(217, 119, 6, 0.14);
+  --state-cancel: #dc2626;
+  --state-cancel-bg: rgba(220, 38, 38, 0.12);
+  --state-info: #2563eb;
+  --state-info-bg: rgba(37, 99, 235, 0.1);
+
+  --page-accent: #96140a;
+  --page-accent-soft: rgba(150, 20, 10, 0.12);
+  --page-accent-border: rgba(150, 20, 10, 0.22);
+  --page-accent-text: #7c0600;
+  --page-chart-1: #96140a;
+  --page-chart-2: #7c0600;
+  --surface-page: #f6f7fb;
+  --surface-card: #ffffff;
+  --surface-card-raised: #fbfcfe;
+  --surface-muted: #f3f5f8;
+  --text-primary: #141822;
+  --text-secondary: #5d6678;
+  --border-soft: rgba(15, 23, 42, 0.08);
+  --shadow-soft: var(--mag-shadow-soft);
+  --radius-card: var(--mag-radius);
+  --brand-primary: #96140a;
+  --brand-primary-soft: rgba(150, 20, 10, 0.1);
+  --brand: #96140a;
+  --brand-dark: #7c0600;
+  --company-color: #96140a;
+  --company-color-2: #96140a;
+  --mag-accent-1: var(--page-accent);
+  --mag-accent: var(--page-accent);
+  --page-surface: var(--surface-card);
+  --page-surface-raised: var(--surface-card-raised);
+  --page-border: var(--border-soft);
+  --text-main: var(--text-primary);
+  --text-dim: var(--text-secondary);
+
+  /* Compatibility aliases used by older internal/admin pages. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --color-surface: var(--mag-surface);
+  --color-surface-2: var(--mag-surface-2);
+  --color-border: var(--mag-border);
+  --color-text: var(--mag-text);
+  --color-text-muted: var(--mag-muted);
+  --color-text-subtle: var(--mag-muted-2);
+}
+
+html {
+  background: var(--bg-base);
+  scrollbar-color: var(--scrollbar-thumb) var(--bg-base);
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-1);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
+:where(input, select, textarea, button) {
+  accent-color: var(--page-accent);
+}
+
+:where(button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--focus-ring);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+:where(button, input, select, textarea):disabled,
+:where(button, input, select, textarea)[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+/* Per-page accents */
+body[data-page="dashboard"],
+body[data-page="index"] {
+  --page-accent: #2563eb;
+  --page-accent-soft: rgba(37, 99, 235, 0.12);
+  --page-accent-border: rgba(37, 99, 235, 0.22);
+  --page-accent-text: #1d4ed8;
+}
+
+body[data-page="time-comercial"],
+body[data-page="vendors"] {
+  --page-accent: #0f766e;
+  --page-accent-soft: rgba(15, 118, 110, 0.14);
+  --page-accent-border: rgba(15, 118, 110, 0.24);
+  --page-accent-text: #0f766e;
+}
+
+body[data-page="geografia"],
+body[data-page="mapa_vendas"] {
+  --page-accent: #0891b2;
+  --page-accent-soft: rgba(8, 145, 178, 0.14);
+  --page-accent-border: rgba(8, 145, 178, 0.24);
+  --page-accent-text: #0e7490;
+}
+
+body[data-page="nf-periodo"],
+body[data-page="orders"] {
+  --page-accent: #ea580c;
+  --page-accent-soft: rgba(234, 88, 12, 0.14);
+  --page-accent-border: rgba(234, 88, 12, 0.24);
+  --page-accent-text: #c2410c;
+}
+
+body[data-page="mix-faturado"],
+body[data-page="products"] {
+  --page-accent: #7c3aed;
+  --page-accent-soft: rgba(124, 58, 237, 0.14);
+  --page-accent-border: rgba(124, 58, 237, 0.24);
+  --page-accent-text: #6d28d9;
+}
+
+body[data-page="financeiro"],
+body[data-page="finance"] {
+  --page-accent: #15803d;
+  --page-accent-soft: rgba(21, 128, 61, 0.14);
+  --page-accent-border: rgba(21, 128, 61, 0.24);
+  --page-accent-text: #166534;
+}
+
+body[data-page="admin"] {
+  --page-accent: #334155;
+  --page-accent-soft: rgba(51, 65, 85, 0.14);
+  --page-accent-border: rgba(51, 65, 85, 0.24);
+  --page-accent-text: #1f2937;
+}
+
+body[data-page="conciliacao"],
+body[data-page="reconciliation"] {
+  --page-accent: #b45309;
+  --page-accent-soft: rgba(180, 83, 9, 0.14);
+  --page-accent-border: rgba(180, 83, 9, 0.24);
+  --page-accent-text: #92400e;
+}
+
+body[data-page="rota-comercial"],
+body[data-page="flight-plan"] {
+  --page-accent: #4f46e5;
+  --page-accent-soft: rgba(79, 70, 229, 0.14);
+  --page-accent-border: rgba(79, 70, 229, 0.24);
+  --page-accent-text: #4338ca;
+}
+
+body[data-page="flight-plan-targets"] {
+  --page-accent: #6d28d9;
+  --page-accent-soft: rgba(109, 40, 217, 0.14);
+}
+
+body[data-page="observabilidade"],
+body[data-page="observability"] {
+  --page-accent: #db2777;
+  --page-accent-soft: rgba(219, 39, 119, 0.14);
+  --page-accent-border: rgba(219, 39, 119, 0.24);
+  --page-accent-text: #be185d;
+}
+
+body[data-page="omie"],
+body[data-page="integrations"] {
+  --page-accent: #0e7490;
+  --page-accent-soft: rgba(14, 116, 144, 0.14);
+  --page-accent-border: rgba(14, 116, 144, 0.24);
+  --page-accent-text: #155e75;
+}
+
+body[data-page="indicadores"] {
+  --page-accent: #2563eb;
+  --page-accent-soft: rgba(37, 99, 235, 0.12);
+  --page-accent-border: rgba(37, 99, 235, 0.22);
+  --page-accent-text: #1d4ed8;
+}
+
+body[data-page="analises"] {
+  --page-accent: #7c3aed;
+  --page-accent-soft: rgba(124, 58, 237, 0.14);
+  --page-accent-border: rgba(124, 58, 237, 0.24);
+  --page-accent-text: #6d28d9;
+}
+
+body[data-page="mesa"] {
+  --page-accent: #b45309;
+  --page-accent-soft: rgba(180, 83, 9, 0.14);
+  --page-accent-border: rgba(180, 83, 9, 0.24);
+  --page-accent-text: #92400e;
+}
+
+/* ── Chart height scale (shared across all pages) ──────────────────────────── */
+:root {
+  --biomie-chart-h-sm:     240px;
+  --biomie-chart-h-md:     320px;
+  --biomie-chart-h-lg:     380px;
+  --biomie-chart-h-xl:     420px;
+  --biomie-chart-h-drawer: 160px;
+  --biomie-card-radius:    16px;
+  --biomie-panel-gap:      16px;
+  --biomie-grid-min-card:  220px;
+  --biomie-grid-min-chart: 360px;
+}
+
+/* ── Company brand tokens ──────────────────────────────────────────────────── */
+/* Per-company tokens are loaded inline from assets/companies/{slug}/theme.css  */
+/* by views/layouts/app.php via CompanyPackageLoader::resolveThemeCssContent(). */
+/* Add/edit a company's colors in assets/companies/{slug}/theme.css only.       */
+
+/* Consolidado Grupo — azul corporativo neutro (canal-based, not company-based) */
+body[data-canal="consolidado"] {
+  --company-color:         #2D5B8E;
+  --company-color-2:       #4A90C4;
+  --brand:                 #2D5B8E;
+  --brand-primary:         #2D5B8E;
+  --brand-dark:            #234A73;
+  --brand-primary-soft:    rgba(45, 91, 142, 0.10);
+  --focus-ring:            rgba(45, 91, 142, 0.34);
+  --focus-ring-soft:       rgba(45, 91, 142, 0.16);
+  --border-acc:            rgba(45, 91, 142, 0.28);
+  --selection-bg:          rgba(45, 91, 142, 0.14);
+  --hero-spot-red:         rgba(45, 91, 142, 0.10);
+  /* ── Acento sistêmico: azul corporativo sobrepõe --page-accent da empresa ── */
+  --page-accent:           #2D5B8E;
+  --page-accent-soft:      rgba(45, 91, 142, 0.12);
+  --page-accent-border:    rgba(45, 91, 142, 0.22);
+  --page-accent-text:      #234A73;
+  --page-chart-1:          #2D5B8E;
+  --page-chart-2:          #4A90C4;
+}
+
+/* ── Dashboard BI cockpit tokens (Phase 10G) ───────────────────────────────── */
+:root {
+  --biomie-dashboard-gap:     16px;
+  --biomie-dashboard-card-h:  88px;
+  --biomie-chart-h-main:      260px;
+  --biomie-chart-h-panel-md:  260px;
+  --biomie-chart-h-panel-sm:  220px;
+  --biomie-index-map-h:       260px;
+  --biomie-panel-radius:      18px;
+  --biomie-panel-border:      rgba(15, 23, 42, 0.08);
+  --biomie-drawer-width:      min(82vw, 1200px);
+  --biomie-drawer-width-mobile: 100vw;
+}
+
+
+
+/* -- Page navigation performance ---------------------------------------------
+   Cross-document View Transition (Chrome 126+, Firefox 132+). Falls back
+   silently to normal navigation in unsupported browsers.                       */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root) { animation: biomie-page-out 160ms ease forwards; }
+::view-transition-new(root) { animation: biomie-page-in  180ms ease forwards; }
+
+@keyframes biomie-page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes biomie-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  /* Kill-switch global: respeita usuarios que pediram menos movimento no SO.
+     Nao altera a experiencia padrao (so vale quando a preferencia esta ativa). */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Navigation loading bar � shown while the next page is being fetched */
+.biomie-nav-progress {
+  position: fixed; z-index: 99999; top: 0; left: 0;
+  height: 3px; width: 0; pointer-events: none;
+  background: var(--page-accent, #96140a);
+  transition: width 8s cubic-bezier(0.02, 0.6, 0.4, 1);
+  border-radius: 0 2px 2px 0;
+  will-change: width;
+}
+.biomie-nav-progress--active  { width: 85%; }
+.biomie-nav-progress--complete { width: 100%; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease 0.15s; }

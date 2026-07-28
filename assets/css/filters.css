@@ -1,0 +1,704 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BIomie — Fase Q: Motor Global de Filtros
+   Global filter system: chips, quick filters, column header filters,
+   sort indicators, feedback messages.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Seletor global de vendedor (topbar) ──────────────────────────────────── */
+
+.biomie-vendor-filter__icon {
+  font-size: 18px;
+  color: var(--page-accent, #96140a);
+  flex-shrink: 0;
+}
+/* display explicito acima anula o atributo [hidden] do UA — reforça aqui. */
+/* Em telas pequenas o atalho equivalente vive no header mobile. */
+@media (max-width: 767px) {
+  .topbar .biomie-vendor-filter { display: none; }
+}
+
+/* ── Metas múltiplas: badge de nível (plano de voo, time comercial, dashboard) ─ */
+
+/* Seletor multiplo compacto do header. */
+.biomie-vendor-filter {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  flex: 0 1 220px;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-2, #64748b);
+}
+
+/* O design system limita o header a 56px; o painel precisa escapar dessa caixa. */
+body:is(.mag-page, .mag-clean-page) .mag-topbar {
+  overflow: visible !important;
+}
+
+.biomie-vendor-filter__trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 3px 8px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 999px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-2, #64748b);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+.biomie-vendor-filter__trigger:hover,
+.biomie-vendor-filter__trigger[aria-expanded="true"],
+.biomie-vendor-filter--active .biomie-vendor-filter__trigger {
+  border-color: color-mix(in srgb, var(--page-accent, #96140a) 48%, var(--border, #e2e8f0));
+  background: color-mix(in srgb, var(--page-accent, #96140a) 7%, var(--bg-surface, #fff));
+  color: var(--text-1, #1e293b);
+}
+
+.biomie-vendor-filter__trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--page-accent, #96140a) 42%, transparent);
+  outline-offset: 2px;
+}
+
+.biomie-vendor-filter__label {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biomie-vendor-filter__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--page-accent, #96140a);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.biomie-vendor-filter__count[hidden],
+.biomie-vendor-filter__panel[hidden],
+.biomie-vendor-filter__status[hidden],
+.biomie-vendor-filter__backdrop[hidden] {
+  display: none !important;
+}
+
+.biomie-vendor-filter__chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 17px;
+  transition: transform .15s ease;
+}
+
+.biomie-vendor-filter__trigger[aria-expanded="true"] .biomie-vendor-filter__chevron {
+  transform: rotate(180deg);
+}
+
+.biomie-vendor-filter__panel {
+  position: absolute;
+  z-index: 1380;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(330px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 84px));
+  overflow: hidden;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, .18);
+}
+
+.biomie-vendor-filter__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 14px 8px;
+}
+
+.biomie-vendor-filter__panel-head strong {
+  color: var(--text-1, #1e293b);
+  font-size: .9rem;
+}
+
+.biomie-vendor-filter__panel-head > span {
+  margin-left: auto;
+  color: var(--text-3, #94a3b8);
+  font-size: .72rem;
+  font-weight: 600;
+}
+
+.biomie-vendor-filter__panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2, #64748b);
+  cursor: pointer;
+}
+
+.biomie-vendor-filter__panel-close .material-symbols-rounded {
+  font-size: 19px;
+}
+
+.biomie-vendor-filter__search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 12px 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--bg-muted, #f8fafc);
+}
+
+.biomie-vendor-filter__search:focus-within {
+  border-color: color-mix(in srgb, var(--page-accent, #96140a) 60%, var(--border, #e2e8f0));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--page-accent, #96140a) 10%, transparent);
+}
+
+.biomie-vendor-filter__search .material-symbols-rounded {
+  flex: 0 0 auto;
+  color: var(--text-3, #94a3b8);
+  font-size: 18px;
+}
+
+.biomie-vendor-filter__search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-1, #1e293b);
+  font: inherit;
+  font-size: 16px;
+}
+
+.biomie-vendor-filter__status {
+  padding: 16px 14px;
+  color: var(--text-3, #94a3b8);
+  font-size: .76rem;
+  text-align: center;
+}
+
+.biomie-vendor-filter__options {
+  flex: 1 1 auto;
+  min-height: 72px;
+  overflow-y: auto;
+  padding: 2px 8px 8px;
+  overscroll-behavior: contain;
+}
+
+.biomie-vendor-filter__option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  color: var(--text-1, #1e293b);
+  cursor: pointer;
+}
+
+.biomie-vendor-filter__option:hover {
+  background: var(--bg-muted, #f8fafc);
+}
+
+.biomie-vendor-filter__option[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+.biomie-vendor-filter__option input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--page-accent, #96140a);
+}
+
+.biomie-vendor-filter__option-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--page-accent, #96140a) 10%, var(--bg-surface, #fff));
+  color: var(--page-accent, #96140a);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.biomie-vendor-filter__option-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: .78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biomie-vendor-filter__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border, #e2e8f0);
+  background: var(--bg-surface, #fff);
+}
+
+.biomie-vendor-filter__clear,
+.biomie-vendor-filter__apply {
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.biomie-vendor-filter__clear {
+  border: 1px solid var(--border, #e2e8f0);
+  background: transparent;
+  color: var(--text-2, #64748b);
+}
+
+.biomie-vendor-filter__apply {
+  border: 1px solid var(--page-accent, #96140a);
+  background: var(--page-accent, #96140a);
+  color: #fff;
+}
+
+.biomie-vendor-filter__clear:disabled,
+.biomie-vendor-filter__apply:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.biomie-vendor-filter--mobile-topbar {
+  display: none;
+  min-width: 38px;
+  max-width: 38px;
+}
+
+@media (max-width: 767px) {
+  .biomie-vendor-filter--mobile-topbar {
+    display: inline-flex;
+    flex: 0 0 38px;
+  }
+
+  .biomie-vendor-filter--mobile-topbar .biomie-vendor-filter__trigger {
+    justify-content: center;
+    width: 38px;
+    min-height: 38px;
+    padding: 0;
+    border-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  .biomie-vendor-filter--mobile-topbar .biomie-vendor-filter__count {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border: 2px solid var(--bg-surface, #fff);
+    font-size: 9px;
+  }
+
+  .biomie-vendor-filter--mobile-topbar .biomie-vendor-filter__panel,
+  .biomie-vendor-filter__panel--mobile {
+    position: fixed;
+    z-index: 1510;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: min(72dvh, 620px);
+    border-width: 1px 0 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -18px 48px rgba(15, 23, 42, .2);
+  }
+
+  .biomie-vendor-filter--mobile-topbar .biomie-vendor-filter__backdrop,
+  .biomie-vendor-filter__backdrop--mobile {
+    position: fixed;
+    z-index: 1500;
+    inset: 0;
+    background: rgba(15, 23, 42, .32);
+    backdrop-filter: blur(1px);
+  }
+
+  body.biomie-vendor-filter-open {
+    overflow: hidden;
+  }
+}
+
+.fp-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--page-accent, #96140a) 10%, transparent);
+  color: var(--page-accent, #96140a);
+  white-space: nowrap;
+}
+.fp-tier-badge .material-symbols-rounded { font-size: 13px; }
+
+/* Mini barra de progresso com marcos de nível (célula de meta) */
+.tier-progress {
+  position: relative;
+  width: 120px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--bg-muted, #eef0f3);
+  margin-top: 4px;
+  overflow: visible;
+}
+.tier-progress__fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  border-radius: 99px;
+  background: var(--page-accent, #96140a);
+  max-width: 100%;
+}
+.tier-progress__mark {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--text-3, #94a3b8);
+}
+.tier-progress__mark--done { background: var(--success, #16a34a); }
+
+/* ── Active filter chips ──────────────────────────────────────────────────── */
+
+.biomie-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  background: var(--page-accent, #e0e7ff);
+  color: var(--page-accent-fg, #3730a3);
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background .15s;
+}
+
+.biomie-filter-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: .85rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  opacity: .7;
+  padding: 0;
+  flex-shrink: 0;
+  transition: opacity .12s, background .12s;
+}
+.biomie-filter-chip__remove:hover {
+  opacity: 1;
+  background: rgba(0,0,0,.1);
+}
+
+.biomie-filter-chip-clear {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--border, #e2e8f0);
+  color: var(--text-3, #94a3b8);
+  border-radius: 20px;
+  font-size: .72rem;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.biomie-filter-chip-clear:hover {
+  color: var(--danger, #ef4444);
+  border-color: var(--danger, #ef4444);
+}
+
+/* Container for chips */
+.mag-orders-active-filters,
+[id="nfActiveFilters"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+}
+
+/* ── Quick filter bar ─────────────────────────────────────────────────────── */
+
+.nf-quick-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 4px;
+}
+
+.nf-quick-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: .72rem;
+  font-weight: 500;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 20px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-2, #64748b);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.nf-quick-filter-btn:hover {
+  background: var(--bg-muted, #f8fafc);
+  border-color: var(--page-accent, #818cf8);
+  color: var(--text-1, #1e293b);
+}
+.nf-quick-filter-btn--active {
+  background: var(--page-accent, #e0e7ff);
+  border-color: var(--page-accent-fg, #6366f1);
+  color: var(--page-accent-fg, #3730a3);
+  font-weight: 600;
+}
+.nf-quick-filter-btn--active:hover {
+  background: var(--page-accent, #c7d2fe);
+}
+
+/* ── Column header filter row ────────────────────────────────────────────── */
+
+.nf-filter-row th {
+  padding: 4px 8px 6px;
+  vertical-align: top;
+  border-top: none;
+  background: var(--bg-muted, #f8fafc);
+}
+
+.nf-col-filter {
+  width: 100%;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: .72rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 4px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-1, #1e293b);
+  line-height: 1.4;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.nf-col-filter:focus {
+  outline: none;
+  border-color: var(--page-accent, #818cf8);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--page-accent, #818cf8) 20%, transparent);
+}
+.nf-col-filter--active {
+  border-color: var(--page-accent-fg, #6366f1);
+  background: color-mix(in srgb, var(--page-accent, #e0e7ff) 30%, var(--bg-surface, #fff));
+}
+.nf-col-filter--select {
+  cursor: pointer;
+}
+
+.nf-col-filter-range {
+  display: flex;
+  gap: 4px;
+}
+.nf-col-filter-range .nf-col-filter {
+  min-width: 0;
+  width: calc(50% - 2px);
+}
+
+/* ── Sort indicators in table headers ───────────────────────────────────── */
+
+.nf-th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.nf-th-sortable:hover {
+  background: var(--bg-muted, #f8fafc);
+}
+.nf-th-sorted {
+  color: var(--page-accent-fg, #4f46e5);
+}
+.nf-sort-icon {
+  display: inline-block;
+  font-size: .8em;
+  opacity: .6;
+  margin-left: 2px;
+}
+.nf-th-sorted .nf-sort-icon {
+  opacity: 1;
+}
+
+/* Active filter indicator badge on header */
+.nf-th-filter-active::after {
+  content: '●';
+  font-size: .6em;
+  color: var(--page-accent-fg, #6366f1);
+  vertical-align: super;
+  margin-left: 2px;
+  line-height: 1;
+}
+
+/* ── Table feedback messages ─────────────────────────────────────────────── */
+
+.biomie-table-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: .8rem;
+  margin: 6px 0;
+}
+.biomie-table-feedback--error {
+  background: var(--danger-muted, #fef2f2);
+  color: var(--danger, #dc2626);
+  border-left: 3px solid var(--danger, #dc2626);
+}
+.biomie-table-feedback--info {
+  background: var(--bg-muted, #f8fafc);
+  color: var(--text-2, #64748b);
+  border-left: 3px solid var(--border, #cbd5e1);
+}
+
+/* ── Loading state overlay inside table ─────────────────────────────────── */
+
+.nf-table-loading {
+  opacity: .5;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+/* ── Responsive tweaks ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .nf-filter-row {
+    display: none;  /* column filters hidden on small screens; use global search */
+  }
+  .nf-quick-filter-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nf-quick-filter-bar::-webkit-scrollbar { display: none; }
+}
+
+/* ── Conciliação — rec-* components ──────────────────────────────────────── */
+
+.rec-table-wrap { overflow-x: auto; }
+
+.rec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.rec-table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+.rec-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.rec-row:hover td { background: var(--surface-hover, #f7f5f4); }
+.rec-actions      { white-space: nowrap; }
+
+.rec-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rec-status-ok    { background: var(--state-success-bg, #e6f4ea); color: var(--state-success, #1e7e34); }
+.rec-status-error { background: var(--state-danger-bg, #fde8e8);  color: var(--danger, #c0392b); }
+.rec-status-warn  { background: var(--state-warn-bg, #fff3cd);    color: var(--state-warn, #856404); }
+.rec-status-info  { background: var(--state-info-bg, #e3f2fd);    color: var(--state-info, #1565c0); }
+.rec-status-muted { background: var(--surface-2, #f0eeec);        color: var(--text-2, #666); }
+
+.rec-kpi-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+.rec-kpi-card {
+  flex: 1 1 120px;
+  min-width: 100px;
+  padding: 10px 14px;
+  background: var(--surface-0, #fff);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.rec-kpi-label { font-size: 11px; color: var(--text-2); font-weight: 500; margin-bottom: 4px; }
+.rec-kpi-value { font-size: 1.25rem; font-weight: 700; color: var(--text-1); }
+.rec-kpi-sub   { font-size: 11px; color: var(--text-2); margin-top: 2px; }

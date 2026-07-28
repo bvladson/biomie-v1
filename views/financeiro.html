@@ -1,0 +1,1006 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Carteira financeira com recebimentos, vencimentos, inadimplencia e saude financeira em uma leitura executiva." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Carteira Financeira | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+</head>
+<body class="mag-page mag-clean-page finance-page" data-page="finance">
+<main class="page fin-shell">
+  <section class="biomie-page-header biomie-page-header--shell anim">
+    <div class="biomie-page-header__body">
+      <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</div>
+      <h1 class="biomie-page-header__title">Financeiro</h1>
+      <p class="biomie-page-header__subtitle">Acompanhe recebíveis, vencimentos, inadimplência e previsão financeira.</p>
+    </div>
+    <div class="biomie-page-header__actions">
+      <a class="btn-secondary" href="#finance-visual" data-finance-jump="explore"><span class="material-symbols-rounded">monitoring</span>Análises</a>
+      <a class="btn-secondary" href="#financeRawTitlesDetails" data-finance-jump="receivables"><span class="material-symbols-rounded">table_view</span>Títulos</a>
+    </div>
+  </section>
+
+  <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" data-mobile-filter-sheet>
+    <div class="filter-group"><label class="filter-label">Periodo inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+    <div class="filter-group"><label class="filter-label">Periodo final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+    <div class="filter-actions">
+      <button class="btn-preset" data-range-preset="month">Mes</button>
+      <button class="btn-preset" data-range-preset="year">Ano</button>
+      <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
+      <button id="applyFilters" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span>Aplicar</button>
+      <button id="syncNow" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">sync</span>Atualizar visao</button>
+    </div>
+  </div>
+  <div class="finance-period-help" role="note">
+    <span class="material-symbols-rounded">info</span>
+    Visao executiva, rastreabilidade e produtos usam competencia financeira. Cobranca e governanca usam vencimento.
+  </div>
+
+  <section class="finance-workspace anim d1" aria-label="Navegacao da pagina financeira">
+    <div class="finance-workspace__intro">
+      <span class="finance-workspace__eyebrow"><span class="material-symbols-rounded">route</span>Leitura guiada</span>
+      <h2 id="financeWorkspaceTitle">Resumo executivo</h2>
+      <p id="financeWorkspaceDescription">O que entrou, o que esta pendente e onde a equipe precisa agir.</p>
+    </div>
+    <nav class="finance-view-switcher" role="tablist" aria-label="Modo de leitura financeira">
+      <button type="button" class="finance-view-switcher__button is-active" data-finance-view="summary" role="tab" aria-selected="true">
+        <span class="material-symbols-rounded">space_dashboard</span><span><strong>Resumo</strong><small>Decisoes do periodo</small></span>
+      </button>
+      <button type="button" class="finance-view-switcher__button" data-finance-view="receivables" role="tab" aria-selected="false">
+        <span class="material-symbols-rounded">receipt_long</span><span><strong>Recebiveis</strong><small>NF, titulo e produto</small></span>
+      </button>
+      <button type="button" class="finance-view-switcher__button" data-finance-view="collection" role="tab" aria-selected="false">
+        <span class="material-symbols-rounded">support_agent</span><span><strong>Cobranca</strong><small>Acao e governanca</small></span>
+      </button>
+      <button type="button" class="finance-view-switcher__button" data-finance-view="explore" role="tab" aria-selected="false">
+        <span class="material-symbols-rounded">query_stats</span><span><strong>Explorar</strong><small>Analises completas</small></span>
+      </button>
+    </nav>
+  </section>
+
+  <section id="financeExecutiveCompass" class="finance-executive-compass anim d2" aria-label="Leitura executiva do financeiro">
+    <article class="finance-compass-card finance-compass-card--success">
+      <span class="finance-compass-card__icon material-symbols-rounded">payments</span>
+      <div><small>O que entrou</small><strong data-finance-mirror="#finReceived">R$ 0,00</strong><p>Baixas financeiras confirmadas no periodo.</p></div>
+    </article>
+    <article class="finance-compass-card finance-compass-card--info">
+      <span class="finance-compass-card__icon material-symbols-rounded">account_balance</span>
+      <div><small>O que esta pendente</small><strong data-finance-mirror="#finOpen">R$ 0,00</strong><p>Carteira aberta, vencida ou ainda no prazo.</p></div>
+    </article>
+    <article class="finance-compass-card finance-compass-card--danger">
+      <span class="finance-compass-card__icon material-symbols-rounded">priority_high</span>
+      <div><small>O que exige acao</small><strong data-finance-mirror="#finOverdue">R$ 0,00</strong><p>Valores vencidos que precisam de cobranca.</p></div>
+    </article>
+  </section>
+
+  <details id="financeReadingGuide" class="finance-reading-guide anim d2" open>
+    <summary><span class="material-symbols-rounded">help</span><strong>Quem e quem nesta pagina</strong><small>O que cada seção mostra e quando usar.</small></summary>
+    <div class="finance-reading-guide__grid">
+      <article><span class="material-symbols-rounded">payments</span><div><strong>Recebido</strong><p>Baixa confirmada no Omie — o cliente pagou e o financeiro já registrou. Não entra mais no A receber. Se o valor parece baixo, pode ser que o sync não trouxe as baixas mais recentes.</p></div></article>
+      <article><span class="material-symbols-rounded">account_balance</span><div><strong>A receber</strong><p>Tudo que o cliente ainda deve — vencido + a vencer somados. Se zerou sendo que tem vendas no período, o sync financeiro provavelmente não rodou ou o período está diferente do comercial.</p></div></article>
+      <article><span class="material-symbols-rounded">warning</span><div><strong>Vencido</strong><p>A parte do A receber que já passou da data de vencimento. Cada real aqui é risco de inadimplência. Se estiver alto, a cobrança precisa agir — use a aba Cobrança para ver quem acionar.</p></div></article>
+      <article><span class="material-symbols-rounded">link</span><div><strong>Origem dos valores</strong><p>Rastreabilidade completa: qual NF gerou o título, qual vendedor fez a venda, qual produto estava na nota. Use para cobrar com dados precisos — sem precisar pesquisar no ERP.</p></div></article>
+      <article><span class="material-symbols-rounded">support_agent</span><div><strong>Cobranca</strong><p>Lista operacional de títulos vencidos com ação de contato. O operador registra aqui o retorno do cliente. O gestor consegue ver quem foi acionado e qual o status de cada caso.</p></div></article>
+      <article><span class="material-symbols-rounded">policy</span><div><strong>Acompanhamento da equipe</strong><p>Visão gerencial dos contatos por vendedor — quantos foram feitos, prazo de retorno, o que ainda está em aberto. Use para cobrar a equipe de cobrança, não o cliente.</p></div></article>
+    </div>
+  </details>
+
+  <div id="syncFeedback"></div><div id="pageError" class="d-none"></div><div id="financeWarnings"></div><div id="pageLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
+    <div class="module-loading-row" style="justify-content:flex-start;margin-bottom:10px;">
+      <span class="skeleton-badge" style="width:150px"></span>
+      <span data-loading-label style="font-size:12px;color:var(--text-2)">Carregando financeiro realizado...</span>
+    </div>
+    <div class="module-loading-grid cols-3">
+      <span class="skeleton-block"></span>
+      <span class="skeleton-block"></span>
+      <span class="skeleton-block"></span>
+    </div>
+    <div class="module-loading-grid cols-2">
+      <div class="module-loading-card chart"><div class="module-loading-chart tall"></div></div>
+      <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+    </div>
+    <div class="module-loading-grid cols-2">
+      <div class="module-loading-card table">
+        <div class="module-loading-table">
+          <div class="module-loading-row"><span class="skeleton-line md" style="width:28%"></span><span class="skeleton-line md" style="width:20%"></span><span class="skeleton-line md" style="width:14%"></span></div>
+          <div class="module-loading-row"><span class="skeleton-line md" style="width:34%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+          <div class="module-loading-row"><span class="skeleton-line md" style="width:30%"></span><span class="skeleton-line md" style="width:16%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+        </div>
+      </div>
+      <div class="module-loading-card table">
+        <div class="module-loading-table">
+          <div class="module-loading-row"><span class="skeleton-line md" style="width:24%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:16%"></span></div>
+          <div class="module-loading-row"><span class="skeleton-line md" style="width:32%"></span><span class="skeleton-line md" style="width:22%"></span><span class="skeleton-line md" style="width:14%"></span></div>
+          <div class="module-loading-row"><span class="skeleton-line md" style="width:26%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label anim d2" id="cards">Indicadores</div>
+  <section class="biomie-kpi-grid anim d2">
+    <article class="biomie-kpi-card biomie-kpi-card--info" data-finance-insight="open">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">A receber</span><span class="material-symbols-rounded biomie-kpi-card__icon">account_balance</span></div>
+      <strong class="biomie-kpi-card__value" id="finOpen">R$ 0,00<span id="finOpenArrow"></span></strong>
+      <span class="biomie-kpi-card__sub" id="finOpenDetail">Títulos ainda não liquidados.</span>
+      <span class="mag-kpi-card__meta" id="finOpenHelper"></span>
+      <div class="fin-kpi-progress"><span id="finOpenProgress"></span></div>
+    </article>
+    <article class="biomie-kpi-card biomie-kpi-card--danger" data-finance-insight="overdue">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vencido</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning</span></div>
+      <strong class="biomie-kpi-card__value" id="finOverdue">R$ 0,00<span id="finOverdueArrow"></span></strong>
+      <span class="biomie-kpi-card__sub" id="finOverdueDetail">Títulos em atraso no recorte.</span>
+      <span class="mag-kpi-card__meta" id="finOverdueHelper"></span>
+      <div class="fin-kpi-progress"><span id="finOverdueProgress"></span></div>
+    </article>
+    <article class="biomie-kpi-card biomie-kpi-card--warning" data-finance-insight="due">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">A vencer</span><span class="material-symbols-rounded biomie-kpi-card__icon">event_available</span></div>
+      <strong class="biomie-kpi-card__value" id="finDue">R$ 0,00</strong>
+      <span class="biomie-kpi-card__sub" id="finDueDetail">Valores em aberto dentro do prazo.</span>
+      <span class="mag-kpi-card__meta" id="finDueHelper"></span>
+      <div class="fin-kpi-progress"><span id="finDueProgress"></span></div>
+    </article>
+    <article class="biomie-kpi-card biomie-kpi-card--success" data-finance-insight="received">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebido no mês</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+      <strong class="biomie-kpi-card__value" id="finReceived">R$ 0,00<span id="finReceivedArrow"></span></strong>
+      <span class="biomie-kpi-card__sub" id="finReceivedDetail">Baixas financeiras do período.</span>
+      <span class="mag-kpi-card__meta" id="finReceivedHelper"></span>
+      <div class="fin-kpi-progress"><span id="finReceivedProgress"></span></div>
+    </article>
+    <article class="biomie-kpi-card biomie-kpi-card--danger" data-finance-insight="late_clients">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes em atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div>
+      <strong class="biomie-kpi-card__value" id="finLateClients">0</strong>
+      <span class="biomie-kpi-card__sub" id="finLateClientsDetail">Clientes com títulos vencidos.</span>
+    </article>
+    <article class="biomie-kpi-card biomie-kpi-card--warning" data-finance-insight="max_delay">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Maior atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">timer</span></div>
+      <strong class="biomie-kpi-card__value" id="finMaxDelay">-</strong>
+      <span class="biomie-kpi-card__sub" id="finMaxDelayDetail">Cliente com maior atraso no recorte.</span>
+    </article>
+  </section>
+
+  <div class="section-label anim d3" id="finance-visual">Visao visual</div>
+  <section id="financeVisualAnalytics" class="finance-visual-shell anim d3" aria-label="Analytics financeiro visual">
+    <div class="finance-visual-head">
+      <div>
+        <h2>Financeiro visual</h2>
+        <p>Leitura executiva da carteira. Clique em um grafico para entender o recorte e abrir os titulos.</p>
+      </div>
+      <span id="financeVisualMeta" class="finance-visual-meta">Aguardando dados...</span>
+    </div>
+    <div class="finance-business-tools">
+      <div class="finance-business-legend" aria-label="Legenda comercial financeira">
+        <button type="button" data-finance-insight="received" data-finance-insight-label="Dinheiro recebido" data-finance-tone="revenue"><span></span>Dinheiro recebido</button>
+        <button type="button" data-finance-insight="due" data-finance-insight-label="Valores ainda no prazo" data-finance-tone="pending"><span></span>Ainda no prazo</button>
+        <button type="button" data-finance-insight="overdue" data-finance-insight-label="Valores para cobrar" data-finance-tone="attention"><span></span>Precisa cobrar</button>
+        <button type="button" data-finance-insight="late_clients" data-finance-insight-label="Clientes que exigem acompanhamento" data-finance-tone="people"><span></span>Responsaveis e clientes</button>
+      </div>
+      <div class="finance-chart-focus" role="group" aria-label="Escolher assunto dos graficos">
+        <button type="button" class="is-active" data-finance-chart-focus="all">Essencial</button>
+        <button type="button" data-finance-chart-focus="cash">Caixa</button>
+        <button type="button" data-finance-chart-focus="risk">Atrasos</button>
+        <button type="button" data-finance-chart-focus="team">Equipe</button>
+      </div>
+    </div>
+    <div class="finance-visual-grid">
+      <article class="finance-visual-card finance-visual-card--compact" data-drawer-type="composition" data-finance-priority="primary" data-finance-chart-group="cash" data-finance-tone="revenue">
+        <div class="finance-visual-card__head"><div><h3>Composicao da carteira</h3><small>Recebido, vencido e a vencer.</small></div></div>
+        <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeVisualCompositionChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card finance-visual-card--wide" data-drawer-type="evolution" data-finance-priority="primary" data-finance-chart-group="cash" data-finance-tone="growth">
+        <div class="finance-visual-card__head"><div><h3>Evolucao da carteira</h3><small>Barras de recebido e linha de aberto/vencido.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualEvolutionChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-drawer-type="aging" data-finance-priority="secondary" data-finance-chart-group="risk" data-finance-tone="pending">
+        <div class="finance-visual-card__head"><div><h3>Valores por tempo de atraso</h3><small>Valores em aberto separados pelos dias de atraso.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualAgingChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-drawer-type="vendor" data-finance-priority="secondary" data-finance-chart-group="team" data-finance-tone="people">
+        <div class="finance-visual-card__head"><div><h3>Cobranca por vendedor</h3><small>Valor vencido, carteira e acionamento.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualVendorChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-drawer-type="customer" data-finance-priority="primary" data-finance-chart-group="risk" data-finance-tone="attention">
+        <div class="finance-visual-card__head"><div><h3>Clientes de risco</h3><small>Barras: vencido. Linha: participacao acumulada.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeVisualClientRiskChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card finance-visual-card--compact" data-drawer-type="governance" data-finance-priority="secondary" data-finance-chart-group="team" data-finance-tone="people">
+        <div class="finance-visual-card__head"><div><h3>Acompanhamento da cobranca</h3><small>Contatos, retornos e pendencias da equipe.</small></div></div>
+        <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeVisualGovernanceChart"></canvas></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RASTREABILIDADE DE RECEBÍVEIS — FIN.R4.1
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="section-label anim d3" id="finance-trace">Origem dos valores a receber</div>
+  <section id="financeReceivableTrace" class="finance-visual-shell anim d3" aria-label="Origem dos valores a receber">
+    <div class="finance-visual-head">
+      <div>
+        <h2>Recebíveis Operacional — NF, Pedido, Vendedor</h2>
+        <p>Veja as notas fiscais, formas de pagamento, responsáveis e ações de cobrança ligadas a cada valor.</p>
+      </div>
+      <span id="financeTraceMeta" class="finance-visual-meta">Aguardando dados...</span>
+    </div>
+
+    <section class="biomie-kpi-grid anim d3" style="margin-bottom:14px;">
+      <article class="biomie-kpi-card biomie-kpi-card--danger" data-trace-insight="nfs_open_boleto" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs com recebíveis em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
+        <strong class="biomie-kpi-card__value" id="traceNfsOpenBoleto">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceNfsOpenBoletoSub">notas fiscais pendentes</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="boletos_open" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebíveis em aberto</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+        <strong class="biomie-kpi-card__value" id="traceBoletosOpen">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceBoletosOpenSub">valor aberto</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--danger" data-trace-insight="boletos_overdue" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recebíveis vencidos</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning_amber</span></div>
+        <strong class="biomie-kpi-card__value" id="traceBoletosOverdue">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceBoletosOverdueSub">maior atraso</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="sem_nf" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem NF vinculada</span><span class="material-symbols-rounded biomie-kpi-card__icon">link_off</span></div>
+        <strong class="biomie-kpi-card__value" id="traceSemNf">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceSemNfSub">títulos sem rastreio</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--warning" data-trace-insight="sem_vendedor" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">person_off</span></div>
+        <strong class="biomie-kpi-card__value" id="traceSemVendedor">0</strong>
+        <span class="biomie-kpi-card__sub" id="traceSemVendedorSub">valor sem responsável</span>
+      </article>
+      <article class="biomie-kpi-card biomie-kpi-card--info" data-trace-insight="metodo_principal" role="button" tabindex="0">
+        <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Método principal</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div>
+        <strong class="biomie-kpi-card__value" id="traceMetodoPrincipal">-</strong>
+        <span class="biomie-kpi-card__sub" id="traceMetodoPrincipalSub">maior share no período</span>
+      </article>
+    </section>
+
+    <div class="finance-visual-grid">
+      <article class="finance-visual-card finance-visual-card--wide" data-trace-type="nf_open" data-drawer-type="trace_nf">
+        <div class="finance-visual-card__head"><div><h3>NFs com recebíveis em aberto</h3><small>Top 10 por valor aberto — clique para ver detalhes.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceNfChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-trace-type="payment_methods" data-drawer-type="trace_method">
+        <div class="finance-visual-card__head">
+          <div><h3>Formas de pagamento mais usadas</h3><small>Comparação de valor no período.</small></div>
+          <div class="finance-trace-toggle" id="traceMethodToggle">
+            <button class="finance-trace-btn finance-trace-btn--active" data-trace-metric="total_value">Valor total</button>
+            <button class="finance-trace-btn" data-trace-metric="open_value">Aberto</button>
+            <button class="finance-trace-btn" data-trace-metric="titles_count">Qtd</button>
+          </div>
+        </div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceMethodChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-trace-type="vendor_boleto" data-drawer-type="trace_vendor">
+        <div class="finance-visual-card__head"><div><h3>Cobrança por vendedor</h3><small>Valor aberto em recebíveis por responsável.</small></div></div>
+        <div id="financeTraceVendorNoData" class="finance-trace-vendor-nodata" hidden></div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceVendorChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card finance-visual-card--compact" data-trace-type="coverage" data-drawer-type="trace_coverage">
+        <div class="finance-visual-card__head"><div><h3>Cobertura NF × título</h3><small>Vínculo entre títulos e notas fiscais.</small></div></div>
+        <div class="finance-visual-canvas finance-visual-canvas--donut"><canvas id="financeTraceCoverageChart"></canvas></div>
+      </article>
+      <article class="finance-visual-card" data-trace-type="aging_boleto" data-drawer-type="trace_aging">
+        <div class="finance-visual-card__head"><div><h3>Valores abertos por tempo de atraso</h3><small>Valores a receber separados pelos dias de atraso.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeTraceAgingChart"></canvas></div>
+      </article>
+    </div>
+
+    <div class="finance-trace-nf-table-section" id="financeTraceNfTableSection">
+      <div class="finance-visual-card__head" style="padding:10px 0 6px;"><div><h3>NFs com recebíveis em aberto</h3><small>Top 10 operacionais — clique na NF para abrir detalhes.</small></div><button id="traceNfTableViewAll" class="btn-secondary mag-button-secondary" style="font-size:0.8rem;padding:4px 10px;">Ver todas</button></div>
+      <div class="table-responsive fin-table-wrap">
+        <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
+              <th>Recebíveis</th><th>Vencido</th><th>A vencer</th><th>Aberto</th>
+              <th>Maior atraso</th><th>Método</th><th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="financeTraceNfTableBody" data-empty-title="Sem NFs com recebível aberto" data-empty-message="Nenhuma NF com recebível em aberto no período."></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-label anim d3" id="metodos-produtos">Metodos e canais por produto</div>
+  <section id="financeProductPaymentMethods" class="finance-visual-shell anim d3" aria-label="Metodos e canais financeiros mais usados por produto">
+    <div class="finance-visual-head">
+      <div>
+        <h2>Metodos e canais mais usados para os produtos</h2>
+        <p>Cruzamento seguro entre titulo, nota fiscal e item faturado, classificado pelos sinais oficiais da conta Omie. Base: competencia financeira.</p>
+      </div>
+      <span id="financeProductMethodMeta" class="finance-visual-meta">Aguardando dados...</span>
+    </div>
+    <section class="finance-method-summary" aria-label="Resumo de metodos por produto">
+      <article><small>Metodo/canal principal</small><strong id="financeProductMethodTop">-</strong></article>
+      <article><small>Cobertura identificada</small><strong id="financeProductMethodCoverage">0%</strong></article>
+      <article><small>Pagamentos ligados a produtos</small><strong id="financeProductMethodLinks">0</strong></article>
+      <article><small>Formas encontradas</small><strong id="financeProductMethodCount">0</strong></article>
+    </section>
+    <div class="finance-product-method-grid">
+      <article class="finance-visual-card finance-product-method-chart-card">
+        <div class="finance-visual-card__head"><div><h3>Uso geral por metodo/canal</h3><small>Quantidade de titulos vinculados a produtos faturados.</small></div></div>
+        <div class="finance-visual-canvas"><canvas id="financeProductMethodChart"></canvas></div>
+      </article>
+      <article class="finance-product-method-table-card">
+        <div class="finance-visual-card__head"><div><h3>Metodo/canal dominante por produto</h3><small>Participacao por vinculos distintos, sem duplicar receita parcelada.</small></div></div>
+        <div class="table-responsive fin-table-wrap">
+          <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+            <thead><tr><th>Produto</th><th>Metodo principal</th><th>Share</th><th>Titulos</th><th>NFs</th><th>Metodos</th></tr></thead>
+            <tbody id="financeProductMethodBody"></tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="section-label anim d3" id="graficos">Analises</div>
+  <section class="row g-4 mb-4">
+    <div class="col-xl-12"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Evolucao da carteira</h2><p>Recebido, aberto e vencido no recorte.</p></div></div><div class="fin-chart-lg" id="financeTrendChart"></div></div></div>
+    <div class="col-xl-4 mag-secondary-chart"><div class="fin-panel x_panel fin-panel-stack"><div class="fin-panel-head"><div><h2>Distribuicao da carteira</h2><p>Peso de recebido, aberto e vencido.</p></div></div><div class="fin-chart-md" id="financeStatusChart"></div><div class="fin-insight-grid"><div class="fin-insight-card"><span>Maior baixa</span><strong id="insightReceivedDoc">-</strong><small id="insightReceivedValue">-</small></div><div class="fin-insight-card"><span>Maior risco</span><strong id="insightClientName">-</strong><small id="insightClientValue">-</small><small id="insightClientLate">-</small></div></div></div></div>
+  </section>
+
+  <section class="row g-4 mb-4 mag-secondary-chart-row">
+    <div class="col-xl-4"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Recebido por vendedor</h2><p>Quem mais trouxe caixa no recorte.</p></div></div><div class="fin-chart-md mag-chart-container"><canvas id="financeVendorsChart"></canvas></div></div></div>
+    <div class="col-xl-4"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Recebido por conta</h2><p>Distribuicao do caixa por conta.</p></div></div><div class="fin-chart-md mag-chart-container"><canvas id="financeAccountsChart"></canvas></div></div></div>
+    <div class="col-xl-4"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Meios de recebimento</h2><p>Como o caixa entrou no periodo.</p></div></div><div class="fin-chart-md" id="financePaymentChart"></div></div></div>
+  </section>
+
+  <section class="row g-4 mb-4">
+    <div class="col-xl-4 mag-secondary-chart"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Atraso por vendedor</h2><p>Onde o risco esta concentrado.</p></div></div><div class="fin-chart-md" id="financeVendorOverdueChart"></div></div></div>
+    <div class="col-xl-12"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Carteira por faixa de atraso</h2><p>Leitura rapida dos vencimentos em aberto.</p></div></div><div class="fin-aging-wrap" id="financeAgingChart"></div></div></div>
+  </section>
+
+  <div class="section-label anim d4" id="impostos">Impostos &amp; Tributos</div>
+  <section class="row g-4 mb-4" id="financeTaxSection">
+    <div class="col-12">
+      <div class="fin-panel x_panel">
+        <div class="fin-panel-head">
+          <div>
+            <h2>Carga tributária do período</h2>
+            <p>Valores extraídos das NFs autorizadas via integração Omie. Cobertura de 100% das NFs emitidas.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            <div id="financeTaxCoverage" class="fin-coverage-badge" style="font-size:11px;color:var(--text-3);white-space:nowrap;"></div>
+            <button class="fin-tax-detail-btn" id="financeTaxDetailBtn" type="button">Ver detalhes <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;">open_in_full</span></button>
+          </div>
+        </div>
+        <div class="fin-tax-kpi-row" id="financeTaxKpis">
+          <div class="fin-tax-kpi" id="taxKpiIcms"><span class="fin-tax-kpi__label">ICMS</span><strong class="fin-tax-kpi__value" id="taxValIcms">-</strong><span class="fin-tax-kpi__pct" id="taxPctIcms"></span><small class="fin-tax-kpi__sub">Circulação de mercadorias</small></div>
+          <div class="fin-tax-kpi" id="taxKpiPis"><span class="fin-tax-kpi__label">PIS</span><strong class="fin-tax-kpi__value" id="taxValPis">-</strong><span class="fin-tax-kpi__pct" id="taxPctPis"></span><small class="fin-tax-kpi__sub">Integração Social</small></div>
+          <div class="fin-tax-kpi" id="taxKpiCofins"><span class="fin-tax-kpi__label">COFINS</span><strong class="fin-tax-kpi__value" id="taxValCofins">-</strong><span class="fin-tax-kpi__pct" id="taxPctCofins"></span><small class="fin-tax-kpi__sub">Financ. Seguridade Social</small></div>
+          <div class="fin-tax-kpi" id="taxKpiIpi"><span class="fin-tax-kpi__label">IPI</span><strong class="fin-tax-kpi__value" id="taxValIpi">-</strong><span class="fin-tax-kpi__pct" id="taxPctIpi"></span><small class="fin-tax-kpi__sub">Produtos Industrializados</small></div>
+          <div class="fin-tax-kpi" id="taxKpiIss"><span class="fin-tax-kpi__label">ISS</span><strong class="fin-tax-kpi__value" id="taxValIss">-</strong><span class="fin-tax-kpi__pct" id="taxPctIss"></span><small class="fin-tax-kpi__sub">Imposto Sobre Serviços</small></div>
+          <div class="fin-tax-kpi fin-tax-kpi--highlight" id="taxKpiTotal"><span class="fin-tax-kpi__label">Total tributos</span><strong class="fin-tax-kpi__value" id="taxValTotal">-</strong><small class="fin-tax-kpi__sub"><span id="taxCargaTrib">-</span>% sobre o faturamento</small></div>
+        </div>
+        <div class="fin-tax-chart-row">
+          <div class="fin-tax-chart-wrap">
+            <h3 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-1);">Evolução mensal dos tributos</h3>
+            <div class="fin-chart-lg" id="financeTaxTrendChart"></div>
+          </div>
+          <div class="fin-tax-dist-wrap">
+            <h3 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-1);">Detalhamento por tributo</h3>
+            <div class="fin-tax-dist-table" id="financeTaxDistChart"></div>
+          </div>
+        </div>
+        <div id="financeTaxEmpty" class="fin-empty-state" hidden>
+          <span class="material-symbols-rounded" style="font-size:32px;color:var(--text-3);">receipt_long</span>
+          <p>Nenhum dado de imposto disponível para o período.<br><small>Execute a extração de XMLs para popular os dados tributários.</small></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-label anim d4" id="tabelas">Detalhamento</div>
+  <div id="finDrillBar" class="d-none"></div>
+
+  <div class="section-label anim d4" id="cobranca-vendedor">Cobranca por vendedor</div>
+  <section id="financeCollectionSection" class="mb-4">
+    <div class="fc-executive-shell">
+      <div class="fin-panel-head fc-section-head">
+        <div>
+          <h2>Carteira de cobranca por vendedor</h2>
+          <p>Titulos em aberto por vencimento, vendedor e faixa de atraso. Base do periodo: vencimento.</p>
+        </div>
+        <div class="fc-portfolio-snapshot" id="fcPortfolioCompact">Aguardando carteira...</div>
+      </div>
+
+      <div id="fcFeedback" class="biomie-table-feedback" style="display:none;margin-bottom:10px;font-size:0.82rem;"></div>
+
+      <div class="fc-filter-shell">
+        <div class="filter-group"><label class="filter-label">Vendedor</label><input id="fcVendor" type="search" class="filter-input" placeholder="Nome do vendedor" /></div>
+        <div class="filter-group"><label class="filter-label">Cliente</label><input id="fcClient" type="search" class="filter-input" placeholder="Cliente" /></div>
+        <div class="filter-group"><label class="filter-label">Busca</label><input id="fcQ" type="search" class="filter-input" placeholder="Cliente, doc, NF ou pedido" /></div>
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select id="fcStatus" class="filter-input">
+            <option value="">Todos em aberto</option>
+            <option value="vencido">Vencido</option>
+            <option value="vence_hoje">Vence hoje</option>
+            <option value="a_vencer">A vencer</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Tempo de atraso</label>
+          <select id="fcAging" class="filter-input">
+            <option value="">Todas as faixas</option>
+            <option value="a_vencer">A vencer</option>
+            <option value="vence_hoje">Vence hoje</option>
+            <option value="1_7">1-7 dias</option>
+            <option value="8_15">8-15 dias</option>
+            <option value="16_30">16-30 dias</option>
+            <option value="31_60">31-60 dias</option>
+            <option value="60_plus">60+ dias</option>
+          </select>
+        </div>
+        <div class="filter-group"><label class="filter-label">Valor min.</label><input id="fcValueMin" type="number" min="0" step="0.01" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Valor max.</label><input id="fcValueMax" type="number" min="0" step="0.01" class="filter-input" /></div>
+        <div class="fc-filter-actions">
+          <label class="nf-quick-filter-btn" style="gap:6px;"><input id="fcOnlyOverdue" type="checkbox" /> Vencidos</label>
+          <label class="nf-quick-filter-btn" style="gap:6px;"><input id="fcOnlyNoVendor" type="checkbox" /> Sem vendedor</label>
+          <button id="fcApply" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span>Aplicar</button>
+          <button id="fcReset" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">restart_alt</span>Limpar</button>
+        </div>
+      </div>
+
+      <div class="nf-quick-filter-bar fc-quick-filters" id="fcQuickFilters">
+        <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-fc-quick="all">Todos em aberto</button>
+        <button class="nf-quick-filter-btn" data-fc-quick="overdue">Cobrar hoje</button>
+        <button class="nf-quick-filter-btn" data-fc-quick="today">Vence hoje</button>
+        <button class="nf-quick-filter-btn" data-fc-quick="no_vendor">Sem vendedor</button>
+        <button class="nf-quick-filter-btn" data-fc-quick="60_plus">60+ dias</button>
+      </div>
+
+      <div id="fcChips" style="display:none;margin-bottom:12px;"></div>
+
+      <section class="biomie-kpi-grid fc-kpi-grid">
+        <article class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vendedores</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div><strong class="biomie-kpi-card__value" id="fcVendorCount">0</strong><span class="biomie-kpi-card__sub">Com pendencia.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes</span><span class="material-symbols-rounded biomie-kpi-card__icon">person_search</span></div><strong class="biomie-kpi-card__value" id="fcClientCount">0</strong><span class="biomie-kpi-card__sub">Com pendencia.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Titulos sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">link_off</span></div><strong class="biomie-kpi-card__value" id="fcNoVendorCount">0</strong><span class="biomie-kpi-card__sub">Pendencia de origem.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Valor sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><strong class="biomie-kpi-card__value" id="fcNoVendorValueCard">R$ 0,00</strong><span class="biomie-kpi-card__sub">Nao redistribuido.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Maior atraso</span><span class="material-symbols-rounded biomie-kpi-card__icon">timer</span></div><strong class="biomie-kpi-card__value" id="fcMaxDelay">0 dias</strong><span class="biomie-kpi-card__sub">Entre titulos filtrados.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">% vencido</span><span class="material-symbols-rounded biomie-kpi-card__icon">percent</span></div><strong class="biomie-kpi-card__value" id="fcOverduePct">0%</strong><span class="biomie-kpi-card__sub">Sobre carteira aberta.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cobrados hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">call</span></div><strong class="biomie-kpi-card__value" id="fcKpiCobradosHoje">0</strong><span class="biomie-kpi-card__sub">Ações registradas hoje.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Promessas de pagamento</span><span class="material-symbols-rounded biomie-kpi-card__icon">handshake</span></div><strong class="biomie-kpi-card__value" id="fcKpiPromessas">0</strong><span class="biomie-kpi-card__sub">Ações com promessa.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Revisões de vínculo</span><span class="material-symbols-rounded biomie-kpi-card__icon">find_in_page</span></div><strong class="biomie-kpi-card__value" id="fcKpiRevisoes">0</strong><span class="biomie-kpi-card__sub">Pendências de vínculo.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem ação de cobrança</span><span class="material-symbols-rounded biomie-kpi-card__icon">running_with_errors</span></div><strong class="biomie-kpi-card__value" id="fcKpiSemAcao">0</strong><span class="biomie-kpi-card__sub">Títulos abertos sem ação.</span></article>
+      </section>
+    </div>
+
+    <section class="row g-4 mb-4">
+      <div class="col-xl-8">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Ranking por vendedor</h2><p>Concentracao da carteira aberta e vencida.</p></div></div>
+          <div class="table-responsive fin-table-wrap">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Vendedor</th><th>Aberto</th><th>Vencido</th><th>A vencer</th><th>Titulos</th><th>Clientes</th><th>Maior atraso</th><th>% vencido</th></tr></thead>
+              <tbody id="fcRankingBody" data-empty-title="Sem carteira" data-empty-message="Nenhum vendedor com pendencia para os filtros atuais."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Prioridade por tempo de atraso</h2><p>Faixas de vencimento para decidir quem cobrar primeiro.</p></div></div>
+          <div class="table-responsive fin-table-wrap">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Faixa</th><th>Titulos</th><th>Aberto</th></tr></thead>
+              <tbody id="fcAgingBody" data-empty-title="Sem valores em atraso" data-empty-message="Nenhum titulo em aberto no recorte."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-card anim d4">
+      <div class="table-card-header">
+        <h2 class="table-card-title">Titulos acionaveis</h2>
+        <span class="table-card-meta" id="fcTableMeta"></span>
+      </div>
+      <div id="fcUnresolvedVendorAlert" style="display:none;margin:0 0 12px;padding:10px 14px;background:var(--warning-bg-light,#fffbeb);border:1px solid var(--warning-border,#fde68a);border-radius:8px;font-size:13px;color:var(--warning-text,#b45309);"></div>
+      <div class="table-responsive fin-table-wrap">
+        <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th class="nf-th-sortable" data-fc-sort="cliente">Cliente / Vendedor <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-fc-sort="documento">Titulo <span class="nf-sort-icon">&#8597;</span></th>
+              <th>NF / Pedido</th>
+              <th class="nf-th-sortable" data-fc-sort="vencimento">Vencimento <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-fc-sort="atraso">Atraso <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-fc-sort="valor_aberto">Aberto <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Status</th>
+              <th>Acao</th>
+            </tr>
+          </thead>
+          <tbody id="fcTableBody" data-empty-title="Sem titulos" data-empty-message="Nenhum titulo acionavel para os filtros atuais."></tbody>
+        </table>
+      </div>
+      <div id="fcPagination" style="display:none;padding:12px 16px;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;color:var(--text-2);"></div>
+    </section>
+  </section>
+
+  <div class="section-label anim d4" id="cobranca-governanca">Acompanhamento da cobrança</div>
+  <section id="financeGovernanceSection" class="mb-4">
+    <div class="fc-executive-shell">
+      <div class="fin-panel-head fc-section-head">
+        <div>
+          <h2>Acompanhamento da equipe de cobrança</h2>
+          <p>Contatos realizados, prazos, clientes prioritários e próximos retornos.</p>
+        </div>
+      </div>
+
+      <div id="govFeedback" class="biomie-table-feedback" style="display:none;margin-bottom:10px;font-size:0.82rem;"></div>
+
+      <div class="fc-filter-shell">
+        <div class="filter-group"><label class="filter-label">Vendedor</label><input id="govFilterVendor" type="search" class="filter-input" placeholder="Código ou nome" /></div>
+        <div class="filter-group"><label class="filter-label">Operador</label><input id="govFilterActor" type="search" class="filter-input" placeholder="ID do operador" /></div>
+        <div class="filter-group">
+          <label class="filter-label">Tipo de ação</label>
+          <select id="govFilterActionType" class="filter-input">
+            <option value="">Todas as ações</option>
+            <option value="cobrado_hoje">Cobrado hoje</option>
+            <option value="whatsapp_enviado">WhatsApp enviado</option>
+            <option value="ligacao_realizada">Ligação realizada</option>
+            <option value="email_enviado">E-mail enviado</option>
+            <option value="aguardando_retorno">Aguardando retorno</option>
+            <option value="promessa_pagamento">Promessa de pagamento</option>
+            <option value="validar_baixa_caixa">Validar baixa no caixa</option>
+            <option value="revisar_vinculo_financeiro">Revisar vínculo financeiro</option>
+          </select>
+        </div>
+        <div class="filter-group"><label class="filter-label">Busca</label><input id="govFilterQ" type="search" class="filter-input" placeholder="Cliente, documento..." /></div>
+        <div class="fc-filter-actions">
+          <label class="nf-quick-filter-btn" style="gap:6px;"><input id="govFilterCriticalOnly" type="checkbox" /> Críticos</label>
+          <button id="govApply" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span>Filtrar</button>
+          <button id="govReset" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">restart_alt</span>Limpar</button>
+        </div>
+      </div>
+
+      <div class="nf-quick-filter-bar fc-quick-filters" id="govQuickFilters">
+        <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-gov-quick="all">Todos</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="critical">Críticos</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="broken_promises">Promessas vencidas</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="no_action">Títulos sem ação</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="due_today">Retornos de hoje</button>
+        <button class="nf-quick-filter-btn" data-gov-quick="open_link_review">Revisões de vínculo</button>
+      </div>
+
+      <div id="govChips" style="display:none;margin-bottom:12px;"></div>
+
+      <section class="biomie-kpi-grid fc-kpi-grid">
+        <article class="biomie-kpi-card biomie-kpi-card--success"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cobrados hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">call</span></div><strong class="biomie-kpi-card__value" id="govKpiCobradosHoje">0</strong><span class="biomie-kpi-card__sub">Ações registradas hoje.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Retornos hoje</span><span class="material-symbols-rounded biomie-kpi-card__icon">today</span></div><strong class="biomie-kpi-card__value" id="govKpiRetornosHoje">0</strong><span class="biomie-kpi-card__sub">Agenda para hoje.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Retornos atrasados</span><span class="material-symbols-rounded biomie-kpi-card__icon">history</span></div><strong class="biomie-kpi-card__value" id="govKpiRetornosAtrasados">0</strong><span class="biomie-kpi-card__sub">Prazo de contato ultrapassado.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--danger"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Promessas vencidas</span><span class="material-symbols-rounded biomie-kpi-card__icon">running_with_errors</span></div><strong class="biomie-kpi-card__value" id="govKpiPromessasVencidas">0</strong><span class="biomie-kpi-card__sub">Acordo de pgto quebrado.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vencidos sem ação</span><span class="material-symbols-rounded biomie-kpi-card__icon">report_problem</span></div><strong class="biomie-kpi-card__value" id="govKpiVencidosSemAcao">0</strong><span class="biomie-kpi-card__sub">Sem histórico de cobrança.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Sem vendedor</span><span class="material-symbols-rounded biomie-kpi-card__icon">link_off</span></div><strong class="biomie-kpi-card__value" id="govKpiSemVendedor">0</strong><span class="biomie-kpi-card__sub">Pendência de origem.</span></article>
+        <article class="biomie-kpi-card biomie-kpi-card--info"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">% acionada</span><span class="material-symbols-rounded biomie-kpi-card__icon">percent</span></div><strong class="biomie-kpi-card__value" id="govKpiPctAcionada">0%</strong><span class="biomie-kpi-card__sub">Cobertura de cobrança.</span></article>
+      </section>
+    </div>
+
+    <section class="row g-4 mb-4">
+      <div class="col-xl-7">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Produtividade dos operadores</h2><p>Quantidade e tipos de ações de cobrança registradas por operador.</p></div></div>
+          <div class="table-responsive fin-table-wrap">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Operador</th><th>Ações</th><th>Títulos</th><th>Clientes</th><th>WhatsApp</th><th>Ligação</th><th>E-mail</th><th>Promessa</th><th>Retorno</th><th>Período</th></tr></thead>
+              <tbody id="govProductivityBody" data-empty-title="Sem produtividade" data-empty-message="Nenhuma ação registrada para o período selecionado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-5">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Acompanhamento por vendedor</h2><p>Contatos e prazos da carteira de cada vendedor.</p></div></div>
+          <div class="table-responsive fin-table-wrap">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Vendedor</th><th>Aberto</th><th>Vencido</th><th>% Acionado</th><th>Status</th></tr></thead>
+              <tbody id="govVendorGovBody" data-empty-title="Sem dados" data-empty-message="Nenhum vendedor encontrado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row g-4 mb-4">
+      <div class="col-xl-8">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Próximos contatos agendados</h2><p>Próximas ações e retornos de contato da equipe.</p></div></div>
+          <div class="table-responsive fin-table-wrap" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Tipo</th><th>Título</th><th>Cliente</th><th>Próxima Ação</th><th>Responsável</th><th>Nota</th><th>Valor Aberto</th><th>Vencimento</th><th>Dias Atraso</th></tr></thead>
+              <tbody id="govFollowupsBody" data-empty-title="Agenda vazia" data-empty-message="Nenhum retorno agendado."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="fin-panel x_panel">
+          <div class="fin-panel-head"><div><h2>Prazo de contato por tempo de atraso</h2><p>Contatos realizados conforme os dias de atraso.</p></div></div>
+          <div class="table-responsive fin-table-wrap" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+              <thead><tr><th>Tempo de atraso</th><th>Títulos</th><th>Aberto</th><th>Contatado</th><th>% dentro do prazo</th></tr></thead>
+              <tbody id="govSlaAgingBody" data-empty-title="Sem dados" data-empty-message="Nenhum título para calcular o prazo de atendimento."></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-card anim d4">
+      <div class="table-card-header">
+        <h2 class="table-card-title">Fila de risco prioritária</h2>
+        <span class="table-card-meta" id="govRiskMeta"></span>
+      </div>
+      <div class="table-responsive fin-table-wrap">
+        <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th class="nf-th-sortable" data-gov-sort="prioridade">Prioridade <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Motivo de Risco</th>
+              <th class="nf-th-sortable" data-gov-sort="cliente">Cliente <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Vendedor</th>
+              <th class="nf-th-sortable" data-gov-sort="documento">Título <span class="nf-sort-icon">&#8597;</span></th>
+              <th>NF / Pedido</th>
+              <th class="nf-th-sortable" data-gov-sort="vencimento">Vencimento <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-gov-sort="dias_atraso">Atraso <span class="nf-sort-icon">&#8597;</span></th>
+              <th class="nf-th-sortable" data-gov-sort="valor_aberto">Valor Aberto <span class="nf-sort-icon">&#8597;</span></th>
+              <th>Ação Recomendada</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="govRiskQueueBody" data-empty-title="Fila vazia" data-empty-message="Nenhum título crítico na fila de risco operacional."></tbody>
+        </table>
+      </div>
+      <div id="govPagination" style="display:none;padding:12px 16px;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;color:var(--text-2);"></div>
+    </section>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       BUSCA DE TÍTULOS — server-side, Q.5
+  ════════════════════════════════════════════════════════════════════════ -->
+  <details class="finance-raw-details" id="financeRawTitlesDetails">
+    <summary>
+      <span class="material-symbols-rounded">table_view</span>
+      <strong>Titulos financeiros</strong>
+      <small>Visao operacional completa, com filtros brutos.</small>
+    </summary>
+
+  <div class="section-label anim d3b" id="busca-titulos">Busca de Títulos</div>
+
+  <!-- Quick filters -->
+  <div style="padding:0 0 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;" id="financeQuickFilters">
+    <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-fin-status="" data-fin-sort="">Todos</button>
+    <button class="nf-quick-filter-btn" data-fin-status="recebido" data-fin-sort="pagamento">Recebidos</button>
+    <button class="nf-quick-filter-btn" data-fin-status="aberto" data-fin-sort="vencimento">Em aberto</button>
+    <button class="nf-quick-filter-btn" data-fin-status="vencido" data-fin-sort="atraso">Vencidos</button>
+    <button class="nf-quick-filter-btn" data-fin-status="vence_hoje" data-fin-sort="vencimento">Vence hoje</button>
+    <button class="nf-quick-filter-btn" data-fin-status="a_vencer" data-fin-sort="vencimento">Próx. 7 dias</button>
+    <button class="nf-quick-filter-btn" data-fin-status="" data-fin-sort="valor">Maior valor</button>
+    <button class="nf-quick-filter-btn" data-fin-status="vencido" data-fin-sort="atraso">Mais atrasados</button>
+  </div>
+
+  <section class="table-card anim d3b" id="financeSearchSection">
+    <div class="table-card-header">
+      <h2 class="table-card-title">Títulos financeiros</h2>
+      <span class="table-card-meta" id="financeSearchMeta"></span>
+    </div>
+
+    <!-- Summary bar -->
+    <div id="financeSearchSummary" style="display:none;padding:8px 16px 4px;flex-wrap:wrap;gap:16px;font-size:0.8rem;color:var(--text-2);border-bottom:1px solid var(--mag-border,#e2e8f0);">
+      <span>Recebido: <strong id="fss_recebido">-</strong></span>
+      <span>Em aberto: <strong id="fss_aberto">-</strong></span>
+      <span>Vencido: <strong id="fss_vencido">-</strong></span>
+      <span>Títulos: <strong id="fss_qtd">-</strong></span>
+    </div>
+
+    <!-- Chips -->
+    <div id="financeFilterChips" style="display:none;padding:4px 16px 0;"></div>
+
+    <!-- Feedback -->
+    <div id="financeFilterFeedback" style="display:none;padding:4px 16px;font-size:0.8rem;color:var(--text-2);"></div>
+    <div id="financeSearchFeedback" class="biomie-table-feedback" style="display:none;padding:8px 16px;font-size:0.82rem;"></div>
+
+    <div class="table-responsive fin-table-wrap">
+      <table class="table table-hover fin-table mb-0 mag-table mag-table-clean" data-mobile-card-table>
+        <thead>
+          <tr>
+            <th id="th-fin-cliente" class="nf-th-sortable" data-sort-field="cliente">Cliente <span class="nf-sort-icon">↕</span></th>
+            <th>Documento</th>
+            <th>Ref. NF / Pedido</th>
+            <th id="th-fin-vendedor" class="nf-th-sortable" data-sort-field="vendedor">Vendedor <span class="nf-sort-icon">↕</span></th>
+            <th id="th-fin-vencimento" class="nf-th-sortable" data-sort-field="vencimento">Vencimento <span class="nf-sort-icon">↕</span></th>
+            <th id="th-fin-valor" class="nf-th-sortable" data-sort-field="valor">Valor <span class="nf-sort-icon">↕</span></th>
+            <th id="th-fin-aberto" class="nf-th-sortable" data-sort-field="aberto">Aberto <span class="nf-sort-icon">↕</span></th>
+            <th>Status</th>
+            <th data-mobile-skip>Atraso</th>
+          </tr>
+          <tr class="nf-filter-row" id="financeFilterRow">
+            <td><input id="f_fin_q" type="search" class="nf-col-filter" placeholder="Cliente, doc, vendedor…" /></td>
+            <td></td>
+            <td></td>
+            <td><input id="f_fin_vendedor" type="search" class="nf-col-filter" placeholder="Vendedor…" /></td>
+            <td>
+              <select id="f_fin_date_field" class="nf-col-filter" style="min-height:32px;padding:2px 6px;font-size:0.78rem;">
+                <option value="vencimento">Vencimento</option>
+                <option value="emissao">Emissão</option>
+                <option value="pagamento">Pagamento</option>
+                <option value="competencia">Competência</option>
+              </select>
+            </td>
+            <td class="nf-col-filter-range">
+              <input id="f_fin_valor_min" type="number" class="nf-col-filter" placeholder="Min" min="0" step="0.01" />
+              <input id="f_fin_valor_max" type="number" class="nf-col-filter" placeholder="Max" min="0" step="0.01" />
+            </td>
+            <td></td>
+            <td>
+              <select id="f_fin_status" class="nf-col-filter" style="min-height:32px;padding:2px 6px;font-size:0.78rem;">
+                <option value="">Todos</option>
+                <option value="recebido">Recebido</option>
+                <option value="aberto">Em aberto</option>
+                <option value="vencido">Vencido</option>
+                <option value="vence_hoje">Vence hoje</option>
+                <option value="a_vencer">A vencer</option>
+              </select>
+            </td>
+            <td data-mobile-skip>
+              <select id="f_fin_aging" class="nf-col-filter" style="min-height:32px;padding:2px 6px;font-size:0.78rem;">
+                <option value="">Todos</option>
+                <option value="sem_atraso">Sem atraso</option>
+                <option value="1_7">1–7 dias</option>
+                <option value="8_15">8–15 dias</option>
+                <option value="16_30">16–30 dias</option>
+                <option value="31_60">31–60 dias</option>
+                <option value="60_plus">60+ dias</option>
+              </select>
+            </td>
+          </tr>
+        </thead>
+        <tbody id="financeSearchTable" data-empty-title="Sem títulos" data-empty-message="Nenhum título encontrado para os filtros atuais."></tbody>
+      </table>
+    </div>
+
+    <div id="financePagination" style="display:none;padding:12px 16px;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;color:var(--text-2);"></div>
+  </section>
+  </details>
+
+  <section class="row g-4 mb-4">
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Recebimentos do periodo</h2><p>Baixas e recebimentos do recorte.</p></div><div class="fin-panel-tools"><button class="fin-group-btn" data-group-toggle="financeReceivedTable" data-group-key="client_name" title="Agrupar por cliente"><span class="material-symbols-rounded" style="font-size:15px">group_work</span> Agrupar</button><div class="fin-col-picker-wrap" data-col-picker="financeReceivedTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeReceivedTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Documento</th><th>Cliente</th><th>Conta / meio</th><th>Pagamento</th><th>Valor</th></tr></thead><tbody id="financeReceivedTable" data-empty-title="Sem recebimentos" data-empty-message="Nao houve baixas financeiras para o periodo e filtros selecionados." data-empty-icon="payments"></tbody></table></div></div></div>
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Titulos em aberto</h2><p>Valores ainda pendentes na carteira.</p></div><div class="fin-panel-tools"><button class="fin-group-btn" data-group-toggle="financeOpenTable" data-group-key="client_name" title="Agrupar por cliente"><span class="material-symbols-rounded" style="font-size:15px">group_work</span> Agrupar</button><div class="fin-col-picker-wrap" data-col-picker="financeOpenTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeOpenTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Documento</th><th>Cliente</th><th>Vencimento</th><th>Vendedor / conta</th><th>Aberto</th></tr></thead><tbody id="financeOpenTable" data-empty-title="Sem titulos em aberto" data-empty-message="Nao ha vencimentos pendentes para o periodo e filtros selecionados." data-empty-icon="event_available"></tbody></table></div></div></div>
+  </section>
+
+  <section class="row g-4">
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Clientes com maior risco</h2><p>Onde o atraso esta mais concentrado.</p></div><div class="fin-panel-tools"><div class="fin-col-picker-wrap" data-col-picker="financeClientsTable"></div></div></div><div class="fin-table-meta" data-table-meta-for="financeClientsTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Cliente / CNPJ</th><th>Titulos</th><th>Vencido</th><th>Maior atraso</th><th>Venc. mais antigo</th><th>Perfil / causa</th><th>Documentos</th></tr></thead><tbody id="financeClientsTable" data-empty-title="Sem inadimplencia" data-empty-message="Nenhum cliente aparece com atraso relevante para os filtros atuais." data-empty-icon="verified"></tbody></table></div></div></div>
+    <div class="col-xl-6"><div class="fin-panel x_panel"><div class="fin-panel-head"><div><h2>Quanto esperávamos e quanto entrou</h2><p>Compare o valor esperado com o dinheiro recebido.</p></div><div class="fin-panel-tools"><div class="fin-col-picker-wrap" data-col-picker="financeBudgetTable"></div></div></div><div class="fin-chart-sm mag-chart-container mag-secondary-inline-chart"><canvas id="financeForecastChart"></canvas></div><div class="fin-table-meta" data-table-meta-for="financeBudgetTable"></div><div class="table-responsive fin-table-wrap"><table class="table table-hover fin-table mb-0" data-mobile-card-table><thead><tr><th class="fin-select-th" data-mobile-skip></th><th>Mês</th><th>Esperado</th><th>Recebido</th><th>A receber</th><th>Vencido</th><th>% recebido</th></tr></thead><tbody id="financeBudgetTable" data-empty-title="Sem previsão financeira" data-empty-message="Sincronize o financeiro ou amplie o período para carregar os valores esperados." data-empty-icon="query_stats"></tbody></table></div></div></div>
+  </section>
+
+  <details class="mag-technical-diagnostics mag-page-main-diagnostics">
+    <summary aria-expanded="false" aria-controls="financeDiagnosticsContent">
+      <span class="material-symbols-rounded">engineering</span>
+      Diagnostico tecnico
+    </summary>
+    <div class="mag-technical-diagnostics__body" id="financeDiagnosticsContent">
+      <div class="mag-technical-diagnostics__grid">
+        <span>Periodo</span><strong data-bind="period-label">-</strong>
+        <span>Leitura</span><strong data-bind="summary-mode">-</strong>
+        <span>Ultimo sync financeiro</span><strong data-bind="last-sync">-</strong>
+        <span>Origem</span><strong data-bind="sync-source">-</strong>
+        <span>Cobertura</span><strong data-bind="sync-coverage">-</strong>
+        <span>Conferencia</span><strong data-bind="sync-reconciled-until">-</strong>
+      </div>
+    </div>
+  </details>
+
+  <div id="finBulkBar" class="fin-bulk-bar d-none">
+    <span class="fin-bulk-count" id="finBulkCount">0 selecionadas</span>
+    <button class="fin-bulk-btn" id="finBulkExport"><span class="material-symbols-rounded" style="font-size:15px">download</span> Exportar CSV</button>
+    <button class="fin-bulk-clear" id="finBulkClear">Limpar selecao</button>
+  </div>
+  <!-- Collection Action Drawer -->
+  <div class="detail-drawer-backdrop" id="collectionActionBackdrop" style="display:none;"></div>
+  <div class="detail-drawer" id="collectionActionDrawer" style="display:none;">
+    <div class="detail-drawer-header">
+      <div>
+        <h3 class="detail-drawer-title" id="fcDrawerTitle">Registrar Cobrança</h3>
+        <p class="detail-drawer-subtitle" id="fcDrawerSubtitle">Título: -</p>
+      </div>
+      <button class="detail-drawer-close-btn" id="fcCloseDrawerBtn"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <div class="detail-drawer-body">
+      <div id="fcDrawerAlert" class="biomie-table-feedback" style="display:none;margin-bottom:12px;"></div>
+      
+      <!-- Identity Block -->
+      <div class="fc-drawer-identity" id="fcDrawerIdentity" style="margin-bottom:16px;padding:12px;background:var(--bg-secondary,#f8fafc);border-radius:8px;border:1px solid var(--mag-border,#e2e8f0);font-size:0.82rem;">
+        <div style="margin-bottom:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Cliente</div>
+          <strong id="fcInfoClient">-</strong><small id="fcInfoClientDoc" style="color:var(--text-3);margin-left:6px;"></small>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Vendedor</div>
+          <span id="fcInfoVendor">-</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Vencimento</div>
+            <span id="fcInfoDueDate">-</span>
+          </div>
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px;">Valor Aberto</div>
+            <strong id="fcInfoOpenValue">-</strong>
+          </div>
+        </div>
+        <div id="fcInfoNfPedido" style="display:flex;flex-wrap:wrap;gap:4px;min-height:20px;"></div>
+        <div id="fcInfoTraceQuality" style="display:none;margin-top:6px;padding:6px 8px;background:var(--warning-bg-light,#fffbeb);border-radius:4px;font-size:11px;color:var(--warning-text,#b45309);border:1px solid var(--warning-border,#fde68a);"></div>
+      </div>
+
+      <!-- Action Form -->
+      <form id="fcActionForm">
+        <input type="hidden" id="fcFormTituloKey" />
+        <input type="hidden" id="fcFormClienteId" />
+        <input type="hidden" id="fcFormVendedorId" />
+        
+        <div class="filter-group" style="margin-bottom:12px;display:flex;flex-direction:column;">
+          <label class="filter-label" style="margin-bottom:4px;">Ação realizada</label>
+          <select id="fcFormActionType" class="filter-input" required style="width:100%;">
+            <option value="">Selecione uma ação</option>
+            <option value="cobrado_hoje">Cobrado hoje</option>
+            <option value="whatsapp_enviado">WhatsApp enviado</option>
+            <option value="ligacao_realizada">Ligação realizada</option>
+            <option value="email_enviado">E-mail enviado</option>
+            <option value="aguardando_retorno">Aguardando retorno</option>
+            <option value="promessa_pagamento">Promessa de pagamento</option>
+            <option value="validar_baixa_caixa">Validar baixa no caixa</option>
+            <option value="revisar_vinculo_financeiro">Revisar vínculo financeiro</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="margin-bottom:12px;display:flex;flex-direction:column;">
+          <label class="filter-label" style="margin-bottom:4px;">Próxima ação (opcional)</label>
+          <input id="fcFormNextDate" type="date" class="filter-input" style="width:100%;" />
+        </div>
+
+        <div class="filter-group" style="margin-bottom:16px;display:flex;flex-direction:column;">
+          <label class="filter-label" style="margin-bottom:4px;">Observação / Notas</label>
+          <textarea id="fcFormNote" class="filter-input" rows="4" style="width:100%;resize:vertical;" placeholder="Detalhes do contato ou pendência..." maxlength="1000"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary mag-button-primary" style="width:100%;"><span class="material-symbols-rounded">save</span> Salvar Ação</button>
+      </form>
+
+      <!-- History of Actions -->
+      <div style="margin-top:24px;">
+        <h4 style="font-size:0.9rem;margin-bottom:8px;border-bottom:1px solid var(--mag-border,#e2e8f0);padding-bottom:4px;">Histórico de Ações</h4>
+        <div id="fcHistoryList" style="display:flex;flex-direction:column;gap:8px;max-height:250px;overflow-y:auto;padding-right:4px;">
+          <p style="font-size:0.8rem;color:var(--text-3);font-style:italic;">Nenhuma ação registrada para este título.</p>
+        </div>
+      </div>
+
+      <!-- Diagnostic Section -->
+      <div style="margin-top:16px;">
+        <details id="fcDiagnosticDetails">
+          <summary style="font-size:0.82rem;cursor:pointer;padding:4px 0;color:var(--text-3);user-select:none;">Diagnóstico de vínculo</summary>
+          <div id="fcDiagnosticContent" style="padding:8px 4px;font-size:11px;color:var(--text-2);line-height:1.6;"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+  <!-- Trace Drawer: NF / method / vendor / aging operacional -->
+  <div id="financeTraceDrawerBackdrop" class="finance-insight-backdrop" hidden></div>
+  <aside id="financeTraceDrawer" class="finance-insight-drawer finance-trace-drawer" role="dialog" aria-modal="true" aria-labelledby="financeTraceTitle" aria-hidden="true" hidden>
+    <div class="finance-insight-drawer__head">
+      <div>
+        <span class="weather-card-label" id="financeTraceLabel">Origem dos valores</span>
+        <h3 id="financeTraceTitle">Detalhe financeiro</h3>
+        <p id="financeTraceSubtitle">NF, boletos, cliente, vendedor e ação.</p>
+      </div>
+      <button type="button" class="btn-icon" id="financeTraceClose" aria-label="Fechar drawer de rastreabilidade"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+    </div>
+    <div id="financeTraceContext" class="finance-insight-context"></div>
+    <div id="financeTraceMetrics" class="finance-insight-metrics"></div>
+    <div class="finance-insight-table-wrap">
+      <table class="mag-table mag-table-clean" id="financeTraceTable">
+        <thead id="financeTraceTableHead">
+          <tr>
+            <th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
+            <th>Vencimento</th><th>Atraso</th><th>Aberto</th><th>Método</th><th>Ação</th>
+          </tr>
+        </thead>
+        <tbody id="financeTraceRows"></tbody>
+      </table>
+      <div id="financeTraceEmpty" class="finance-insight-empty" hidden>Nenhum dado encontrado para este recorte.</div>
+    </div>
+    <details class="finance-insight-diagnostics">
+      <summary>Diagnóstico técnico</summary>
+      <pre id="financeTraceDiagnostics">{}</pre>
+    </details>
+  </aside>
+
+  <div id="financeInsightDrawerBackdrop" class="finance-insight-backdrop" hidden></div>
+  <aside id="financeInsightDrawer" class="finance-insight-drawer" role="dialog" aria-modal="true" aria-labelledby="financeInsightTitle" aria-hidden="true" hidden>
+    <div class="finance-insight-drawer__head">
+      <div>
+        <span class="weather-card-label">Detalhamento financeiro</span>
+        <h3 id="financeInsightTitle">Insight financeiro</h3>
+        <p id="financeInsightSubtitle">Titulos e indicadores do recorte selecionado.</p>
+      </div>
+      <button type="button" class="btn-icon" id="financeInsightClose" aria-label="Fechar detalhe financeiro"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+    </div>
+    <div id="financeInsightContext" class="finance-insight-context"></div>
+    <div id="financeInsightMetrics" class="finance-insight-metrics"></div>
+    <div class="finance-insight-actions">
+      <button type="button" class="btn-primary mag-button-primary" id="financeInsightPrimaryAction"><span class="material-symbols-rounded">arrow_forward</span><span>Ver recebiveis</span></button>
+      <button type="button" class="btn-secondary mag-button-secondary" id="financeInsightCloseAction">Continuar no resumo</button>
+    </div>
+    <div class="finance-insight-table-wrap">
+      <table class="mag-table mag-table-clean">
+        <thead>
+          <tr>
+            <th>Titulo</th>
+            <th>Cliente</th>
+            <th>Vendedor</th>
+            <th>Vencimento</th>
+            <th>Atraso</th>
+            <th>Valor</th>
+            <th>Acao</th>
+          </tr>
+        </thead>
+        <tbody id="financeInsightRows"></tbody>
+      </table>
+      <div id="financeInsightEmpty" class="finance-insight-empty" hidden>Nenhum titulo encontrado para este recorte.</div>
+    </div>
+    <details class="finance-insight-diagnostics">
+      <summary>Diagnostico tecnico</summary>
+      <pre id="financeInsightDiagnostics">{}</pre>
+    </details>
+  </aside>
+
+  <!-- ── Tax Detail Drawer ────────────────────────────────────────────── -->
+  <div class="detail-drawer-backdrop" id="financeTaxDrawerBackdrop" style="display:none;"></div>
+  <div class="detail-drawer biomie-drawer--wide" id="financeTaxDrawer" style="display:none;">
+    <div class="detail-drawer-head">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.22);font-size:10px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.06em;">
+          <span class="material-symbols-rounded" style="font-size:13px;">receipt_long</span>Fiscal
+        </div>
+        <div>
+          <h3 id="taxDrawerTitle" style="margin:0;font-size:1.05rem;font-weight:800;">Carga tributária</h3>
+          <small id="taxDrawerPeriod" style="color:var(--text-3);font-size:11px;">-</small>
+        </div>
+      </div>
+      <button class="btn-icon detail-drawer-close" id="financeTaxDrawerClose" aria-label="Fechar">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div id="taxDrawerTabNav" style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;gap:0;overflow-x:auto;flex-shrink:0;">
+      <button type="button" class="v360-tab v360-tab--active" data-tax-tab="resumo">Resumo</button>
+      <button type="button" class="v360-tab" data-tax-tab="mensal">Mensal</button>
+      <button type="button" class="v360-tab" data-tax-tab="nfs">Top NFs</button>
+    </div>
+    <div class="detail-drawer-content" id="taxDrawerBody">
+      <div id="taxDrawerSection-resumo" class="v360-section" style="padding:24px;"></div>
+      <div id="taxDrawerSection-mensal" class="v360-section" style="display:none;padding:24px;"></div>
+      <div id="taxDrawerSection-nfs"    class="v360-section" style="display:none;padding:24px;"></div>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

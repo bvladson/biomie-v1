@@ -1,0 +1,100 @@
+# Dependencies
+/vendor/
+
+# Local configuration and secrets
+.env
+.env.*
+!/env.example
+/config/.env.local.php
+/config/*.local.php
+/config/installed.lock
+
+# Runtime storage
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/cache/jobs/*
+!/storage/cache/jobs/.gitkeep
+/storage/cache/*.lock
+/storage/cache/**/*.lock
+/storage/cache/phpstan/
+
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/logs/*.log
+/storage/logs/*.jsonl
+
+/storage/releases/*
+!/storage/releases/.gitkeep
+/storage/backups/
+/storage/certs/
+/storage/diagnostics/
+/storage/sources/
+
+# Company-isolated storage (generated at runtime, only .gitkeep tracked)
+/storage/companies/*/cache/*
+!/storage/companies/*/cache/.gitkeep
+/storage/companies/*/exports/*
+!/storage/companies/*/exports/.gitkeep
+/storage/companies/*/logs/*
+!/storage/companies/*/logs/.gitkeep
+/storage/companies/*/snapshots/*
+!/storage/companies/*/snapshots/.gitkeep
+
+# Webhook fallback files (may contain raw payloads — never versioned)
+/storage/webhooks/
+
+# Geo processing: generated GeoJSONs + raw source shapefiles (large binaries)
+/storage/geo/
+
+# Scratch de diagnostico: perfis de browser, screenshots, pacotes de deploy
+/storage/tmp/
+
+# Estado de runtime (muda a cada request/ciclo — so a pasta e versionada)
+/storage/ops/*
+!/storage/ops/.gitkeep
+/storage/shared/**/*.json
+/storage/shared/**/*.lock
+/storage/reports/*
+!/storage/reports/.gitkeep
+
+# Backups, dumps and exports
+/backups/
+/backup/
+/dumps/
+/dump/
+/exports/
+/tmp/
+/temp/
+*.sql
+!/database/migrations/sql/*.sql
+!/database/*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+*.old
+*.orig
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Local tools and OS files
+/.vscode/
+/.idea/
+/.claude/
+.DS_Store
+Thumbs.db
+
+# Build and debug artifacts
+*.map
+
+# Scripts descartaveis soltos na raiz do projeto.
+# Ancorados com "/" de proposito: sem isso, "test*.php" casa com
+# tests/TestDatabaseGuard.php, TestRunner.php e TestSupport.php
+# (o git usa core.ignorecase=true no Windows) e o harness de testes
+# inteiro fica fora do versionamento.
+/test*.php
+/debug*.php
+/tmp*.php
+/phpinfo*.php

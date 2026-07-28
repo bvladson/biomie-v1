@@ -1,0 +1,34 @@
+{
+  "company_id": 4,
+  "slug": "mag_matriz",
+  "code": "MAG_MATRIZ",
+  "name": "MAG Matriz",
+  "legal_name": "Magazine dos Moveis LTDA",
+  "active": true,
+  "default_channel": "licitacao",
+  "channels": ["licitacao"],
+  "legal": {
+    "cnpj": "26.537.584/0001-22",
+    "type": "matriz"
+  },
+  "brand": {
+    "name": "MAG Móveis",
+    "logo_icon": "images/logos/mag.png",
+    "logo_wide": "images/logos/mag.png",
+    "color": "#9B1A1A",
+    "color_dark": "#7c1212"
+  },
+  "features": {
+    "geo": true,
+    "fiscal": true,
+    "finance": true,
+    "flight_plan": true,
+    "stock": true,
+    "commercial_pipeline": true
+  },
+  "sync": {
+    "rate_limit_per_minute": 5,
+    "from_date": "2025-07",
+    "channels": ["licitacao"]
+  }
+}

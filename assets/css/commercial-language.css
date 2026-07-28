@@ -1,0 +1,135 @@
+body.commercial-language-enabled {
+  --business-revenue: #15803d;
+  --business-revenue-soft: #ecfdf3;
+  --business-growth: #2563eb;
+  --business-growth-soft: #eff6ff;
+  --business-pending: #b45309;
+  --business-pending-soft: #fff7ed;
+  --business-attention: #c2413b;
+  --business-attention-soft: #fef2f2;
+  --business-product: #6d28d9;
+  --business-product-soft: #f5f3ff;
+  --business-people: #0f766e;
+  --business-people-soft: #f0fdfa;
+  --business-territory: #c2410c;
+  --business-territory-soft: #fff7ed;
+  --business-information: #475569;
+  --business-information-soft: #f8fafc;
+}
+
+.commercial-language-enabled .business-card {
+  --business-accent: var(--business-information);
+  --business-soft: var(--business-information-soft);
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--business-accent) 20%, var(--border-soft));
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--business-accent) 10%, transparent), transparent 42%),
+    var(--surface-card);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.commercial-language-enabled .business-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--business-accent);
+  content: "";
+}
+
+.commercial-language-enabled .business-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--business-accent) 38%, var(--border-soft));
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--business-accent) 13%, transparent);
+}
+
+.commercial-language-enabled .business-card .biomie-kpi-card__icon {
+  background: var(--business-soft);
+  color: var(--business-accent);
+}
+
+.commercial-language-enabled [data-business-category="revenue"] { --business-accent: var(--business-revenue); --business-soft: var(--business-revenue-soft); }
+.commercial-language-enabled [data-business-category="growth"] { --business-accent: var(--business-growth); --business-soft: var(--business-growth-soft); }
+.commercial-language-enabled [data-business-category="pending"] { --business-accent: var(--business-pending); --business-soft: var(--business-pending-soft); }
+.commercial-language-enabled [data-business-category="attention"] { --business-accent: var(--business-attention); --business-soft: var(--business-attention-soft); }
+.commercial-language-enabled [data-business-category="product"] { --business-accent: var(--business-product); --business-soft: var(--business-product-soft); }
+.commercial-language-enabled [data-business-category="people"] { --business-accent: var(--business-people); --business-soft: var(--business-people-soft); }
+.commercial-language-enabled [data-business-category="territory"] { --business-accent: var(--business-territory); --business-soft: var(--business-territory-soft); }
+
+.commercial-language-enabled .business-heading { --business-accent: var(--business-information); }
+.commercial-language-enabled .business-panel {
+  --business-accent: var(--business-information);
+  --business-soft: var(--business-information-soft);
+  border-top: 3px solid var(--business-accent);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.commercial-language-enabled .business-panel:hover {
+  border-color: color-mix(in srgb, var(--business-accent) 40%, var(--border-soft));
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--business-accent) 10%, transparent);
+}
+
+.commercial-language-enabled .business-panel .business-heading {
+  color: color-mix(in srgb, var(--business-accent) 82%, var(--text-primary));
+}
+
+.commercial-language-enabled .section-label.business-heading { display: flex; align-items: center; gap: 7px; }
+.commercial-language-enabled .section-label.business-heading::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--business-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--business-accent) 12%, transparent);
+  content: "";
+}
+
+.business-color-guide {
+  margin: 0 0 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+
+.business-color-guide summary {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.business-color-guide summary .material-symbols-rounded { color: var(--brand-primary); font-size: 18px; }
+.business-color-guide summary strong { color: var(--text-primary); font-size: 0.74rem; }
+.business-color-guide summary small { font-size: 0.68rem; }
+
+.business-color-guide__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.business-color-guide__items span {
+  --guide-tone: var(--business-information);
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--guide-tone) 26%, var(--border-soft));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--guide-tone) 8%, var(--surface-card));
+  color: color-mix(in srgb, var(--guide-tone) 80%, var(--text-primary));
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.business-color-guide__items [data-guide-tone="revenue"] { --guide-tone: var(--business-revenue); }
+.business-color-guide__items [data-guide-tone="growth"] { --guide-tone: var(--business-growth); }
+.business-color-guide__items [data-guide-tone="pending"] { --guide-tone: var(--business-pending); }
+.business-color-guide__items [data-guide-tone="attention"] { --guide-tone: var(--business-attention); }
+.business-color-guide__items [data-guide-tone="product"] { --guide-tone: var(--business-product); }
+.business-color-guide__items [data-guide-tone="people"] { --guide-tone: var(--business-people); }
+.business-color-guide__items [data-guide-tone="territory"] { --guide-tone: var(--business-territory); }
+
+@media (max-width: 640px) {
+  .business-color-guide summary small { display: none; }
+}

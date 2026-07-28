@@ -1,0 +1,63 @@
+{
+    "name": "biomie/comercial",
+    "description": "BIomie Cockpit Comercial MAG",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.1",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-curl": "*",
+        "ext-mbstring": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "BIomie\\": "app/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.1"
+        },
+        "optimize-autoloader": true
+    },
+    "scripts": {
+        "lint": "@php tools/dev/lint_all.php",
+        "analyse": "@phpstan-core",
+        "phpstan-core": "@php vendor/bin/phpstan analyse -c phpstan.core.neon --memory-limit=1G --no-progress",
+        "phpstan-performance": "@php vendor/bin/phpstan analyse -c phpstan.performance.neon --memory-limit=1G --no-progress",
+        "phpstan-full": "@php vendor/bin/phpstan analyse -c phpstan.neon --memory-limit=1G --no-progress",
+        "phpstan-baseline": "@php vendor/bin/phpstan analyse -c phpstan.neon --memory-limit=1G --no-progress --generate-baseline phpstan-baseline.neon",
+        "test": "@php tests/run_phase2_coverage.php",
+        "test:multitenant": "@php tests/run_multitenant_foundation.php",
+        "test:page-loading": "@php tools/dev/page_data_loading_regression.php",
+        "test:geo-location": "@php tools/dev/geo_location_scope_regression.php",
+        "inventory:project": "@php tools/dev/project_inventory.php",
+        "runtime:check": "@php tools/dev/runtime_readiness.php",
+        "diagnostics:generate": "@php tools/dev/generate_runtime_diagnostics.php",
+        "security:endpoints": "@php tools/dev/endpoint_security_inventory.php --output=docs/generated/endpoint-security-matrix.json",
+        "security:frontend": "@php tools/dev/frontend_security_inventory.php --output=docs/generated/frontend-security-inventory.json --enforce",
+        "inventory:company-id": "@php tools/dev/company_id_inventory.php --output=docs/generated/company-id-inventory.json",
+        "architecture:guard": "@php tools/dev/architecture_debt_inventory.php --output=docs/generated/architecture-debt.json --enforce",
+        "assets:budget": "@php tools/dev/asset_budget.php --output=docs/generated/asset-budget.json --enforce",
+        "release:manifest": "@php tools/ops/build_release.php --dry-run",
+        "release:build": "@php tools/ops/build_release.php",
+        "migrate:status": "@php bin/schema_migrate.php status",
+        "migrate:up": "@php bin/schema_migrate.php migrate",
+        "migrate:down": "@php bin/schema_migrate.php rollback",
+        "migrate:verify": "@php bin/schema_migrate.php verify",
+        "guard": "@php tools/dev/biomie_release_guard.php --pretty",
+        "performance:guard": "@php tools/dev/performance_slo_guard.php --pretty",
+        "performance:queries": "@php tools/dev/performance_query_budget_probe.php --json --enforce",
+        "performance:customers": "@php tools/dev/customer_materialization_idempotence_probe.php",
+        "performance:frontend": "@php tools/dev/drilldown_lazy_load_audit.php",
+        "performance:retention": "@php tools/dev/retention_dry_run.php --json",
+        "performance:retention:apply": "@php cron/retention_cleanup.php --apply --json",
+        "performance:infra": "@php tools/dev/infrastructure_performance_audit.php --json",
+        "release:guard": "@php tools/dev/biomie_release_guard.php --pretty"
+    }
+}

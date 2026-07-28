@@ -1,0 +1,133 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   MAG Móveis Filial — Theme Package
+   Conceito: comercial dinâmico, varejo, energia de venda, confiança
+   Personalidade: BOLD. O vermelho institucional como força — não como erro.
+   Primary: #9B1A1A (vermelho MAG) · Accent: #C41F1F (vermelho vivo filial)
+
+   WCAG:
+     #9B1A1A sobre branco = 8.3:1 ✅ (AA + AAA)
+     #7C1515 sobre branco = 10.4:1 ✅
+     #C41F1F sobre branco = 5.5:1 ✅ (AA)
+
+   Carregado inline por views/layouts/app.php após todos os <link>.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-company="MAG_FILIAL"] {
+
+  /* ── Identidade de marca ── */
+  --company-primary:        #9B1A1A;
+  --company-primary-dark:   #7C1515;
+  --company-primary-soft:   #F9EEEE;
+  --company-accent:         #C41F1F;
+  --company-accent-soft:    #FDECEC;
+  --company-accent-dark:    #9B1212;
+
+  /* ── Superfícies — leve calor vermelho ── */
+  --company-bg:             #FDFAFA;
+  --company-surface:        #FFFFFF;
+  --company-surface-soft:   #FDF5F5;
+  --company-border:         #EDD8D8;
+
+  /* ── Texto ── */
+  --company-text:           #1A0A0A;
+  --company-text-muted:     #6B5A5A;
+  --company-text-inverse:   #FFFFFF;
+
+  /* ── Bridge → Core (componentes que leem --brand-primary, --page-accent, etc.) ── */
+  --company-color:          #9B1A1A;
+  --company-color-2:        #C41F1F;
+  --brand:                  #9B1A1A;
+  --brand-primary:          #9B1A1A;
+  --brand-dark:             #7C1515;
+  --brand-primary-soft:     rgba(155, 26, 26, 0.10);
+  --focus-ring:             rgba(155, 26, 26, 0.34);
+  --focus-ring-soft:        rgba(155, 26, 26, 0.16);
+  --border-acc:             rgba(155, 26, 26, 0.26);
+  --selection-bg:           rgba(155, 26, 26, 0.12);
+  --hero-spot-red:          rgba(155, 26, 26, 0.10);
+
+  /* ── Acento sistêmico ── */
+  --page-accent:            #9B1A1A;
+  --page-accent-soft:       rgba(155, 26, 26, 0.10);
+  --page-accent-border:     rgba(155, 26, 26, 0.22);
+  --page-accent-text:       #7C1515;
+
+  /* ── Bridge → MAG global vars (bordas e superfícies de componentes) ── */
+  --mag-bg:                 var(--company-bg);
+  --mag-surface-2:          var(--company-surface-soft);
+  --mag-border:             var(--company-border);
+  --mag-radius:             10px;
+  --biomie-card-radius:     10px;
+
+  /* ── Botão primário único ── */
+  /* Gradiente vermelho fundo→vivo: transmite força comercial */
+  --button-gradient:        linear-gradient(135deg, #9B1A1A 0%, #C41F1F 100%);
+  --button-shadow:          0 4px 16px rgba(155, 26, 26, 0.22);
+  --button-shadow-hover:    0 6px 20px rgba(155, 26, 26, 0.32);
+
+  /* ── Personalidade visual: textura e microinterações ── */
+  /* Sombra com calor vermelho → cards "pesam" vermelho ao hover */
+  --company-card-shadow:    0 6px 22px rgba(155, 26, 26, 0.14);
+  --company-hover-bg:       rgba(155, 26, 26, 0.04);
+  /* Radius comercial: arredondado mas firme */
+  --company-card-radius:    10px;
+
+  /* ── Sidebar decoration ── */
+  /* Barra vertical: vermelho profundo → vermelho vivo */
+  --sidebar-bar-gradient:   linear-gradient(180deg, #9B1A1A 0%, #C41F1F 52%, transparent 100%);
+
+  /* ── Paleta de gráficos ──
+     Revenue em vermelho MAG (identidade). Oportunidade em vermelho vivo.
+     O cancelamento usa um vermelho distinto do revenue para não confundir. ── */
+  --page-chart-1:           #9B1A1A;
+  --page-chart-2:           #C41F1F;
+
+  --chart-revenue:          #9B1A1A;
+  --chart-target:           #16A34A;
+  --chart-opportunity:      #D97706;
+  --chart-pending:          #F59E0B;
+  --chart-cancelled:        #EF4444;
+  --chart-neutral:          #9B8080;
+  --chart-success:          #16A34A;
+  --chart-warning:          #F59E0B;
+  --chart-danger:           #EF4444;
+  --chart-info:             #3B82F6;
+
+  /* ── Tooltip chart ── */
+  --chart-tooltip-border:   rgba(155, 26, 26, 0.14);
+
+  /* ── Badges / pills ── */
+  --badge-bg:               #FDF0F0;
+  --badge-text:             #9B1A1A;
+  --badge-border:           #F0CECE;
+}
+
+/* Barra de acento da sidebar: definida por --sidebar-bar-gradient acima e
+   renderizada pela regra global em mag-design-system.css
+   (body.mag-app-shell-page[data-company] ... .mag-sidebar::before). */
+
+/* ── Licitação — vinho escuro ── */
+body[data-company="MAG_FILIAL"][data-canal="licitacao"] {
+  --company-primary:        #6B0F0F;
+  --company-primary-dark:   #560C0C;
+  --company-primary-soft:   #F5EAEA;
+  --company-color:          #6B0F0F;
+  --company-color-2:        #9B1A1A;
+  --brand:                  #6B0F0F;
+  --brand-primary:          #6B0F0F;
+  --brand-dark:             #560C0C;
+  --brand-primary-soft:     rgba(107, 15, 15, 0.10);
+  --focus-ring:             rgba(107, 15, 15, 0.34);
+  --focus-ring-soft:        rgba(107, 15, 15, 0.16);
+  --border-acc:             rgba(107, 15, 15, 0.26);
+  --selection-bg:           rgba(107, 15, 15, 0.12);
+  --page-accent:            #6B0F0F;
+  --page-accent-soft:       rgba(107, 15, 15, 0.10);
+  --page-accent-border:     rgba(107, 15, 15, 0.22);
+  --page-accent-text:       #560C0C;
+  --page-chart-1:           #6B0F0F;
+  --page-chart-2:           #9B1A1A;
+  --chart-revenue:          #6B0F0F;
+  --button-gradient:        linear-gradient(135deg, #6B0F0F 0%, #9B1A1A 100%);
+  --button-shadow:          0 4px 16px rgba(107, 15, 15, 0.22);
+  --sidebar-bar-gradient:   linear-gradient(180deg, #6B0F0F 0%, #9B1A1A 52%, transparent 100%);
+}

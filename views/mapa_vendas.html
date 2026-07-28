@@ -1,0 +1,659 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <title>Mapa Comercial | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="assets/css/module-pages.css" />
+</head>
+
+<body class="mag-page mag-clean-page" data-page="geografia">
+<main class="page dashboard-shell">
+      <section class="biomie-page-header biomie-page-header--shell geo-commercial-hero anim">
+        <div class="biomie-page-header__body">
+          <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">travel_explore</span>Inteligência territorial</div>
+          <h1 id="geoPageTitle" class="biomie-page-header__title">Mapa de oportunidades comerciais</h1>
+          <p id="geoPageSubtitle" class="biomie-page-header__subtitle">Descubra onde vendemos mais, onde estão os clientes e quais territórios merecem atenção.</p>
+        </div>
+        <div class="geo-commercial-hero__guide" aria-label="Como ler o mapa">
+          <span><i class="geo-guide-dot geo-guide-dot--revenue"></i>Mais vendas</span>
+          <span><i class="geo-guide-dot geo-guide-dot--opportunity"></i>Oportunidade</span>
+          <span><i class="geo-guide-dot geo-guide-dot--quality"></i>Cadastro a revisar</span>
+        </div>
+      </section>
+
+      <nav class="geo-context-strip anim d1" aria-label="Contexto da análise territorial">
+        <div id="geoTerritoryBreadcrumb" class="geo-breadcrumb">
+          <span>Ceará</span>
+          <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+          <span aria-current="location">Regiões de planejamento</span>
+        </div>
+        <div class="geo-context-status" aria-label="Status do mapa">
+          <span class="geo-context-status__item"><i class="geo-status-dot"></i><span id="geoContextLayer">Ceará por regiões</span></span>
+          <span class="geo-context-status__item"><span class="material-symbols-rounded" aria-hidden="true">bar_chart</span><span id="geoContextMetric">Faturamento</span></span>
+          <span class="geo-context-status__item"><span class="material-symbols-rounded" aria-hidden="true">calendar_month</span><span id="geoContextPeriod">Período atual</span></span>
+          <span class="geo-context-status__item"><span class="material-symbols-rounded" aria-hidden="true">database</span><span id="geoContextScope">Venda comercial</span></span>
+          <span class="geo-context-status__item"><span class="material-symbols-rounded" aria-hidden="true">pin_drop</span><span id="geoContextCount">Carregando territórios</span></span>
+        </div>
+      </nav>
+
+      <section class="dashboard-controls geo-commercial-controls">
+        <div class="filter-bar biomie-map-toolbar biomie-map-toolbar--primary anim d1" data-mobile-filter-sheet>
+          <div class="filter-group">
+            <label class="filter-label" for="geoLayerSelector">Território analisado</label>
+            <select id="geoLayerSelector" class="filter-input" aria-label="Selecionar foco do mapa">
+              <option value="mapa_composto_ceara">Visão multiescala avançada</option>
+              <optgroup label="Fortaleza">
+                <option value="fortaleza_bairros">Fortaleza · Bairros</option>
+                <option value="grande_fortaleza_bairros">Grande Fortaleza · Bairros</option>
+              </optgroup>
+              <optgroup label="Regiões Metropolitanas">
+                <option value="rmf_municipios">Metrópole Fortaleza</option>
+                <option value="metro_sobral_municipios">Metrópole Sobral</option>
+                <option value="metro_cariri_municipios">Metrópole Cariri</option>
+                <option value="metro_todas_municipios">Metrópoles Sobral + Cariri</option>
+              </optgroup>
+              <optgroup label="Ceará">
+                <option value="ceara_regioes" selected>Ceará estratégico · 14 regiões</option>
+                <option value="ceara_municipios">Ceará · Municípios</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="dateStart">Início</label>
+            <input id="dateStart" type="date" class="filter-input" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="dateEnd">Fim</label>
+            <input id="dateEnd" type="date" class="filter-input" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" for="vendedorFilter">Responsável comercial</label>
+            <input id="vendedorFilter" type="text" class="filter-input" placeholder="Todos os vendedores" autocomplete="off" />
+          </div>
+          <div class="filter-actions">
+            <button id="applyFilters" type="button" class="btn-primary">
+              <span class="material-symbols-rounded">travel_explore</span>Atualizar mapa
+            </button>
+            <button id="clearFilters" type="button" class="btn-secondary" aria-label="Limpar filtros">
+              <span class="material-symbols-rounded">restart_alt</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="geo-control-row">
+          <div class="nf-quick-filter-bar" id="geoQuickPresets" aria-label="Atalhos de período">
+            <span class="geo-control-row__label">Período rápido</span>
+            <button type="button" class="nf-quick-filter-btn" id="geoPresetThisMonth">Mês atual</button>
+            <button type="button" class="nf-quick-filter-btn" id="geoPresetLast3">Últimos 3 meses</button>
+            <button type="button" class="nf-quick-filter-btn" id="geoPresetThisYear">Este ano</button>
+          </div>
+          <details class="geo-advanced-controls" id="geoAdvancedFilters">
+            <summary><span class="material-symbols-rounded">tune</span>Mais filtros</summary>
+            <div class="filter-bar biomie-map-toolbar biomie-map-toolbar--advanced" data-mobile-filter-sheet>
+              <div class="filter-group">
+                <label class="filter-label" for="geoScopeSelector">Tipo de venda</label>
+                <select id="geoScopeSelector" class="filter-input" aria-label="Selecionar tipo de venda">
+                  <option value="orc_pd" selected>Venda comercial</option>
+                  <option value="remessa" disabled>Remessa (indisponível no mapa)</option>
+                  <option value="licitacao" disabled>Licitação (indisponível no mapa)</option>
+                  <option value="todas" disabled>Todas (indisponível no mapa)</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label" for="geoMetricSelector">Comparar por</label>
+                <select id="geoMetricSelector" class="filter-input" aria-label="Selecionar métrica do mapa">
+                  <option value="receita" selected>Faturamento</option>
+                  <option value="nfs">Quantidade de notas</option>
+                  <option value="clientes">Clientes atendidos</option>
+                  <option value="ticket_medio">Ticket médio</option>
+                  <option value="density">Densidade R$/km²</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label" for="cityFilter">Cidade</label>
+                <input id="cityFilter" type="text" class="filter-input" value="Fortaleza" autocomplete="off" />
+              </div>
+              <div class="filter-group">
+                <label class="filter-label" for="neighborhoodFilter">Bairro</label>
+                <input id="neighborhoodFilter" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
+              </div>
+              <div class="filter-group">
+                <label class="filter-label" for="cnaeFilter">Segmento ou CNAE</label>
+                <input id="cnaeFilter" type="text" class="filter-input" placeholder="Todos" autocomplete="off" />
+              </div>
+              <div class="filter-actions">
+                <button id="applyGeoLayer" type="button" class="btn-secondary">
+                  <span class="material-symbols-rounded">layers</span>Aplicar análise
+                </button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div id="geoFilterChips" class="mag-orders-active-filters geo-filter-chips"></div>
+        <div id="geoFeedback" class="module-alert module-alert--info d-none"></div>
+      </section>
+
+      <section class="biomie-kpi-grid geo-executive-kpis anim d2">
+        <article class="biomie-kpi-card geo-kpi geo-kpi--revenue">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento no território</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+          <strong id="geoKpiRevenue" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub"><strong id="geoKpiNotes">-</strong> notas consideradas no período.</span>
+        </article>
+        <article class="biomie-kpi-card geo-kpi geo-kpi--coverage">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cobertura do mapa</span><span class="material-symbols-rounded biomie-kpi-card__icon">verified</span></div>
+          <strong id="geoKpiCoverage" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub"><strong id="geoKpiAreas">-</strong> <span id="geoKpiAreasLabel">territórios com venda</span>.</span>
+        </article>
+        <article class="biomie-kpi-card geo-kpi geo-kpi--leader">
+          <div class="biomie-kpi-card__head"><span id="geoKpiTopAreaLabel" class="biomie-kpi-card__label">Território líder</span><span class="material-symbols-rounded biomie-kpi-card__icon">workspace_premium</span></div>
+          <strong id="geoKpiTopArea" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub"><strong id="geoKpiClients">-</strong> clientes atendidos no recorte.</span>
+        </article>
+        <article class="biomie-kpi-card geo-kpi geo-kpi--attention">
+          <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Cadastros para revisar</span><span class="material-symbols-rounded biomie-kpi-card__icon">location_off</span></div>
+          <strong id="geoKpiNoArea" class="biomie-kpi-card__value">-</strong>
+          <span class="biomie-kpi-card__sub">Registros ainda sem localização confiável.</span>
+        </article>
+      </section>
+
+      <section id="geoEnrichCard" class="module-alert d-none" aria-live="polite">
+        <div>
+          <strong class="geo-alert-title"><span class="material-symbols-rounded">location_off</span>Vendas aguardando localização</strong>
+          <p id="geoEnrichMessage">Essas vendas permanecem no total, mas não são atribuídas a um território até a confirmação do endereço.</p>
+        </div>
+      </section>
+
+      <section id="geoCoverageBar" class="module-alert module-alert--info d-none geo-commercial-coverage" aria-live="polite"></section>
+      <section id="geoMapState" class="biomie-map-state" aria-live="polite"></section>
+
+      <section class="biomie-map-layout geo-main-grid anim d3">
+        <article class="wallboard-card biomie-map-card geo-map-card">
+          <div class="biomie-map-card__head">
+            <div class="geo-map-head__copy">
+              <span class="geo-section-kicker"><span class="material-symbols-rounded" aria-hidden="true">public</span>Visão geográfica</span>
+              <h2 id="geoMapTitle">Mapa comercial do Ceará</h2>
+              <p id="geoMapSubtitle">Visão geográfica de vendas por bairros, municípios e territórios.</p>
+            </div>
+            <div class="geo-map-head__actions" aria-label="Controles contextuais do mapa">
+              <button id="fitLayerBoundsBtn" type="button" class="btn-secondary" title="Enquadrar a camada atual no mapa">
+                <span class="material-symbols-rounded">fit_screen</span>Enquadrar
+              </button>
+              <!-- GEO.R1.8.6 — Selecionar área -->
+              <button id="geoDrawAreaBtn" type="button" class="btn-secondary" title="Desenhar área de seleção no mapa" style="display:none;">
+                <span class="material-symbols-rounded">draw</span>Selecionar área
+              </button>
+              <button id="clearSelection" type="button" class="btn-secondary" hidden>
+                <span class="material-symbols-rounded">close</span>Limpar seleção
+              </button>
+            </div>
+          </div>
+          <div class="geo-mode-bar" id="geoModeBar">
+            <span class="geo-mode-bar__label">Como deseja analisar?</span>
+            <div class="geo-mode-chips" id="geoModeChips" role="group" aria-label="Modo visual do mapa">
+              <button type="button" class="geo-mode-chip geo-mode-chip--active" data-mode="territories" aria-pressed="true" title="Faturamento e clientes por território — visão principal">
+                <span class="material-symbols-rounded">payments</span>Vendas
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="heat" aria-pressed="false" title="Quanto mais vermelho, mais vendas. Útil para ver onde você já é forte e onde o volume some.">
+                <span class="material-symbols-rounded">local_fire_department</span>Calor
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="opportunities" aria-pressed="false" title="Territórios com muitos clientes mas faturamento baixo — onde dá para crescer sem buscar clientes novos.">
+                <span class="material-symbols-rounded">lightbulb</span>Oportunidades
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="quality" id="geoModeQuality" aria-pressed="false" title="Mostra territórios com clientes sem bairro ou sem coordenada — cadastro que precisa de revisão para aparecer no mapa.">
+                <span class="material-symbols-rounded">verified</span>Cobertura
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="vendor_map" id="geoModeVendorMap" aria-pressed="false" title="Pinta o mapa pela carteira de cada vendedor. Identifica sobreposição de território e regiões sem responsável.">
+                <span class="material-symbols-rounded">badge</span>Carteira
+              </button>
+              <button type="button" class="geo-mode-chip" data-mode="comparison" disabled id="geoModeComparison" aria-pressed="false" title="Compara métricas de até quatro territórios lado a lado. Selecione os territórios no mapa primeiro para habilitar.">
+                <span class="material-symbols-rounded">compare</span>Comparar <span id="geoComparisonCountBadge" class="geo-mode-count" hidden></span>
+              </button>
+            </div>
+            <div id="geoInsightsBadge" class="geo-insights-badge"></div>
+          </div>
+
+          <details class="page-reading-guide" style="margin:8px 0 4px;">
+            <summary>
+              <span class="material-symbols-rounded">help</span>
+              Como usar este mapa
+              <small>Modos, território e o que os dados mostram</small>
+              <span class="material-symbols-rounded prg-chevron">expand_more</span>
+            </summary>
+            <div class="page-reading-guide__body">
+              <div class="page-reading-guide__grid">
+                <div class="page-reading-guide__item">
+                  <span class="material-symbols-rounded">layers</span>
+                  <div>
+                    <strong>Escolha o território primeiro</strong>
+                    <p>O seletor "Território analisado" define a granularidade. Comece por "Visão multiescala" para ter o panorama do Ceará, depois afunile para bairros de Fortaleza se quiser detalhe local.</p>
+                  </div>
+                </div>
+                <div class="page-reading-guide__item">
+                  <span class="material-symbols-rounded">local_fire_department</span>
+                  <div>
+                    <strong>Modo Calor</strong>
+                    <p>Concentração de vendas sem fronteiras territoriais. Vermelho intenso = muitas vendas naquele ponto. Bom para ver onde está o grosso do faturamento geográfico.</p>
+                  </div>
+                </div>
+                <div class="page-reading-guide__item">
+                  <span class="material-symbols-rounded">lightbulb</span>
+                  <div>
+                    <strong>Modo Oportunidades</strong>
+                    <p>Cruza número de clientes com faturamento. Território com muitos clientes e pouca receita = oportunidade de ativação. Você já tem o relacionamento, falta o volume.</p>
+                  </div>
+                </div>
+                <div class="page-reading-guide__item">
+                  <span class="material-symbols-rounded">badge</span>
+                  <div>
+                    <strong>Modo Carteira</strong>
+                    <p>Pinta o território pelo vendedor responsável. Útil para ver se há bairros sem cobertura, territórios sobrepostos entre dois vendedores, ou regiões muito concentradas em um único vendedor.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="page-reading-guide__note">
+                Clique em qualquer território para ver o detalhamento completo (faturamento, clientes, top produtos, vendedor responsável). Para comparar territórios, selecione até 4 e use o modo Comparar.
+              </div>
+            </div>
+          </details>
+
+          <!-- GEO.R1.8.6 — Barra de territórios em comparação -->
+          <div id="geoComparisonBar" class="geo-comparison-bar" hidden>
+            <span class="material-symbols-rounded geo-comparison-bar__icon">compare</span>
+            <span class="geo-comparison-bar__label">Comparando <span id="geoComparisonCount">0</span> territórios</span>
+            <div id="geoComparisonChips" class="geo-comparison-chips"></div>
+            <button type="button" id="geoOpenComparisonBtn" class="btn-primary geo-compact-action">Ver comparação</button>
+            <button type="button" id="geoClearComparisonBtn" class="btn-secondary geo-compact-action">
+              <span class="material-symbols-rounded">close</span>Limpar
+            </button>
+          </div>
+
+          <!-- GEO.R1.8.6 — Painel de resultado de seleção de área -->
+          <div id="geoAreaResultPanel" class="geo-area-result" hidden>
+            <div class="geo-area-result__head">
+              <span class="material-symbols-rounded geo-area-result__icon">draw</span>
+              <strong>Área selecionada</strong>
+              <button type="button" id="geoClearAreaBtn" class="geo-icon-action" aria-label="Limpar área selecionada">
+                <span class="material-symbols-rounded">close</span>
+              </button>
+            </div>
+            <div id="geoAreaResultBody"></div>
+            <div class="geo-area-result__actions">
+              <button type="button" id="geoExportAreaCsvBtn" class="btn-secondary geo-compact-action">
+                <span class="material-symbols-rounded">download</span>Exportar área CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="biomie-map-canvas-wrap">
+            <div id="geoLayerBadge" class="geo-layer-badge"></div>
+            <div id="geoGeometryMissing" class="geo-geometry-missing">
+              <span class="material-symbols-rounded">map_off</span>
+              <p id="geoGeometryMissingMsg">A visualização desta região ainda não está disponível. Os dados comerciais continuam acessíveis no ranking ao lado.</p>
+            </div>
+            <div id="map-container" aria-label="Mapa comercial territorial BIomie"></div>
+            <div id="mapLegend" class="biomie-map-legend" aria-label="Legenda do mapa"></div>
+          </div>
+        </article>
+
+        <article class="wallboard-card geo-ranking-card" aria-label="Ranking de territórios">
+          <div class="wallboard-card-header geo-ranking-card__header">
+            <div>
+              <span class="geo-section-kicker"><span class="material-symbols-rounded" aria-hidden="true">leaderboard</span>Leitura sincronizada</span>
+              <h3 id="geoRankingTitle">Ranking de bairros</h3>
+              <small id="geoRankingSubtitle">Lista navegável por faturamento, clientes, NFs ou ticket médio.</small>
+            </div>
+          </div>
+          <!-- GEO.R1.9.3 — Presets executivos -->
+          <div class="geo-presets-bar" id="geoPresetsBar" role="group" aria-label="Presets de visualização">
+            <button type="button" class="geo-preset-btn" data-preset="top_revenue" title="Ver onde vendemos mais">
+              <span class="material-symbols-rounded">trending_up</span>Top receita
+            </button>
+            <button type="button" class="geo-preset-btn" data-preset="sem_bairro" title="Identificar onde falta bairro">
+              <span class="material-symbols-rounded">location_off</span>Sem bairro
+            </button>
+            <button type="button" class="geo-preset-btn" data-preset="opportunity" title="Territórios com muitos clientes — oportunidade de crescimento">
+              <span class="material-symbols-rounded">lightbulb</span>Oportunidades
+            </button>
+            <button type="button" class="geo-preset-btn" data-preset="cnae_view" title="Ver segmentos CNAE por território">
+              <span class="material-symbols-rounded">factory</span>CNAEs
+            </button>
+          </div>
+          <div class="geo-ranking-toolbar">
+            <div class="geo-ranking-controls">
+              <input id="geoRankingSearch" type="search" class="filter-input" placeholder="Buscar território..." autocomplete="off" />
+              <select id="geoRankingSort" class="filter-input" aria-label="Ordenar territórios">
+                <option value="revenue_desc">Faturamento</option>
+                <option value="customers_desc">Clientes</option>
+                <option value="invoices_desc">NFs</option>
+                <option value="ticket_desc">Ticket</option>
+                <option value="name_asc">A-Z</option>
+              </select>
+            </div>
+            <span id="geoRankingCount" class="geo-ranking-count">0 de 0 territórios</span>
+          </div>
+          <div class="geo-ranking-scroll">
+            <div id="scopeRankingTable" class="geo-ranking-list" role="listbox" aria-label="Ranking territorial" data-empty-title="Sem territórios" data-empty-message="Nenhum território com venda no periodo." data-empty-icon="location_off"></div>
+          </div>
+          <!-- GEO.R1.8.1 — Painel de insights geográficos -->
+          <div class="geo-insights-card" id="geoInsightsCard" style="display:none;">
+            <div class="geo-insights-header">
+              <span class="material-symbols-rounded">lightbulb</span>
+              Insights do período
+            </div>
+            <div id="geoInsightsList"></div>
+          </div>
+          <!-- GEO.R1.8.1 — Exportar ranking -->
+          <div class="geo-ranking-footer">
+            <button type="button" id="geoExportCsvBtn" class="btn-secondary geo-ranking-export">
+              <span class="material-symbols-rounded">download</span>Exportar ranking CSV
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <div id="geoNeighborhoodDrawerBackdrop" class="geo-drawer-backdrop" hidden></div>
+      <aside id="geoNeighborhoodDrawer" class="geo-drawer" role="dialog" aria-modal="true" aria-labelledby="panelTitle" hidden>
+        <div class="geo-drawer__header">
+          <div>
+            <!-- GEO.R1.8.1 — eyebrow mostra tipo territorial dinâmico -->
+            <span class="geo-drawer__eyebrow" id="geoDrawerEyebrow">Detalhe do território</span>
+            <h2 id="geoDrawerHeading">Leitura comercial</h2>
+          </div>
+          <button id="geoDrawerClose" type="button" class="btn-secondary geo-drawer__close" aria-label="Fechar detalhe do território">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <!-- GEO.R1.8.2 — Territory 360 tabs -->
+        <div id="geoDrawerTabs" class="geo-drawer-tabs" role="tablist" aria-label="Seções do território">
+          <button type="button" class="geo-drawer-tab geo-drawer-tab--active" role="tab" aria-selected="true" data-tab="resumo">Resumo</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="compradores">Compradores</button>
+          <!-- GEO.R1.9 — Notas fiscais tab -->
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="notas">Notas</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="cnaes">CNAEs</button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="evolucao">Evolução</button>
+          <!-- GEO.R2.2 — Alertas tab -->
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="alertas" id="geoDrawerTabAlertas">
+            Alertas <span id="geoDrawerAlertaBadge" class="geo-alert-count" hidden></span>
+          </button>
+          <button type="button" class="geo-drawer-tab" role="tab" aria-selected="false" data-tab="acoes">Ações</button>
+        </div>
+
+        <section class="biomie-side-panel geo-drawer__body" aria-label="Detalhe do território selecionado">
+          <!-- PANEL: resumo -->
+          <article class="wallboard-card" data-panel="resumo">
+            <div class="biomie-panel-head">
+              <div>
+                <h2 id="panelTitle">Selecione um território</h2>
+                <p id="panelSubtitle">Clique em um território no mapa para ver a leitura comercial.</p>
+              </div>
+              <span id="selectedFeatureBadge" class="topbar-badge">Nenhuma selecao</span>
+            </div>
+            <div class="biomie-panel-kpis">
+              <div class="biomie-panel-kpi">
+                <span>Faturamento</span>
+                <strong id="kpiFeatureRevenue">-</strong>
+                <span id="kpiFeatureRevenueTrend" class="geo-trend-badge" hidden></span>
+              </div>
+              <div class="biomie-panel-kpi">
+                <span>Clientes</span>
+                <strong id="kpiFeatureClients">-</strong>
+                <span id="kpiFeatureClientsTrend" class="geo-trend-badge" hidden></span>
+              </div>
+              <div class="biomie-panel-kpi"><span>Notas</span><strong id="kpiFeatureNotes">-</strong></div>
+              <div class="biomie-panel-kpi"><span>Ticket medio</span><strong id="kpiFeatureTicket">-</strong></div>
+            </div>
+            <!-- GEO.R2.3 — Metadados geográficos (área, densidade, região, população) -->
+            <div id="geoTerritoryInfoBlock" class="geo-territory-info" hidden>
+              <span id="geoTerritoryArea"    class="geo-info-badge" hidden></span>
+              <span id="geoTerritoryDensity" class="geo-info-badge geo-info-badge--density" hidden></span>
+              <span id="geoTerritoryRegiao"  class="geo-info-badge geo-info-badge--regiao"  hidden></span>
+              <span id="geoTerritoryPop"     class="geo-info-badge geo-info-badge--pop"     hidden></span>
+            </div>
+            <!-- GEO.R2.2 — Meta proporcional estimada -->
+            <div id="geoDrawerMetaBlock" class="geo-meta-block" hidden>
+              <div class="geo-meta-block__head">
+                <span class="material-symbols-rounded">flag</span>
+                <strong>Meta proporcional</strong>
+                <span class="geo-meta-block__tip" title="Estimativa baseada na participação do território no faturamento total">estimativa</span>
+              </div>
+              <div class="geo-meta-progress">
+                <div class="geo-meta-progress__bar"><div id="geoMetaProgressFill" class="geo-meta-progress__fill"></div></div>
+                <span id="geoMetaProgressLabel" class="geo-meta-progress__label">-</span>
+              </div>
+              <div class="geo-meta-details">
+                <span>Realizado: <strong id="geoMetaRealizado">-</strong></span>
+                <span>Meta: <strong id="geoMetaAlvo">-</strong></span>
+              </div>
+            </div>
+            <div class="geo-drawer-actions">
+              <button type="button" id="geo360Btn" class="row-inline-link geo-drawer-action" style="display:none;"
+                data-biomie-action="open-neighborhood"
+                data-neighborhood-key="" data-neighborhood-name="" data-city="Fortaleza"
+                data-territory-type="" data-cidade-key="" data-bairro-key="" data-layer="" data-territory-label="" data-join-key=""
+                title="Geo 360 — detalhe analítico do território">
+                <span class="material-symbols-rounded">open_in_new</span>
+                Geo 360
+              </button>
+              <button type="button" id="geoDrawerActionsBtn" class="row-inline-link geo-drawer-action" style="display:none;">
+                <span class="material-symbols-rounded">bolt</span>
+                Ver ações
+              </button>
+              <!-- GEO.R1.8.6 — Adicionar à comparação -->
+              <button type="button" id="geoAddToComparisonBtn" class="row-inline-link geo-drawer-action" style="display:none;">
+                <span class="material-symbols-rounded">compare</span>
+                Comparar
+              </button>
+            </div>
+          </article>
+
+          <!-- PANEL: notas fiscais (GEO.R1.9) -->
+          <article class="wallboard-card" data-panel="notas" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Notas fiscais</h2>
+                <p>NFs que compõem o faturamento deste território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section" id="geoInvoicesPanel">
+              <p class="geo-panel-empty-copy">Selecione um território com vendas para ver as notas fiscais.</p>
+            </div>
+          </article>
+
+          <!-- PANEL: compradores (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="resumo compradores">
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Principais compradores</h2>
+                <p>Clientes com maior faturamento no território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section">
+              <div id="buyersSourceBadge" class="geo-buyers-source-badge" style="display:none;"></div>
+              <div id="cnaeBuyerTools" class="geo-cnae-buyer-tools is-hidden" aria-live="polite">
+                <div class="geo-cnae-buyer-tools__filters" role="group" aria-label="Filtrar compradores do CNAE por tipo de documento">
+                  <span class="geo-cnae-buyer-tools__label">Compradores do CNAE</span>
+                  <button type="button" class="geo-cnae-doc-filter geo-cnae-doc-filter--active" data-geo-cnae-document-type="all">Todos</button>
+                  <button type="button" class="geo-cnae-doc-filter" data-geo-cnae-document-type="cnpj">Empresas CNPJ</button>
+                  <button type="button" class="geo-cnae-doc-filter" data-geo-cnae-document-type="cpf">Clientes CPF</button>
+                </div>
+                <button type="button" id="geoExportCnaeBuyersCsvBtn" class="btn-secondary geo-cnae-export-btn">
+                  <span class="material-symbols-rounded" aria-hidden="true">download</span>Exportar CSV
+                </button>
+              </div>
+              <table class="mag-table mag-table-clean" data-mobile-card-table>
+                <thead><tr><th>Cliente</th><th>Notas</th><th>Faturamento</th></tr></thead>
+                <tbody id="topBuyersTable" data-empty-title="Sem compradores" data-empty-message="Selecione um território para ver os compradores." data-empty-icon="group_off"></tbody>
+              </table>
+              <div id="buyerChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
+                <canvas id="buyerChartCanvas"></canvas>
+              </div>
+            </div>
+          </article>
+
+          <!-- PANEL: cnaes (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="resumo cnaes">
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Principais CNAEs</h2>
+                <p>Segmentos com maior faturamento no território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section">
+              <table class="mag-table mag-table-clean" data-mobile-card-table>
+                <thead><tr><th>CNAE</th><th>Clientes</th><th>Faturamento</th></tr></thead>
+                <tbody id="cnaeRevenueTable" data-empty-title="Sem CNAEs" data-empty-message="Nenhum CNAE encontrado para este recorte." data-empty-icon="category"></tbody>
+              </table>
+              <div id="cnaeChartBlock" class="biomie-chart-box mag-chart-container mag-chart-sm is-hidden">
+                <canvas id="cnaeChartCanvas"></canvas>
+              </div>
+            </div>
+          </article>
+
+          <!-- PANEL: evolucao (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="evolucao" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Evolução mensal</h2>
+                <p>Faturamento mês a mês no período selecionado.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section">
+              <div id="evolutionLoading" class="geo-panel-empty-copy geo-panel-empty-copy--center">Selecione um território para ver a evolução.</div>
+              <div id="evolutionChartBlock" class="biomie-chart-box mag-chart-container geo-evolution-chart" style="display:none;">
+                <canvas id="evolutionChartCanvas"></canvas>
+              </div>
+              <div id="evolutionEmpty" class="geo-panel-empty-copy geo-panel-empty-copy--center" style="display:none;">Sem dados de evolução para este território.</div>
+            </div>
+          </article>
+
+          <!-- PANEL: alertas (GEO.R2.2) -->
+          <article class="wallboard-card" data-panel="alertas" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Alertas comerciais</h2>
+                <p>Sinais automáticos detectados para este território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section" id="geoDrawerAlertasPanel">
+              <p class="geo-panel-empty-copy">Selecione um território para ver os alertas.</p>
+            </div>
+          </article>
+
+          <!-- PANEL: acoes (GEO.R1.8.2) -->
+          <article class="wallboard-card" data-panel="acoes" hidden>
+            <div class="biomie-panel-head">
+              <div>
+                <h2>Ações comerciais</h2>
+                <p>Recomendações baseadas no desempenho do território.</p>
+              </div>
+            </div>
+            <div class="biomie-panel-section" id="geoDrawerActionsList">
+              <p class="geo-panel-empty-copy">Selecione um território para ver as ações recomendadas.</p>
+            </div>
+          </article>
+        </section>
+      </aside>
+
+      <details class="mag-technical-diagnostics biomie-map-diagnostics" data-geo-admin-only hidden>
+        <summary aria-expanded="false" aria-controls="geoDiagnosticsContent"><span class="material-symbols-rounded">tune</span>Diagnostico tecnico</summary>
+        <div class="mag-technical-diagnostics__body" id="geoDiagnosticsContent">
+          <div class="biomie-map-diagnostics-grid">
+            <strong>GeoJSON URL</strong><span id="diagGeoUrl">-</span>
+            <strong>GeoJSON carregado</strong><span id="diagGeoLoaded">-</span>
+            <strong>Bairros no GeoJSON</strong><span id="diagGeoCount">-</span>
+            <strong>Propriedade de bairro</strong><span id="diagGeoProperty">-</span>
+            <strong>Features sem nome</strong><span id="diagGeoNoName">-</span>
+            <strong>Endpoint</strong><span id="diagEndpoint">-</span>
+            <strong>Status HTTP</strong><span id="diagStatus">-</span>
+            <strong>Estado da API</strong><span id="diagApiState">-</span>
+            <strong>Estado do mapa</strong><span id="diagMapState">-</span>
+            <strong>Tempo de resposta</strong><span id="diagTime">-</span>
+            <strong>Filtros ativos</strong><span id="diagFilters">-</span>
+            <strong>Tabela gold</strong><span id="diagGoldTable">-</span>
+            <strong>Notas no mart (periodo)</strong><span id="diagGoldRows">-</span>
+            <strong>Bairros retornados API</strong><span id="diagSalesCount">-</span>
+            <strong>Match bairros</strong><span id="diagMatchRate">-</span>
+            <strong>Confianca do match</strong><span id="diagMatchConfidence">-</span>
+            <strong>API sem match GeoJSON</strong><span id="diagApiUnmatched">-</span>
+            <strong>GeoJSON sem dados API</strong><span id="diagGeoUnmatched">-</span>
+            <strong>Aliases aplicados</strong><span id="diagAliasesUsed">-</span>
+            <strong>Exemplos normalizados</strong><span id="diagNormalizationExamples">-</span>
+            <strong>Registros sem bairro</strong><span id="diagNoNeighborhood">-</span>
+            <strong>Ultima materializacao</strong><span id="diagMaterialized">-</span>
+            <strong>Motivo zero</strong><span id="diagMotivoZero">-</span>
+            <strong>Status em camadas</strong><span id="diagLayeredStatus">-</span>
+            <strong>Proxima acao</strong><span id="diagNextAction">-</span>
+            <strong>Linhas antes filtro cidade</strong><span id="diagRowsBeforeCity">-</span>
+            <strong>Linhas apos filtro cidade</strong><span id="diagRowsAfterCity">-</span>
+            <strong>NFs canonical no periodo</strong><span id="diagCanonicalNfs">-</span>
+            <strong>Notas geo mart no periodo</strong><span id="diagGeoMartNotas">-</span>
+            <strong>Erro sanitizado</strong><span id="diagError">-</span>
+          </div>
+        </div>
+      </details>
+</main>
+
+<!-- GEO.R1.8.6 — Painel de comparação de territórios (overlay) -->
+<div id="geoComparisonOverlay" class="geo-comparison-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="geoComparisonTitle">
+  <div class="geo-comparison-panel" id="geoComparisonPanel">
+    <div class="geo-comparison-panel__head">
+      <div>
+        <h2 id="geoComparisonTitle">Comparação de territórios</h2>
+        <p id="geoComparisonSubtitle">Faturamento, clientes e notas lado a lado.</p>
+      </div>
+      <div class="geo-comparison-panel__actions">
+        <button type="button" id="geoExportComparisonCsvBtn" class="btn-secondary geo-compact-action">
+          <span class="material-symbols-rounded">download</span>Exportar CSV
+        </button>
+        <button type="button" id="geoCloseComparisonBtn" class="btn-secondary geo-drawer__close" aria-label="Fechar comparação">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+    </div>
+    <div id="geoComparisonGrid" class="geo-comparison-grid"></div>
+  </div>
+</div>
+
+<!-- GEO.R2.2 — Overlay: mapa de cobertura de vendedor -->
+<div id="geoVendorMapOverlay" class="geo-vendor-map-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="geoVendorMapTitle">
+  <div class="geo-vendor-map-panel">
+    <div class="geo-vendor-map-panel__head">
+      <div>
+        <h2 id="geoVendorMapTitle">Mapa de carteira por vendedor</h2>
+        <p>Veja a cobertura territorial de cada vendedor e onde há sobreposição de carteira.</p>
+      </div>
+      <button type="button" id="geoCloseVendorMapBtn" class="btn-secondary geo-drawer__close" aria-label="Fechar mapa de carteira">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="geo-vendor-map-controls">
+      <label class="filter-label" for="geoVendorSelector">Vendedor analisado</label>
+      <select id="geoVendorSelector" class="filter-input">
+        <option value="">Todos os vendedores (dominância)</option>
+      </select>
+      <div id="geoVendorLegend" class="geo-vendor-legend"></div>
+    </div>
+    <div id="geoVendorCoverageBody" class="geo-vendor-coverage-body">
+      <div class="geo-vendor-stats" id="geoVendorStats"></div>
+      <div class="geo-vendor-ranking-wrap">
+        <h3>Territórios por cobertura</h3>
+        <div id="geoVendorRankingList" class="geo-vendor-ranking"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</body>
+</html>

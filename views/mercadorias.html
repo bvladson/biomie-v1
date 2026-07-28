@@ -1,0 +1,1113 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Mix de produtos Orcamento-PD: receita, volume e participacao por item, com remessas excluidas." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Mix de Produtos Orcamento-PD | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260425-ui1" />
+  <link rel="stylesheet" href="assets/css/mag-clean.css?v=20260429-clean1" />
+  <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260429-a1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-states" />
+  <link rel="stylesheet" href="assets/css/mercadorias.css?v=20260527-uxr12" />
+  <script src="assets/js/chart.umd.js"></script>
+  <script src="assets/js/mag-chart-defaults.js?v=20260429-a1" defer></script>
+<script src="assets/js/shell.js?v=20260425-ui1"></script>
+<script src="assets/js/biomie-formatters.js?v=20260502-p16"></script>
+<script src="assets/js/biomie-states.js?v=20260502-p16"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/render-helpers.js"></script>
+<script src="assets/js/core/chart-factory.js"></script>
+<script src="assets/js/app.js?v=20260415sk4" defer></script>
+  <script src="assets/js/pwa.js?v=20260415sk1" defer></script>
+</head>
+<body class="mag-page mag-clean-page" data-page="products">
+<main class="page">
+      <section class="biomie-page-header biomie-page-header--hero hero module-hero anim">
+        <div class="biomie-page-header__body module-hero__content">
+          <div class="biomie-page-header__eyebrow hero-tag"><span class="material-symbols-rounded">chair</span>Mix de Produtos Orçamento-PD <span class="mag-status-chip mag-status-ok" style="font-size:0.72rem;padding:2px 8px;margin-left:6px;vertical-align:middle;">remessas excluídas</span></div>
+          <h1 class="biomie-page-header__title">Quais produtos mais contribuem para o faturamento comercial.</h1>
+          <p class="biomie-page-header__subtitle">Receita, volume e participação de cada item — somente NFs Orçamento-PD. Remessas de produto não entram nesta visão.</p>
+          <div class="hero-insights">
+            <div class="hero-chip"><span class="hero-chip-label">Mercadoria Orç-PD</span><span class="hero-chip-value" data-bind="summary-merchandise">-</span><span class="hero-chip-sub">Valor do mix</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Faturamento Orç-PD</span><span class="hero-chip-value" data-bind="summary-revenue">-</span><span class="hero-chip-sub">Base comercial da NF</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Produtos</span><span class="hero-chip-value" data-bind="summary-products-count">-</span><span class="hero-chip-sub">Itens distintos</span></div>
+          </div>
+        </div>
+        <div class="biomie-page-header__meta forecast-box module-hero__meta">
+          <div class="forecast-label">Ticket médio Orç-PD</div>
+          <div class="forecast-value" data-bind="summary-ticket">-</div>
+          <div class="forecast-target"><span>Valor médio por NF comercial</span></div>
+          <a href="plano_voo.php" class="forecast-link">Ver metas e ritmo <span class="material-symbols-rounded biomie-icon-inline">arrow_forward</span></a>
+        </div>
+      </section>
+
+      <div class="filter-bar mag-report-toolbar mag-clean-toolbar anim d1" data-mobile-filter-sheet>
+        <div class="filter-group"><label class="filter-label">Periodo inicial</label><input id="dateStart" type="date" class="filter-input" /></div>
+        <div class="filter-group"><label class="filter-label">Periodo final</label><input id="dateEnd" type="date" class="filter-input" /></div>
+        <div class="filter-actions">
+          <button class="btn-preset" data-range-preset="month">Mes atual</button>
+          <button class="btn-preset" data-range-preset="year">Ano atual</button>
+          <button class="btn-preset" data-range-preset="rolling12">12 meses</button>
+          <button id="applyFilters" type="button" class="btn-primary mag-button-primary"><span class="material-symbols-rounded">filter_alt</span> Aplicar</button>
+          <button id="syncNow" type="button" class="btn-secondary mag-button-secondary"><span class="material-symbols-rounded">sync</span> Atualizar visao</button>
+        </div>
+      </div>
+
+      <div id="syncFeedback"></div>
+      <details class="page-reading-guide anim d1">
+        <summary>
+          <span class="material-symbols-rounded">help</span>
+          Como ler esta página
+          <small>O que é Orç-PD, Remessa e como funciona a participação</small>
+          <span class="material-symbols-rounded prg-chevron">expand_more</span>
+        </summary>
+        <div class="page-reading-guide__body">
+          <div class="page-reading-guide__grid">
+            <div class="page-reading-guide__item">
+              <span class="material-symbols-rounded">storefront</span>
+              <div>
+                <strong>Orç-PD (padrão)</strong>
+                <p>Só vendas comerciais reais — orçamentos que viraram nota fiscal autorizada. Exclui remessas (movimentação sem cobrança), licitação (escopo separado) e devoluções. É o número que entra no faturamento comercial.</p>
+              </div>
+            </div>
+            <div class="page-reading-guide__item">
+              <span class="material-symbols-rounded">local_shipping</span>
+              <div>
+                <strong>Remessas</strong>
+                <p>Saídas de produto que não são venda — transferências, comodato, amostra, consignação. Têm NF mas não geram receita comercial. Analise separado para não distorcer o mix de vendas.</p>
+              </div>
+            </div>
+            <div class="page-reading-guide__item">
+              <span class="material-symbols-rounded">donut_large</span>
+              <div>
+                <strong>% das vendas</strong>
+                <p>Participação de cada produto sobre o total do período. Quando você ativa um filtro (por vendedor ou cliente), o percentual passa a ser calculado só sobre os resultados filtrados — por isso o cabeçalho vira "% do filtro".</p>
+              </div>
+            </div>
+            <div class="page-reading-guide__item">
+              <span class="material-symbols-rounded">insights</span>
+              <div>
+                <strong>Giro e Inteligência (abaixo)</strong>
+                <p>As seções "Giro e Risco Operacional" e "Inteligência Comercial" carregam separado, com dados mais pesados. Clique no título da seção para expandir e ver a análise de estoque e prioridade de ação por produto.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+      <section class="product-scope-panel anim d2" aria-label="Escopo do mix faturado">
+        <div class="product-scope-panel__copy">
+          <strong>Escopo do mix</strong>
+          <span id="productScopeHint">Orc-PD exclui Licitacao e Remessas. Use os chips para investigar remessas separadamente.</span>
+        </div>
+        <div class="product-scope-switcher" id="productScopeSwitcher" role="group" aria-label="Selecionar escopo de produtos">
+          <button type="button" class="product-scope-chip product-scope-chip--active" data-product-scope="commercial" aria-pressed="true">Orc-PD</button>
+          <button type="button" class="product-scope-chip" data-product-scope="remittance" aria-pressed="false">Remessas</button>
+          <button type="button" class="product-scope-chip" data-product-scope="all" aria-pressed="false">Todas</button>
+        </div>
+      </section>
+      <div id="pageError" class="d-none"></div>
+      <div id="pageLoading" class="module-loading-shell" aria-live="polite" aria-busy="true">
+        <div class="module-loading-grid cols-4">
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+        </div>
+        <div class="module-loading-grid cols-2">
+          <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+          <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+        </div>
+        <div class="module-loading-card table">
+          <div class="module-loading-table">
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:40%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:16%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:32%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:8%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:36%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:15%"></span><span class="skeleton-line md" style="width:9%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:28%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:13%"></span><span class="skeleton-line md" style="width:17%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:44%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:8%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:33%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:16%"></span><span class="skeleton-line md" style="width:9%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:38%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:15%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:30%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:18%"></span><span class="skeleton-line md" style="width:8%"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label anim d2" id="cards">Indicadores Orçamento-PD</div>
+      <section class="biomie-kpi-grid">
+        <article class="biomie-kpi-card biomie-kpi-card--info anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Mercadoria Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">inventory_2</span></div><div class="biomie-kpi-card__value" data-bind="summary-merchandise">-</div><div class="biomie-kpi-card__sub">Valor do mix de itens</div></article>
+        <article class="biomie-kpi-card anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><div class="biomie-kpi-card__value" data-bind="summary-revenue">-</div><div class="biomie-kpi-card__sub">Base comercial da NF</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--neutral anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Produtos vendidos</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div><div class="biomie-kpi-card__value" data-bind="summary-products-count">-</div><div class="biomie-kpi-card__sub">Itens distintos faturados</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Descontos</span><span class="material-symbols-rounded biomie-kpi-card__icon">money_off</span></div><div class="biomie-kpi-card__value" data-bind="summary-discounts">-</div><div class="biomie-kpi-card__sub">Desconto concedido</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ticket médio Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Valor médio por NF</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div><div class="biomie-kpi-card__value" data-bind="summary-orders">-</div><div class="biomie-kpi-card__sub">Notas que formam o mix</div></article>
+      </section>
+
+      <div class="section-label anim d3" id="graficos">Análises Orçamento-PD</div>
+      <section class="charts-grid product-chart-grid product-donut-grid" data-product-donut-grid>
+        <div class="chart-card product-donut-card anim d4">
+          <div class="chart-card-header"><div><h3>Produtos que mais geram receita <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;vertical-align:middle;">Orç-PD</span></h3><small>Receita e volume dos itens em destaque — remessas excluídas</small></div></div>
+          <div class="product-donut-layout">
+            <div class="product-donut-canvas"><canvas id="productsRevenueChart"></canvas></div>
+            <div id="productsRevenueLegend" class="product-donut-legend" aria-label="Legenda de receita por produto"></div>
+          </div>
+        </div>
+        <div class="chart-card product-donut-card anim d4">
+          <div class="chart-card-header"><div><h3>Participacao no mix <span class="mag-status-chip mag-status-ok" data-product-scope-label>Orc-PD</span></h3><small>Top 10 por volume + Outros.</small></div></div>
+          <div class="product-donut-layout">
+            <div class="product-donut-canvas"><canvas id="productsShareChart"></canvas></div>
+            <div id="productsShareLegend" class="product-donut-legend" aria-label="Legenda de participacao no mix"></div>
+          </div>
+        </div>
+      </section>
+      <div class="section-label anim d4" id="tabelas">Mix de produtos faturados — Orçamento-PD</div>
+      <section class="table-card commercial-panel commercial-panel--product anim d5">
+        <div class="table-card-header">
+          <div>
+            <h3>Produtos faturados <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Orç-PD</span></h3>
+            <small>Descrição, quantidade, clientes, notas fiscais e participação no mix — remessas de produto excluídas.</small>
+          </div>
+        </div>
+        <div style="padding:8px 16px 4px;gap:8px;flex-wrap:wrap;display:flex;align-items:center;">
+          <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-prod-sort="revenue" data-prod-dir="desc">Maior faturamento</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="quantidade" data-prod-dir="desc">Maior quantidade</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="clientes" data-prod-dir="desc">Mais clientes</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="ticket_medio" data-prod-dir="desc">Maior ticket</button>
+          <button class="nf-quick-filter-btn" data-prod-sort="nfs" data-prod-dir="desc">Mais NFs</button>
+        </div>
+        <div id="productFilterChips" style="display:none;padding:4px 16px 0;"></div>
+        <div id="productFilterFeedback" style="display:none;padding:4px 16px;font-size:0.82rem;"></div>
+        <div id="productSearchFeedback" class="biomie-table-feedback" style="display:none;margin:0 16px;"></div>
+        <div id="productFreshnessBar" class="product-freshness-bar" style="display:none;padding:2px 16px 6px;"></div>
+        <div class="biomie-table-wrap commercial-table-wrap">
+          <table class="mag-table mag-table-clean commercial-table commercial-table--product" data-mobile-card-table>
+            <thead>
+              <tr>
+                <th id="th-prod-produto" class="nf-th-sortable" data-sort-field="produto">Produto <span class="nf-sort-icon">↕</span></th>
+                <th id="th-prod-qtd" class="nf-th-sortable" data-sort-field="quantidade">Qtd <span class="nf-sort-icon">↕</span></th>
+                <th>Clientes</th>
+                <th>NFs</th>
+                <th id="th-prod-receita" class="nf-th-sortable" data-sort-field="revenue">Receita <span class="nf-sort-icon">↕</span></th>
+                <th id="th-prod-share">% das vendas</th>
+              </tr>
+              <tr class="nf-filter-row" id="productFilterRow">
+                <th><input id="f_prod_q" type="search" class="nf-col-filter" placeholder="Produto ou SKU…" /></th>
+                <th class="nf-col-filter-range">
+                  <input id="f_prod_qty_min" type="number" class="nf-col-filter" placeholder="Mín" min="0" />
+                  <input id="f_prod_qty_max" type="number" class="nf-col-filter" placeholder="Máx" min="0" />
+                </th>
+                <th><input id="f_prod_cliente" type="search" class="nf-col-filter" placeholder="Cliente…" /></th>
+                <th><input id="f_prod_vendedor" type="search" class="nf-col-filter" placeholder="Vendedor…" /></th>
+                <th class="nf-col-filter-range">
+                  <input id="f_prod_rev_min" type="number" class="nf-col-filter" placeholder="R$ mín" min="0" />
+                  <input id="f_prod_rev_max" type="number" class="nf-col-filter" placeholder="R$ máx" min="0" />
+                </th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="productsTable" data-empty-title="Sem produtos Orç-PD" data-empty-message="Nenhum produto faturado Orçamento-PD no periodo. Remessas são exibidas somente em NF do Período." data-empty-icon="inventory_2"></tbody>
+          </table>
+        </div>
+        <div id="productPagination" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;flex-wrap:wrap;"></div>
+      </section>
+
+      <section class="charts-grid mag-chart-below-table" hidden>
+        <div class="chart-card anim d5">
+          <div class="chart-card-header"><div><h3>Participação no mix Orç-PD</h3><small>Top itens por participação na receita comercial</small></div></div>
+          <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsShareChartLegacy"></canvas></div>
+        </div>
+      </section>
+
+      <div class="product-breakdown-backdrop" id="productBreakdownBackdrop" hidden></div>
+      <aside class="product-breakdown-modal" id="productBreakdownModal" role="dialog" aria-modal="true" aria-labelledby="productBreakdownTitle" hidden aria-hidden="true">
+        <div class="product-breakdown-head">
+          <div>
+            <span class="weather-card-label">Detalhamento do produto</span>
+            <h3 id="productBreakdownTitle">Produto</h3>
+            <p id="productBreakdownSubtitle">Notas, pedido, vendedor e cliente que compoem o faturado.</p>
+          </div>
+          <button type="button" class="btn-icon" id="closeProductBreakdown" aria-label="Fechar detalhamento">
+            <span class="material-symbols-rounded" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="product-breakdown-toolbar">
+          <input id="productBreakdownFilter" type="search" class="filter-input" placeholder="Filtrar por NF, pedido, vendedor ou cliente" />
+          <div id="productBreakdownMeta" class="product-breakdown-meta"></div>
+        </div>
+        <div id="productBreakdownLoading" class="product-breakdown-loading">Carregando detalhamento...</div>
+        <div id="productBreakdownSummary" class="product-breakdown-summary"></div>
+        <div class="product-breakdown-sections">
+          <section class="product-breakdown-section">
+            <div class="product-breakdown-section__head">
+              <h4>Clientes compradores</h4>
+              <span id="productBreakdownClientsCount">-</span>
+            </div>
+            <div id="productBreakdownClients" class="product-mini-list"></div>
+          </section>
+          <section class="product-breakdown-section">
+            <div class="product-breakdown-section__head">
+              <h4>Vendedores</h4>
+              <span id="productBreakdownVendorsCount">-</span>
+            </div>
+            <div id="productBreakdownVendors" class="product-mini-list"></div>
+          </section>
+        </div>
+        <div class="product-breakdown-table-wrap">
+          <table class="mag-table mag-table-clean">
+            <thead>
+              <tr>
+                <th>NF</th>
+                <th>Pedido</th>
+                <th>Vendedor</th>
+                <th>Cliente</th>
+                <th>Data</th>
+                <th>Qtd</th>
+                <th>Valor</th>
+                <th>Desconto</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody id="productBreakdownTable"></tbody>
+          </table>
+          <div id="productBreakdownEmpty" class="product-breakdown-empty" hidden>Nenhum documento encontrado para este produto no periodo.</div>
+        </div>
+      </aside>
+
+      <!-- EST.R1.2 — Giro e Risco Operacional (recolhível, lazy) -->
+      <div class="section-label anim d5" id="estoqueSection" style="cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="document.getElementById('estoquePanel').hidden=!document.getElementById('estoquePanel').hidden;this.querySelector('.estoque-toggle-icon').textContent=document.getElementById('estoquePanel').hidden?'expand_more':'expand_less';">
+        <span class="material-symbols-rounded">trending_up</span>Giro e Risco Operacional
+        <span id="estoqueSourceBadge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface-muted);color:var(--text-3);margin-left:4px;font-weight:600;"></span>
+        <span class="material-symbols-rounded estoque-toggle-icon" style="font-size:18px;margin-left:auto;color:var(--text-3)">expand_more</span>
+      </div>
+      <section id="estoquePanel" hidden class="anim d5">
+        <!-- Source note — honestidade semântica obrigatória -->
+        <div id="estoqueSourceNote" style="display:none;align-items:flex-start;gap:8px;margin-bottom:12px;padding:10px 14px;border-radius:6px;background:var(--surface-muted,#f3f4f6);border:1px solid var(--border,#e5e7eb);font-size:0.82rem;color:var(--text-2,#374151);">
+          <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;color:var(--text-3,#6b7280)">info</span>
+          <div>
+            <strong id="estoqueSourceLabel">Carregando…</strong><br>
+            <span id="estoqueSourceDesc" style="color:var(--text-3,#6b7280)"></span>
+          </div>
+        </div>
+
+        <!-- KPIs globais -->
+        <div class="biomie-kpi-grid" id="estoqueKpiGrid" style="margin-bottom:12px;">
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi1Label">Produtos distintos</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi1">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi1Sub">Faturados no período</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--info">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi2Label">Qtd. vendida</span><span class="material-symbols-rounded biomie-kpi-card__icon">shopping_bag</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi2">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi2Sub">Total de unidades NF comercial</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--warning">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi3Label">Risco operacional</span><span class="material-symbols-rounded biomie-kpi-card__icon">warning</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi3">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi3Sub">Com alto giro nos últimos 30 dias</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi4Label">Última venda</span><span class="material-symbols-rounded biomie-kpi-card__icon">schedule</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpi4">—</div>
+            <div class="biomie-kpi-card__sub" id="estoqueKpi4Sub">Data da NF mais recente</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--neutral">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recorrentes</span><span class="material-symbols-rounded biomie-kpi-card__icon">repeat</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpiRecorrentes">—</div>
+            <div class="biomie-kpi-card__sub">Produtos em 2+ meses</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Concentrados</span><span class="material-symbols-rounded biomie-kpi-card__icon">person</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpiConcentrados">—</div>
+            <div class="biomie-kpi-card__sub">Dep. cliente único ≥ 60%</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Parados</span><span class="material-symbols-rounded biomie-kpi-card__icon">do_not_disturb</span></div>
+            <div class="biomie-kpi-card__value" id="estoqueKpiParados">—</div>
+            <div class="biomie-kpi-card__sub">Sem venda em 90+ dias</div>
+          </article>
+        </div>
+
+        <!-- Tab switcher — 5 visões -->
+        <div id="estoqueLoadingState" style="padding:12px 16px;">
+          <div class="module-loading-table">
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:45%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:38%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:13%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:42%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:15%"></span><span class="skeleton-line md" style="width:11%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:35%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:48%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:13%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+          </div>
+        </div>
+        <div id="estoqueEmptyState" style="display:none;padding:32px;text-align:center;color:var(--text-muted);">
+          <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">trending_up</span>
+          <strong id="estoqueEmptyMsg">Sem dados para o período.</strong>
+        </div>
+
+        <div id="estoqueTabsWrap" style="display:none;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="estoqueTabBar">
+            <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-estoque-tab="velocity">Por giro</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="risk">Risco operacional</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="recurrence">Recorrentes</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="concentration">Concentração</button>
+            <button class="nf-quick-filter-btn" data-estoque-tab="dormant">Parados</button>
+          </div>
+
+          <!-- Por giro -->
+          <div class="table-card" id="estoqueTabVelocity">
+            <div class="table-card-header">
+              <div><h3>Produtos com maior volume vendido <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Fonte: Documentos Omie</span></h3><small>Saídas via NF comercial autorizada. Confiança operacional — não é saldo físico.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Qtd vendida</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th><th>Meses ativos</th></tr></thead>
+                <tbody id="estoqueVelocityBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Risco operacional -->
+          <div class="table-card" id="estoqueTabRisk" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Risco operacional por giro <span class="mag-status-chip mag-status-warning" style="font-size:0.7rem;padding:2px 7px;">Estimativa</span></h3><small>Alto giro recente sem evidência de reposição. Não é ruptura física confirmada.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>Qtd 30d</th><th>Qtd total</th><th>NFs</th><th>Última venda</th><th>Risco</th></tr></thead>
+                <tbody id="estoqueRiskBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueRiskEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto com alto giro recente no período.</div>
+          </div>
+
+          <!-- Recorrentes -->
+          <div class="table-card" id="estoqueTabRecurrence" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Produtos recorrentes <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">Fonte: Documentos Omie</span></h3><small>Produtos vendidos em 2 ou mais meses distintos no período — demanda estável.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Meses ativos</th><th>Qtd total</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th></tr></thead>
+                <tbody id="estoqueRecurrenceBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueRecurrenceEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto com venda em múltiplos meses no período.</div>
+          </div>
+
+          <!-- Concentração -->
+          <div class="table-card" id="estoqueTabConcentration" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Concentração de cliente único <span class="mag-status-chip mag-status-warning" style="font-size:0.7rem;padding:2px 7px;">Risco comercial</span></h3><small>Produtos onde 1 cliente representa ≥ 60% da quantidade vendida — risco de dependência.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>Código</th><th>Quantidade total</th><th>Clientes</th><th>Maior cliente</th><th>Qtd. do maior cliente</th><th>Concentração</th></tr></thead>
+                <tbody id="estoqueConcentrationBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueConcentrationEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto com alta concentração de cliente único no período.</div>
+          </div>
+
+          <!-- Parados -->
+          <div class="table-card" id="estoqueTabDormant" style="display:none;">
+            <div class="table-card-header">
+              <div><h3>Produtos parados <span class="mag-status-chip mag-status-error" style="font-size:0.7rem;padding:2px 7px;">90+ dias sem venda</span></h3><small>Produtos com histórico no período mas sem saída nos últimos 90 dias.</small></div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Produto</th><th>SKU</th><th>Qtd total</th><th>NFs</th><th>Clientes</th><th>Receita</th><th>Última venda</th><th>Dias parado</th></tr></thead>
+                <tbody id="estoqueDormantBody"></tbody>
+              </table>
+            </div>
+            <div id="estoqueDormantEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">Nenhum produto parado no período.</div>
+          </div>
+        </div>
+      </section>
+      <script>
+      (function() {
+        var loaded  = false;
+        var panel   = document.getElementById('estoquePanel');
+        var section = document.getElementById('estoqueSection');
+        if (!section) return;
+
+        var _activeTab = 'velocity';
+
+        function _esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function fmtN(n) { return (parseFloat(n)||0).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+        function fmtR(n) { return 'R$ ' + (parseFloat(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+        function showTab(tab) {
+          _activeTab = tab;
+          var tabMap = { velocity:'estoqueTabVelocity', risk:'estoqueTabRisk', recurrence:'estoqueTabRecurrence', concentration:'estoqueTabConcentration', dormant:'estoqueTabDormant' };
+          Object.keys(tabMap).forEach(function(k) {
+            var el = document.getElementById(tabMap[k]);
+            if (el) el.style.display = k === tab ? '' : 'none';
+          });
+          document.querySelectorAll('[data-estoque-tab]').forEach(function(btn) {
+            btn.classList.toggle('nf-quick-filter-btn--active', btn.getAttribute('data-estoque-tab') === tab);
+          });
+        }
+
+        function renderDocumentLedger(d) {
+          var src = (d.stock_source && (d.stock_source.source || d.stock_source)) || 'omie_document_ledger';
+
+          // Source badge
+          var badge = document.getElementById('estoqueSourceBadge');
+          if (badge) {
+            var lbl = {'official_stock_api':'Estoque oficial','product_snapshot':'Snapshot','omie_document_ledger':'Documentos Omie','unavailable':'Indisponível'}[src] || 'Documentos Omie';
+            badge.textContent = lbl;
+            badge.style.background = src==='official_stock_api' ? '#d1fae5' : '#e0e7ff';
+            badge.style.color      = src==='official_stock_api' ? '#065f46' : '#3730a3';
+          }
+
+          // Source note
+          var noteEl = document.getElementById('estoqueSourceNote');
+          if (noteEl) {
+            noteEl.style.display = 'flex';
+            var srcObj = typeof d.stock_source === 'object' ? d.stock_source : {};
+            document.getElementById('estoqueSourceLabel').textContent = srcObj.label  || 'Documentos fiscais/comerciais Omie';
+            document.getElementById('estoqueSourceDesc').textContent  = srcObj.note   || 'Visão operacional calculada por NFs autorizadas. Não é saldo físico real. Confiança: Operacional.';
+          }
+
+          // KPIs
+          var stats = d.stats || {};
+          document.getElementById('estoqueKpi1').textContent = fmtN(stats.produtos_distintos || 0);
+          document.getElementById('estoqueKpi2').textContent = fmtN(stats.qty_total || 0);
+          var highRisk = (d.rupture_risk_list || []).filter(function(r){ return r.rupture_risk === 'high'; });
+          document.getElementById('estoqueKpi3').textContent = highRisk.length;
+          document.getElementById('estoqueKpi4').textContent = (stats.last_sale || '—').substring(0,10);
+          document.getElementById('estoqueKpiRecorrentes').textContent  = (d.recurrence_list    || []).length;
+          document.getElementById('estoqueKpiConcentrados').textContent = (d.concentration_list  || []).length;
+          document.getElementById('estoqueKpiParados').textContent      = (d.dormant_list        || []).length;
+
+          document.getElementById('estoqueLoadingState').style.display = 'none';
+          document.getElementById('estoqueEmptyState').style.display   = 'none';
+
+          var velocity = d.velocity_ranking || [];
+          if (!velocity.length && !(d.rupture_risk_list||[]).length) {
+            document.getElementById('estoqueEmptyMsg').textContent = 'Sem NFs de produto no período. Verifique o filtro de datas.';
+            document.getElementById('estoqueEmptyState').style.display = '';
+            return;
+          }
+
+          document.getElementById('estoqueTabsWrap').style.display = '';
+
+          // Tab switcher
+          document.querySelectorAll('[data-estoque-tab]').forEach(function(btn) {
+            btn.addEventListener('click', function() { showTab(btn.getAttribute('data-estoque-tab')); });
+          });
+
+          // Velocity
+          document.getElementById('estoqueVelocityBody').innerHTML = velocity.map(function(r) {
+            return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+              +'<td>'+_esc(r.codigo_produto)+'</td>'
+              +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+              +'<td>'+fmtN(r.nfs_count)+'</td>'
+              +'<td>'+fmtN(r.customers)+'</td>'
+              +'<td class="font-mono">'+fmtR(r.value_total)+'</td>'
+              +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+              +'<td>'+r.active_months+'</td></tr>';
+          }).join('');
+
+          // Risk
+          var riskRows = d.rupture_risk_list || [];
+          if (riskRows.length) {
+            document.getElementById('estoqueRiskBody').innerHTML = riskRows.map(function(r){
+              var rb = r.rupture_risk==='high' ? '<span style="color:#dc2626;font-weight:700">Alto</span>'
+                     : r.rupture_risk==='medium' ? '<span style="color:#d97706">Médio</span>'
+                     : '<span style="color:#6b7280">Baixo</span>';
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_30d)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_period)+'</td>'
+                +'<td>'+r.nfs_count+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+                +'<td>'+rb+'</td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueRiskEmpty').style.display = '';
+          }
+
+          // Recurrence
+          var recRows = d.recurrence_list || [];
+          if (recRows.length) {
+            document.getElementById('estoqueRecurrenceBody').innerHTML = recRows.map(function(r) {
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td><strong>'+r.active_months+'</strong></td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.nfs_count)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="font-mono">'+fmtR(r.value_total)+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueRecurrenceEmpty').style.display = '';
+          }
+
+          // Concentration
+          var conRows = d.concentration_list || [];
+          if (conRows.length) {
+            document.getElementById('estoqueConcentrationBody').innerHTML = conRows.map(function(r) {
+              var pct = Number(r.concentration_pct||0).toFixed(1);
+              var pctColor = r.concentration_pct >= 90 ? '#dc2626' : r.concentration_pct >= 75 ? '#d97706' : '#374151';
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="truncate">'+_esc(r.top_client_name||'—')+'</td>'
+                +'<td class="font-mono">'+fmtN(r.top_client_qty)+'</td>'
+                +'<td><strong style="color:'+pctColor+'">'+pct+'%</strong></td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueConcentrationEmpty').style.display = '';
+          }
+
+          // Dormant
+          var domRows = d.dormant_list || [];
+          if (domRows.length) {
+            document.getElementById('estoqueDormantBody').innerHTML = domRows.map(function(r) {
+              var days = r.days_since_sale != null ? r.days_since_sale + ' dias' : '—';
+              var daysColor = (r.days_since_sale||0) > 180 ? '#dc2626' : '#d97706';
+              return '<tr><td class="truncate" title="'+_esc(r.descricao_produto)+'">'+_esc(r.descricao_produto)+'</td>'
+                +'<td>'+_esc(r.codigo_produto)+'</td>'
+                +'<td class="font-mono">'+fmtN(r.qty_total)+'</td>'
+                +'<td>'+fmtN(r.nfs_count)+'</td>'
+                +'<td>'+fmtN(r.customers)+'</td>'
+                +'<td class="font-mono">'+fmtR(r.value_total)+'</td>'
+                +'<td>'+(r.last_sale||'—').substring(0,10)+'</td>'
+                +'<td><strong style="color:'+daysColor+'">'+days+'</strong></td></tr>';
+            }).join('');
+          } else {
+            document.getElementById('estoqueDormantEmpty').style.display = '';
+          }
+
+          showTab(_activeTab);
+        }
+
+        section.addEventListener('click', function() {
+          if (!loaded && !panel.hidden) {
+            loaded = true;
+            var p = new URLSearchParams(window.location.search);
+            var start = p.get('start') || new Date().getFullYear() + '-01-01';
+            var end   = p.get('end')   || new Date().toISOString().substring(0,10);
+            fetch('/biomie/api/products.php?mode=stock_intelligence&start='+start+'&end='+end+'&limit=50')
+              .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
+              .then(renderDocumentLedger)
+              .catch(function(){
+                document.getElementById('estoqueLoadingState').style.display = 'none';
+                document.getElementById('estoqueEmptyMsg').textContent = 'Erro ao carregar giro e risco operacional.';
+                document.getElementById('estoqueEmptyState').style.display = '';
+              });
+          }
+        });
+      })();
+      </script>
+
+      <!-- PROD.R2 — Inteligência comercial de produtos (lazy, recolhível) -->
+      <div class="section-label anim d6" id="prodR2Section" style="cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="document.getElementById('prodR2Panel').hidden=!document.getElementById('prodR2Panel').hidden;this.querySelector('.prodr2-toggle-icon').textContent=document.getElementById('prodR2Panel').hidden?'expand_more':'expand_less';">
+        <span class="material-symbols-rounded">lightbulb</span>Inteligência comercial de produtos
+        <span class="material-symbols-rounded prodr2-toggle-icon" style="font-size:18px;margin-left:auto;color:var(--text-3)">expand_more</span>
+      </div>
+      <section id="prodR2Panel" hidden class="anim d6">
+
+        <!-- PROD.R2.1 — Legenda da seção -->
+        <div id="prodR2Legenda" style="margin-bottom:14px;padding:10px 14px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;font-size:0.82rem;color:#1e40af;display:flex;align-items:flex-start;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;">info</span>
+          <div>
+            <strong>Esta seção prioriza produtos com base em vendas reais do Omie.</strong>
+            Ela indica o que vender, para quem vender e qual ação comercial tomar.
+            <details style="display:inline;margin-left:4px;">
+              <summary style="cursor:pointer;display:inline;font-size:0.8rem;color:#2563eb;text-decoration:underline;list-style:none;">Como a prioridade é calculada</summary>
+              <div style="margin-top:6px;padding:8px 10px;background:#fff;border-radius:4px;border:1px solid #bfdbfe;color:#374151;font-size:0.78rem;">
+                <strong>Prioridade (0–100)</strong> = recorrência de vendas + recência da última venda + diversidade de clientes + volume − penalidade por concentração excessiva em um único cliente.<br>
+                <em>Fonte: NFs autorizadas + itens de NF canônicos do Omie. Não inclui saldo físico real.</em>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- KPIs globais -->
+        <div class="biomie-kpi-grid" id="prodR2KpiGrid" style="margin-bottom:12px;">
+          <article class="biomie-kpi-card biomie-kpi-card--success">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Com ação sugerida</span><span class="material-symbols-rounded biomie-kpi-card__icon">rocket_launch</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiTotal">—</div>
+            <div class="biomie-kpi-card__sub">Produtos com score ≥ 40</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--info">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recompra provável</span><span class="material-symbols-rounded biomie-kpi-card__icon">refresh</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiRecompra">—</div>
+            <div class="biomie-kpi-card__sub">Clientes com 30+ dias sem compra</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Recorrentes</span><span class="material-symbols-rounded biomie-kpi-card__icon">repeat</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiRecorrentes">—</div>
+            <div class="biomie-kpi-card__sub">Vendidos em 2+ meses</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--warning">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Concentrados</span><span class="material-symbols-rounded biomie-kpi-card__icon">person</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiConcentrados">—</div>
+            <div class="biomie-kpi-card__sub">Maior cliente representa 60% ou mais</div>
+          </article>
+          <article class="biomie-kpi-card">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Parados</span><span class="material-symbols-rounded biomie-kpi-card__icon">pause_circle</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiParados">—</div>
+            <div class="biomie-kpi-card__sub">90+ dias sem venda</div>
+          </article>
+          <article class="biomie-kpi-card biomie-kpi-card--neutral">
+            <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Campeões</span><span class="material-symbols-rounded biomie-kpi-card__icon">star</span></div>
+            <div class="biomie-kpi-card__value" id="prodR2KpiCampeoes">—</div>
+            <div class="biomie-kpi-card__sub">Alta prioridade comercial</div>
+          </article>
+        </div>
+
+        <!-- Loading / empty states -->
+        <div id="prodR2Loading" style="padding:12px 16px;">
+          <div class="module-loading-table">
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:42%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:36%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:12%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:44%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:15%"></span><span class="skeleton-line md" style="width:11%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:33%"></span><span class="skeleton-line md" style="width:11%"></span><span class="skeleton-line md" style="width:13%"></span><span class="skeleton-line md" style="width:12%"></span></div>
+            <div class="module-loading-row"><span class="skeleton-line md" style="width:40%"></span><span class="skeleton-line md" style="width:10%"></span><span class="skeleton-line md" style="width:14%"></span><span class="skeleton-line md" style="width:10%"></span></div>
+          </div>
+        </div>
+        <div id="prodR2Empty" style="display:none;padding:32px;text-align:center;color:var(--text-muted);">
+          <span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">lightbulb</span>
+          <strong id="prodR2EmptyMsg">Sem dados de inteligência para o período.</strong>
+        </div>
+
+        <!-- Cards de oportunidade (lazy) -->
+        <div id="prodR2Cards" style="display:none;gap:16px;display:none;">
+
+          <!-- Card: Produtos para ação -->
+          <div class="table-card" style="margin-bottom:12px;">
+            <div class="table-card-header">
+              <div>
+                <h3>Produtos para ação <span class="mag-status-chip mag-status-ok" style="font-size:0.7rem;padding:2px 7px;">10 maiores prioridades</span></h3>
+                <small>Recomendações comerciais baseadas em recorrência, recência, clientes e volume.</small>
+              </div>
+              <div style="padding:8px 0 0;display:flex;gap:6px;flex-wrap:wrap;" id="prodR2ActionFilterBar">
+                <button class="nf-quick-filter-btn nf-quick-filter-btn--active" data-prodr2-cat="all">Todos</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Produto campeão">Campeões</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Reativar produto">Reativar</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Campanha para clientes antigos">Recompra</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Acompanhar concentração">Concentração</button>
+                <button class="nf-quick-filter-btn" data-prodr2-cat="Cross-sell com vendedores fortes">Cross-sell</button>
+              </div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean" id="prodR2ActionTable">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Prioridade</th>
+                    <th>Categoria</th>
+                    <th>Receita</th>
+                    <th>Clientes</th>
+                    <th>Meses</th>
+                    <th>Dias parado</th>
+                    <th>Concentração</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="prodR2ActionBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Card: Aderência Vendedor × Produto -->
+          <div class="table-card" style="margin-bottom:12px;">
+            <div class="table-card-header">
+              <div>
+                <h3>Aderência vendedor × produto</h3>
+                <small>Produtos fortes e oportunidades de cross-sell por vendedor.</small>
+              </div>
+            </div>
+            <div class="drawer-table-wrap">
+              <table class="mag-table mag-table-clean">
+                <thead><tr><th>Vendedor</th><th>Produto forte</th><th>% receita vendedor</th><th>% mercado</th><th>Clientes</th></tr></thead>
+                <tbody id="prodR2VendorBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- PROD.R2 — Drawer de ação comercial -->
+      <div id="prodR2DrawerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:800;" onclick="closeProdR2Drawer()"></div>
+      <aside id="prodR2Drawer" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(50vw,720px);background:var(--surface,#fff);box-shadow:-4px 0 24px rgba(0,0,0,.12);z-index:801;overflow-y:auto;flex-direction:column;" role="dialog" aria-modal="true" aria-label="Ação comercial do produto">
+        <div style="padding:20px 20px 0;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border,#e5e7eb);padding-bottom:16px;">
+          <div>
+            <div style="font-size:0.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Ação Comercial · Product Intelligence</div>
+            <h2 id="prodR2DrawerTitle" style="margin:0;font-size:1.1rem;font-weight:700;"></h2>
+            <div id="prodR2DrawerSubtitle" style="font-size:0.8rem;color:var(--text-3);margin-top:2px;"></div>
+          </div>
+          <button type="button" onclick="closeProdR2Drawer()" style="background:none;border:none;cursor:pointer;padding:4px;" aria-label="Fechar">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border,#e5e7eb);padding:0 20px;" id="prodR2DrawerTabBar">
+          <button class="biomie-drawer__tab is-active" data-drawer-tab="overview">Resumo</button>
+          <button class="biomie-drawer__tab" data-drawer-tab="repurchase">Recompra</button>
+          <button class="biomie-drawer__tab" data-drawer-tab="vendors">Vendedores</button>
+          <button class="biomie-drawer__tab" data-drawer-tab="action">Recomendação</button>
+        </div>
+
+        <!-- Body -->
+        <div id="prodR2DrawerBody" style="padding:16px 20px;flex:1;">
+          <div id="prodR2DrawerLoading" style="padding:32px;text-align:center;">Carregando…</div>
+        </div>
+      </aside>
+
+      <script>
+      (function() {
+        var loaded   = false;
+        var section  = document.getElementById('prodR2Section');
+        var panel    = document.getElementById('prodR2Panel');
+        if (!section) return;
+
+        var _allOpps  = [];
+        var _allVends = [];
+        var _activeFilter = 'all';
+        var _activeTab    = 'overview';
+        var _drawerData   = null;
+
+        function _esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function fmtR(n) { return 'R$ ' + (parseFloat(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+        function fmtN(n) { return (parseFloat(n)||0).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+
+        // ── Category chip colors ─────────────────────────────────────────────
+        var catColors = {
+          'Produto campeão':              '#16a34a',
+          'Reativar produto':             '#dc2626',
+          'Acompanhar concentração':      '#d97706',
+          'Campanha para clientes antigos': '#2563eb',
+          'Cross-sell com vendedores fortes': '#7c3aed',
+          'Produto sazonal':              '#db2777',
+          'Baixo giro':                   '#6b7280',
+          'Monitorar':                    '#9ca3af',
+        };
+
+        function catBadge(cat) {
+          var color = catColors[cat] || '#6b7280';
+          return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;color:#fff;background:' + color + '">' + _esc(cat) + '</span>';
+        }
+
+        function scoreBar(score) {
+          var color = score >= 75 ? '#16a34a' : score >= 40 ? '#2563eb' : '#9ca3af';
+          return '<span style="font-weight:700;color:' + color + '">' + score + '</span>';
+        }
+
+        // ── Render action table ───────────────────────────────────────────────
+        function renderActionTable(filter) {
+          _activeFilter = filter;
+          var rows = filter === 'all' ? _allOpps : _allOpps.filter(function(r) { return r.categoria === filter; });
+          var tbody = document.getElementById('prodR2ActionBody');
+          if (!tbody) return;
+
+          document.querySelectorAll('[data-prodr2-cat]').forEach(function(btn) {
+            btn.classList.toggle('nf-quick-filter-btn--active', btn.getAttribute('data-prodr2-cat') === filter);
+          });
+
+          if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhum produto nesta categoria.</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = rows.slice(0,20).map(function(r) {
+            var pcode = _esc(r.product_code||'');
+            var pname = _esc((r.product_name||'').substring(0,32));
+            var dias  = (r.dias_sem_venda||0) >= 90
+              ? '<span style="color:#dc2626;font-weight:700">' + (r.dias_sem_venda||0) + 'd</span>'
+              : (r.dias_sem_venda||0) + 'd';
+            var conc = (r.top_cliente_share_pct||0) >= 60
+              ? '<span style="color:#d97706;font-weight:700">' + (r.top_cliente_share_pct||0) + '%</span>'
+              : (r.top_cliente_share_pct||0) + '%';
+            return '<tr>'
+              + '<td><div class="truncate" title="' + _esc(r.product_name||'') + '">' + pname + '</div>'
+              + '<div style="font-size:0.72rem;color:var(--text-3)">' + pcode + '</div></td>'
+              + '<td>' + scoreBar(r.score_acao||0) + '</td>'
+              + '<td>' + catBadge(r.categoria||'') + '</td>'
+              + '<td class="font-mono">' + fmtR(r.receita_periodo||0) + '</td>'
+              + '<td>' + (r.clientes_periodo||0) + '</td>'
+              + '<td>' + (r.meses_ativos||0) + '</td>'
+              + '<td>' + dias + '</td>'
+              + '<td>' + conc + '</td>'
+              + '<td><button type="button" class="row-inline-link" onclick="openProdR2Drawer(' + JSON.stringify(pcode) + ',' + JSON.stringify(r.product_name||'') + ')" style="white-space:nowrap">Ver ação</button></td>'
+              + '</tr>';
+          }).join('');
+        }
+
+        // ── Render vendor affinity ────────────────────────────────────────────
+        function renderVendorAffinity(vendors) {
+          var tbody = document.getElementById('prodR2VendorBody');
+          if (!tbody) return;
+          var rows = [];
+          vendors.forEach(function(v) {
+            (v.produtos_fortes||[]).forEach(function(p) {
+              rows.push({
+                vendor: v.vendor_name, product: p.product_name,
+                pctVend: p.participacao_vendedor_pct, shareMkt: p.share_produto,
+                clientes: p.clientes,
+              });
+            });
+          });
+          if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sem dados de aderência no período.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = rows.slice(0,15).map(function(r) {
+            return '<tr><td class="truncate">' + _esc(r.vendor) + '</td>'
+              + '<td class="truncate">' + _esc((r.product||'').substring(0,28)) + '</td>'
+              + '<td><strong>' + (r.pctVend||0) + '%</strong></td>'
+              + '<td>' + (r.shareMkt||0) + '%</td>'
+              + '<td>' + (r.clientes||0) + '</td></tr>';
+          }).join('');
+        }
+
+        // ── Load data ─────────────────────────────────────────────────────────
+        function loadAll() {
+          var p = new URLSearchParams(window.location.search);
+          var start = p.get('start') || new Date().getFullYear() + '-01-01';
+          var end   = p.get('end')   || new Date().toISOString().substring(0,10);
+
+          Promise.all([
+            fetch('/biomie/api/product_action_intelligence.php?mode=summary&start='+start+'&end='+end).then(function(r){return r.json();}),
+            fetch('/biomie/api/product_action_intelligence.php?mode=opportunities&start='+start+'&end='+end+'&limit=100&order=score').then(function(r){return r.json();}),
+            fetch('/biomie/api/product_action_intelligence.php?mode=vendors&start='+start+'&end='+end).then(function(r){return r.json();})
+          ]).then(function(results) {
+            var summary = results[0] || {};
+            var opps    = results[1] || {};
+            var vends   = results[2] || {};
+
+            document.getElementById('prodR2Loading').style.display = 'none';
+
+            // KPIs
+            var actionCount = (opps.opportunities||[]).filter(function(o){return (o.score_acao||0)>=40;}).length;
+            document.getElementById('prodR2KpiTotal').textContent       = actionCount;
+            document.getElementById('prodR2KpiRecompra').textContent    = fmtN(summary.clientes_recompra||0);
+            document.getElementById('prodR2KpiRecorrentes').textContent = summary.recorrentes||0;
+            document.getElementById('prodR2KpiConcentrados').textContent= summary.concentrados||0;
+            document.getElementById('prodR2KpiParados').textContent     = summary.dormentes||0;
+            document.getElementById('prodR2KpiCampeoes').textContent    = summary.campeoes||0;
+
+            _allOpps  = (opps.opportunities||[]).filter(function(o){return (o.score_acao||0)>=30;});
+            _allVends = vends.vendors||[];
+
+            if (_allOpps.length === 0) {
+              document.getElementById('prodR2Empty').style.display = '';
+              return;
+            }
+
+            var cards = document.getElementById('prodR2Cards');
+            cards.style.display = '';
+
+            renderActionTable('all');
+            renderVendorAffinity(_allVends);
+
+            // Wire filter buttons
+            document.querySelectorAll('[data-prodr2-cat]').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                renderActionTable(btn.getAttribute('data-prodr2-cat'));
+              });
+            });
+
+          }).catch(function() {
+            document.getElementById('prodR2Loading').style.display = 'none';
+            document.getElementById('prodR2EmptyMsg').textContent = 'Erro ao carregar inteligência comercial.';
+            document.getElementById('prodR2Empty').style.display = '';
+          });
+        }
+
+        section.addEventListener('click', function() {
+          if (!loaded && !panel.hidden) {
+            loaded = true;
+            loadAll();
+          }
+        });
+
+        // ── Drawer ────────────────────────────────────────────────────────────
+
+        window.openProdR2Drawer = function(productCode, productName) {
+          var drawer   = document.getElementById('prodR2Drawer');
+          var backdrop = document.getElementById('prodR2DrawerBackdrop');
+          var title    = document.getElementById('prodR2DrawerTitle');
+          var subtitle = document.getElementById('prodR2DrawerSubtitle');
+          var body     = document.getElementById('prodR2DrawerBody');
+
+          title.textContent    = productName || productCode;
+          subtitle.textContent = 'SKU ' + productCode;
+          body.innerHTML       = '<div id="prodR2DrawerLoading" style="padding:32px;text-align:center;">Carregando…</div>';
+
+          drawer.style.display   = 'flex';
+          backdrop.style.display = '';
+          document.body.classList.add('biomie-drawer-open');
+
+          // Set active tab
+          document.querySelectorAll('[data-drawer-tab]').forEach(function(btn) {
+            btn.classList.toggle('is-active', btn.getAttribute('data-drawer-tab') === 'overview');
+          });
+          _activeTab = 'overview';
+
+          var p = new URLSearchParams(window.location.search);
+          var start = p.get('start') || new Date().getFullYear() + '-01-01';
+          var end   = p.get('end')   || new Date().toISOString().substring(0,10);
+
+          fetch('/biomie/api/product_action_intelligence.php?mode=drawer&product_code='+encodeURIComponent(productCode)+'&start='+start+'&end='+end)
+            .then(function(r){return r.json();})
+            .then(function(data) {
+              _drawerData = data;
+              renderDrawerTab('overview', data);
+
+              // Wire tab buttons
+              document.querySelectorAll('[data-drawer-tab]').forEach(function(btn) {
+                btn.onclick = function() {
+                  _activeTab = btn.getAttribute('data-drawer-tab');
+                  document.querySelectorAll('[data-drawer-tab]').forEach(function(b){
+                    b.classList.toggle('is-active', b === btn);
+                  });
+                  renderDrawerTab(_activeTab, _drawerData);
+                };
+              });
+            })
+            .catch(function() {
+              body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Erro ao carregar dados de ação comercial.</div>';
+            });
+
+          // ESC key
+          var escHandler = function(e) { if (e.key === 'Escape') { closeProdR2Drawer(); document.removeEventListener('keydown', escHandler); } };
+          document.addEventListener('keydown', escHandler);
+        };
+
+        window.closeProdR2Drawer = function() {
+          var drawer   = document.getElementById('prodR2Drawer');
+          var backdrop = document.getElementById('prodR2DrawerBackdrop');
+          if (drawer)   drawer.style.display   = 'none';
+          if (backdrop) backdrop.style.display = 'none';
+          document.body.classList.remove('biomie-drawer-open');
+        };
+
+        function renderDrawerTab(tab, data) {
+          var body = document.getElementById('prodR2DrawerBody');
+          if (!body) return;
+          var prod = data.product || {};
+          var repurchase = data.repurchase || [];
+          var vendors    = data.product_vendors || [];
+
+          if (tab === 'overview') {
+            var cat = prod.categoria||'';
+            var catColor = catColors[cat] || '#6b7280';
+            body.innerHTML =
+              '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px;">'
+              + _kpi('Receita', fmtR(prod.receita_periodo||0), 'No período')
+              + _kpi('Qtd. vendida', fmtN(prod.qtd_periodo||0) + ' un', '')
+              + _kpi('NFs', prod.nfs_periodo||0, '')
+              + _kpi('Clientes', prod.clientes_periodo||0, 'Distintos')
+              + _kpi('Meses ativos', prod.meses_ativos||0, 'Com venda')
+              + _kpi('Dias parado', prod.dias_sem_venda||0, 'Desde última venda')
+              + '</div>'
+              + '<div style="margin-bottom:12px;">'
+              + '<strong>Categoria:</strong> <span style="background:' + catColor + ';color:#fff;padding:2px 8px;border-radius:12px;font-size:0.78rem;">' + _esc(cat) + '</span>'
+              + '</div>'
+              + (prod.top_cliente_nome ? '<p style="font-size:0.82rem;color:var(--text-2)">Maior cliente: <strong>' + _esc(prod.top_cliente_nome) + '</strong> (' + (prod.top_cliente_share_pct||0) + '%)</p>' : '');
+          } else if (tab === 'repurchase') {
+            if (repurchase.length === 0) {
+              body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)"><span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:8px;">person_off</span>Sem clientes para recompra identificados no período.</div>';
+            } else {
+              body.innerHTML = '<p style="font-size:0.82rem;color:var(--text-3);margin-bottom:10px;">' + repurchase.length + ' cliente(s) identificado(s)</p>'
+                + '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+                + '<thead><tr><th>Cliente</th><th>Prioridade</th><th>Compras</th><th>Último</th><th>Vendedor</th></tr></thead>'
+                + '<tbody>' + repurchase.map(function(c) {
+                    var sc = c.score_recompra||0;
+                    var scColor = sc>=70?'#16a34a':sc>=40?'#2563eb':'#9ca3af';
+                    return '<tr><td class="truncate">' + _esc((c.cliente_nome||'').substring(0,28)) + '</td>'
+                      + '<td><strong style="color:' + scColor + '">' + sc + '</strong></td>'
+                      + '<td>' + (c.n_compras||0) + '</td>'
+                      + '<td>' + (c.ultima_compra||'—').substring(0,10) + '</td>'
+                      + '<td class="truncate">' + _esc((c.vendedor_ultima_venda||'').substring(0,18)) + '</td></tr>';
+                  }).join('') + '</tbody></table></div>';
+            }
+          } else if (tab === 'vendors') {
+            if (vendors.length === 0) {
+              body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Sem vendedores com histórico neste produto.</div>';
+            } else {
+              body.innerHTML = '<div style="overflow-x:auto"><table class="mag-table mag-table-clean">'
+                + '<thead><tr><th>Vendedor</th><th>Receita</th><th>% vendedor</th><th>% mercado</th><th>Clientes</th><th>Classificação</th></tr></thead>'
+                + '<tbody>' + vendors.map(function(v) {
+                    var cls = v.classificacao==='forte' ? '\033[32mForte\033[0m' : v.classificacao==='regular' ? 'Regular' : 'Fraco';
+                    var clsColor = v.classificacao==='forte'?'#16a34a':v.classificacao==='regular'?'#2563eb':'#9ca3af';
+                    return '<tr><td class="truncate">' + _esc((v.vendor_name||'').substring(0,22)) + '</td>'
+                      + '<td class="font-mono">' + fmtR(v.receita||0) + '</td>'
+                      + '<td>' + (v.participacao_vendedor_pct||0) + '%</td>'
+                      + '<td>' + (v.share_produto||0) + '%</td>'
+                      + '<td>' + (v.clientes||0) + '</td>'
+                      + '<td><span style="color:' + clsColor + ';font-weight:600">' + _esc(v.classificacao||'') + '</span></td></tr>';
+                  }).join('') + '</tbody></table></div>';
+            }
+          } else if (tab === 'action') {
+            var ac = prod.acao_sugerida || 'Sem recomendação disponível para este período.';
+            var sc = prod.score_acao || 0;
+            var scColor = sc>=75?'#16a34a':sc>=40?'#2563eb':'#9ca3af';
+            body.innerHTML =
+              '<div style="padding:16px;border-radius:8px;background:var(--surface-muted,#f3f4f6);margin-bottom:16px;">'
+              + '<div style="font-size:0.78rem;color:var(--text-3);margin-bottom:6px;">Prioridade comercial</div>'
+              + '<div style="font-size:2rem;font-weight:800;color:' + scColor + '">' + sc + '<span style="font-size:1rem;color:var(--text-3)">/100</span></div>'
+              + '</div>'
+              + '<div style="margin-bottom:12px;">'
+              + '<strong>Categoria:</strong> ' + catBadge(prod.categoria||'') + '</div>'
+              + '<div style="padding:12px 14px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;font-size:0.85rem;color:#1e40af;">'
+              + '<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:6px;">bolt</span>'
+              + _esc(ac) + '</div>'
+              + (repurchase.length > 0
+                ? '<p style="margin-top:12px;font-size:0.82rem;color:var(--text-2)"><strong>' + repurchase.length + ' clientes</strong> com possibilidade de recompra identificados.</p>'
+                : '');
+          }
+        }
+
+        function _kpi(label, value, sub) {
+          return '<div style="background:var(--surface-muted,#f3f4f6);border-radius:8px;padding:10px 14px;">'
+            + '<div style="font-size:0.72rem;color:var(--text-3);margin-bottom:3px;">' + _esc(label) + '</div>'
+            + '<div style="font-size:1.1rem;font-weight:700;">' + value + '</div>'
+            + (sub ? '<div style="font-size:0.72rem;color:var(--text-3);">' + _esc(sub) + '</div>' : '')
+            + '</div>';
+        }
+
+        // Make catColors accessible to tab renderer
+        var catColors = {
+          'Produto campeão':              '#16a34a',
+          'Reativar produto':             '#dc2626',
+          'Acompanhar concentração':      '#d97706',
+          'Campanha para clientes antigos': '#2563eb',
+          'Cross-sell com vendedores fortes': '#7c3aed',
+          'Produto sazonal':              '#db2777',
+          'Baixo giro':                   '#6b7280',
+          'Monitorar':                    '#9ca3af',
+        };
+
+        function catBadge(cat) {
+          var color = catColors[cat] || '#6b7280';
+          return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;color:#fff;background:' + color + '">' + _esc(cat) + '</span>';
+        }
+
+      })();
+      </script>
+</main>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{
+    "generated_at_utc": "2026-07-25T21:19:55Z",
+    "read_only": true,
+    "summary": {
+        "discovered": 86,
+        "applied": 80,
+        "pending": 6,
+        "rolled_back": 0,
+        "missing_connection": 0,
+        "connection_error": 0,
+        "checksum_mismatch": 0
+    },
+    "pending_migrations": [
+        {
+            "version": "20260718010000",
+            "description": "Preserva projeto Omie e garante identidade unica company+nota_id_omie na NF canonica.",
+            "type": "expansive",
+            "connection": "flight_plan_db",
+            "file": "Version20260718010000_InvoiceProjectLineage.php",
+            "domain_group": "Observabilidade"
+        },
+        {
+            "version": "20260718020000",
+            "description": "Classificacao fiscal fail-closed: preserva NF sem evidencia de autorizacao como nao_autorizada.",
+            "type": "expansive",
+            "connection": "flight_plan_db",
+            "file": "Version20260718020000_InvoiceFiscalAuthorizationStatus.php",
+            "domain_group": "Core"
+        },
+        {
+            "version": "20260718030000",
+            "description": "Isola snapshots comerciais por empresa, canal e escopo de visibilidade.",
+            "type": "expansive",
+            "connection": "flight_plan_db",
+            "file": "Version20260718030000_CompetenciaSnapshotVisibilityScope.php",
+            "domain_group": "Reconciliacao"
+        },
+        {
+            "version": "20260718040000",
+            "description": "Permite classificar canal comercial por lista de projetos Omie.",
+            "type": "expansive",
+            "connection": "flight_plan_db",
+            "file": "Version20260718040000_ChannelProjectClassification.php",
+            "domain_group": "Observabilidade"
+        },
+        {
+            "version": "20260719010000",
+            "description": "Preserva o codigo pedido.opPedido como lineage proprio da NF canonica.",
+            "type": "expansive",
+            "connection": "flight_plan_db",
+            "file": "Version20260719010000_InvoiceOrderOperationLineage.php",
+            "domain_group": "Geral"
+        },
+        {
+            "version": "20260719020000",
+            "description": "Preserva a base comercial reconciliada em cada NF do mart fiscal Gold.",
+            "type": "expansive",
+            "connection": "flight_plan_db",
+            "file": "Version20260719020000_FiscalGoldCommercialBase.php",
+            "domain_group": "Gold/Analytics"
+        }
+    ],
+    "note": "Detailed DDL and risk classification: docs/migrations-pending-audit.md"
+}

@@ -1,0 +1,69 @@
+DirectoryIndex index.php index.html
+AddType application/json .json
+AddType application/manifest+json .webmanifest
+Options -Indexes
+
+# ── Gzip compression ─────────────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript text/plain text/xml
+  AddOutputFilterByType DEFLATE application/javascript application/json application/xml
+  AddOutputFilterByType DEFLATE application/x-javascript font/opentype image/svg+xml
+  Header append Vary Accept-Encoding env=!dont-vary
+</IfModule>
+
+# Operation scope enforce mode — ativar quando todos os guards passarem (Fase H.5)
+<IfModule mod_env.c>
+  SetEnv BIOMIE_OPERATION_SCOPE_ENFORCED 1
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(index|vendedores|pedidos|mercadorias|financeiro|plano_voo|plano_voo_metas|integracoes)\.html$ $1.php [R=302,L]
+  RewriteRule ^webhooks/omie/([a-z0-9_-]+)/([A-Za-z0-9_-]{32,128})/?$ api/omie_webhook.php?company_slug=$1&path_token=$2 [QSA,L,NC]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "DENY"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # Paginas de view autenticadas: no-cache (revalida sempre) SEM no-store, para
+  # liberar o bfcache do navegador (voltar/avancar instantaneo). Como nao ha
+  # validadores, uma navegacao normal sempre refaz o request (nunca serve pagina
+  # obsoleta). O logout envia Clear-Site-Data para expulsar o bfcache ao sair.
+  # As APIs continuam estritamente no-store via api/.htaccess.
+  <FilesMatch "\.(php)$">
+    Header always set Cache-Control "private, no-cache, must-revalidate, max-age=0"
+    Header always set Vary "Cookie, Authorization, Accept"
+  </FilesMatch>
+
+  # Service worker e manifest precisam revalidar sempre para trocar a versao do cache.
+  <FilesMatch "^(sw\.js|site\.webmanifest|manifest\.json)$">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+  </FilesMatch>
+
+  # Assets estaticos podem ter cache forte porque o PageAssetRegistry injeta ?v=filemtime.
+  <FilesMatch "\.(?:css|js|png|svg|ico|jpg|jpeg|webp|woff2?)$">
+    Header always set Cache-Control "public, max-age=2592000, immutable"
+  </FilesMatch>
+
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://images.unsplash.com https://plus.unsplash.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com; connect-src 'self' https://app.omie.com.br; frame-ancestors 'none'; form-action 'self'"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteRule ^\.well-known/ - [L]
+
+  # BIomie public surface hardening: deny internal project files by default.
+  RewriteRule (^|/)\. - [F,L]
+  RewriteRule ^(app|bin|biomie-local|config|cron|cronjobs|database|docs|install|storage|tests|tools|vendor|views|scratch)(/|$) - [F,L,NC]
+  RewriteRule (^|/)(composer\.(json|lock)|phpstan.*\.neon|.*\.(env|ini|log|jsonl|lock|sql|bak|backup|old|orig|swp|dist|example|md|map))$ - [F,L,NC]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "(^\.|composer\.(json|lock)$|phpstan.*\.neon$|.*\.(env|ini|log|jsonl|lock|sql|bak|backup|old|orig|swp|dist|example|md|map)$)">
+    Require all denied
+  </FilesMatch>
+</IfModule>

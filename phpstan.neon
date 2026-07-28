@@ -1,0 +1,10 @@
+includes:
+    - phpstan.shared.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - api
+        - cron
+        - tests

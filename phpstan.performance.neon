@@ -1,0 +1,12 @@
+includes:
+    - phpstan.shared.neon
+
+parameters:
+    paths:
+        - app/FinanceCollectionActionRepository.php
+        - app/Observability/TelemetryRetentionService.php
+        - app/DataPlatform/Repository/GeoReadRepository.php
+        - app/Support/FinanceVisualAnalyticsBuilder.php
+        - app/PageAssetRegistry.php
+        - app/PageRenderer.php
+        - app/SystemHealth/Checks/AssetVersionHealthCheck.php

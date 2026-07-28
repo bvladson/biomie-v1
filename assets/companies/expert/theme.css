@@ -1,0 +1,110 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Expert Intelligence — Theme Package
+   Conceito: análise técnica, dados confiáveis, oportunidade, crescimento
+   Personalidade: PRECISO E CRESCENTE. Azul petróleo + verde Expert.
+   Primary: #0E5A73 (azul-petróleo) · Acento: #8CC63F (verde Expert)
+
+   WCAG:
+     #0E5A73 sobre branco = 7.9:1 ✅ (AA + AAA)
+     #08384A sobre branco = 12.1:1 ✅
+     #6EA32E sobre branco = 3.6:1 (use apenas acima de 18px ou bold)
+     #8CC63F sobre branco = 2.0:1 ❌ — apenas charts/badges, NÃO texto
+
+   A Expert é a única empresa onde receita/dados principais são AZUL (não vermelho).
+   Verde = oportunidade e crescimento (oposto ao vermelho-cancelamento do MAG).
+   Carregado inline por views/layouts/app.php após todos os <link>.
+   ═══════════════════════════════════════════════════════════════════════ */
+body[data-company="EXPERT"] {
+
+  /* ── Identidade de marca ── */
+  --company-primary:        #0E5A73;
+  --company-primary-dark:   #08384A;
+  --company-primary-soft:   #E6F3F7;
+  --company-secondary:      #17456B;
+  --company-accent:         #8CC63F;
+  --company-accent-soft:    #EEF8DD;
+  --company-accent-dark:    #6EA32E;
+
+  /* ── Superfícies — frias, técnicas, dados-driven ── */
+  --company-bg:             #F8FAFC;
+  --company-surface:        #FFFFFF;
+  --company-surface-soft:   #EEF6F8;
+  --company-border:         #D8E6EA;
+
+  /* ── Texto ── */
+  --company-text:           #0A1A22;
+  --company-text-muted:     #4A6472;
+  --company-text-inverse:   #FFFFFF;
+
+  /* ── Bridge → Core ── */
+  --company-color:          #0E5A73;
+  --company-color-2:        #8CC63F;
+  --brand:                  #0E5A73;
+  --brand-primary:          #0E5A73;
+  --brand-dark:             #08384A;
+  --brand-primary-soft:     rgba(14, 90, 115, 0.10);
+  --focus-ring:             rgba(14, 90, 115, 0.34);
+  --focus-ring-soft:        rgba(14, 90, 115, 0.16);
+  --border-acc:             rgba(14, 90, 115, 0.26);
+  --selection-bg:           rgba(14, 90, 115, 0.12);
+  --hero-spot-red:          rgba(14, 90, 115, 0.10);
+
+  /* ── Acento sistêmico ── */
+  --page-accent:            #0E5A73;
+  --page-accent-soft:       rgba(14, 90, 115, 0.10);
+  --page-accent-border:     rgba(14, 90, 115, 0.22);
+  --page-accent-text:       #08384A;
+
+  /* ── Bridge → MAG global vars ── */
+  --mag-bg:                 var(--company-bg);
+  --mag-surface-2:          var(--company-surface-soft);
+  --mag-border:             var(--company-border);
+  --mag-radius:             12px;
+  --biomie-card-radius:     12px;
+
+  /* ── Botão primário — azul profundo para teal claro: confiança→crescimento ── */
+  --button-gradient:        linear-gradient(135deg, #0E5A73 0%, #0A7055 100%);
+  --button-shadow:          0 4px 16px rgba(14, 90, 115, 0.24);
+  --button-shadow-hover:    0 6px 22px rgba(14, 90, 115, 0.34);
+
+  /* ── Personalidade visual: textura e microinterações ── */
+  /* Sombra fria e profunda: Expert analisa dados com precisão técnica */
+  --company-card-shadow:    0 8px 28px rgba(8, 56, 74, 0.12);
+  --company-hover-bg:       rgba(14, 90, 115, 0.05);
+  /* Radius técnico: arredondado sem exagero = precisão + conforto */
+  --company-card-radius:    12px;
+
+  /* ── Sidebar decoration ──
+     Azul petróleo → Verde Expert: dados (azul) levando ao crescimento (verde).
+     Completamente diferente das empresas MAG/vermelho. ── */
+  --sidebar-bar-gradient:   linear-gradient(180deg, #0E5A73 0%, #8CC63F 55%, transparent 100%);
+
+  /* ── Paleta de gráficos ──
+     DIFERENCIAL: receita em azul (não vermelho) — Expert não é MAG.
+     Oportunidade em verde Expert (crescimento/licitação).
+     Neutro em tom azul-acinzentado frio, consistente com superfícies. ── */
+  --page-chart-1:           #0E5A73;
+  --page-chart-2:           #8CC63F;
+
+  --chart-revenue:          #0E5A73;
+  --chart-target:           #16A34A;
+  --chart-opportunity:      #8CC63F;
+  --chart-pending:          #F59E0B;
+  --chart-cancelled:        #EF4444;
+  --chart-neutral:          #7A8E95;
+  --chart-success:          #22C55E;
+  --chart-warning:          #F59E0B;
+  --chart-danger:           #EF4444;
+  --chart-info:             #0EA5E9;
+
+  /* ── Tooltip chart — tom Expert ── */
+  --chart-tooltip-border:   rgba(14, 90, 115, 0.16);
+
+  /* ── Badges / pills ── */
+  --badge-bg:               #E6F3F7;
+  --badge-text:             #0E5A73;
+  --badge-border:           #B9DCE6;
+}
+
+/* Barra de acento da sidebar: ver --sidebar-bar-gradient (renderizada pela
+   regra global em mag-design-system.css, escopo body[data-company]). */

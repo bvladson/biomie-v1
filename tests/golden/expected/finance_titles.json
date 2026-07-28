@@ -1,0 +1,58 @@
+{
+    "bucket": "overdue",
+    "data_contract": {
+        "completeness_status": "complete",
+        "coverage_end": "2026-03-31",
+        "coverage_start": "2026-03-01",
+        "data_mode": "reconciled",
+        "dataset": "finance_titles",
+        "delay_present": false,
+        "freshness_at": "2026-04-01 08:00:00",
+        "has_retry_or_delay": false,
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "open_divergences": 0,
+        "origin": "historical-snapshot",
+        "pending_backlog_total": 0,
+        "reconcile_status": "reconciled",
+        "reconciled_until": "2026-03-31 23:59:59",
+        "reconciliation_pct": 100,
+        "retry_present": false,
+        "source": "historical-snapshot",
+        "source_of_truth": "snapshot",
+        "staleness_reason": null
+    },
+    "last_reconcile_at": null,
+    "last_success_at": null,
+    "meta": {
+        "generated_at": "2026-04-01 08:00:00",
+        "last_reconcile_at": null,
+        "last_success_at": null,
+        "last_sync": "2026-04-01 08:00:00",
+        "served_from": "historical-snapshot",
+        "source_of_truth": "snapshot"
+    },
+    "mode": "live-finance",
+    "ok": true,
+    "period": {
+        "end": "2026-03-31",
+        "label": "01/03/2026 ate 31/03/2026",
+        "start": "2026-03-01"
+    },
+    "rows": [
+        {
+            "amount": 1250,
+            "days_late": 19,
+            "title_id": "VENC-01",
+            "vendor_name": "Bruno"
+        },
+        {
+            "amount": 330,
+            "days_late": 4,
+            "title_id": "VENC-02",
+            "vendor_name": "Ana"
+        }
+    ],
+    "source": "historical-snapshot",
+    "source_of_truth": "snapshot"
+}

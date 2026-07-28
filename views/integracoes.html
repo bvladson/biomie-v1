@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Painel de saude da integracao Omie — credenciais, API, sincronizacoes, tabelas, jobs e diagnostico." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Conexao Omie | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css?v=20260501-omie1" />
+  <link rel="stylesheet" href="assets/css/shell-index.css?v=20260501-omie1" />
+  <link rel="stylesheet" href="assets/css/module-pages.css?v=20260501-omie1" />
+  <link rel="stylesheet" href="assets/css/mag-clean.css?v=20260501-omie1" />
+  <link rel="stylesheet" href="assets/css/mag-adminlte-clean.css?v=20260501-omie1" />
+  <link rel="stylesheet" href="assets/css/mag-design-system.css?v=20260502-p17" />
+  <style>
+    /* ── Omie Status Page — Light Only ─────────────────────────────────── */
+    .omie-status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:24px}
+    .omie-card{background:#fff;border-radius:8px;padding:14px 16px;transition:box-shadow .2s}
+    .omie-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .omie-card-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .omie-card-label{font-weight:600;font-size:13px;color:#37474f}
+    .omie-card-message{font-size:12.5px;color:#546e7a;line-height:1.4}
+    .omie-card-date{font-size:11px;color:#78909c;margin-top:4px}
+    .omie-card-action{font-size:11.5px;color:#1565c0;margin-top:4px;font-weight:500}
+    .omie-data-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px}
+    .omie-data-item{background:#fff;border-radius:6px;padding:12px 14px}
+    .omie-data-label{font-size:11.5px;color:#78909c;text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+    .omie-data-count{font-size:20px;font-weight:700;margin:4px 0 2px}
+    .omie-data-sync{font-size:11px;color:#90a4ae}
+    .omie-ops-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-bottom:10px}
+    .omie-ops-card{background:#fff;border:1px solid #eceff1;border-radius:8px;padding:12px 14px}
+    .omie-ops-title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:13px;color:#263238;margin-bottom:8px}
+    .omie-ops-row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:#607d8b;padding:3px 0}
+    .omie-ops-row strong{color:#263238;font-weight:700;text-align:right}
+    .omie-ops-warn{margin-top:8px;padding:6px 8px;border-radius:6px;background:#fff8e1;color:#8a5b00;font-size:11.5px}
+    .omie-rate-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+    .omie-rate-summary div{background:#f8fafc;border:1px solid #e5e9ef;border-radius:8px;padding:10px 12px}
+    .omie-rate-summary span{display:block;font-size:11px;color:#78909c;text-transform:uppercase;font-weight:700;letter-spacing:.2px}
+    .omie-rate-summary strong{display:block;margin-top:3px;font-size:18px;color:#263238}
+    .omie-table-group{margin-bottom:20px}
+    .omie-table-group-title{font-size:12px;font-weight:700;text-transform:uppercase;color:#546e7a;letter-spacing:.5px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #eceff1}
+    .omie-table-compact{width:100%;border-collapse:collapse;font-size:12.5px}
+    .omie-table-compact th{text-align:left;padding:6px 10px;background:#f5f5f5;color:#546e7a;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+    .omie-table-compact td{padding:6px 10px;border-bottom:1px solid #f0f0f0;color:#37474f}
+    .omie-table-compact tr:hover td{background:#fafafa}
+    .omie-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;line-height:1.4}
+    .omie-actions-list{list-style:none;padding:0;margin:0}
+    .omie-actions-list li{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#37474f}
+    .omie-actions-list li:last-child{border-bottom:none}
+    .omie-action-link{font-size:12px;color:#1565c0;text-decoration:none;font-weight:500;margin-left:auto;white-space:nowrap}
+    .omie-action-link:hover{text-decoration:underline}
+    .omie-no-actions{color:#90a4ae;font-size:13px;padding:12px 0}
+    .omie-section{background:#fff;border-radius:10px;padding:20px;margin-bottom:20px;border:1px solid #eceff1}
+    .omie-section-title{font-size:14px;font-weight:700;color:#263238;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .omie-section-title .material-symbols-rounded{font-size:20px;color:#546e7a}
+    .omie-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+    .omie-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;border:1px solid #cfd8dc;background:#fff;color:#37474f;cursor:pointer;transition:all .2s}
+    .omie-btn:hover{background:#f5f5f5;border-color:#90a4ae}
+    .omie-btn:disabled{opacity:.5;cursor:not-allowed}
+    .omie-btn-primary{background:#1565c0;color:#fff;border-color:#1565c0}
+    .omie-btn-primary:hover{background:#0d47a1}
+    .omie-btn-ghost{background:transparent;border-color:#cfd8dc;color:#546e7a}
+    .omie-diagnostics-toggle{cursor:pointer;user-select:none}
+    .omie-diagnostics-toggle .material-symbols-rounded{transition:transform .2s}
+    .omie-diagnostics-toggle[aria-expanded="true"] .material-symbols-rounded:last-child{transform:rotate(180deg)}
+    .omie-status-error{background:#fce4ec;color:#c62828;padding:12px 16px;border-radius:8px;font-size:13px;border:1px solid #ef9a9a;margin-bottom:16px}
+    .omie-feedback{animation:omie-fade-in .3s ease}
+    @keyframes omie-fade-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes omie-spin-anim{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    .omie-spin{animation:omie-spin-anim .8s linear infinite}
+    /* Loading skeleton */
+    .omie-skeleton{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:24px}
+    .omie-skeleton-card{background:#f5f5f5;border-radius:8px;height:90px;animation:omie-pulse 1.5s ease-in-out infinite}
+    @keyframes omie-pulse{0%,100%{opacity:.6}50%{opacity:1}}
+    @media(max-width:768px){
+      .omie-status-grid,.omie-data-grid,.omie-skeleton{grid-template-columns:1fr}
+      .omie-toolbar{flex-direction:column}
+      .omie-table-compact{font-size:11.5px}
+      .omie-table-compact th,.omie-table-compact td{padding:5px 6px}
+    }
+  </style>
+  <script src="assets/js/shell.js?v=20260515-omie-sync1"></script>
+  <script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/render-helpers.js"></script>
+<script src="assets/js/core/chart-factory.js"></script>
+<script src="assets/js/app.js?v=20260515-omie-sync1" defer></script>
+  <script src="assets/js/omie-status.js?v=20260515-omie-sync1" defer></script>
+  <script src="assets/js/pwa.js?v=20260515-omie-sync1" defer></script>
+</head>
+<body class="mag-page mag-clean-page" data-page="integrations">
+<div class="shell">
+  <div class="main">
+    <main class="page">
+      <!-- PageHeader será injetado pelo PageRenderer -->
+
+      <!-- Toolbar de ações -->
+      <div class="omie-toolbar" id="actionToolbar">
+        <button id="btnTestConnection" type="button" class="omie-btn omie-btn-primary" title="Testa conexao com a API Omie usando chamada leve.">
+          <span class="material-symbols-rounded">cable</span>Testar conexao Omie
+        </button>
+        <button id="btnUpdateCommercial" type="button" class="omie-btn" title="Atualiza a visao comercial usando os dados ja gravados.">
+          <span class="material-symbols-rounded">refresh</span>Atualizar visao comercial
+        </button>
+        <button id="btnDeltaSync" type="button" class="omie-btn" title="Agenda sync delta em background, respeitando rate limit e cursores.">
+          <span class="material-symbols-rounded">sync_alt</span>Sincronizar delta
+        </button>
+        <button id="btnReprocessQueue" type="button" class="omie-btn" title="Agenda reprocessamento da fila operacional Omie.">
+          <span class="material-symbols-rounded">playlist_add_check</span>Reprocessar fila
+        </button>
+        <button id="btnMaterializeClients" type="button" class="omie-btn" title="Popula biomie_clientes_dim a partir de pedidos e NFs canonicos. Nao chama API Omie.">
+          <span class="material-symbols-rounded">people</span>Materializar clientes
+        </button>
+        <button id="btnMaterializeGeo" type="button" class="omie-btn" title="Popula biomie_clientes_geo_dim e faz match com os 121 bairros oficiais de Fortaleza.">
+          <span class="material-symbols-rounded">map</span>Materializar Geo/CNAE
+        </button>
+        <a href="admin.php?tab=migrations" class="omie-btn omie-btn-ghost" title="Ver migrations pendentes.">
+          <span class="material-symbols-rounded">schema</span>Migrations
+        </a>
+        <a href="admin.php?tab=diagnostico" class="omie-btn omie-btn-ghost" title="Diagnostico completo do sistema.">
+          <span class="material-symbols-rounded">troubleshoot</span>Diagnostico
+        </a>
+      </div>
+
+      <!-- Ajuda dos botões -->
+      <details class="omie-section" style="padding:0;overflow:hidden;margin-bottom:16px;">
+        <summary class="omie-section-title" style="padding:14px 20px;cursor:pointer;margin:0;">
+          <span class="material-symbols-rounded">help</span>
+          O que cada botão faz
+          <span style="font-size:11px;font-weight:400;color:#78909c;margin-left:6px;">quando usar cada ação</span>
+        </summary>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:0 16px 16px;">
+          <div style="padding:10px 12px;border-radius:8px;background:#f9fafb;border:1px solid #eceff1;">
+            <strong style="display:block;font-size:0.79rem;color:#263238;margin-bottom:4px;">Testar conexão Omie</strong>
+            <p style="margin:0;font-size:0.72rem;color:#546e7a;line-height:1.5;">Só verifica se a API responde. Não busca dados, não muda nada no banco. Use para confirmar que as credenciais estão válidas antes de rodar um sync.</p>
+          </div>
+          <div style="padding:10px 12px;border-radius:8px;background:#f9fafb;border:1px solid #eceff1;">
+            <strong style="display:block;font-size:0.79rem;color:#263238;margin-bottom:4px;">Sincronizar delta</strong>
+            <p style="margin:0;font-size:0.72rem;color:#546e7a;line-height:1.5;">Busca as alterações desde o último sync — novos pedidos, NFs alteradas, cancelamentos recentes. É o mesmo que roda automaticamente pelo cron a cada hora. Use quando os dados estiverem desatualizados.</p>
+          </div>
+          <div style="padding:10px 12px;border-radius:8px;background:#f9fafb;border:1px solid #eceff1;">
+            <strong style="display:block;font-size:0.79rem;color:#263238;margin-bottom:4px;">Atualizar visão comercial</strong>
+            <p style="margin:0;font-size:0.72rem;color:#546e7a;line-height:1.5;">Recalcula os marts e painéis usando o que já está no banco — não chama o Omie. Use quando o painel estiver mostrando número velho mas o sync já rodou e o dado está no banco.</p>
+          </div>
+          <div style="padding:10px 12px;border-radius:8px;background:#f9fafb;border:1px solid #eceff1;">
+            <strong style="display:block;font-size:0.79rem;color:#263238;margin-bottom:4px;">Reprocessar fila</strong>
+            <p style="margin:0;font-size:0.72rem;color:#546e7a;line-height:1.5;">Processa eventos que falharam ou ficaram presos na fila operacional. Use se tiver NF que deveria aparecer mas não aparece mesmo após o sync delta — provavelmente ficou como erro na fila.</p>
+          </div>
+          <div style="padding:10px 12px;border-radius:8px;background:#f9fafb;border:1px solid #eceff1;">
+            <strong style="display:block;font-size:0.79rem;color:#263238;margin-bottom:4px;">Materializar clientes</strong>
+            <p style="margin:0;font-size:0.72rem;color:#546e7a;line-height:1.5;">Reconstrói a tabela de clientes a partir de NFs e pedidos. Não chama o Omie. Use se aparecerem clientes sem nome, sem vendedor ou sem código nos painéis após sync.</p>
+          </div>
+          <div style="padding:10px 12px;border-radius:8px;background:#f9fafb;border:1px solid #eceff1;">
+            <strong style="display:block;font-size:0.79rem;color:#263238;margin-bottom:4px;">Materializar Geo/CNAE</strong>
+            <p style="margin:0;font-size:0.72rem;color:#546e7a;line-height:1.5;">Refaz o match de endereços com os 121 bairros oficiais de Fortaleza e atualiza o CNAE. Use se o mapa estiver mostrando clientes sem localização ou se o enriquecimento de bairro estiver desatualizado.</p>
+          </div>
+        </div>
+      </details>
+
+      <!-- Feedback area -->
+      <div id="syncFeedback"></div>
+      <div id="pageError" style="display:none"></div>
+
+      <!-- Loading skeleton -->
+      <div id="pageLoading" class="omie-skeleton" aria-live="polite" aria-busy="true">
+        <div class="omie-skeleton-card"></div>
+        <div class="omie-skeleton-card"></div>
+        <div class="omie-skeleton-card"></div>
+        <div class="omie-skeleton-card"></div>
+        <div class="omie-skeleton-card"></div>
+        <div class="omie-skeleton-card"></div>
+        <div class="omie-skeleton-card"></div>
+      </div>
+
+      <!-- Content (hidden until loaded) -->
+      <div id="pageContent" style="display:none">
+
+        <!-- 1. Status cards -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">monitor_heart</span>Status da integracao
+          </div>
+          <div class="omie-status-grid" id="statusCards"></div>
+        </div>
+
+        <!-- 2. Data status -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">database</span>Base de dados sincronizada
+          </div>
+          <div class="omie-data-grid" id="dataStatus"></div>
+        </div>
+
+        <!-- 2b. Geo / Clientes status -->
+        <div class="omie-section" id="geoStatusSection" style="display:none">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">map</span>Status Geo / CNAE
+          </div>
+          <div class="omie-data-grid" id="geoDataStatus"></div>
+          <div id="geoStatusMessage" style="margin-top:10px;font-size:13px;color:#546e7a"></div>
+        </div>
+
+        <!-- 2c. Operational sync status -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">hub</span>Operacao Omie por dominio
+          </div>
+          <div class="omie-ops-grid" id="syncDomainStatus"></div>
+        </div>
+
+        <!-- 2d. Rate limit and queues -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">speed</span>Rate limit, cache e fila
+          </div>
+          <div id="rateLimitStatus"></div>
+          <div id="operationalStatus" style="margin-top:16px"></div>
+        </div>
+
+        <!-- 3. Recommended actions -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">checklist</span>Acoes recomendadas
+          </div>
+          <div id="recommendedActions"></div>
+        </div>
+
+        <!-- 4. Recent syncs -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">sync</span>Ultimas sincronizacoes
+          </div>
+          <div id="recentSyncs"></div>
+        </div>
+
+        <!-- 5. Table status -->
+        <div class="omie-section">
+          <div class="omie-section-title">
+            <span class="material-symbols-rounded">table_chart</span>Status das tabelas
+          </div>
+          <div id="tableStatus"></div>
+        </div>
+
+        <!-- 6. Technical diagnostics (collapsible) -->
+        <div class="omie-section">
+          <div class="omie-section-title omie-diagnostics-toggle" id="btnToggleDiagnostics" role="button" tabindex="0" aria-expanded="false" aria-controls="diagnosticsPanel">
+            <span class="material-symbols-rounded">engineering</span>Diagnostico tecnico
+            <span class="material-symbols-rounded" style="margin-left:auto">expand_more</span>
+          </div>
+          <div id="diagnosticsPanel" style="display:none">
+            <div id="diagnosticsContent"></div>
+          </div>
+        </div>
+
+      </div><!-- /pageContent -->
+    </main>
+  </div>
+</div>
+</body>
+</html>

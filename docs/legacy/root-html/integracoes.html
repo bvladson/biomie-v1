@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Integrações Omie padronizadas na UX do BIomie" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Integrações Omie • BIomie Comercial MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/theme-tokens.css" />
+  <link rel="stylesheet" href="assets/css/shell-index.css" />
+  <link rel="stylesheet" href="assets/css/module-pages.css" />
+  
+  <script src="assets/js/chart.umd.js"></script>
+  <script src="assets/js/shell.js?v=20260330b"></script>
+  <script src="assets/js/app.js?v=20260402c" defer></script>
+</head>
+<body class="mag-page" data-page="integrations">
+<div class="overlay" id="overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="images/logo-mag-wide.png" alt="MAG Móveis Corporativos" onerror="this.style.display='none'" />
+      <span class="logo-pill">BIomie</span>
+    </div>
+    <div class="sidebar-profile">
+      <div class="profile-avatar">M</div>
+      <div class="profile-info">
+        <span>Bem-vindo,</span>
+        <strong>Comercial MAG</strong>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-menu">
+      <div class="nav-section-label">BIomie</div>
+      <a href="index.html" class="nav-item"><span class="material-symbols-rounded menu-icon">space_dashboard</span>Cockpit Comercial</a>
+      <a href="vendedores.html" class="nav-item"><span class="material-symbols-rounded menu-icon">groups</span>Ranking de Vendedores</a>
+      <a href="pedidos.html" class="nav-item"><span class="material-symbols-rounded menu-icon">receipt_long</span>Top Pedidos do Período</a>
+      <a href="mercadorias.html" class="nav-item"><span class="material-symbols-rounded menu-icon">inventory_2</span>Mercadorias Vendidas</a>
+      <a href="financeiro.html" class="nav-item"><span class="material-symbols-rounded menu-icon">account_balance_wallet</span>Financeiro Realizado</a>
+      <a href="plano_voo.html" class="nav-item"><span class="material-symbols-rounded menu-icon">flight</span>Plano de Voo</a>
+      <a href="integracoes.html" class="nav-item active"><span class="material-symbols-rounded menu-icon">hub</span>Integrações Omie</a>
+      <a href="reconciliacao.html" class="nav-item"><span class="material-symbols-rounded menu-icon">fact_check</span>Auditoria Fiscal</a>
+      <div class="nav-section-label">Atalhos</div>
+      <a href="#cards" class="nav-item"><span class="material-symbols-rounded">insights</span>KPIs</a>
+      <a href="#graficos" class="nav-item"><span class="material-symbols-rounded">monitoring</span>Gráficos</a>
+      <a href="#tabelas" class="nav-item"><span class="material-symbols-rounded">table_view</span>Tabelas</a>
+    </nav>
+    <div class="sidebar-footer hidden-small">
+      <a href="integracoes.html" title="Integrações"><span class="material-symbols-rounded">settings</span></a>
+      <a href="index.html" title="Dashboard"><span class="material-symbols-rounded">dashboard</span></a>
+      <a href="pedidos.html" title="Pedidos"><span class="material-symbols-rounded">shopping_bag</span></a>
+      <a href="mercadorias.html" title="Produtos"><span class="material-symbols-rounded">chair</span></a>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn btn-icon" id="menu_toggle" aria-label="Menu">
+          <span class="material-symbols-rounded">menu</span>
+        </button>
+        <div class="topbar-badge">
+          <span class="material-symbols-rounded">hub</span>Integrações e saúde do stack
+        </div>
+        <div class="topbar-meta">
+          <span>Período: <strong data-bind="period-label">—</strong></span>
+          <span>Modo: <strong data-bind="summary-mode">—</strong></span>
+          <span>Atualizado: <strong data-bind="last-sync">—</strong></span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="live-dot" title="Status de sincronização"></div>
+        <button class="btn-icon" title="Ajuda"><span class="material-symbols-rounded">help</span></button>
+      </div>
+    </header>
+    <main class="page">
+      <section class="hero module-hero anim">
+        <div>
+          <div class="hero-tag"><span class="material-symbols-rounded">partner_exchange</span>Integrações Omie</div>
+          <h1>Estado da integração padronizado na mesma estrutura visual do cockpit.</h1>
+          <p>Visão consolidada do app, credenciais, endpoints e cache para manter a operação técnica alinhada com a linguagem executiva do sistema.</p>
+          <div class="hero-insights">
+            <div class="hero-chip"><span class="hero-chip-label">Aplicação</span><span class="hero-chip-value" id="integrationAppName">—</span><span class="hero-chip-sub">Nome do cockpit conectado</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Credenciais</span><span class="hero-chip-value" id="integrationCredentials">—</span><span class="hero-chip-sub">Status atual do ambiente</span></div>
+            <div class="hero-chip"><span class="hero-chip-label">Fuso</span><span class="hero-chip-value" id="integrationTimezone">—</span><span class="hero-chip-sub">Base temporal do sistema</span></div>
+          </div>
+        </div>
+        <div class="forecast-box">
+          <div class="forecast-label">Modo de operação</div>
+          <div class="forecast-value" id="integrationModeBadge">—</div>
+          <div class="forecast-target"><span>Cache atualizado:</span><strong id="integrationCacheDate">—</strong></div>
+          <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+          <div class="progress-pct">Idade do cache: <strong id="integrationCacheAge">—</strong></div>
+        </div>
+      </section>
+      <div class="filter-bar anim d1">
+        <div class="filter-actions">
+          <button id="syncNow" type="button" class="btn-primary"><span class="material-symbols-rounded">sync</span>Sincronizar agora</button>
+        </div>
+      </div>
+      
+      <div id="syncFeedback"></div>
+      <div id="pageError" class="d-none"></div>
+      <div id="pageLoading">Carregando painel…</div>
+
+      <div class="section-label anim d2" id="cards">Visão geral</div>
+      <section class="integration-stats">
+        <div class="integration-stat anim d2"><span class="label">Aplicação</span><div class="value" id="integrationAppName">—</div><div class="sub">Identificação da instância do cockpit.</div></div>
+        <div class="integration-stat anim d2"><span class="label">Fuso horário</span><div class="value" id="integrationTimezone">—</div><div class="sub">Base usada nas janelas de apuração.</div></div>
+        <div class="integration-stat anim d3"><span class="label">Credenciais</span><div class="value" id="integrationCredentials">—</div><div class="sub">Situação atual do acesso à Omie.</div></div>
+        <div class="integration-stat anim d3"><span class="label">Cache</span><div class="value" id="integrationCacheAge">—</div><div class="sub">Última atualização: <span id="integrationCacheDate">—</span></div></div>
+      </section>
+      <div class="section-label anim d3" id="graficos">Endpoints monitorados</div>
+      <section class="module-grid-2">
+        <div class="chart-card anim d4">
+          <div class="chart-card-header"><div><h3>Mapa de endpoints</h3><small>Rotas críticas consultadas pela camada comercial</small></div></div>
+          <div class="chart-body endpoint-list">
+            <div class="endpoint-card"><h3>Pedidos</h3><code id="integrationOrdersEndpoint">—</code></div>
+            <div class="endpoint-card"><h3>Vendedores</h3><code id="integrationVendorsEndpoint">—</code></div>
+            <div class="endpoint-card"><h3>Clientes</h3><code id="integrationClientsEndpoint">—</code></div>
+            <div class="endpoint-card"><h3>Pedidos faturados</h3><code id="integrationOrdersFatEndpoint">—</code></div>
+            <div class="endpoint-card"><h3>Contas a receber</h3><code id="integrationReceivableEndpoint">—</code></div>
+          </div>
+        </div>
+        <div class="chart-card anim d5">
+          <div class="chart-card-header"><div><h3>Notas operacionais</h3><small>Checklist e observações vindas do backend</small></div></div>
+          <div class="chart-body">
+            <ul id="integrationNotes" class="plain-list"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</body>
+</html>

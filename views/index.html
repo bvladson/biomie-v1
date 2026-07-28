@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f6f3f2" />
+  <meta name="description" content="Visao comercial do BIomie com faturamento, carteira, clientes e saude financeira em uma leitura executiva." />
+  <meta name="application-name" content="BIomie" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="BIomie" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Visao Comercial | BIomie MAG</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="apple-touch-icon" href="images/pwa/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" media="print" onload="this.media='all'" />
+  <!-- Assets base e específicos injetados pelo PageAssetRegistry -->
+</head>
+
+<body class="mag-page mag-clean-page" data-page="index">
+<main class="page dashboard-shell">
+
+  <!-- ═══ PAGE HEADER ═══ -->
+  <section class="biomie-page-header biomie-page-header--shell anim">
+    <div class="biomie-page-header__body">
+      <div class="biomie-page-header__eyebrow"><span class="material-symbols-rounded">space_dashboard</span>Visão geral</div>
+      <h1 class="biomie-page-header__title">Dashboard Comercial</h1>
+      <p class="biomie-page-header__subtitle">Visão rápida dos principais indicadores da operação.</p>
+    </div>
+    <div class="biomie-page-header__actions">
+      <a class="btn-secondary" href="mapa_vendas.php"><span class="material-symbols-rounded">map</span>Geografia</a>
+      <a class="btn-secondary" href="financeiro.php"><span class="material-symbols-rounded">account_balance_wallet</span>Financeiro</a>
+    </div>
+  </section>
+
+  <!-- ═══ KPI STRIP ═══ -->
+  <section class="dashboard-kpi-strip anim d1" id="cards">
+    <article class="biomie-kpi-card" title="Vendas confirmadas por notas fiscais autorizadas. Não inclui orçamentos, pedidos aguardando faturamento, remessas ou licitação.">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Vendas faturadas</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-revenue"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">NF autorizada Orç-PD. Remessas e Licitação excluídas.</span>
+    </article>
+    <article class="biomie-kpi-card" title="Quantidade de notas fiscais autorizadas no período. Apenas Orçamento-PD.">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Notas faturadas Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-orders"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">NFs autorizadas Orçamento-PD.</span>
+    </article>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Venda média Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-ticket"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">Ticket médio Orçamento-PD faturado.</span>
+    </article>
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Clientes</span><span class="material-symbols-rounded biomie-kpi-card__icon">groups</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-clients"><span class="skeleton-text"></span></strong>
+    </article>
+    <!-- "Em aberto" removido: era equivalente semântico da "Carteira aceita" (ambos = pedidos autorizados não faturados). Carteira aceita mantida abaixo. -->
+    <article class="biomie-kpi-card">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Canceladas</span><span class="material-symbols-rounded biomie-kpi-card__icon">cancel</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-cancelled-value"><span class="skeleton-text"></span></strong>
+    </article>
+    <!-- Carteira (2026-07-27): receita de cliente RECORRENTE — já comprou antes
+         e voltou a comprar. Substitui a antiga "carteira aceita" (pedido
+         autorizado não faturado), que media etapa de funil, não fidelização. -->
+    <article class="biomie-kpi-card" title="Receita vinda de clientes que já haviam comprado antes deste período. O complemento é a receita de clientes novos (primeira compra) — as duas somam o faturado total.">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Carteira</span><span class="material-symbols-rounded biomie-kpi-card__icon">group</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-wallet"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub" data-bind="summary-wallet-sub">Clientes que já compraram antes.</span>
+    </article>
+    <!-- COM.R2 — Orçamentos: propostas em aberto. Clicável → Agenda de Orçamentos. -->
+    <a class="biomie-kpi-card biomie-kpi-card--link" href="quote_agenda.php" title="Orçamentos em aberto (fonte: Agenda de Orçamentos, snapshot vivo do Omie). Clique para abrir a Agenda e cobrar os vendedores.">
+      <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Orçamentos</span><span class="material-symbols-rounded biomie-kpi-card__icon">description</span></div>
+      <strong class="biomie-kpi-card__value" data-bind="summary-quotes"><span class="skeleton-text"></span></strong>
+      <span class="biomie-kpi-card__sub">Propostas em aberto <span class="material-symbols-rounded" aria-hidden="true" style="font-size:13px;vertical-align:-2px;">arrow_forward</span></span>
+    </a>
+  </section>
+
+  <!-- Agenda de Orçamentos — mini-calendário dinâmico de cobranças -->
+  <section class="anim d1" id="indexQuoteCalendar" style="margin:0 0 12px;">
+    <a href="quote_agenda.php" class="wallboard-card" style="display:block;padding:14px 16px;text-decoration:none;color:inherit;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--page-accent,#96140a);">calendar_month</span>
+          <strong style="font-size:13px;color:var(--mag-text);">Agenda de cobranças</strong>
+        </div>
+        <span style="font-size:12px;font-weight:600;color:var(--page-accent,#96140a);">Abrir <span class="material-symbols-rounded" aria-hidden="true" style="font-size:13px;vertical-align:-2px;">arrow_forward</span></span>
+      </div>
+      <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;">
+        <div id="indexQuoteCalendarMount"><div class="qcw-msg" role="status">Carregando agenda…</div></div>
+        <div id="indexQuoteCalendarSummary" style="flex:1;min-width:180px;"></div>
+      </div>
+    </a>
+  </section>
+  <script>
+  (function () {
+    document.addEventListener('DOMContentLoaded', function () {
+      var mountEl = document.getElementById('indexQuoteCalendarMount');
+      var sumEl   = document.getElementById('indexQuoteCalendarSummary');
+      var section = document.getElementById('indexQuoteCalendar');
+      if (!mountEl || !section) return;
+      if (!window.QuoteCalendarWidget) {
+        mountEl.innerHTML = '<div class="qcw-msg qcw-msg--err" role="status">Calendário indisponível. Recarregue a página.</div>';
+        return;
+      }
+      function brl(v) { try { return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); } catch(e){ return 'R$ '+(v||0); } }
+      function vendorIds(value) {
+        var seen = {};
+        return String(value || '').split(',').map(function (id) { return id.trim(); }).filter(function (id) {
+          if (!id || id === '0' || seen[id]) return false;
+          seen[id] = true;
+          return true;
+        }).slice(0, 50);
+      }
+      var initialCalendarVendorIds = [];
+      try {
+        var calendarParams = new URLSearchParams(window.location.search || '');
+        initialCalendarVendorIds = vendorIds(
+          calendarParams.get('vendor_ids')
+          || (window.NavContext && window.NavContext.get('vendor_ids'))
+          || calendarParams.get('vendor_id')
+          || (window.NavContext && window.NavContext.get('vendor_id'))
+          || ''
+        );
+      } catch (e) {}
+      var cal = window.QuoteCalendarWidget.mount(mountEl, {
+        sellerIds: initialCalendarVendorIds,
+        onLoading: function (scope) {
+          if (!sumEl) return;
+          var count = scope && Array.isArray(scope.sellerIds) ? scope.sellerIds.length : 0;
+          sumEl.innerHTML = '<div class="qcw-msg" role="status">'
+            + (count > 1 ? 'Atualizando resumo dos vendedores selecionados&hellip;' : 'Atualizando resumo comercial&hellip;')
+            + '</div>';
+        },
+        onLoad: function (s) {
+          if (!sumEl) return;
+          var stat = function (n, lbl, color) {
+            return '<div style="min-width:70px;"><div style="font-size:20px;font-weight:800;line-height:1;color:'+(color||'var(--mag-text)')+'">'+n+'</div><div style="font-size:10.5px;color:var(--mag-muted);margin-top:2px;">'+lbl+'</div></div>';
+          };
+          // Números são PONTO-NO-TEMPO (em aberto agora) — batem com o card
+          // "Orçamentos" e com a tela da Agenda. A grade ao lado é do mês.
+          sumEl.innerHTML =
+            '<div style="font-size:11px;color:var(--mag-muted);text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin-bottom:8px;">Em aberto agora</div>' +
+            '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+              stat(s.quotes, 'orçamentos') +
+              stat(s.overdue, 'atrasados', s.overdue>0?'var(--warning,#d97706)':null) +
+              stat(s.critical, 'críticos', s.critical>0?'var(--danger,#dc2626)':null) +
+            '</div>' +
+            (s.value>0 ? '<div style="margin-top:10px;font-size:12px;color:var(--text-2,#475569);">Valor em aberto: <strong>'+brl(s.value)+'</strong>'+
+              (s.unknownValue>0 ? ' <span style="color:var(--mag-muted);">('+s.unknownValue+' sem valor)</span>' : '')+'</div>' : '');
+        },
+        onError: function (error) {
+          if (!sumEl) return;
+          sumEl.innerHTML = '<div class="qcw-msg qcw-msg--err" role="status">' +
+            (error && error.message ? error.message : 'Resumo da Agenda indispon&iacute;vel.') +
+            '</div>';
+        }
+      });
+      var calendarVendorIds = initialCalendarVendorIds.join(',');
+      function scopeCalendar(ids) {
+        var selected = vendorIds(Array.isArray(ids) ? ids.join(',') : ids);
+        var key = selected.join(',');
+        if (key !== calendarVendorIds && cal) {
+          calendarVendorIds = key;
+          if (typeof cal.setSellers === 'function') cal.setSellers(selected);
+          else if (typeof cal.setSeller === 'function') cal.setSeller(selected.length === 1 ? selected[0] : '');
+        }
+        document.querySelectorAll('a[href^="quote_agenda.php"]').forEach(function (link) {
+          var url = new URL(link.getAttribute('href') || 'quote_agenda.php', window.location.href);
+          if (selected.length) {
+            url.searchParams.set('vendor_ids', selected.join(','));
+            url.searchParams.set('seller_ids', selected.join(','));
+          } else {
+            url.searchParams.delete('vendor_ids');
+            url.searchParams.delete('seller_ids');
+          }
+          if (selected.length === 1) url.searchParams.set('seller_id', selected[0]);
+          else url.searchParams.delete('seller_id');
+          var file = url.pathname.slice(url.pathname.lastIndexOf('/') + 1) || 'quote_agenda.php';
+          link.setAttribute('href', file + url.search + url.hash);
+        });
+      }
+      document.addEventListener('biomie:dashboard-filtered', function (event) {
+        var detail = event && event.detail ? event.detail : {};
+        scopeCalendar(detail.vendorIds || detail.vendorId || '');
+      });
+      document.addEventListener('biomie:dashboard-request-standard', function () {
+        scopeCalendar('');
+      });
+      document.addEventListener('biomie:vendor-context-change', function (event) {
+        var detail = event && event.detail ? event.detail : {};
+        scopeCalendar(detail.vendorIds || detail.vendorId || '');
+      });
+      scopeCalendar(initialCalendarVendorIds);
+    });
+  }());
+  </script>
+
+  <!-- GEO.R1.9.1 — Empresas e CNAEs (mini geo-cnae strip) -->
+  <section class="anim d1" id="indexGeoCnaeStrip" data-dashboard-team-context style="display:none;margin:0 0 8px;">
+    <div class="wallboard-card" style="padding:12px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:16px;color:var(--mag-accent-1,#96140a);">map</span>
+          <strong style="font-size:13px;color:var(--mag-text);">Empresas e CNAEs</strong>
+          <span id="indexGeoCnaeCount" style="font-size:11px;color:var(--mag-muted);font-weight:700;"></span>
+        </div>
+        <a id="indexGeoMapLink" href="mapa_vendas.php" style="font-size:12px;color:var(--mag-accent-1,#96140a);font-weight:700;text-decoration:none;">Ver mapa ↗</a>
+      </div>
+      <div id="indexGeoCnaeList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
+    </div>
+  </section>
+
+  <!-- Ponte de compatibilidade: o filtro visivel e unico vive no header global.
+       Estes campos mantem os modulos legados sincronizados sem ocupar layout. -->
+  <div class="dashboard-filter-bridge" id="dashboardFilterBridge" hidden aria-hidden="true">
+    <input id="dateStart" type="date" />
+    <input id="dateEnd" type="date" />
+    <input id="f_dash_vendedor" type="hidden" value="" />
+    <input id="f_dash_vendor_id" type="hidden" value="" />
+    <input id="f_dash_cliente" type="hidden" value="" />
+    <input id="f_dash_produto" type="hidden" value="" />
+    <button id="applyFilters" type="button" tabindex="-1">Aplicar</button>
+    <button id="syncNow" type="button" tabindex="-1">Atualizar</button>
+  </div>
+
+  <section class="dashboard-controls" id="dashboardControls" aria-live="polite">
+    <div id="syncFeedback"></div>
+    <!-- Filtro Comercial Inteligente: toggle de operação (mixed) + composição + avisos -->
+    <div id="dashboardCommercialFilter" class="commercial-filter-bar" hidden></div>
+    <div id="pageError" class="d-none"></div>
+    <div id="pageLoading" class="module-loading-shell d-none" aria-live="polite" aria-busy="true">
+      <div class="module-loading-grid cols-2">
+        <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+        <div class="module-loading-card chart"><div class="module-loading-chart"></div></div>
+      </div>
+      <div class="module-loading-grid cols-3">
+        <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
+        <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
+        <div class="module-loading-card compact"><span class="skeleton-block" style="min-height:72px"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ GRID PRINCIPAL ═══ -->
+  <section class="dashboard-seller-focus anim d2" id="dashboardSellerFocus" hidden aria-live="polite">
+    <div class="dashboard-seller-focus__header">
+      <div>
+        <span class="dashboard-seller-focus__eyebrow" id="dashboardSellerScopeLabel">Resultado individual</span>
+        <h2 id="dashboardSellerName">Vendedor</h2>
+        <p id="dashboardSellerPeriod">Per&iacute;odo selecionado</p>
+      </div>
+      <div class="dashboard-seller-focus__actions">
+        <button type="button" class="btn-secondary" id="dashboardOpenVendor" data-biomie-action="open-vendor" hidden>
+          <span class="material-symbols-rounded" aria-hidden="true">contact_page</span>Vendedor 360
+        </button>
+        <a class="btn-primary" id="dashboardOpenAgenda" href="quote_agenda.php">
+          <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>Agenda
+        </a>
+      </div>
+    </div>
+    <div class="dashboard-seller-focus__body">
+      <div class="dashboard-seller-score">
+        <div class="dashboard-seller-score__top">
+          <span>Ritmo da meta</span>
+          <strong id="dashboardSellerAttainment">&ndash;</strong>
+          <span class="dashboard-risk-badge dashboard-risk-badge--neutral" id="dashboardSellerRisk">Calculando</span>
+        </div>
+        <div class="dashboard-seller-progress" aria-hidden="true">
+          <span id="dashboardSellerProgress" style="width:0%"></span>
+          <i id="dashboardSellerExpected" style="left:0%"></i>
+        </div>
+        <p id="dashboardSellerInsight">Carregando o panorama deste vendedor&hellip;</p>
+      </div>
+      <div class="dashboard-seller-metrics">
+        <div><span>Realizado NF</span><strong data-seller-kpi="realized">&ndash;</strong></div>
+        <div><span>Meta proporcional</span><strong data-seller-kpi="target">&ndash;</strong></div>
+        <div><span>Carteira (recorrentes)</span><strong data-seller-kpi="wallet">&ndash;</strong></div>
+        <div><span>Or&ccedil;amentos</span><strong data-seller-kpi="quotes">&ndash;</strong></div>
+        <div><span>Atrasados</span><strong data-seller-kpi="overdue">&ndash;</strong></div>
+        <div><span>Clientes</span><strong data-seller-kpi="clients">&ndash;</strong></div>
+        <div><span>Ticket m&eacute;dio</span><strong data-seller-kpi="ticket">&ndash;</strong></div>
+        <div><span>Canceladas</span><strong data-seller-kpi="cancelled">&ndash;</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-grid dashboard-grid--primary anim d2" id="graficos">
+
+    <!-- Evolucao de receita (span 7) + Ranking comercial (span 5) -->
+    <article class="dashboard-panel span-7" data-chart-id="revenue_evolution">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Evolucao do faturamento Orç-PD</h3>
+          <small>Faturamento Orçamento-PD diário — remessas excluídas</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="revenue_evolution" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--main"><canvas id="salesTimelineChart" role="img">Evolucao diaria do faturamento, media movel e quantidade de notas fiscais.</canvas></div>
+      </div>
+    </article>
+
+    <article class="dashboard-panel span-5" data-chart-id="vendor_ranking">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Ranking comercial — Orç-PD</h3>
+          <small>Receita e ticket Orçamento-PD por vendedor (remessas excluídas)</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="vendor_ranking" title="Ver equipe">
+            <span class="material-symbols-rounded">open_in_new</span>Equipe
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--main"><canvas id="vendorsBarChart" role="img">Ranking de receita, ticket medio e notas fiscais por vendedor.</canvas></div>
+      </div>
+    </article>
+
+    <!-- Metas do time: realizado × meta (+ níveis) por vendedor -->
+    <article class="dashboard-panel span-12" data-chart-id="vendor_targets" data-dashboard-team-context>
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Metas do time — realizado × meta</h3>
+          <small id="vendorTargetsDescription">Barra = realizado NF; vermelho/âmbar pede atenção; verde = Meta 1, azul = Meta 2 e roxo = Meta 3. Passe o mouse para ver valores e próximo objetivo.</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <a class="btn-detail" href="plano_voo_metas.php" title="Editar metas">
+            <span class="material-symbols-rounded">target</span>Metas
+          </a>
+        </div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--main"><canvas id="vendorTargetsChart" role="img" aria-describedby="vendorTargetsDescription">Gráfico de metas do time por vendedor.</canvas></div>
+      </div>
+    </article>
+
+    <!-- Top Produtos (4) + Top Clientes (4) + Pipeline (4) -->
+    <article class="dashboard-panel span-4" data-chart-id="top_products">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Produtos em destaque — Orç-PD</h3>
+          <small>Itens com maior peso no faturamento Orçamento-PD (remessas excluídas)</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="top_products" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--md"><canvas id="topProductsChart"></canvas></div>
+      </div>
+    </article>
+
+    <article class="dashboard-panel commercial-panel commercial-panel--customer span-4" data-chart-id="top_customers">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Clientes em destaque — Orç-PD</h3>
+          <small>Concentração e recorrência no faturamento Orçamento-PD</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="top_customers" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body dashboard-panel__body--top-clients">
+        <div class="chart-shell chart-shell--md"><canvas id="topClientsChart"></canvas></div>
+        <details class="dashboard-inline-details">
+          <summary>
+            <span><span class="material-symbols-rounded" aria-hidden="true">table_rows</span>Ver resumo dos 5 primeiros clientes</span>
+            <span class="material-symbols-rounded dashboard-inline-details__chevron" aria-hidden="true">expand_more</span>
+          </summary>
+          <div class="top-clients-list">
+            <table class="mag-table mag-table-clean commercial-table commercial-table--customer top-clients-table" data-mobile-card-table>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Valor faturado</th>
+                  <th>Quantidade de NFs</th>
+                  <th>Ticket medio</th>
+                  <th>Ultima compra</th>
+                </tr>
+              </thead>
+              <tbody id="topClientsTable"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </article>
+
+    <article class="dashboard-panel span-4" data-chart-id="pipeline_status" data-dashboard-team-context>
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Etapas das vendas Orç-PD</h3>
+          <small>Faturado, carteira e cancelamentos — base Orçamento-PD</small>
+        </div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="chart-shell chart-shell--md"><canvas id="dailyMixedChart"></canvas></div>
+      </div>
+    </article>
+
+    <!-- Maiores NFs (8) + Geo compacto (4) -->
+    <article class="dashboard-panel commercial-panel commercial-panel--invoice span-8" data-chart-id="top_invoices" id="tabelas">
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Maiores NFs Orçamento-PD</h3>
+          <small>Documentos com maior peso no faturamento Orçamento-PD (remessas excluídas)</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <button type="button" class="btn-detail" data-drill="top_invoices" title="Ver detalhamento">
+            <span class="material-symbols-rounded">open_in_new</span>Detalhar
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-panel__body dashboard-panel__body--table">
+        <table class="mag-table commercial-table commercial-table--invoice" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th>NF</th>
+              <th>Emissao</th>
+              <th>Cliente</th>
+              <th>Vendedor</th>
+              <th>Itens</th>
+              <th>Base Comercial</th>
+              <th data-mobile-skip>Acao</th>
+            </tr>
+          </thead>
+          <tbody id="topOrdersTable"
+            data-empty-title="Sem notas fiscais"
+            data-empty-message="Nao ha documentos para o periodo ou filtro selecionado."
+            data-empty-icon="receipt_long">
+          </tbody>
+        </table>
+      </div>
+      <div id="dashboardNfsPagination" class="biomie-pagination" style="display:none;gap:12px;align-items:center;justify-content:center;padding:8px 0;"></div>
+      <details class="mag-technical-diagnostics mag-top-orders-diagnostics" id="topOrdersIdentityDiagnostics" hidden>
+        <summary aria-expanded="false" aria-controls="topOrdersIdentityDiagnosticsBody">
+          <span class="material-symbols-rounded">manage_search</span>Diagnostico de clientes e vendedores
+        </summary>
+        <div class="mag-technical-diagnostics__body" id="topOrdersIdentityDiagnosticsBody">
+          <h2>Vinculos da leitura fiscal</h2>
+          <p>Contagens agregadas da resolucao de cliente e vendedor, sem documento aberto.</p>
+          <div class="mag-technical-diagnostics__grid" id="topOrdersIdentityDiagnosticsGrid"></div>
+        </div>
+      </details>
+    </article>
+
+    <article class="dashboard-panel commercial-panel commercial-panel--territory span-4" data-chart-id="geo_compact" data-dashboard-team-context>
+      <div class="dashboard-panel__header">
+        <div>
+          <h3>Bairros que mais vendem</h3>
+          <small>Concentracao geografica da receita</small>
+        </div>
+        <div class="dashboard-panel__actions">
+          <a class="btn-detail" href="mapa_vendas.php" title="Abrir mapa completo">
+            <span class="material-symbols-rounded">map</span>Mapa
+          </a>
+        </div>
+      </div>
+      <div class="dashboard-panel__body dashboard-panel__body--table geo-compact-ranking">
+        <table class="mag-table commercial-table commercial-table--territory" data-mobile-card-table>
+          <thead>
+            <tr>
+              <th>Bairro</th>
+              <th>Receita</th>
+              <th>Share</th>
+            </tr>
+          </thead>
+          <tbody id="indexNeighborhoodsRanking"
+            data-empty-title="Sem bairros"
+            data-empty-message="Nenhum bairro com venda no periodo."
+            data-empty-icon="location_off">
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ═══ INFORMACOES SECUNDARIAS ═══ -->
+  <section class="dashboard-grid dashboard-grid--secondary anim d4">
+
+    <article class="dashboard-panel span-6" data-dashboard-team-context>
+      <div class="dashboard-panel__header">
+        <div><h3>Recebimentos e risco</h3><small>Leitura financeira de caixa e atrasos</small></div>
+        <div id="commercialHealthBadge" class="topbar-badge" style="padding:4px 10px;font-size:11px;box-shadow:none;">Carregando</div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="module-tiny-kpis" style="margin-bottom:12px;">
+          <div class="mini"><span>Recebido</span><strong data-bind="health-received">-</strong></div>
+          <div class="mini"><span>Em aberto</span><strong data-bind="health-open">-</strong></div>
+          <div class="mini"><span>Vencido</span><strong data-bind="health-overdue">-</strong></div>
+          <div class="mini"><span>Conv. caixa</span><strong data-bind="health-cash-conversion">-</strong></div>
+        </div>
+        <div id="commercialHealthInfo" class="module-alert module-alert--info">
+          <strong>Carregando</strong><span>Buscando dados financeiros.</span>
+        </div>
+        <div id="remittanceSummaryCard" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;background:#fef3c7;border:1px solid #fde68a;color:#78350f;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;">local_shipping</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;line-height:1.2;">Remessa de Produto</div>
+              <div style="font-size:10px;color:#92400e;margin-top:1px;">Movimentação fiscal/logística — fora do faturamento comercial</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="font-size:12px;"><strong id="remittanceSummaryText">-</strong></div>
+            <a id="remittanceSummaryLink" href="pedidos.php" style="font-size:11px;font-weight:600;color:#92400e;text-decoration:none;padding:3px 8px;border:1px solid #fbbf24;border-radius:4px;white-space:nowrap;background:#fff8;display:inline-flex;align-items:center;gap:4px;">
+              <span class="material-symbols-rounded" style="font-size:12px;">open_in_new</span>Ver remessas
+            </a>
+          </div>
+        </div>
+        <div class="biomie-table-wrap" style="margin-top:12px">
+          <table class="mag-table" data-mobile-card-table>
+            <thead><tr><th>Cliente em atraso</th><th>Vencido</th><th>Titulos</th><th>Max dias</th></tr></thead>
+            <tbody id="commercialHealthClientsTable"
+              data-empty-title="Sem inadimplencia"
+              data-empty-message="Nenhum cliente em atraso nos filtros atuais."
+              data-empty-icon="verified">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <article class="dashboard-panel span-6" data-dashboard-team-context>
+      <div class="dashboard-panel__header">
+        <div><h3>Pontos de atencao</h3><small>Risco, meta e sinais do periodo</small></div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div id="alertsList" class="mag-signal-list"></div>
+      </div>
+    </article>
+
+    <article class="dashboard-panel dashboard-panel--month-comparison span-8">
+      <div class="dashboard-panel__header">
+        <div><h3>Comparativo mensal</h3><small>&Uacute;ltimos 12 meses &mdash; 6 meses por linha, na mesma escala</small></div>
+      </div>
+      <div class="dashboard-panel__body">
+        <div class="month-comparison-grid" id="monthComparisonGrid">
+          <div class="month-comparison-grid__legend" aria-label="Legenda do comparativo mensal">
+            <span><i class="month-comparison-grid__swatch month-comparison-grid__swatch--revenue"></i>Receita</span>
+            <span><i class="month-comparison-grid__swatch month-comparison-grid__swatch--target"></i>Meta do per&iacute;odo</span>
+            <span><i class="month-comparison-grid__swatch month-comparison-grid__swatch--forecast"></i>Previs&atilde;o</span>
+          </div>
+          <div class="month-comparison-grid__row">
+            <span class="month-comparison-grid__label" id="monthComparisonLabelH1">Meses 1 a 6</span>
+            <div class="chart-shell chart-shell--sm"><canvas id="monthComparisonChartH1" role="img">Primeiros seis meses do comparativo mensal.</canvas></div>
+          </div>
+          <div class="month-comparison-grid__row">
+            <span class="month-comparison-grid__label" id="monthComparisonLabelH2">Meses 7 a 12</span>
+            <div class="chart-shell chart-shell--sm"><canvas id="monthComparisonChartH2" role="img">Seis meses mais recentes do comparativo mensal.</canvas></div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ═══ DIAGNOSTICOS ═══ -->
+  <details class="mag-technical-diagnostics mag-page-main-diagnostics">
+    <summary aria-expanded="false" aria-controls="dashboardCommercialDiagnostics">
+      <span class="material-symbols-rounded">tune</span>Diagnostico da leitura
+    </summary>
+    <div class="mag-technical-diagnostics__body" id="dashboardCommercialDiagnostics">
+      <h2>Dados carregados</h2>
+      <p>Informacoes tecnicas ficam recolhidas para manter a tela principal limpa.</p>
+      <div class="mag-technical-diagnostics__grid">
+        <span>Periodo</span><strong data-bind="period-label">-</strong>
+        <span>Leitura</span><strong data-bind="summary-mode">-</strong>
+        <span>Atualizado</span><strong data-bind="last-sync">-</strong>
+        <span>Origem</span><strong data-bind="sync-source">-</strong>
+        <span>Cobertura</span><strong data-bind="sync-coverage">-</strong>
+        <span>Conferencia</span><strong data-bind="sync-reconciled-until">-</strong>
+      </div>
+      <div class="status-meter" style="margin-top:14px;">
+        <div class="status-meter-bar" id="statusMeterBar"
+          style="--meter-billed:0%;--meter-auth:0%;--meter-cancel:0%">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="status-meter-legend">
+        <span><strong data-bind="pipeline-billed">-</strong> NF</span>
+        <span><strong data-bind="pipeline-authorized">-</strong> carteira</span>
+        <span><strong data-bind="pipeline-cancelled">-</strong> canceladas</span>
+      </div>
+    </div>
+  </details>
+
+</main>
+
+<!-- Drawers e scripts inline -->
+<div id="clientDossierDrawer" class="mag-drawer hidden" aria-hidden="true"></div>
+
+<div class="overview-detail-backdrop" id="overviewDetailBackdrop"></div>
+<div class="overview-detail-drawer" id="overviewDetailDrawer" role="dialog" aria-modal="true"
+  aria-labelledby="overviewDetailTitle" aria-hidden="true">
+  <div class="overview-detail-drawer__header">
+    <div>
+      <h2 id="overviewDetailTitle">Detalhamento</h2>
+      <p id="overviewDetailSubtitle"></p>
+    </div>
+    <button type="button" class="overview-detail-drawer__close" id="overviewDetailClose" aria-label="Fechar detalhamento">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </div>
+  <div class="overview-detail-drawer__tabs" id="overviewDetailTabs" role="tablist"></div>
+  <div class="overview-detail-drawer__body" id="overviewDetailBody"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.BIOMIE_STATES) return;
+  setTimeout(function () {
+    document.querySelectorAll('tbody[data-empty-title]').forEach(function (tbody) {
+      if (tbody.children.length === 0) {
+        BIOMIE_STATES.renderTableEmptyState(tbody);
+      }
+    });
+  }, 3000);
+});
+
+// GEO.R1.9.1 — Carrega mini-ranking de empresas e CNAEs no index
+(function loadIndexGeoCnae() {
+  'use strict';
+  function esc(v) {
+    return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function fmtMoney(v) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(+v || 0);
+  }
+  function buildParams() {
+    const dateStart = document.getElementById('dateStart');
+    const dateEnd   = document.getElementById('dateEnd');
+    const p = new URLSearchParams();
+    if (dateStart?.value) p.set('date_from', dateStart.value);
+    if (dateEnd?.value)   p.set('date_to',   dateEnd.value);
+    p.set('mode', 'top_cnaes');
+    p.set('limit', '8');
+    return p.toString();
+  }
+  async function load() {
+    const strip = document.getElementById('indexGeoCnaeStrip');
+    const list  = document.getElementById('indexGeoCnaeList');
+    const count = document.getElementById('indexGeoCnaeCount');
+    const link  = document.getElementById('indexGeoMapLink');
+    if (!strip || !list) return;
+    if (
+      document.body.classList.contains('dashboard--seller-scope')
+      || (window.BDashboard && typeof window.BDashboard.hasExtraFilters === 'function' && window.BDashboard.hasExtraFilters())
+    ) {
+      strip.style.display = 'none';
+      return;
+    }
+    try {
+      const params = buildParams();
+      const resp = await fetch('api/company_cnae_ranking.php?' + params, { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const items = data.items || [];
+      if (!items.length) return;
+      strip.style.display = '';
+      const sum = data.summary || {};
+      if (count) count.textContent = sum.cnaes + ' CNAEs · ' + sum.empresas + ' empresas';
+
+      // Update map link with current period
+      const dateStart = document.getElementById('dateStart');
+      const dateEnd   = document.getElementById('dateEnd');
+      if (link && dateStart?.value && dateEnd?.value) {
+        link.href = 'mapa_vendas.php?layer=mapa_composto_ceara&date_from=' + encodeURIComponent(dateStart.value) + '&date_to=' + encodeURIComponent(dateEnd.value);
+      }
+
+      list.innerHTML = items.slice(0, 6).map(c => `
+        <span style="display:inline-flex;flex-direction:column;padding:6px 10px;border:1px solid var(--mag-border,#e5e7eb);border-radius:8px;font-size:11px;background:var(--mag-surface,#fff);min-width:110px;">
+          <strong style="color:var(--mag-text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.cnae_descricao || c.cnae_codigo)}</strong>
+          <span style="color:var(--mag-muted);margin-top:1px;">${c.empresas} empresa${c.empresas !== 1 ? 's' : ''} · ${fmtMoney(c.faturamento)}</span>
+        </span>
+      `).join('');
+    } catch (e) { /* silent */ }
+  }
+
+  // O primeiro carregamento ocorre após o dashboard padrão confirmar o escopo.
+  document.addEventListener('biomie:dashboard-filtered', function () {
+    var strip = document.getElementById('indexGeoCnaeStrip');
+    if (strip) strip.style.display = 'none';
+  });
+  document.addEventListener('biomie:dashboard-standard-rendered', load);
+})();
+</script>
+</body>
+</html>
