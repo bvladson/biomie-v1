@@ -40,7 +40,13 @@ final class TenantIsolationGuard
     }
 
     /**
-     * @return array{ok:bool,companies:int,checks:int,failures:list<array<string,mixed>>}
+     * @return array{
+     *     ok:bool,
+     *     companies:int,
+     *     checks:int,
+     *     period:array{start:string,end:string,comps:string},
+     *     failures:list<array<string,mixed>>
+     * }
      */
     public function run(): array
     {

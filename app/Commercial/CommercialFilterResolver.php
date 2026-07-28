@@ -147,10 +147,10 @@ final class CommercialFilterResolver
      *
      * @param  list<string>      $requested
      * @param  list<string>|null $allowed
-     * @return list<string>|null
+     * @return list<string>
      * @throws CommercialScopeDeniedException
      */
-    private function authorizeSellersOrDeny(array $requested, ?array $allowed): ?array
+    private function authorizeSellersOrDeny(array $requested, ?array $allowed): array
     {
         if ($allowed === []) {
             return []; // nenhum autorizado ⇒ nada, mesmo pedindo

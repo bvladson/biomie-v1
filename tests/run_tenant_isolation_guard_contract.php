@@ -72,19 +72,19 @@ $companies = $pdo->query('SELECT id, slug FROM biomie_companies WHERE ativo = 1 
 $result = (new TenantIsolationGuard($pdo, $logger))->run();
 $check(
     '🔴 guard PASSA no estado atual (sem falso positivo)',
-    (bool) ($result['ok'] ?? false),
-    ['failures' => $result['failures'] ?? []]
+    $result['ok'],
+    ['failures' => $result['failures']]
 );
 $check(
     'guard cobre todas as empresas ativas',
-    (int) ($result['companies'] ?? 0) === count($companies),
-    ['companies' => $result['companies'] ?? 0, 'esperado' => count($companies)]
+    $result['companies'] === count($companies),
+    ['companies' => $result['companies'], 'esperado' => count($companies)]
 );
 // 5 probes por empresa: topClients, topProducts, summarizeInvoices, cnae, geo.
 $check(
     'guard roda 5 probes por empresa (a 5a e o mart geo)',
-    (int) ($result['checks'] ?? 0) === count($companies) * 5,
-    ['checks' => $result['checks'] ?? 0, 'esperado' => count($companies) * 5]
+    $result['checks'] === count($companies) * 5,
+    ['checks' => $result['checks'], 'esperado' => count($companies) * 5]
 );
 
 // ── 2. Probe 3: a fatia espelha o reader (nao pode dar ~0 de novo) ──────────

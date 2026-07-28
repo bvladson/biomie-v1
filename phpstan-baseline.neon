@@ -61,13 +61,38 @@ parameters:
 			path: api/canonical_vendors.php
 
 		-
-			message: "#^Offset 'is_active' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? does not exist\\.$#"
+			message: "#^Offset 'authorized_orders' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 1
+			path: api/canonical_vendors.php
+
+		-
+			message: "#^Offset 'authorized_value' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 1
+			path: api/canonical_vendors.php
+
+		-
+			message: "#^Offset 'billed_orders' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 1
+			path: api/canonical_vendors.php
+
+		-
+			message: "#^Offset 'billed_value' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 2
 			path: api/canonical_vendors.php
 
 		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			message: "#^Offset 'cancelled_orders' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
+			path: api/canonical_vendors.php
+
+		-
+			message: "#^Offset 'cancelled_value' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 1
+			path: api/canonical_vendors.php
+
+		-
+			message: "#^Offset 'is_active' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? does not exist\\.$#"
+			count: 2
 			path: api/canonical_vendors.php
 
 		-
@@ -77,16 +102,11 @@ parameters:
 
 		-
 			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 3
+			count: 4
 			path: api/canonical_vendors.php
 
 		-
 			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: api/canonical_vendors.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: api/canonical_vendors.php
 
@@ -146,6 +166,11 @@ parameters:
 			path: api/cockpit_summary.php
 
 		-
+			message: "#^Offset 'company_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, tiers\\: array\\<int, float\\>, currency\\: string, updated_at\\: string\\|null, company_id\\: int\\<1, max\\>\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 1
+			path: api/commercial_dashboard.php
+
+		-
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 2
 			path: api/commercial_dashboard.php
@@ -157,17 +182,7 @@ parameters:
 
 		-
 			message: "#^Offset 'invoice_total' on array\\{notes_count\\: int, merchandise_total\\: float, invoice_total\\: float, discount_total\\?\\: float\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 3
-			path: api/commercial_health.php
-
-		-
-			message: "#^Offset 'merchandise_total' on array\\{notes_count\\: int, merchandise_total\\: float, invoice_total\\: float, discount_total\\?\\: float\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: api/commercial_health.php
-
-		-
-			message: "#^Offset 'notes_count' on array\\{notes_count\\: int, merchandise_total\\: float, invoice_total\\: float, discount_total\\?\\: float\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
+			count: 1
 			path: api/commercial_health.php
 
 		-
@@ -234,11 +249,6 @@ parameters:
 			message: "#^Variable \\$logger might not be defined\\.$#"
 			count: 2
 			path: api/dashboard_boot.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Auth\\:\\:can\\(\\)\\.$#"
-			count: 3
-			path: api/data_coverage.php
 
 		-
 			message: "#^Variable \\$config might not be defined\\.$#"
@@ -621,18 +631,8 @@ parameters:
 			path: api/flight_plan_targets_editor.php
 
 		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 4
-			path: api/flight_plan_targets_editor.php
-
-		-
 			message: "#^Offset 'target_period' on array\\{target_period\\: float, realized_period\\: float, backlog_value\\: float, forecast_period\\: float, gap_to_target\\: float, goal_progress\\: float, missing_targets_count\\: int, workdays\\: array\\<string, mixed\\>, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
-			path: api/flight_plan_targets_editor.php
-
-		-
-			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 3
 			path: api/flight_plan_targets_editor.php
 
 		-
@@ -643,11 +643,6 @@ parameters:
 		-
 			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, realized_period\\: float, backlog_value\\: float, target_period\\: float, target_month\\: float, forecast_period\\: float, gap_to_target\\: float, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 2
-			path: api/flight_plan_targets_editor.php
-
-		-
-			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 3
 			path: api/flight_plan_targets_editor.php
 
 		-
@@ -756,11 +751,6 @@ parameters:
 			path: api/forecast.php
 
 		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_area_selection.php
-
-		-
 			message: "#^Unreachable statement \\- code above always terminates\\.$#"
 			count: 1
 			path: api/geo_area_selection.php
@@ -781,11 +771,6 @@ parameters:
 			path: api/geo_cnae_materialize.php
 
 		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_compare_territories.php
-
-		-
 			message: "#^Negated boolean expression is always true\\.$#"
 			count: 1
 			path: api/geo_compare_territories.php
@@ -799,11 +784,6 @@ parameters:
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 1
 			path: api/geo_compare_territories.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_composite_sales.php
 
 		-
 			message: "#^Offset 'ceara_municipio'\\|'fortaleza_bairro'\\|'metro_bairro'\\|'rmf_municipio…' on array\\{fortaleza_bairro\\: array\\{max\\: float\\}, metro_bairro\\: array\\{max\\: float\\}, rmf_municipio_fallback\\: array\\{max\\: float\\}, ceara_municipio\\: array\\{max\\: float\\}\\} in isset\\(\\) always exists and is not nullable\\.$#"
@@ -821,19 +801,9 @@ parameters:
 			path: api/geo_composite_sales.php
 
 		-
-			message: "#^Right side of && is always true\\.$#"
-			count: 1
-			path: api/geo_composite_sales.php
-
-		-
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 5
 			path: api/geo_composite_sales.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_data_quality.php
 
 		-
 			message: "#^Parameter \\#1 \\$callback of function call_user_func expects callable\\(\\)\\: mixed, array\\{'\\\\\\\\BIomie\\\\\\\\Support…', 'mask'\\} given\\.$#"
@@ -849,11 +819,6 @@ parameters:
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 1
 			path: api/geo_data_quality.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_invoice_detail.php
 
 		-
 			message: "#^Parameter \\#1 \\$callback of function call_user_func expects callable\\(\\)\\: mixed, array\\{'\\\\\\\\BIomie\\\\\\\\Support…', 'mask'\\} given\\.$#"
@@ -891,11 +856,6 @@ parameters:
 			path: api/geo_neighborhood_detail.php
 
 		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_opportunities.php
-
-		-
 			message: "#^Comparison operation \"\\>\" between int\\<135, 183\\> and 0 is always true\\.$#"
 			count: 1
 			path: api/geo_opportunities.php
@@ -914,11 +874,6 @@ parameters:
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 1
 			path: api/geo_opportunities.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_sales_coverage_audit.php
 
 		-
 			message: "#^Parameter \\#1 \\$callback of function call_user_func expects callable\\(\\)\\: mixed, array\\{'\\\\\\\\BIomie\\\\\\\\Support…', 'mask'\\} given\\.$#"
@@ -966,19 +921,9 @@ parameters:
 			path: api/geo_sales_layer.php
 
 		-
-			message: "#^Variable \\$city on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: api/geo_summary.php
-
-		-
 			message: "#^Variable \\$config might not be defined\\.$#"
-			count: 5
+			count: 3
 			path: api/geo_summary.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_territory_cnae_buyers_export.php
 
 		-
 			message: "#^Function geoCnaeExportApplyCnaeFilter\\(\\) has parameter \\$params with no value type specified in iterable type array\\.$#"
@@ -1021,11 +966,6 @@ parameters:
 			path: api/geo_territory_cnae_buyers_export.php
 
 		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_territory_cnaes.php
-
-		-
 			message: "#^Unreachable statement \\- code above always terminates\\.$#"
 			count: 6
 			path: api/geo_territory_cnaes.php
@@ -1036,11 +976,6 @@ parameters:
 			path: api/geo_territory_cnaes.php
 
 		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_territory_evolution.php
-
-		-
 			message: "#^Unreachable statement \\- code above always terminates\\.$#"
 			count: 1
 			path: api/geo_territory_evolution.php
@@ -1049,11 +984,6 @@ parameters:
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 1
 			path: api/geo_territory_evolution.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Http\\:\\:jsonError\\(\\)\\.$#"
-			count: 1
-			path: api/geo_territory_invoices.php
 
 		-
 			message: "#^Parameter \\#1 \\$callback of function call_user_func expects callable\\(\\)\\: mixed, array\\{'\\\\\\\\BIomie\\\\\\\\Support…', 'mask'\\} given\\.$#"
@@ -1137,11 +1067,6 @@ parameters:
 
 		-
 			message: "#^Cannot cast array to string\\.$#"
-			count: 1
-			path: api/live_stream.php
-
-		-
-			message: "#^Part \\$lastEventTime \\(array\\) of encapsed string cannot be cast to string\\.$#"
 			count: 1
 			path: api/live_stream.php
 
@@ -1254,16 +1179,6 @@ parameters:
 			message: "#^Offset 'status' on array\\{inbox_id\\: int, status\\: string, duplicate\\: bool, dedupe_key\\: string, correlation_id\\: string\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: api/omie_webhook.php
-
-		-
-			message: "#^Variable \\$config might not be defined\\.$#"
-			count: 2
-			path: api/operational_observability.php
-
-		-
-			message: "#^Variable \\$logger might not be defined\\.$#"
-			count: 3
-			path: api/operational_observability.php
 
 		-
 			message: "#^Result of \\|\\| is always true\\.$#"
@@ -1456,6 +1371,16 @@ parameters:
 			path: api/products_search.php
 
 		-
+			message: "#^Variable \\$logger might not be defined\\.$#"
+			count: 1
+			path: api/quote_agenda_charge.php
+
+		-
+			message: "#^Variable \\$logger might not be defined\\.$#"
+			count: 1
+			path: api/quote_agenda_policy.php
+
+		-
 			message: "#^Variable \\$config might not be defined\\.$#"
 			count: 8
 			path: api/realtime_sync_status.php
@@ -1489,11 +1414,6 @@ parameters:
 			message: "#^Variable \\$logger might not be defined\\.$#"
 			count: 5
 			path: api/reconciliation.php
-
-		-
-			message: "#^Call to an undefined static method BIomie\\\\Support\\\\Filters\\\\Pagination\\:\\:compute\\(\\)\\.$#"
-			count: 1
-			path: api/reconciliation_pending.php
 
 		-
 			message: "#^Static method BIomie\\\\Http\\:\\:internalError\\(\\) invoked with 2 parameters, 0\\-1 required\\.$#"
@@ -1556,28 +1476,8 @@ parameters:
 			path: api/sales_by_city.php
 
 		-
-			message: "#^Offset 'diagnostics' on array\\{ok\\: true, filters\\: array\\{date_from\\: string, date_to\\: string, city\\: mixed, neighborhood\\: mixed, cnae\\: string\\|null, seller_id\\: string\\|null\\}, data\\: array\\<int\\<0, max\\>, array\\{city\\: string, city_key\\: string, neighborhood\\: string, neighborhood_key\\: string, bairro_nome\\: string, bairro_original\\: string, bairro_key\\: string, bairro_norm\\: string, \\.\\.\\.\\}\\>, scale\\: array\\{metric\\: string, min\\: float, max\\: float, buckets\\: array\\<int, array\\<string, float\\|string\\|null\\>\\>\\}, summary\\: array\\{total_revenue\\: float, bairros_com_venda\\: int\\<0, max\\>, bairros_total\\: int\\|null, best_neighborhood\\: string\\|null\\}, bairros\\: array\\{total\\: int\\|null, com_venda\\: int\\<0, max\\>, sem_venda\\: int\\<0, max\\>\\|null, source\\: 'bairros_dim'\\|'mart_only'\\}, meta\\: array\\{request_id\\: string, generated_at\\: non\\-falsy\\-string, source_table\\: 'mart_compradores…', source_mode\\: 'bairros_dim_left…'\\|'gold_mart', count\\: int\\<0, max\\>, materialization\\: array\\{source_table\\: 'mart_compradores…', competencia_start\\: string, competencia_end\\: string, last_refreshed_at\\: null, rows\\: int\\<0, max\\>, status\\: 'empty'\\|'ok'\\}\\}\\} on left side of \\?\\? does not exist\\.$#"
-			count: 2
-			path: api/sales_by_neighborhood.php
-
-		-
-			message: "#^Offset 'revenue' on array\\{city\\: string, city_key\\: string, neighborhood\\: string, neighborhood_key\\: string, bairro_nome\\: string, bairro_original\\: string, bairro_key\\: string, bairro_norm\\: string, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: api/sales_by_neighborhood.php
-
-		-
-			message: "#^Offset 'tem_venda' on array\\{city\\: string, city_key\\: string, neighborhood\\: string, neighborhood_key\\: string, bairro_nome\\: string, bairro_original\\: string, bairro_key\\: string, bairro_norm\\: string, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: api/sales_by_neighborhood.php
-
-		-
-			message: "#^Variable \\$city on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: api/sales_by_neighborhood.php
-
-		-
 			message: "#^Variable \\$config might not be defined\\.$#"
-			count: 5
+			count: 3
 			path: api/sales_by_neighborhood.php
 
 		-
@@ -1657,7 +1557,7 @@ parameters:
 
 		-
 			message: "#^Variable \\$logger might not be defined\\.$#"
-			count: 4
+			count: 5
 			path: api/vendor_detail.php
 
 		-
@@ -1717,16 +1617,6 @@ parameters:
 
 		-
 			message: "#^Method BIomie\\\\Admin\\\\RbacService\\:\\:latestMigration\\(\\) return type has no value type specified in iterable type array\\.$#"
-			count: 1
-			path: app/Admin/RbacService.php
-
-		-
-			message: "#^Offset 'admin' on array\\{admin\\: array\\{'sales\\.view', 'sales\\.sync', 'sales\\.export', 'dashboard\\.view', 'commercial\\.view', 'geo\\.view', 'geo\\.materialize', 'finance\\.view', \\.\\.\\.\\}, manager\\: array\\{'sales\\.view', 'sales\\.sync', 'sales\\.export', 'dashboard\\.view', 'commercial\\.view', 'geo\\.view', 'geo\\.materialize', 'finance\\.view', \\.\\.\\.\\}, analyst\\: array\\{'sales\\.view', 'dashboard\\.view', 'commercial\\.view', 'geo\\.view', 'finance\\.view', 'financial\\.view', 'fiscal\\.view', 'nf\\.view', \\.\\.\\.\\}, viewer\\: array\\{'sales\\.view', 'dashboard\\.view', 'commercial\\.view', 'geo\\.view'\\}\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/Admin/RbacService.php
-
-		-
-			message: "#^Strict comparison using \\=\\=\\= between array\\{'sales\\.view', 'sales\\.sync', 'sales\\.export', 'dashboard\\.view', 'commercial\\.view', 'geo\\.view', 'geo\\.materialize', 'finance\\.view', \\.\\.\\.\\} and array\\{\\} will always evaluate to false\\.$#"
 			count: 1
 			path: app/Admin/RbacService.php
 
@@ -2196,16 +2086,6 @@ parameters:
 			path: app/Commercial/CommercialMetricsAggregator.php
 
 		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/Commercial/CommercialMetricsAggregator.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/Commercial/CommercialMetricsAggregator.php
-
-		-
 			message: "#^Anonymous function has an unused use \\$alias\\.$#"
 			count: 1
 			path: app/Commercial/CommercialScopeSqlFilter.php
@@ -2222,11 +2102,6 @@ parameters:
 
 		-
 			message: "#^Method BIomie\\\\CommercialCompetenciaSnapshotService\\:\\:encodeJson\\(\\) has parameter \\$payload with no value type specified in iterable type array\\.$#"
-			count: 1
-			path: app/CommercialCompetenciaSnapshotService.php
-
-		-
-			message: "#^Method BIomie\\\\CommercialCompetenciaSnapshotService\\:\\:normalizeVendorKey\\(\\) is unused\\.$#"
 			count: 1
 			path: app/CommercialCompetenciaSnapshotService.php
 
@@ -2301,18 +2176,8 @@ parameters:
 			path: app/CommercialPlanning.php
 
 		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: app/CommercialPlanning.php
-
-		-
 			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: non\\-empty\\-string, realized_period\\: float, backlog_value\\: float, orders\\: int, merchandise_total\\: float, discount_total\\: float\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
-			path: app/CommercialPlanning.php
-
-		-
-			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
 			path: app/CommercialPlanning.php
 
 		-
@@ -2322,16 +2187,6 @@ parameters:
 
 		-
 			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, realized_period\\: float, backlog_value\\: float, orders\\: int, merchandise_total\\: float, discount_total\\: float, target_period\\: float, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: app/CommercialPlanning.php
-
-		-
-			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: app/CommercialPlanning.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 2
 			path: app/CommercialPlanning.php
 
@@ -3296,26 +3151,6 @@ parameters:
 			path: app/FiscalSync/FiscalSupport.php
 
 		-
-			message: "#^Offset 'authorized' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FiscalSync/FiscalSupport.php
-
-		-
-			message: "#^Offset 'cancelled' on array\\{authorized\\: bool, cancelled\\: bool, invoiced\\: bool, denied\\: bool, devolved\\: bool\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FiscalSync/FiscalSupport.php
-
-		-
-			message: "#^Offset 'denied' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FiscalSync/FiscalSupport.php
-
-		-
-			message: "#^Offset 'devolved' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FiscalSync/FiscalSupport.php
-
-		-
 			message: "#^Offset 'inserted' on array\\{inserted\\: int, updated\\: int, unchanged\\: int, skipped\\: int\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 3
 			path: app/FiscalSync/FiscalSupport.php
@@ -3381,62 +3216,12 @@ parameters:
 			path: app/FlightPlanService.php
 
 		-
-			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanService.php
-
-		-
-			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanService.php
-
-		-
 			message: "#^Property BIomie\\\\FlightPlanService\\:\\:\\$cache is never read, only written\\.$#"
 			count: 1
 			path: app/FlightPlanService.php
 
 		-
 			message: "#^Method BIomie\\\\FlightPlanTargetsService\\:\\:saveTargetsBatch\\(\\) return type has no value type specified in iterable type array\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float\\|int\\|string, changed_by\\: string\\|null, change_reason\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float\\|int\\|string, changed_by\\: string\\|null, change_reason\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float\\|int\\|string, changed_by\\: string\\|null, change_reason\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/FlightPlanTargetsService.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float\\|int\\|string, changed_by\\: string\\|null, change_reason\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/FlightPlanTargetsService.php
 
@@ -3491,11 +3276,6 @@ parameters:
 			path: app/FlightPlanV2Service.php
 
 		-
-			message: "#^Offset 'vendor_id' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 3
-			path: app/FlightPlanV2Service.php
-
-		-
 			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: non\\-empty\\-string, vendor_name\\: string\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 2
 			path: app/FlightPlanV2Service.php
@@ -3503,16 +3283,6 @@ parameters:
 		-
 			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, email\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 3
-			path: app/FlightPlanV2Service.php
-
-		-
-			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 3
-			path: app/FlightPlanV2Service.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
 			path: app/FlightPlanV2Service.php
 
 		-
@@ -3612,16 +3382,6 @@ parameters:
 
 		-
 			message: "#^Offset 'probable' on array\\{base\\: float, probable\\: float, commit\\: float\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/HomeBootstrapService.php
-
-		-
-			message: "#^Offset 'target_amount' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/HomeBootstrapService.php
-
-		-
-			message: "#^Offset 'year_month' on array\\{vendor_id\\: string, vendor_name\\: string, year_month\\: string, target_amount\\: float, currency\\: string, updated_at\\: string\\|null\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/HomeBootstrapService.php
 
@@ -4231,11 +3991,6 @@ parameters:
 			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
 
 		-
-			message: "#^Offset 'authorized_orders' on array\\{vendor_id\\: string, vendor_name\\: string, vendor_ref\\: string, realizado_vendedor\\: float, mercadoria_faturada_vendedor\\: float, billed_value\\: float, billed_orders\\: int, invoices_count\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
-
-		-
 			message: "#^Offset 'authorized_value' on array\\{date\\: mixed, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
@@ -4261,11 +4016,6 @@ parameters:
 			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
 
 		-
-			message: "#^Offset 'cancel_rate' on array\\{vendor_id\\: string, vendor_name\\: string, vendor_ref\\: string, realizado_vendedor\\: float, mercadoria_faturada_vendedor\\: float, billed_value\\: float, billed_orders\\: int, invoices_count\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
-
-		-
 			message: "#^Offset 'cancelled_orders' on array\\{date\\: mixed, billed_value\\: float, billed_orders\\: int, authorized_value\\: float, authorized_orders\\: int, cancelled_value\\: float, cancelled_orders\\: int\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
@@ -4273,11 +4023,6 @@ parameters:
 		-
 			message: "#^Offset 'cancelled_orders' on array\\{vendor_id\\: mixed, vendor_name\\: mixed, vendor_ref\\: mixed, billed_value\\: mixed, billed_orders\\: mixed, billed_merchandise\\: mixed, authorized_value\\: float, authorized_orders\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
-			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
-
-		-
-			message: "#^Offset 'cancelled_orders' on array\\{vendor_id\\: string, vendor_name\\: string, vendor_ref\\: string, realizado_vendedor\\: float, mercadoria_faturada_vendedor\\: float, billed_value\\: float, billed_orders\\: int, invoices_count\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
 			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
 
 		-
@@ -4322,7 +4067,7 @@ parameters:
 
 		-
 			message: "#^Offset 'vendor_name' on array\\{vendor_id\\: string, vendor_name\\: string, vendor_ref\\: string, realizado_vendedor\\: float, mercadoria_faturada_vendedor\\: float, billed_value\\: float, billed_orders\\: int, invoices_count\\: int, \\.\\.\\.\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 4
+			count: 2
 			path: app/Modules/Sales/Application/Vendors/CanonicalVendorPayloadBuilder.php
 
 		-
@@ -4529,26 +4274,6 @@ parameters:
 			message: "#^Method BIomie\\\\Modules\\\\Sales\\\\Infrastructure\\\\Vendor360ReadRepository\\:\\:mapWalletOrderRow\\(\\) return type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: app/Modules/Sales/Infrastructure/Vendor360ReadRepository.php
-
-		-
-			message: "#^Offset 'authorized' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/OmieApiReconciliationService.php
-
-		-
-			message: "#^Offset 'cancelled' on array\\{authorized\\: bool, cancelled\\: bool, invoiced\\: bool, denied\\: bool, devolved\\: bool\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/OmieApiReconciliationService.php
-
-		-
-			message: "#^Offset 'denied' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/OmieApiReconciliationService.php
-
-		-
-			message: "#^Offset 'devolved' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/OmieApiReconciliationService.php
 
 		-
 			message: "#^Method BIomie\\\\OmieClient\\:\\:emptyPageResponse\\(\\) has parameter \\$decoded with no value type specified in iterable type array\\.$#"
@@ -5057,16 +4782,11 @@ parameters:
 
 		-
 			message: "#^Else branch is unreachable because ternary operator condition is always true\\.$#"
-			count: 2
-			path: app/OperationalObservabilityService.php
-
-		-
-			message: "#^Offset 'durations' on array\\{call\\: string, durations\\: non\\-empty\\-array\\<int\\<0, max\\>, float\\>, errors\\: int\\<0, max\\>, requests\\: int\\<1, max\\>\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/OperationalObservabilityService.php
 
 		-
-			message: "#^Offset 'durations' on array\\{domain\\: string, durations\\: non\\-empty\\-array\\<int\\<0, max\\>, int\\>, last_finished_at\\: non\\-empty\\-string\\|null, last_started_at\\: non\\-empty\\-string\\|null, last_status\\: string, runs\\: int\\<1, max\\>\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			message: "#^Offset 'durations' on array\\{call\\: string, durations\\: non\\-empty\\-array\\<int\\<0, max\\>, float\\>, errors\\: int\\<0, max\\>, requests\\: int\\<1, max\\>\\} on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/OperationalObservabilityService.php
 
@@ -5222,26 +4942,6 @@ parameters:
 
 		-
 			message: "#^Method BIomie\\\\SalesAnalytics\\\\SalesSupport\\:\\:extractClientCode\\(\\) has parameter \\$order with no value type specified in iterable type array\\.$#"
-			count: 1
-			path: app/SalesAnalytics/SalesSupport.php
-
-		-
-			message: "#^Offset 'authorized' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/SalesAnalytics/SalesSupport.php
-
-		-
-			message: "#^Offset 'cancelled' on array\\{authorized\\: bool, cancelled\\: bool, invoiced\\: bool, denied\\: bool, devolved\\: bool\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/SalesAnalytics/SalesSupport.php
-
-		-
-			message: "#^Offset 'denied' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 1
-			path: app/SalesAnalytics/SalesSupport.php
-
-		-
-			message: "#^Offset 'devolved' on \\*NEVER\\* on left side of \\?\\? always exists and is not nullable\\.$#"
 			count: 1
 			path: app/SalesAnalytics/SalesSupport.php
 
@@ -6036,11 +5736,6 @@ parameters:
 			path: app/Sync/WebhookInboxProcessor.php
 
 		-
-			message: "#^Offset 'status' on array\\{status\\: 'completed'\\|'completed_with…', domain\\: string, endpoint_group\\: string, event_at\\: non\\-falsy\\-string, repair_window\\: array\\{start\\: non\\-falsy\\-string, end\\: non\\-falsy\\-string\\}, cursor\\: array\\{id\\: int\\|null, status\\: string, next_delta_at\\: mixed\\}, refresh_hints\\: array\\<string, mixed\\>, warnings\\: array\\{\\}\\|array\\{'Dominio ainda nao…'\\}\\} on left side of \\?\\? always exists and is not nullable\\.$#"
-			count: 2
-			path: app/Sync/WebhookInboxProcessor.php
-
-		-
 			message: "#^Else branch is unreachable because ternary operator condition is always true\\.$#"
 			count: 1
 			path: app/SyncPipelineRepository.php
@@ -6236,9 +5931,94 @@ parameters:
 			path: tests/TestSupport.php
 
 		-
+			message: "#^Call to method classify\\(\\) on an unknown class ChannelClassifierService\\.$#"
+			count: 4
+			path: tests/run_channel_project_classifier.php
+
+		-
+			message: "#^PHPDoc tag @var for variable \\$classifier contains unknown class ChannelClassifierService\\.$#"
+			count: 1
+			path: tests/run_channel_project_classifier.php
+
+		-
+			message: "#^Function agendaBarreiraDecidir not found\\.$#"
+			count: 6
+			path: tests/run_deploy_rollback_barrier.php
+
+		-
 			message: "#^Function run_performance_guardrails_suite\\(\\) return type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: tests/run_performance_guardrails.php
+
+		-
+			message: "#^Offset '9999001111' on array\\<string, array\\<string, mixed\\>\\> on left side of \\?\\? does not exist\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_freshness.php
+
+		-
+			message: "#^Offset '9999002222' on array\\<string, array\\<string, mixed\\>\\> on left side of \\?\\? does not exist\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_freshness.php
+
+		-
+			message: "#^Offset 'value' on null on left side of \\?\\? does not exist\\.$#"
+			count: 2
+			path: tests/run_quote_agenda_freshness.php
+
+		-
+			message: "#^Result of && is always false\\.$#"
+			count: 4
+			path: tests/run_quote_agenda_freshness.php
+
+		-
+			message: "#^Strict comparison using \\!\\=\\= between null and null will always evaluate to false\\.$#"
+			count: 5
+			path: tests/run_quote_agenda_freshness.php
+
+		-
+			message: "#^Comparison operation \"\\<\\=\" between int\\<200, 254\\> and 254 is always true\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_notifications.php
+
+		-
+			message: "#^Function item\\(\\) has parameter \\$over with no value type specified in iterable type array\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_notifications.php
+
+		-
+			message: "#^Function item\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_notifications.php
+
+		-
+			message: "#^Offset 'freshness' on array\\{data\\: mixed, freshness\\: array\\<string, mixed\\>, generated_at\\: string\\} in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_read_transaction.php
+
+		-
+			message: "#^Offset 'generated_at' on array\\{data\\: mixed, freshness\\: array\\<string, mixed\\>, generated_at\\: string\\} in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: tests/run_quote_agenda_read_transaction.php
+
+		-
+			message: "#^Parameter \\#4 \\$vendorMap of method BIomie\\\\FiscalSync\\\\FiscalCanonicalMapper\\:\\:normalizePendingOrderToCanonical\\(\\) expects array\\<string, string\\>, array\\<int, string\\> given\\.$#"
+			count: 3
+			path: tests/run_quote_order_dates.php
+
+		-
+			message: "#^Function makeSnapshot\\(\\) has parameter \\$eligible with no value type specified in iterable type array\\.$#"
+			count: 1
+			path: tests/run_quote_scanner_negative_paths.php
+
+		-
+			message: "#^Function makeSnapshot\\(\\) has parameter \\$problems with no value type specified in iterable type array\\.$#"
+			count: 1
+			path: tests/run_quote_scanner_negative_paths.php
+
+		-
+			message: "#^Function orderRow\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: tests/run_quote_scanner_negative_paths.php
 
 		-
 			message: "#^Anonymous function has an unused use \\$cmpFloat\\.$#"
@@ -6269,3 +6049,8 @@ parameters:
 			message: "#^Ternary operator condition is always true\\.$#"
 			count: 1
 			path: tests/run_shadow_homologation.php
+
+		-
+			message: "#^Offset 1 on array\\{array\\<int, string\\>, array\\<int, non\\-empty\\-string\\>\\} on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 2
+			path: tests/run_vendor_scope_filter.php

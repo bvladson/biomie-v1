@@ -106,19 +106,6 @@ final class OverviewDetailBuilder
         return [substr($start, 0, 7), substr($end, 0, 7)];
     }
 
-    private function isWholeMonthRange(string $start, string $end): bool
-    {
-        try {
-            $startDate = new \DateTimeImmutable($start);
-            $endDate = new \DateTimeImmutable($end);
-        } catch (\Throwable) {
-            return false;
-        }
-
-        return $startDate->format('d') === '01'
-            && $endDate->format('Y-m-d') === $endDate->modify('last day of this month')->format('Y-m-d');
-    }
-
     /**
      * Corrige somente texto de exibicao que chegou HTML-encoded da origem.
      * Duas passagens cobrem "&amp;amp;" sem tocar em codigos/chaves.

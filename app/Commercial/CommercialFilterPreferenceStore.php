@@ -177,7 +177,11 @@ final class CommercialFilterPreferenceStore
         )));
     }
 
-    /** null → NULL na coluna (todos); lista (inclusive []) → JSON. */
+    /**
+     * null → NULL na coluna (todos); lista (inclusive []) → JSON.
+     *
+     * @param list<string>|null $list
+     */
     private static function encodeList(?array $list): ?string
     {
         if ($list === null) {

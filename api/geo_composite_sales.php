@@ -146,8 +146,9 @@ try {
     // seletor global, casar por código é exato (o LIKE por nome confunde
     // homônimos como "CAIO - VAR" e "CAIO - REV"). Sem seleção, o comportamento
     // antigo (seller_id por nome) segue valendo.
-    $hasVendorColumn = Http::tableExists($pdo, 'mart_compradores_por_geo')
-        && Http::columnExists($pdo, 'mart_compradores_por_geo', 'codigo_vendedor_omie');
+    // A existência da tabela já foi garantida acima (jsonConflictMissingTable
+    // encerra a requisição), então aqui basta checar a coluna.
+    $hasVendorColumn = Http::columnExists($pdo, 'mart_compradores_por_geo', 'codigo_vendedor_omie');
     $selectedVendorIds = \BIomie\Support\VendorScopeFilter::requestedIds();
 
     if ($selectedVendorIds !== [] && $hasVendorColumn) {
