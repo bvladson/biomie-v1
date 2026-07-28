@@ -1,12 +1,11 @@
 /*
- * BIomie — Painel da Diretoria (modo TV) v3
+ * BIomie — Painel da Diretoria (modo TV) v8
  * Command-center escuro de alta densidade. Standalone, sem dependências externas de estilo.
  */
 
 /* ── Animated custom properties ──────────────────────────────────────────── */
 @property --pct      { syntax: "<number>"; inherits: false; initial-value: 0; }
 @property --ann-pct  { syntax: "<number>"; inherits: false; initial-value: 0; }
-@property --glow-op  { syntax: "<number>"; inherits: false; initial-value: 0; }
 
 /* ── Design tokens ────────────────────────────────────────────────────────── */
 :root {
@@ -44,7 +43,7 @@
   --tvb-gold-glow: rgba(251, 191, 36, 0.40);
 
   /* Typography */
-  --tvb-font: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --tvb-font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */
@@ -56,7 +55,10 @@ html, body { height: 100%; width: 100%; }
 body.tvb {
   font-family: var(--tvb-font);
   color: var(--tvb-text);
-  background: var(--tvb-bg);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(56, 189, 248, 0.055), transparent 32%),
+    radial-gradient(circle at 92% 100%, rgba(124, 107, 255, 0.05), transparent 34%),
+    var(--tvb-bg);
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -67,47 +69,14 @@ body.tvb {
   position: relative;
 }
 
-/* Subtle animated background nebula */
+/* Gradientes estaticos no body substituem as antigas camadas desfocadas. */
 body.tvb::before,
 body.tvb::after {
-  content: "";
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(80px);
-  animation: nebula-drift 20s ease-in-out infinite alternate;
-}
-body.tvb::before {
-  width: 60vw; height: 60vw;
-  top: -20vw; left: -15vw;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.07) 0%, transparent 70%);
-}
-body.tvb::after {
-  width: 50vw; height: 50vw;
-  bottom: -20vw; right: -10vw;
-  background: radial-gradient(circle, rgba(124, 107, 255, 0.07) 0%, transparent 70%);
-  animation-direction: alternate-reverse;
-  animation-delay: -10s;
-}
-@keyframes nebula-drift {
-  0%   { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(4%, 3%) scale(1.08); }
+  display: none;
 }
 
 /* All content sits above nebula */
 body.tvb > * { position: relative; z-index: 1; }
-
-.material-symbols-rounded {
-  font-family: "Material Symbols Rounded";
-  font-weight: normal;
-  font-style: normal;
-  line-height: 1;
-  letter-spacing: normal;
-  white-space: nowrap;
-  font-feature-settings: "liga";
-  -webkit-font-smoothing: antialiased;
-}
 
 /* ── Topbar ───────────────────────────────────────────────────────────────── */
 .tvb-top {
@@ -123,18 +92,6 @@ body.tvb > * { position: relative; z-index: 1; }
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.tvb-top__brand > .material-symbols-rounded {
-  font-size: clamp(24px, 2.2vw, 38px);
-  color: var(--tvb-accent);
-  background: linear-gradient(135deg,
-    rgba(56, 189, 248, 0.15) 0%,
-    rgba(124, 107, 255, 0.10) 100%);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  border-radius: 14px;
-  padding: 9px;
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.12);
 }
 
 /* Brand icon (Material Symbols — sem dependência externa/Lottie) */
@@ -155,6 +112,8 @@ body.tvb > * { position: relative; z-index: 1; }
   transition: box-shadow .3s, transform .25s;
   flex-shrink: 0;
   cursor: default;
+  object-fit: contain;
+  padding: 10px;
 }
 .tvb-brand-icon:hover {
   box-shadow: 0 0 40px rgba(56, 189, 248, 0.28), 0 0 80px rgba(124, 107, 255, 0.15);
@@ -162,18 +121,6 @@ body.tvb > * { position: relative; z-index: 1; }
 }
 
 /* Ícones pequenos nos rótulos do hero (substituem os lord-icon animados) */
-.tvb-hero__label-icon {
-  font-size: 15px;
-  vertical-align: -3px;
-  margin-right: 4px;
-  color: #6272a0;
-}
-.tvb-hero__label-icon--gold {
-  color: #fbbf24;
-  margin-right: 0;
-  margin-left: 4px;
-}
-
 .tvb-top__title {
   font-size: clamp(17px, 1.7vw, 27px);
   font-weight: 800;
@@ -246,7 +193,10 @@ body.tvb > * { position: relative; z-index: 1; }
   border-color: var(--tvb-border-3);
 }
 .tvb-btn:active { transform: scale(0.92); }
-.tvb-btn .material-symbols-rounded { font-size: clamp(18px, 1.5vw, 24px); }
+.tvb-fullscreen-glyph {
+  font-size: clamp(19px, 1.6vw, 25px);
+  line-height: 1;
+}
 
 /* ── Main content area ────────────────────────────────────────────────────── */
 .tvb-main {
@@ -273,7 +223,6 @@ body.tvb > * { position: relative; z-index: 1; }
   box-shadow:
     0 1px 0 rgba(255,255,255,0.04) inset,
     0 20px 60px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
   position: relative;
   overflow: hidden;
 }
@@ -632,12 +581,6 @@ body.tvb > * { position: relative; z-index: 1; }
   font-variant-numeric: tabular-nums;
 }
 
-.tvb-card__target {
-  font-size: clamp(10px, 0.88vw, 13px);
-  color: var(--tvb-muted);
-  font-weight: 600;
-}
-
 /* Progress bar */
 .tvb-bar-row {
   display: flex;
@@ -663,16 +606,6 @@ body.tvb > * { position: relative; z-index: 1; }
   box-shadow: 0 0 8px var(--att-glow, transparent);
 }
 
-.tvb-att {
-  flex-shrink: 0;
-  font-size: clamp(12px, 1.1vw, 18px);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--att-color, var(--tvb-good));
-  min-width: 2.8em;
-  text-align: right;
-}
-
 /* Annual divider */
 .tvb-card__annual {
   border-top: 1px solid var(--tvb-border);
@@ -688,16 +621,6 @@ body.tvb > * { position: relative; z-index: 1; }
   align-items: baseline;
   justify-content: space-between;
   gap: 6px;
-}
-
-/* Semantic colors */
-.att-high { --att-color: var(--tvb-good);  --att-glow: var(--tvb-good-glow); }
-.att-mid  { --att-color: var(--tvb-warn);  --att-glow: var(--tvb-warn-glow); }
-.att-low  { --att-color: var(--tvb-bad);   --att-glow: var(--tvb-bad-glow);  }
-
-.tvb-card--nodata {
-  opacity: 0.42;
-  filter: saturate(0.5);
 }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */
@@ -732,111 +655,15 @@ body.tvb > * { position: relative; z-index: 1; }
 .tvb-error[hidden] { display: none; }
 
 /* ── Flash animation ──────────────────────────────────────────────────────── */
-.tvb-flash { animation: tvb-flash .7s ease; }
-@keyframes tvb-flash {
-  0%   { filter: brightness(1.8); }
-  100% { filter: brightness(1); }
-}
-
 /* ── Reduced motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .tvb-gauge, .tvb-bar__fill, body.tvb::before, body.tvb::after { transition: none; animation: none; }
-  .tvb-flash { animation: none; }
 }
 
 /* ── 4K / large TV ────────────────────────────────────────────────────────── */
 @media (min-width: 2200px) {
   body.tvb { padding: 28px; gap: 20px; }
   .tvb-grid { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
-}
-
-/* ── Animated icons nos cards ─────────────────────────────────────────────── */
-
-/* Trend arrow: sobe suavemente (att-high) */
-@keyframes tvb-trend-up {
-  0%   { transform: translateY(0) scale(1); opacity: 1; }
-  50%  { transform: translateY(-4px) scale(1.15); opacity: 0.85; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
-}
-/* Trend arrow: pulsa (att-mid) */
-@keyframes tvb-trend-pulse {
-  0%   { transform: scale(1); opacity: 1; }
-  50%  { transform: scale(1.2); opacity: 0.7; }
-  100% { transform: scale(1); opacity: 1; }
-}
-/* Trend arrow: shake (att-low) */
-@keyframes tvb-trend-shake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(-3px) rotate(-8deg); }
-  40%       { transform: translateX(3px) rotate(8deg); }
-  60%       { transform: translateX(-2px) rotate(-4deg); }
-  80%       { transform: translateX(2px) rotate(4deg); }
-}
-/* Trophy pulse for leader card */
-@keyframes tvb-trophy-glow {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(251,191,36,0.5)); transform: scale(1); }
-  50%      { filter: drop-shadow(0 0 14px rgba(251,191,36,0.9)); transform: scale(1.18); }
-}
-/* Rank badge entrance */
-@keyframes tvb-rank-pop {
-  0%   { transform: scale(0.5); opacity: 0; }
-  70%  { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
-}
-/* Counting bar shimmer */
-@keyframes tvb-bar-shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-.tvb-trend-icon {
-  display: inline-block;
-  font-size: clamp(13px, 1.1vw, 18px);
-  line-height: 1;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-.att-high .tvb-trend-icon {
-  animation: tvb-trend-up 2s ease-in-out infinite;
-  color: var(--tvb-good);
-}
-.att-mid .tvb-trend-icon {
-  animation: tvb-trend-pulse 2.2s ease-in-out infinite;
-  color: var(--tvb-warn);
-}
-.att-low .tvb-trend-icon {
-  animation: tvb-trend-shake 2.5s ease-in-out infinite;
-  color: var(--tvb-bad);
-}
-
-.tvb-trophy-icon {
-  display: inline-block;
-  animation: tvb-trophy-glow 2s ease-in-out infinite;
-  transform-origin: center bottom;
-}
-
-.tvb-rank-badge {
-  display: inline-block;
-  animation: tvb-rank-pop 0.5s cubic-bezier(.34,1.56,.64,1) both;
-}
-
-/* Shimmer on progress bar fill for leader */
-.tvb-card--leader .tvb-bar__fill {
-  background-image: linear-gradient(
-    90deg,
-    var(--att-color, var(--tvb-good)) 0%,
-    rgba(255,255,255,0.35) 40%,
-    var(--att-color, var(--tvb-good)) 60%,
-    var(--att-color, var(--tvb-good)) 100%
-  );
-  background-size: 200% 100%;
-  animation: tvb-bar-shimmer 2s linear infinite;
-}
-
-/* Lordicon inside labels — align vertically */
-.tvb-hero__label lord-icon {
-  display: inline-block;
-  vertical-align: middle;
 }
 
 /* ── v4: confiança, densidade executiva e estados explícitos ─────────────── */
@@ -1317,7 +1144,7 @@ body.tvb > * { position: relative; z-index: 1; }
     padding-bottom: 8px;
     gap: 6px;
   }
-  .tvb-top__brand > .material-symbols-rounded {
+  .tvb-brand-icon {
     padding: 7px;
   }
   .tvb-hero {
@@ -1359,11 +1186,39 @@ body.tvb > * { position: relative; z-index: 1; }
   .tvb-card__source { font-size: 12px; }
 }
 
+/* v5 performance: nenhuma pintura continua quando o painel esta ocioso. */
+.tvb-card {
+  contain: layout paint;
+}
+.tvb-card--leader .tvb-bar__fill {
+  animation: none;
+  background-image: none;
+}
+.tvb-leader-mark {
+  margin-left: 4px;
+  color: var(--tvb-gold);
+}
+.tvb-error__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+@media (max-width: 1180px) {
+  .tvb-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 460px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tvb-live__dot,
-  .tvb-trend-icon,
-  .tvb-trophy-icon,
-  .tvb-rank-badge,
   .tvb-card--leader .tvb-bar__fill,
   body.tvb::before,
   body.tvb::after {

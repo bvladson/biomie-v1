@@ -7,6 +7,7 @@ use BIomie\Http;
 use BIomie\Modules\Sales\Application\Board\BoardConsolidatedService;
 use BIomie\RequestContext;
 
+define('BIOMIE_API_BOOTSTRAP_PROFILE', 'board-read');
 require __DIR__ . '/bootstrap.php';
 
 /** @var \BIomie\Config $config definido em api/bootstrap.php */
@@ -25,9 +26,10 @@ try {
 
     $payload = (new BoardConsolidatedService($config, $logger, $cache))->build($userId, $start, $end, $annualStart);
 
-    // O consolidado é recomputado no máx. a cada 5 min (cache do serviço). Servir
-    // com ETag + max-age deixa o poll da TV (a cada 5 min, várias telas) responder
-    // 304 sem retransmitir o payload — reduz banda e trabalho de serialização.
+    // O consolidado é recomputado no máximo a cada 5 min pelo cache privado do
+    // serviço. A tela mantém apenas o ETag em memória e envia If-None-Match:
+    // respostas iguais retornam 304 sem persistir dados autenticados no cache do
+    // navegador. O valor abaixo é uma dica de cadência para a telemetria HTTP.
     Http::jsonWithEtag($payload, 300);
 } catch (Throwable $exception) {
     $logger->error('Falha em api/board_consolidated.', [

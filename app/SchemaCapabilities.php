@@ -22,6 +22,69 @@ final class SchemaCapabilities
     /** @var array<string,array<string,true>> */
     private static array $columns = [];
 
+    /**
+     * Carrega a existencia e as colunas de varias tabelas em um unico
+     * round-trip. Leitores que dependem de mais de uma capacidade podem aquecer
+     * o snapshot antes de chamar tableExists()/columnExists().
+     *
+     * @param list<string> $tables
+     */
+    public static function warm(PDO $pdo, array $tables): void
+    {
+        $tables = array_values(array_unique(array_filter(
+            array_map('strval', $tables),
+            static fn (string $table): bool => preg_match('/^[a-zA-Z0-9_]+$/', $table) === 1,
+        )));
+        if ($tables === []) {
+            return;
+        }
+
+        $connectionKey = self::connectionKey($pdo);
+        $missing = array_values(array_filter(
+            $tables,
+            static fn (string $table): bool =>
+                !array_key_exists($connectionKey . ':table:' . $table, self::$tables)
+                || !array_key_exists($connectionKey . ':columns:' . $table, self::$columns),
+        ));
+        if ($missing === []) {
+            RequestPerformanceContext::increment('schema_cache_hits');
+            return;
+        }
+
+        $params = [];
+        $placeholders = [];
+        foreach ($missing as $index => $table) {
+            $key = 'schema_table_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $table;
+            self::$tables[$connectionKey . ':table:' . $table] = false;
+            self::$columns[$connectionKey . ':columns:' . $table] = [];
+        }
+
+        try {
+            RequestPerformanceContext::increment('schema_queries');
+            $stmt = $pdo->prepare(
+                'SELECT TABLE_NAME, COLUMN_NAME
+                   FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME IN (' . implode(', ', $placeholders) . ')'
+            );
+            $stmt->execute($params);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                $table = (string) ($row['TABLE_NAME'] ?? '');
+                $column = (string) ($row['COLUMN_NAME'] ?? '');
+                if ($table === '' || $column === '' || !in_array($table, $missing, true)) {
+                    continue;
+                }
+                self::$tables[$connectionKey . ':table:' . $table] = true;
+                self::$columns[$connectionKey . ':columns:' . $table][$column] = true;
+            }
+        } catch (Throwable) {
+            // Os snapshots vazios preservam o comportamento fail-closed dos
+            // checks individuais sem repetir varias consultas que ja falharam.
+        }
+    }
+
     public static function tableExists(PDO $pdo, string $table): bool
     {
         $key = self::connectionKey($pdo) . ':table:' . $table;

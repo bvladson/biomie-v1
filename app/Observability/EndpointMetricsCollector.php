@@ -116,8 +116,29 @@ final class EndpointMetricsCollector
                 if ($runtime !== [] || $input['source'] === 'browser') {
                     $grouped[$key]['instrumented_total'] = (int) ($grouped[$key]['instrumented_total'] ?? 0) + 1;
                 }
-                foreach (['external_calls', 'external_get_violations', 'omie_network_calls', 'db_connect_calls', 'db_pool_hits', 'db_connections_opened'] as $counter) {
+                foreach ([
+                    'external_calls',
+                    'external_get_violations',
+                    'omie_network_calls',
+                    'db_connect_calls',
+                    'db_pool_hits',
+                    'db_connections_opened',
+                    'etag_conditional_requests',
+                    'etag_not_modified_responses',
+                    'etag_full_responses',
+                    'api_lightweight_bootstrap',
+                ] as $counter) {
                     $grouped[$key][$counter] = (int) ($grouped[$key][$counter] ?? 0) + (int) ($counters[$counter] ?? 0);
+                }
+                if (array_key_exists('response_bytes', $tags) && is_numeric($tags['response_bytes'])) {
+                    $grouped[$key]['response_bytes_total'] = (int) ($grouped[$key]['response_bytes_total'] ?? 0)
+                        + max(0, (int) $tags['response_bytes']);
+                    $grouped[$key]['response_bytes_samples'] = (int) ($grouped[$key]['response_bytes_samples'] ?? 0) + 1;
+                }
+                $bootstrapProfile = trim((string) ($tags['api_bootstrap_profile'] ?? ''));
+                if ($bootstrapProfile !== '') {
+                    $grouped[$key]['bootstrap_profile_counts'][$bootstrapProfile] =
+                        (int) ($grouped[$key]['bootstrap_profile_counts'][$bootstrapProfile] ?? 0) + 1;
                 }
                 $source = trim((string) ($tags['source'] ?? ''));
                 if ($source !== '') {
@@ -133,6 +154,8 @@ final class EndpointMetricsCollector
             $count = count($durations);
             $total = (int) ($data['total'] ?? 0);
             $errors = (int) ($data['errors'] ?? 0);
+            $responseBytesSamples = (int) ($data['response_bytes_samples'] ?? 0);
+            $responseBytesTotal = (int) ($data['response_bytes_total'] ?? 0);
             $result[] = [
                 'endpoint' => $data['endpoint'],
                 'method' => $data['method'],
@@ -151,6 +174,15 @@ final class EndpointMetricsCollector
                 'db_connect_calls' => (int) ($data['db_connect_calls'] ?? 0),
                 'db_pool_hits' => (int) ($data['db_pool_hits'] ?? 0),
                 'db_connections_opened' => (int) ($data['db_connections_opened'] ?? 0),
+                'etag_conditional_requests' => (int) ($data['etag_conditional_requests'] ?? 0),
+                'etag_not_modified_responses' => (int) ($data['etag_not_modified_responses'] ?? 0),
+                'etag_full_responses' => (int) ($data['etag_full_responses'] ?? 0),
+                'api_lightweight_bootstrap' => (int) ($data['api_lightweight_bootstrap'] ?? 0),
+                'response_bytes_total' => $responseBytesTotal,
+                'avg_response_bytes' => $responseBytesSamples > 0
+                    ? (int) round($responseBytesTotal / $responseBytesSamples)
+                    : 0,
+                'bootstrap_profile_counts' => (array) ($data['bootstrap_profile_counts'] ?? []),
                 'source_counts' => (array) ($data['source_counts'] ?? []),
             ];
         }

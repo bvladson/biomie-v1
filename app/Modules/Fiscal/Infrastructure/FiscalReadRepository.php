@@ -601,6 +601,315 @@ final class FiscalReadRepository
     }
 
     /**
+     * Consolida, em uma unica leitura fiscal, todos os periodos usados pelo
+     * Painel da Diretoria. Evita cinco round-trips e cinco varreduras da mesma
+     * tabela a cada renovacao do cache.
+     *
+     * @param list<int> $companyIds
+     * @param array<int,list<string>> $channelsByCompany
+     * @param array<int,list<string>> $monthSellerIdsByCompany
+     * @param array<int,list<string>> $annualSellerIdsByCompany
+     * @return array{
+     *   current:array<int,array<string,mixed>>,
+     *   annual:array<int,array<string,mixed>>,
+     *   comparison:array<int,array<string,mixed>>,
+     *   targeted_current:array<int,array<string,mixed>>,
+     *   targeted_annual:array<int,array<string,mixed>>
+     * }
+     */
+    public function summarizeBoardPeriodsByCompanies(
+        array $companyIds,
+        string $currentStart,
+        string $currentEnd,
+        string $annualStart,
+        string $comparisonStart,
+        string $comparisonEnd,
+        array $channelsByCompany,
+        array $monthSellerIdsByCompany = [],
+        array $annualSellerIdsByCompany = [],
+    ): array {
+        $empty = [
+            'current' => [],
+            'annual' => [],
+            'comparison' => [],
+            'targeted_current' => [],
+            'targeted_annual' => [],
+        ];
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $companyIds),
+            static fn (int $id): bool => $id > 0,
+        )));
+        if ($ids === []) {
+            return $empty;
+        }
+
+        $table = 'biomie_notas_fiscais_canonicas';
+        $baseSql = $this->readSupport()->commercialBaseSql('nf');
+        $columns = \BIomie\SchemaCapabilities::columns($this->pdo(), $table);
+        foreach (['company_id', 'status_fiscal', 'data_competencia'] as $requiredColumn) {
+            if (!isset($columns[$requiredColumn])) {
+                throw new RuntimeException(
+                    'Schema fiscal indisponivel para consolidar o Painel da Diretoria.',
+                );
+            }
+        }
+        $channelAware = $channelsByCompany !== [] && isset($columns['business_channel']);
+        $hasCommercialVisibility = isset($columns['is_biomie_commercial_visible']);
+        $hasSeller = isset($columns['codigo_vendedor_omie']);
+
+        $params = [
+            'current_start' => $currentStart,
+            'current_end' => $currentEnd,
+            'annual_start' => $annualStart,
+            'comparison_start' => $comparisonStart,
+            'comparison_end' => $comparisonEnd,
+            'scan_start' => min($currentStart, $annualStart, $comparisonStart),
+            'scan_end' => max($currentEnd, $comparisonEnd),
+        ];
+        $companyPlaceholders = [];
+        foreach ($ids as $index => $companyId) {
+            $key = 'board_company_' . $index;
+            $companyPlaceholders[] = ':' . $key;
+            $params[$key] = $companyId;
+        }
+
+        $scope = isset($columns['operation_scope'])
+            ? " AND nf.operation_scope = 'commercial'"
+            : '';
+        if ($channelAware) {
+            $channelClauses = [];
+            foreach ($ids as $index => $companyId) {
+                $allowed = array_values(array_intersect(
+                    ['varejo', 'licitacao'],
+                    array_map('strval', $channelsByCompany[$companyId] ?? []),
+                ));
+                if ($allowed === []) {
+                    continue;
+                }
+
+                $companyKey = 'board_scope_company_' . $index;
+                $params[$companyKey] = $companyId;
+                $channelPredicates = [];
+                foreach ($allowed as $channelIndex => $channel) {
+                    $channelKey = 'board_scope_channel_' . $index . '_' . $channelIndex;
+                    $params[$channelKey] = $channel;
+                    $predicate = 'nf.business_channel = :' . $channelKey;
+                    if ($channel === 'varejo' && $hasCommercialVisibility) {
+                        $predicate .= ' AND COALESCE(nf.is_biomie_commercial_visible, 1) = 1';
+                    }
+                    $channelPredicates[] = '(' . $predicate . ')';
+                }
+                $channelClauses[] = sprintf(
+                    '(nf.company_id = :%s AND (%s))',
+                    $companyKey,
+                    implode(' OR ', $channelPredicates),
+                );
+            }
+            $scope .= $channelClauses === []
+                ? ' AND 1 = 0'
+                : ' AND (' . implode(' OR ', $channelClauses) . ')';
+        } elseif ($hasCommercialVisibility) {
+            $scope .= ' AND COALESCE(nf.is_biomie_commercial_visible, 1) = 1';
+        }
+
+        $sellerPredicate = function (array $sellerIdsByCompany, string $prefix) use (
+            $ids,
+            $hasSeller,
+            &$params,
+        ): string {
+            if (!$hasSeller || $sellerIdsByCompany === []) {
+                return '1 = 0';
+            }
+
+            $clauses = [];
+            foreach ($ids as $index => $companyId) {
+                $sellerIds = array_values(array_unique(array_filter(
+                    array_map(
+                        static fn (mixed $sellerId): string => trim((string) $sellerId),
+                        $sellerIdsByCompany[$companyId] ?? [],
+                    ),
+                    static fn (string $sellerId): bool => $sellerId !== '',
+                )));
+                if ($sellerIds === []) {
+                    continue;
+                }
+
+                $companyKey = $prefix . '_company_' . $index;
+                $params[$companyKey] = $companyId;
+                $sellerPlaceholders = [];
+                foreach ($sellerIds as $sellerIndex => $sellerId) {
+                    $sellerKey = $prefix . '_seller_' . $index . '_' . $sellerIndex;
+                    $params[$sellerKey] = $sellerId;
+                    $sellerPlaceholders[] = ':' . $sellerKey;
+                }
+                $clauses[] = sprintf(
+                    '(nf.company_id = :%s AND nf.codigo_vendedor_omie IN (%s))',
+                    $companyKey,
+                    implode(', ', $sellerPlaceholders),
+                );
+            }
+
+            return $clauses === [] ? '1 = 0' : '(' . implode(' OR ', $clauses) . ')';
+        };
+        // Native MySQL prepares do not allow the same named placeholder to be
+        // referenced more than once. Build independent predicates for the
+        // order counters and revenue totals.
+        $monthSellerCountScope = $sellerPredicate($monthSellerIdsByCompany, 'board_month_target_count');
+        $annualSellerCountScope = $sellerPredicate($annualSellerIdsByCompany, 'board_annual_target_count');
+        $monthSellerTotalScope = $sellerPredicate($monthSellerIdsByCompany, 'board_month_target_total');
+        $annualSellerTotalScope = $sellerPredicate($annualSellerIdsByCompany, 'board_annual_target_total');
+
+        $retailColumns = $channelAware
+            ? ",
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                     AND nf.business_channel = 'varejo'
+                    THEN {$baseSql} ELSE 0 END), 0) AS current_retail_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                     AND nf.business_channel = 'licitacao'
+                    THEN {$baseSql} ELSE 0 END), 0) AS current_bidding_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                     AND nf.business_channel = 'varejo'
+                    THEN {$baseSql} ELSE 0 END), 0) AS annual_retail_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                     AND nf.business_channel = 'licitacao'
+                    THEN {$baseSql} ELSE 0 END), 0) AS annual_bidding_total"
+            : ",
+                0 AS current_retail_total,
+                0 AS current_bidding_total,
+                0 AS annual_retail_total,
+                0 AS annual_bidding_total";
+
+        $sql = "
+            SELECT
+                nf.company_id,
+                COUNT(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                    THEN 1 ELSE NULL END) AS current_orders,
+                COUNT(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                    THEN 1 ELSE NULL END) AS annual_orders,
+                COUNT(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.comparison_start AND bounds.comparison_end
+                    THEN 1 ELSE NULL END) AS comparison_orders,
+                COUNT(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                     AND {$monthSellerCountScope}
+                    THEN 1 ELSE NULL END) AS targeted_current_orders,
+                COUNT(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                     AND {$annualSellerCountScope}
+                    THEN 1 ELSE NULL END) AS targeted_annual_orders,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                    THEN {$baseSql} ELSE 0 END), 0) AS current_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                    THEN nf.valor_mercadorias ELSE 0 END), 0) AS current_merchandise,
+                COUNT(DISTINCT CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                    THEN NULLIF(TRIM(COALESCE(nf.nome_vendedor, '')), '') ELSE NULL END
+                ) AS current_vendors,
+                COUNT(DISTINCT CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                    THEN NULLIF(TRIM(COALESCE(nf.nome_cliente, '')), '') ELSE NULL END
+                ) AS current_clients,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                    THEN {$baseSql} ELSE 0 END), 0) AS annual_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.comparison_start AND bounds.comparison_end
+                    THEN {$baseSql} ELSE 0 END), 0) AS comparison_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.current_start AND bounds.current_end
+                     AND {$monthSellerTotalScope}
+                    THEN {$baseSql} ELSE 0 END), 0) AS targeted_current_total,
+                COALESCE(SUM(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                     AND {$annualSellerTotalScope}
+                    THEN {$baseSql} ELSE 0 END), 0) AS targeted_annual_total,
+                MAX(CASE
+                    WHEN nf.data_competencia BETWEEN bounds.annual_start AND bounds.current_end
+                    THEN nf.sincronizado_em ELSE NULL END) AS last_source_at
+                {$retailColumns}
+            FROM {$table} nf
+            CROSS JOIN (
+                SELECT
+                    CAST(:current_start AS DATE) AS current_start,
+                    CAST(:current_end AS DATE) AS current_end,
+                    CAST(:annual_start AS DATE) AS annual_start,
+                    CAST(:comparison_start AS DATE) AS comparison_start,
+                    CAST(:comparison_end AS DATE) AS comparison_end,
+                    CAST(:scan_start AS DATE) AS scan_start,
+                    CAST(:scan_end AS DATE) AS scan_end
+            ) bounds
+            WHERE nf.status_fiscal = 'autorizada'
+              AND nf.data_competencia BETWEEN bounds.scan_start AND bounds.scan_end
+              AND nf.company_id IN (" . implode(', ', $companyPlaceholders) . ")
+              {$scope}
+            GROUP BY nf.company_id
+        ";
+        $stmt = $this->pdo()->prepare($sql);
+        $stmt->execute($params);
+
+        $out = $empty;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $companyId = (int) ($row['company_id'] ?? 0);
+            if ($companyId <= 0) {
+                continue;
+            }
+            $lastSourceAt = isset($row['last_source_at']) && $row['last_source_at'] !== ''
+                ? (string) $row['last_source_at']
+                : null;
+            if ((int) ($row['current_orders'] ?? 0) > 0) {
+                $out['current'][$companyId] = [
+                    'company_id' => $companyId,
+                    'billed_value' => (float) ($row['current_total'] ?? 0),
+                    'billed_orders' => (int) ($row['current_orders'] ?? 0),
+                    'merchandise_total' => (float) ($row['current_merchandise'] ?? 0),
+                    'active_vendors' => (int) ($row['current_vendors'] ?? 0),
+                    'active_clients' => (int) ($row['current_clients'] ?? 0),
+                    'retail_value' => (float) ($row['current_retail_total'] ?? 0),
+                    'bidding_value' => (float) ($row['current_bidding_total'] ?? 0),
+                    'last_source_at' => $lastSourceAt,
+                ];
+            }
+            if ((int) ($row['annual_orders'] ?? 0) > 0) {
+                $out['annual'][$companyId] = [
+                    'company_id' => $companyId,
+                    'billed_value' => (float) ($row['annual_total'] ?? 0),
+                    'retail_value' => (float) ($row['annual_retail_total'] ?? 0),
+                    'bidding_value' => (float) ($row['annual_bidding_total'] ?? 0),
+                    'last_source_at' => $lastSourceAt,
+                ];
+            }
+            if ((int) ($row['comparison_orders'] ?? 0) > 0) {
+                $out['comparison'][$companyId] = [
+                    'company_id' => $companyId,
+                    'billed_value' => (float) ($row['comparison_total'] ?? 0),
+                ];
+            }
+            if ((int) ($row['targeted_current_orders'] ?? 0) > 0) {
+                $out['targeted_current'][$companyId] = [
+                    'company_id' => $companyId,
+                    'billed_value' => (float) ($row['targeted_current_total'] ?? 0),
+                ];
+            }
+            if ((int) ($row['targeted_annual_orders'] ?? 0) > 0) {
+                $out['targeted_annual'][$companyId] = [
+                    'company_id' => $companyId,
+                    'billed_value' => (float) ($row['targeted_annual_total'] ?? 0),
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @return list<array<string,mixed>>
      */
     private function fetchInvoiceRows(string $start, string $end, string $status, ?string $vendorId = null, string $extraWhere = ''): array

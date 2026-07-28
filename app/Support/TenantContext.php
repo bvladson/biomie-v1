@@ -80,6 +80,23 @@ final class TenantContext
         return self::$instance !== null;
     }
 
+    /**
+     * Reutiliza a conexao que ja resolveu o contexto nesta requisicao. Evita
+     * probes redundantes do pool em leitores que usam o mesmo banco canonico.
+     */
+    public static function storageConnection(): PDO
+    {
+        if (!self::$pdo instanceof PDO) {
+            throw new TenantContextUnavailableException(
+                'context_storage_unavailable',
+                503,
+                'Conexao do armazenamento de contexto nao foi inicializada.',
+            );
+        }
+
+        return self::$pdo;
+    }
+
     public static function contextId(): string
     {
         return self::current()->contextId;

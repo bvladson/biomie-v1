@@ -3,9 +3,15 @@
 declare(strict_types=1);
 
 use BIomie\Auth;
+use BIomie\Cache;
+use BIomie\Http;
+use BIomie\Modules\Sales\Application\Board\BoardConsolidatedService;
 use BIomie\Support\TenantContext;
 
 require __DIR__ . '/app/page_bootstrap.php';
+
+/** @var \BIomie\Config $config definido em app/page_bootstrap.php */
+/** @var \BIomie\Logger $logger definido em app/page_bootstrap.php */
 
 // Painel da Diretoria (modo TV). Requer permissão comercial; agrega apenas as
 // empresas acessíveis ao usuário (ver BoardConsolidatedService).
@@ -15,23 +21,64 @@ $assetVersion = static fn (string $rel): string => (string) (@filemtime(__DIR__ 
 $cssUrl = Auth::url('assets/css/tv-board.css') . '?v=' . $assetVersion('assets/css/tv-board.css');
 $jsUrl  = Auth::url('assets/js/tv-board.js') . '?v=' . $assetVersion('assets/js/tv-board.js');
 $apiUrl = Auth::url('api/board_consolidated.php');
+$logoUrl = Auth::url('images/logo-icon.svg') . '?v=' . $assetVersion('images/logo-icon.svg');
 $contextId = TenantContext::contextId();
+
+// Hydrate from the same service used by the API. Cache hits are effectively
+// immediate; on a miss the consolidated service computes once and warms the
+// shared cache. Any failure remains non-blocking because fetch is the fallback.
+$initialPayloadJson = '';
+$initialPayloadEtag = '';
+try {
+    $currentUserId = (int) (Auth::currentUser()['id'] ?? 0);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    $today = date('Y-m-d');
+    $monthStart = date('Y-m-01');
+    $annualStart = date('Y-01-01');
+    $cachedPayload = $currentUserId > 0
+        ? (new BoardConsolidatedService(
+            $config,
+            $logger,
+            new Cache(__DIR__ . '/storage/cache'),
+        ))->build($currentUserId, $monthStart, $today, $annualStart)
+        : null;
+    if (is_array($cachedPayload) && ($cachedPayload['ok'] ?? false) === true) {
+        [$cachedPayload] = Http::contextualizePayload($cachedPayload);
+        $etagJson = json_encode(
+            $cachedPayload,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE,
+        );
+        $embeddedJson = json_encode(
+            $cachedPayload,
+            JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_INVALID_UTF8_SUBSTITUTE
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT,
+        );
+        if (is_string($etagJson) && is_string($embeddedJson)) {
+            $initialPayloadJson = $embeddedJson;
+            $initialPayloadEtag = '"' . md5($etagJson) . '"';
+        }
+    }
+} catch (Throwable) {
+    // Cache hydration is an optimization only; fetch handles every fallback.
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
   <meta name="robots" content="noindex" />
   <title>Painel da Diretoria · BIomie</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Fontes carregadas de forma não-bloqueante (media=print → all no onload):
-       o painel pinta imediatamente e as fontes trocam ao chegar. Antes o
-       Material Symbols com display=block bloqueava o texto até baixar. -->
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="<?php echo htmlspecialchars($cssUrl, ENT_QUOTES, 'UTF-8'); ?>" />
+  <script src="<?php echo htmlspecialchars($jsUrl, ENT_QUOTES, 'UTF-8'); ?>" defer fetchpriority="high"></script>
 </head>
 <body
   class="tvb"
@@ -39,11 +86,25 @@ $contextId = TenantContext::contextId();
   data-context="<?php echo htmlspecialchars($contextId, ENT_QUOTES, 'UTF-8'); ?>"
   data-refresh="300"
 >
+  <?php if ($initialPayloadJson !== ''): ?>
+    <script
+      type="application/json"
+      id="tvbInitialData"
+      data-etag="<?php echo htmlspecialchars($initialPayloadEtag, ENT_QUOTES, 'UTF-8'); ?>"
+    ><?php echo $initialPayloadJson; ?></script>
+  <?php endif; ?>
 
   <!-- Topbar -->
   <header class="tvb-top">
     <div class="tvb-top__brand">
-      <span class="material-symbols-rounded tvb-brand-icon" aria-hidden="true">insights</span>
+      <img
+        class="tvb-brand-icon"
+        src="<?php echo htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8'); ?>"
+        width="56"
+        height="56"
+        alt=""
+        decoding="async"
+      />
       <div>
         <h1 class="tvb-top__title">Painel da Diretoria</h1>
         <div class="tvb-top__sub" id="tvbPeriod">Carregando…</div>
@@ -59,7 +120,7 @@ $contextId = TenantContext::contextId();
         <div class="tvb-date" id="tvbDate"></div>
       </div>
       <button type="button" class="tvb-btn" id="tvbFullscreen" title="Tela cheia" aria-label="Alternar tela cheia">
-        <span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px">fullscreen</span>
+        <span class="tvb-fullscreen-glyph" aria-hidden="true">⛶</span>
       </button>
     </div>
   </header>
@@ -72,7 +133,6 @@ $contextId = TenantContext::contextId();
       <!-- Col 1: Mês atual -->
       <div class="tvb-hero__block">
         <div class="tvb-hero__label">
-          <span class="material-symbols-rounded tvb-hero__label-icon" aria-hidden="true">calendar_month</span>
           Faturamento Mensal
         </div>
         <div class="tvb-hero__value" id="tvbGroupRevenue">—</div>
@@ -110,7 +170,6 @@ $contextId = TenantContext::contextId();
       <!-- Col 3: YTD acumulado -->
       <div class="tvb-hero__block tvb-hero__block--center">
         <div class="tvb-hero__label">
-          <span class="material-symbols-rounded tvb-hero__label-icon" aria-hidden="true">trending_up</span>
           Acumulado Ano (YTD)
         </div>
         <div class="tvb-hero__value--annual" id="tvbGroupAnnualRevenue">—</div>
@@ -123,7 +182,7 @@ $contextId = TenantContext::contextId();
       <div class="tvb-hero__block tvb-hero__block--right">
         <div class="tvb-hero__label">
           Maior faturamento MTD
-          <span class="material-symbols-rounded tvb-hero__label-icon tvb-hero__label-icon--gold" aria-hidden="true">emoji_events</span>
+          <span class="tvb-leader-mark" aria-hidden="true">◆</span>
         </div>
         <div class="tvb-hero__leader" id="tvbLeader">—</div>
         <div class="tvb-hero__meta" id="tvbLeaderRevenue">—</div>
@@ -150,11 +209,9 @@ $contextId = TenantContext::contextId();
   </footer>
 
   <div class="tvb-error" id="tvbError" role="alert" hidden>
-    <span class="material-symbols-rounded" aria-hidden="true" style="font-size:26px;flex-shrink:0">cloud_off</span>
+    <span class="tvb-error__icon" aria-hidden="true">!</span>
     <span id="tvbErrorMsg">Não foi possível carregar os dados.</span>
     <button type="button" class="tvb-error__action" id="tvbRetry">Tentar agora</button>
   </div>
-
-  <script src="<?php echo htmlspecialchars($jsUrl, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
 </body>
 </html>

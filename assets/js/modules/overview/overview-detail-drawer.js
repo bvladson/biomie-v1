@@ -1,83 +1,93 @@
 /**
- * Overview Detail Drawer — Phase 10G
- * Large-screen drilldown drawer (70–82 vw) for chart detail exploration.
- * Reuses existing entity drawers (Vendor 360, Client Dossier, Invoice Detail)
- * when the click target is a known entity.
+ * Overview Detail Drawer — drilldown acessível para os gráficos do dashboard.
  */
 (function () {
   'use strict';
 
   var B = window.BIomie || (window.BIomie = {});
-
   var drawer, backdrop, titleEl, subtitleEl, closeBtn, tabsEl, bodyEl;
   var abortCtrl = null;
   var triggerEl = null;
+  var activeChartId = '';
+  var activeFilters = {};
+  var previousBodyOverflow = '';
+  var filterTimer = null;
   var cache = {};
   var CACHE_TTL = 60000;
   var focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-  function init() {
-    drawer   = document.getElementById('overviewDetailDrawer');
-    backdrop = document.getElementById('overviewDetailBackdrop');
-    titleEl  = document.getElementById('overviewDetailTitle');
-    subtitleEl = document.getElementById('overviewDetailSubtitle');
-    closeBtn = document.getElementById('overviewDetailClose');
-    tabsEl   = document.getElementById('overviewDetailTabs');
-    bodyEl   = document.getElementById('overviewDetailBody');
-    if (!drawer) return;
-
-    closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', close);
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && isOpen()) close();
-    });
-    drawer.addEventListener('keydown', trapFocus);
-
-    // Wire all Detalhar buttons
-    document.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-drill]');
-      if (!btn) return;
-      var chartId = btn.dataset.drill;
-      if (!chartId) return;
-      e.preventDefault();
-      open({ chartId: chartId, title: chartTitles[chartId] || 'Detalhamento', triggerElement: btn });
-    });
-  }
-
   var chartTitles = {
-    revenue_evolution: 'Evolucao da Receita',
+    revenue_evolution: 'Evolução da Receita',
     vendor_ranking: 'Ranking Comercial',
-    top_products: 'Produtos em Destaque',
-    top_customers: 'Clientes em Destaque',
+    top_products: 'Produtos em destaque — Orç-PD',
+    top_customers: 'Clientes em destaque — Orç-PD',
     top_invoices: 'Maiores Notas Fiscais',
     geo_compact: 'Geografia Resumida'
   };
 
-  function isOpen() { return drawer && drawer.classList.contains('is-open'); }
+  var chartSubtitles = {
+    top_products: 'Receita, volume, frequência e preço médio dos produtos faturados no período.',
+    top_customers: 'Receita, recorrência, CPF/CNPJ e responsáveis comerciais no período.'
+  };
 
-  function open(opts) {
+  function init() {
+    drawer = document.getElementById('overviewDetailDrawer');
+    backdrop = document.getElementById('overviewDetailBackdrop');
+    titleEl = document.getElementById('overviewDetailTitle');
+    subtitleEl = document.getElementById('overviewDetailSubtitle');
+    closeBtn = document.getElementById('overviewDetailClose');
+    tabsEl = document.getElementById('overviewDetailTabs');
+    bodyEl = document.getElementById('overviewDetailBody');
+    if (!drawer) return;
+
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && isOpen()) close();
+    });
+    drawer.addEventListener('keydown', trapFocus);
+
+    document.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-drill]');
+      if (!button || !button.dataset.drill) return;
+      event.preventDefault();
+      open({
+        chartId: button.dataset.drill,
+        title: chartTitles[button.dataset.drill] || 'Detalhamento',
+        triggerElement: button
+      });
+    });
+  }
+
+  function isOpen() {
+    return drawer && drawer.classList.contains('is-open');
+  }
+
+  function open(options) {
     if (!drawer) init();
     if (!drawer) return;
 
-    triggerEl = opts.triggerElement || document.activeElement;
+    var opts = options || {};
     var chartId = opts.chartId || '';
-    var title = opts.title || chartTitles[chartId] || 'Detalhamento';
-    var filters = opts.filters || {};
+    var filters = mergeDetailFilters(opts.filters || {});
 
-    titleEl.textContent = title;
-    subtitleEl.textContent = opts.subtitle || '';
+    triggerEl = opts.triggerElement || document.activeElement;
+    activeChartId = chartId;
+    activeFilters = filters;
+    titleEl.textContent = opts.title || chartTitles[chartId] || 'Detalhamento';
+    subtitleEl.textContent = opts.subtitle || chartSubtitles[chartId] || '';
     tabsEl.innerHTML = '';
+    tabsEl.hidden = true;
     bodyEl.innerHTML = renderSkeleton();
 
+    if (!isOpen()) previousBodyOverflow = document.body.style.overflow;
     drawer.setAttribute('aria-hidden', 'false');
     drawer.classList.add('is-open');
     backdrop.classList.add('is-open');
     document.body.style.overflow = 'hidden';
 
-    // Focus first focusable inside drawer
     setTimeout(function () {
-      var first = drawer.querySelector(focusableSelector);
-      if (first) first.focus();
+      if (closeBtn) closeBtn.focus();
     }, 100);
 
     fetchDetail(chartId, filters);
@@ -85,46 +95,120 @@
 
   function close() {
     if (!drawer) return;
-    if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
+    if (abortCtrl) {
+      abortCtrl.abort();
+      abortCtrl = null;
+    }
+    if (filterTimer) {
+      clearTimeout(filterTimer);
+      filterTimer = null;
+    }
 
     drawer.classList.remove('is-open');
     backdrop.classList.remove('is-open');
     drawer.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
+    document.body.style.overflow = previousBodyOverflow;
 
-    if (triggerEl && typeof triggerEl.focus === 'function') {
-      triggerEl.focus();
-    }
+    if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
     triggerEl = null;
   }
 
-  function trapFocus(e) {
-    if (e.key !== 'Tab') return;
-    var els = drawer.querySelectorAll(focusableSelector);
-    if (!els.length) return;
-    var first = els[0];
-    var last = els[els.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  function trapFocus(event) {
+    if (event.key !== 'Tab') return;
+    var elements = drawer.querySelectorAll(focusableSelector);
+    if (!elements.length) return;
+    var first = elements[0];
+    var last = elements[elements.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   function renderSkeleton() {
-    return '<div class="drawer-skeleton">' +
-      '<div class="skeleton-block"></div>' +
-      '<div class="skeleton-block"></div>' +
-      '<div class="skeleton-block"></div>' +
-      '<div class="skeleton-block"></div>' +
-      '</div>';
+    return '<div class="drawer-skeleton" aria-label="Carregando detalhamento">' +
+      '<div class="skeleton-block"></div><div class="skeleton-block"></div>' +
+      '<div class="skeleton-block"></div><div class="skeleton-block"></div></div>';
   }
 
-  function cacheKey(chartId, filters) {
-    return chartId + ':' + JSON.stringify(filters || {});
+  function periodValues() {
+    var dashboardFilters = dashboardFilterValues();
+    var start = document.getElementById('dateStart');
+    var end = document.getElementById('dateEnd');
+    return {
+      start: String(dashboardFilters.start || (start && start.value) || ''),
+      end: String(dashboardFilters.end || (end && end.value) || '')
+    };
+  }
+
+  function dashboardFilterValues() {
+    if (window.BDashboard && typeof window.BDashboard.getFilters === 'function') {
+      try {
+        return window.BDashboard.getFilters() || {};
+      } catch (ignore) {}
+    }
+
+    function fieldValue(id) {
+      var field = document.getElementById(id);
+      return field ? String(field.value || '').trim() : '';
+    }
+
+    var navRange = window.NavContext && typeof window.NavContext.getDateRange === 'function'
+      ? window.NavContext.getDateRange()
+      : {};
+    var params;
+    try {
+      params = new URLSearchParams(window.location.search || '');
+    } catch (ignore) {
+      params = new URLSearchParams();
+    }
+
+    return {
+      start: fieldValue('dateStart') || String(navRange.start || ''),
+      end: fieldValue('dateEnd') || String(navRange.end || ''),
+      vendor_ids_csv: fieldValue('f_dash_vendor_id') || String(params.get('vendor_ids') || ''),
+      vendor_id: String(params.get('vendor_id') || ''),
+      cliente: fieldValue('f_dash_cliente'),
+      produto: fieldValue('f_dash_produto'),
+      channel: String(params.get('channel') || '')
+    };
+  }
+
+  function mergeDetailFilters(explicitFilters) {
+    var dashboard = dashboardFilterValues();
+    var merged = {};
+    var inheritedNames = ['vendor_id', 'cliente', 'produto', 'quick', 'channel'];
+
+    inheritedNames.forEach(function (name) {
+      if (dashboard[name] != null && String(dashboard[name]).trim() !== '') {
+        merged[name] = String(dashboard[name]).trim();
+      }
+    });
+
+    var vendorIds = dashboard.vendor_ids_csv || dashboard.vendor_ids || '';
+    if (Array.isArray(vendorIds)) vendorIds = vendorIds.join(',');
+    if (String(vendorIds).trim()) merged.vendor_ids = String(vendorIds).trim();
+
+    Object.keys(explicitFilters || {}).forEach(function (name) {
+      var value = explicitFilters[name];
+      if (value == null || String(value).trim() === '') delete merged[name];
+      else merged[name] = value;
+    });
+    return merged;
+  }
+
+  function cacheKey(chartId, filters, period) {
+    return chartId + ':' + period.start + ':' + period.end + ':' + JSON.stringify(filters || {});
   }
 
   function fetchDetail(chartId, filters) {
-    var key = cacheKey(chartId, filters);
+    var period = periodValues();
+    var key = cacheKey(chartId, filters, period);
     var cached = cache[key];
-    if (cached && (Date.now() - cached.ts < CACHE_TTL)) {
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
       renderDetail(chartId, cached.data);
       return;
     }
@@ -132,26 +216,26 @@
     if (abortCtrl) abortCtrl.abort();
     abortCtrl = new AbortController();
 
-    var dateStart = document.getElementById('dateStart');
-    var dateEnd = document.getElementById('dateEnd');
     var params = new URLSearchParams({
       chart_id: chartId,
-      start: (dateStart && dateStart.value) || '',
-      end: (dateEnd && dateEnd.value) || ''
+      start: period.start,
+      end: period.end
     });
-
-    Object.keys(filters).forEach(function (k) { if (filters[k]) params.set(k, filters[k]); });
-
-    var fetchFn = typeof window.fetchJson === 'function' ? window.fetchJson : null;
-    var url = 'api/overview_detail.php?' + params.toString();
+    Object.keys(filters).forEach(function (name) {
+      if (filters[name]) params.set(name, filters[name]);
+    });
+    if (chartId === 'top_products' || chartId === 'top_customers') {
+      params.set('limit', '200');
+    }
 
     function handleResponse(response) {
       return response.text().then(function (text) {
         var data = null;
-        try { data = text ? JSON.parse(text) : null; } catch (e) {}
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch (ignore) {}
         if (!response.ok) {
-          if (data) throw data;
-          throw {
+          throw data || {
             message: 'Erro HTTP ' + response.status,
             request_id: response.headers.get('X-Request-Id') || 'N/A',
             diagnostics: { content_type: response.headers.get('Content-Type') || 'desconhecido' }
@@ -161,40 +245,57 @@
       });
     }
 
-    fetch(url, { credentials: 'same-origin', signal: abortCtrl.signal })
+    fetch('api/overview_detail.php?' + params.toString(), {
+      credentials: 'same-origin',
+      signal: abortCtrl.signal
+    })
       .then(handleResponse)
-      .then(function (data) { cache[key] = { data: data, ts: Date.now() }; renderDetail(chartId, data); })
-      .catch(function (err) {
-        if (err && err.name === 'AbortError') return;
-        renderError(err.message || 'Erro inesperado.', err.request_id, chartId, err.diagnostics);
+      .then(function (data) {
+        cache[key] = { data: data, ts: Date.now() };
+        abortCtrl = null;
+        renderDetail(chartId, data);
+      })
+      .catch(function (error) {
+        if (error && error.name === 'AbortError') return;
+        abortCtrl = null;
+        renderError(error.message || 'Erro inesperado.', error.request_id, chartId, error.diagnostics);
       });
   }
 
-  function renderError(msg, reqId, chartId, diagnostics) {
+  function renderError(message, requestId, chartId, diagnostics) {
     var details = '';
-    if (reqId || chartId) {
-      details += '<div style="margin-top:8px; font-family:monospace; font-size:11px; opacity:0.8;">';
-      if (reqId) details += '<div>Req ID: ' + B.escapeHtml(reqId) + '</div>';
-      if (chartId) details += '<div>Chart: ' + B.escapeHtml(chartId) + '</div>';
-      if (diagnostics && diagnostics.handler) details += '<div>Handler: ' + B.escapeHtml(diagnostics.handler) + '</div>';
+    if (requestId || chartId) {
+      details += '<div class="overview-detail-diagnostics">';
+      if (requestId) details += '<div>Req ID: ' + escapeHtml(requestId) + '</div>';
+      if (chartId) details += '<div>Gráfico: ' + escapeHtml(chartId) + '</div>';
+      if (diagnostics && diagnostics.handler) details += '<div>Handler: ' + escapeHtml(diagnostics.handler) + '</div>';
       details += '</div>';
     }
 
     bodyEl.innerHTML = '<div class="module-alert module-alert--info">' +
-      '<strong>Detalhamento indisponivel</strong><br>' +
-      '<span>' + B.escapeHtml(msg || 'Erro ao carregar dados.') + '</span>' +
+      '<strong>Detalhamento indisponível</strong><br>' +
+      '<span>' + escapeHtml(message || 'Erro ao carregar dados.') + '</span>' +
       details +
-      '<div style="margin-top:12px;"><button type="button" class="btn-detail" data-overview-retry="' + B.escapeHtml(chartId || '') + '">Tentar novamente</button></div>' +
-      '</div>';
-    bodyEl.querySelector('[data-overview-retry]')?.addEventListener('click', function () {
-      cache = {};
-      fetchDetail(chartId || '', {});
-    });
+      '<div class="overview-detail-retry"><button type="button" class="btn-detail" data-overview-retry="' +
+        escapeHtml(chartId || '') + '">Tentar novamente</button></div></div>';
+
+    var retry = bodyEl.querySelector('[data-overview-retry]');
+    if (retry) {
+      retry.addEventListener('click', function () {
+        cache = {};
+        fetchDetail(chartId || activeChartId || '', activeFilters);
+      });
+    }
   }
 
   function renderDetail(chartId, data) {
     if (!data || data.ok === false) {
-      renderError(data ? data.message : 'Sem dados disponiveis.', data ? data.request_id : null, chartId, data ? data.diagnostics : null);
+      renderError(
+        data ? data.message : 'Sem dados disponíveis.',
+        data ? data.request_id : null,
+        chartId,
+        data ? data.diagnostics : null
+      );
       return;
     }
 
@@ -202,49 +303,579 @@
     if (!rows.length) {
       var warnings = data.meta && Array.isArray(data.meta.warnings) ? data.meta.warnings : [];
       bodyEl.innerHTML = '<div class="dashboard-empty-state">' +
-        '<span class="material-symbols-rounded">search_off</span>' +
+        '<span class="material-symbols-rounded" aria-hidden="true">search_off</span>' +
         '<strong>Sem dados para este filtro</strong>' +
-        '<p>Nao foram encontrados registros para o detalhamento solicitado.</p>' +
-        (warnings.length ? '<div class="small text-muted" style="margin-top:8px;">' + warnings.map(B.escapeHtml).join('<br>') + '</div>' : '') +
-        (data.request_id ? '<div class="small text-muted" style="margin-top:8px;font-family:monospace;">request_id=' + B.escapeHtml(data.request_id) + '</div>' : '') +
+        '<p>Não foram encontrados registros para o detalhamento solicitado.</p>' +
+        (warnings.length ? '<div class="small text-muted overview-detail-warnings">' +
+          warnings.map(escapeHtml).join('<br>') + '</div>' : '') +
         '</div>';
       return;
     }
 
-    var html = '<table class="mag-table"><thead><tr>';
+    if (chartId === 'top_products' || chartId === 'top_customers') {
+      renderRankingDetail(chartId, rows);
+      return;
+    }
+
+    renderGenericDetail(chartId, rows, data.summary);
+  }
+
+  function renderGenericDetail(chartId, rows, summary) {
     var columns = detectColumns(chartId, rows[0]);
-    columns.forEach(function (col) { html += '<th>' + B.escapeHtml(col.label) + '</th>'; });
+    var html = '<div class="overview-ranking__table-wrap"><table class="mag-table"><thead><tr>';
+    columns.forEach(function (column) {
+      html += '<th>' + escapeHtml(column.label) + '</th>';
+    });
     html += '</tr></thead><tbody>';
+
     rows.forEach(function (row) {
       html += '<tr>';
-      columns.forEach(function (col) {
-        var val = row[col.key];
-        if (col.key === 'vendor_name' && typeof B.renderGoalBadge === 'function') {
-          val = B.escapeHtml(String(val || '-')) + B.renderGoalBadge(row);
-          html += '<td style="display:flex;align-items:center;gap:6px;">' + val + '</td>';
+      columns.forEach(function (column) {
+        var value = row[column.key];
+        if (column.key === 'vendor_name' && typeof B.renderGoalBadge === 'function') {
+          html += '<td class="overview-detail-vendor">' +
+            escapeHtml(value == null || value === '' ? '-' : value) + B.renderGoalBadge(row) + '</td>';
         } else {
-          if (col.format === 'currency') val = B.formatCurrency(val);
-          else if (col.format === 'number') val = B.formatNumber(val);
-          else if (col.format === 'date') val = B.formatMetaDate(val || '');
-          else val = B.escapeHtml(String(val || '-'));
-          html += '<td>' + val + '</td>';
+          if (column.format === 'currency') value = formatCurrency(value);
+          else if (column.format === 'number') value = formatNumber(value);
+          else if (column.format === 'date' && typeof B.formatMetaDate === 'function') value = B.formatMetaDate(value || '');
+          else value = escapeHtml(value == null || value === '' ? '-' : value);
+          html += '<td>' + value + '</td>';
         }
       });
       html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
 
-    if (data.summary) {
-      var summaryHtml = '<div class="module-tiny-kpis" style="margin-bottom:16px;">';
-      Object.keys(data.summary).forEach(function (k) {
-        var label = k.replace(/_/g, ' ');
-        summaryHtml += '<div class="mini"><span>' + B.escapeHtml(label) + '</span><strong>' + B.escapeHtml(String(data.summary[k])) + '</strong></div>';
+    if (summary) {
+      var summaryHtml = '<div class="module-tiny-kpis overview-detail-summary">';
+      Object.keys(summary).forEach(function (name) {
+        summaryHtml += '<div class="mini"><span>' + escapeHtml(name.replace(/_/g, ' ')) +
+          '</span><strong>' + escapeHtml(summary[name]) + '</strong></div>';
       });
-      summaryHtml += '</div>';
-      html = summaryHtml + html;
+      html = summaryHtml + '</div>' + html;
+    }
+    bodyEl.innerHTML = html;
+  }
+
+  function escapeHtml(value) {
+    if (typeof B.escapeHtml === 'function') return B.escapeHtml(String(value == null ? '' : value));
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character];
+    });
+  }
+
+  function decodeEntityText(value) {
+    var text = String(value == null ? '' : value);
+    var named = {
+      amp: '&',
+      lt: '<',
+      gt: '>',
+      quot: '"',
+      apos: "'",
+      nbsp: '\u00a0'
+    };
+    for (var pass = 0; pass < 3; pass += 1) {
+      var decoded = text.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, function (match, entity) {
+        var lower = entity.toLowerCase();
+        if (named[lower] != null) return named[lower];
+        var codePoint = lower.indexOf('#x') === 0
+          ? parseInt(lower.slice(2), 16)
+          : parseInt(lower.slice(1), 10);
+        if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return match;
+        try {
+          return String.fromCodePoint(codePoint);
+        } catch (ignore) {
+          return match;
+        }
+      });
+      if (decoded === text) break;
+      text = decoded;
+    }
+    return text;
+  }
+
+  function numberValue(value) {
+    var parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function formatCurrency(value) {
+    if (typeof B.formatCurrency === 'function') return B.formatCurrency(numberValue(value));
+    return numberValue(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function formatNumber(value, maximumFractionDigits) {
+    var number = numberValue(value);
+    if (typeof B.formatNumber === 'function' && maximumFractionDigits == null) return B.formatNumber(number);
+    return number.toLocaleString('pt-BR', {
+      maximumFractionDigits: maximumFractionDigits == null ? 2 : maximumFractionDigits
+    });
+  }
+
+  function normalizeText(value) {
+    return String(value == null ? '' : value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function parseLocaleNumber(value) {
+    var raw = String(value == null ? '' : value).trim().replace(/\s/g, '');
+    if (!raw) return null;
+    if (raw.indexOf(',') >= 0) raw = raw.replace(/\./g, '').replace(',', '.');
+    raw = raw.replace(/[^\d.-]/g, '');
+    var parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function rawDocument(row) {
+    return row.client_document || row.customer_document || row.document || row.cpf_cnpj || '';
+  }
+
+  function documentDigits(row) {
+    return String(rawDocument(row)).replace(/\D/g, '');
+  }
+
+  function documentType(row) {
+    var explicitType = normalizeText(
+      row.client_document_type || row.customer_document_type || row.document_type || row.person_type || ''
+    );
+    if (explicitType === 'cpf' || explicitType === 'pf' || explicitType === 'pessoa fisica') return 'cpf';
+    if (explicitType === 'cnpj' || explicitType === 'pj' || explicitType === 'pessoa juridica') return 'cnpj';
+    var raw = String(rawDocument(row) || '');
+    if (raw.indexOf('/') !== -1) return 'cnpj';
+    if (/^\*{3}\.\*{3}\.\*{3}-\*{2}$/.test(raw)) return 'cpf';
+    var digits = documentDigits(row);
+    if (digits.length === 11) return 'cpf';
+    if (digits.length === 14) return 'cnpj';
+    return 'unknown';
+  }
+
+  function formatDocument(row) {
+    var raw = String(rawDocument(row) || '').trim();
+    if (!raw) return 'Não informado';
+    if (/[*xX]/.test(raw)) return raw;
+    var digits = documentDigits(row);
+    if (digits.length === 11) return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    if (digits.length === 14) return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    return raw;
+  }
+
+  function sellerName(row) {
+    var value = row.vendor_names || row.seller_names || row.vendor_name || row.seller_name ||
+      row.salesperson_name || row.vendors || row.sellers || '';
+    if (Array.isArray(value)) {
+      return value.map(function (item) {
+        if (typeof item === 'object' && item) {
+          return item.name || item.vendor_name || item.seller_name || '';
+        }
+        return item;
+      }).filter(Boolean).map(decodeEntityText).join(', ');
+    }
+    return decodeEntityText(value).trim();
+  }
+
+  function formatDate(value) {
+    var raw = String(value == null ? '' : value).trim();
+    if (!raw) return 'Não informado';
+    var match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return match[3] + '/' + match[2] + '/' + match[1];
+    if (typeof B.formatMetaDate === 'function') {
+      var formatted = B.formatMetaDate(raw);
+      if (formatted) return formatted;
+    }
+    return raw;
+  }
+
+  function sellerList(row) {
+    var sellers = sellerName(row);
+    if (!sellers) return 'Não informado';
+    return sellers.split(/\s*[|;]\s*/).filter(Boolean).join(', ');
+  }
+
+  /** Desconto em R$ com o % sobre o bruto (receita + desconto). */
+  function discountLabel(netValue, discountValue) {
+    var net = numberValue(netValue);
+    var discount = numberValue(discountValue);
+    if (discount <= 0) return 'Sem desconto';
+    var gross = net + discount;
+    return formatCurrency(discount) +
+      (gross > 0 ? ' (' + formatNumber(discount * 100 / gross, 1) + '% do bruto)' : '');
+  }
+
+  function detailItem(label, value) {
+    if (value == null || value === '') return '';
+    return '<div class="overview-ranking__detail-item"><span>' + escapeHtml(label) +
+      '</span><strong>' + escapeHtml(value) + '</strong></div>';
+  }
+
+  /**
+   * Campos que a API ja calcula na MESMA query e que a tabela nao tinha onde
+   * exibir. Exibir aqui nao custa nenhuma consulta a mais.
+   */
+  function customerDetailPanel(row) {
+    var vendors = numberValue(row.vendors_count);
+    return detailItem('Primeira compra no período', formatDate(row.first_purchase)) +
+      detailItem('Última compra', formatDate(row.last_purchase)) +
+      detailItem('NF mais recente', row.latest_nf ? String(row.latest_nf) : 'Não informado') +
+      detailItem('Mercadorias', formatCurrency(row.merchandise_total)) +
+      detailItem('Desconto concedido', discountLabel(row.invoice_total, row.discount_total)) +
+      detailItem(
+        'Vendedores no período',
+        formatNumber(vendors, 0) + (vendors > 1 ? ' — carteira compartilhada' : '')
+      ) +
+      detailItem('Responsáveis', sellerList(row));
+  }
+
+  function productDetailPanel(row) {
+    return detailItem('Clientes que compraram', formatNumber(row.customers_count, 0)) +
+      detailItem('Receita média por NF', formatCurrency(row.average_revenue_per_nf)) +
+      detailItem('Qtd. média por NF', formatNumber(row.average_quantity_per_nf, 2)) +
+      detailItem('Desconto concedido', discountLabel(row.revenue, row.discount_total)) +
+      detailItem('Primeira venda no período', formatDate(row.first_sale)) +
+      detailItem('Última venda', formatDate(row.last_sale)) +
+      detailItem('NF mais recente', row.latest_nf ? String(row.latest_nf) : 'Não informado') +
+      detailItem('Vendedores que venderam', formatNumber(row.vendors_count, 0)) +
+      detailItem('Quem vendeu', sellerList(row));
+  }
+
+  function detailToggleCell(kind, index) {
+    var domId = 'rankingDetail-' + kind + '-' + index;
+    return '<td class="overview-ranking__rank">' +
+      '<button type="button" class="overview-ranking__toggle" aria-expanded="false" aria-controls="' + domId + '">' +
+        '<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>' +
+        '<span class="overview-ranking__toggle-rank">' + (index + 1) + '</span>' +
+        '<span class="sr-only">Ver mais detalhes</span>' +
+      '</button></td>';
+  }
+
+  function detailRow(kind, index, colspan, panelHtml) {
+    return '<tr class="overview-ranking__detail-row" id="rankingDetail-' + kind + '-' + index + '" hidden>' +
+      '<td colspan="' + colspan + '"><div class="overview-ranking__detail">' + panelHtml + '</div></td></tr>';
+  }
+
+  function bindDetailToggles(container) {
+    container.querySelectorAll('.overview-ranking__toggle').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var target = document.getElementById(button.getAttribute('aria-controls'));
+        if (!target) return;
+        var expanded = button.getAttribute('aria-expanded') === 'true';
+        button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        target.hidden = expanded;
+        var icon = button.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = expanded ? 'chevron_right' : 'expand_more';
+      });
+    });
+  }
+
+  function uniqueSellers(rows) {
+    var values = {};
+    rows.forEach(function (row) {
+      var seller = sellerName(row);
+      if (!seller) return;
+      seller.split(/\s*[|;]\s*/).forEach(function (name) {
+        if (name) values[name] = true;
+      });
+    });
+    return Object.keys(values).sort(function (a, b) {
+      return a.localeCompare(b, 'pt-BR');
+    });
+  }
+
+  function renderRankingDetail(chartId, rows) {
+    var isCustomer = chartId === 'top_customers';
+    var sellers = isCustomer ? uniqueSellers(rows) : [];
+    var sortOptions = isCustomer
+      ? [
+          ['revenue_desc', 'Maior receita'],
+          ['revenue_asc', 'Menor receita'],
+          ['nfs_desc', 'Mais NFs'],
+          ['nfs_asc', 'Menos NFs'],
+          ['name_asc', 'Cliente A–Z']
+        ]
+      : [
+          ['revenue_desc', 'Maior receita'],
+          ['revenue_asc', 'Menor receita'],
+          ['quantity_desc', 'Maior quantidade'],
+          ['quantity_asc', 'Menor quantidade'],
+          ['unit_desc', 'Maior preço médio'],
+          ['name_asc', 'Produto A–Z']
+        ];
+
+    var html = '<section class="overview-ranking" data-ranking-kind="' +
+      (isCustomer ? 'customers' : 'products') + '">' +
+      '<div class="overview-ranking__toolbar" role="search" aria-label="Filtros do detalhamento">' +
+        '<label class="overview-ranking__field overview-ranking__field--search">' +
+          '<span>' + (isCustomer ? 'Buscar cliente, documento ou vendedor' : 'Buscar produto ou código') + '</span>' +
+          '<span class="overview-ranking__input-wrap"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
+            '<input type="search" data-ranking-filter="search" autocomplete="off" placeholder="' +
+              (isCustomer ? 'Nome, CPF/CNPJ ou vendedor' : 'Descrição ou código do produto') + '">' +
+          '</span></label>' +
+        '<label class="overview-ranking__field"><span>Ordenar por</span><select data-ranking-filter="sort">' +
+          sortOptions.map(function (option) {
+            return '<option value="' + option[0] + '">' + escapeHtml(option[1]) + '</option>';
+          }).join('') +
+        '</select></label>';
+
+    if (isCustomer) {
+      html += '<label class="overview-ranking__field"><span>Tipo de documento</span>' +
+        '<select data-ranking-filter="documentType">' +
+          '<option value="all">CPF e CNPJ</option><option value="cnpj">Somente CNPJ</option>' +
+          '<option value="cpf">Somente CPF</option><option value="unknown">Não identificado</option>' +
+        '</select></label>' +
+        '<label class="overview-ranking__field"><span>Vendedor</span>' +
+          '<select data-ranking-filter="seller"' + (sellers.length ? '' : ' disabled') + '>' +
+            '<option value="all">' + (sellers.length ? 'Todos os vendedores' : 'Vendedor não informado pela base') + '</option>' +
+            sellers.map(function (seller) {
+              return '<option value="' + escapeHtml(seller) + '">' + escapeHtml(seller) + '</option>';
+            }).join('') +
+          '</select></label>';
+    } else {
+      html += '<label class="overview-ranking__field"><span>Quantidade mínima</span>' +
+        '<input type="text" inputmode="decimal" data-ranking-filter="minQuantity" placeholder="Ex.: 5"></label>';
     }
 
+    html += '<label class="overview-ranking__field"><span>Receita mínima</span>' +
+        '<input type="text" inputmode="decimal" data-ranking-filter="minRevenue" placeholder="R$ 0,00"></label>' +
+      '<label class="overview-ranking__field"><span>Receita máxima</span>' +
+        '<input type="text" inputmode="decimal" data-ranking-filter="maxRevenue" placeholder="Sem limite"></label>' +
+      '<div class="overview-ranking__toolbar-action"><button type="button" class="overview-ranking__clear" data-ranking-clear>' +
+        '<span class="material-symbols-rounded" aria-hidden="true">filter_alt_off</span>Limpar filtros</button></div>' +
+      '</div><div class="overview-ranking__meta">' +
+        '<span data-ranking-count role="status" aria-live="polite"></span>' +
+        '<span class="overview-ranking__scope"><span class="material-symbols-rounded" aria-hidden="true">verified</span>' +
+          'Orç-PD · remessas excluídas</span></div>' +
+      '<div data-ranking-results></div>' +
+      '<p class="overview-ranking__note">' +
+        (isCustomer
+          ? 'O CPF/CNPJ pode aparecer mascarado conforme a permissão do usuário. Clientes atendidos por mais de um vendedor exibem os responsáveis informados pela base.'
+          : 'Preço médio = receita dos itens ÷ quantidade. A participação é calculada sobre a receita dos produtos carregados neste detalhamento.') +
+      '</p></section>';
+
     bodyEl.innerHTML = html;
+    var root = bodyEl.querySelector('.overview-ranking');
+    root.querySelectorAll('[data-ranking-filter]').forEach(function (control) {
+      var inputEvent = control.matches('input') ? 'input' : 'change';
+      control.addEventListener(inputEvent, function () {
+        if (inputEvent === 'input') {
+          if (filterTimer) clearTimeout(filterTimer);
+          filterTimer = setTimeout(function () {
+            updateRankingDetail(chartId, rows, root);
+          }, 120);
+        } else {
+          updateRankingDetail(chartId, rows, root);
+        }
+      });
+    });
+
+    root.querySelector('[data-ranking-clear]').addEventListener('click', function () {
+      root.querySelectorAll('[data-ranking-filter]').forEach(function (control) {
+        if (control.dataset.rankingFilter === 'sort') control.value = 'revenue_desc';
+        else if (control.tagName === 'SELECT') control.value = 'all';
+        else control.value = '';
+      });
+      updateRankingDetail(chartId, rows, root);
+      var search = root.querySelector('[data-ranking-filter="search"]');
+      if (search) search.focus();
+    });
+
+    updateRankingDetail(chartId, rows, root);
+  }
+
+  function rankingState(root) {
+    var state = {};
+    root.querySelectorAll('[data-ranking-filter]').forEach(function (control) {
+      state[control.dataset.rankingFilter] = control.value;
+    });
+    return state;
+  }
+
+  function updateRankingDetail(chartId, sourceRows, root) {
+    var state = rankingState(root);
+    var isCustomer = chartId === 'top_customers';
+    var query = normalizeText(state.search);
+    var minRevenue = parseLocaleNumber(state.minRevenue);
+    var maxRevenue = parseLocaleNumber(state.maxRevenue);
+    var minQuantity = parseLocaleNumber(state.minQuantity);
+
+    var rows = sourceRows.filter(function (row) {
+      var revenue = numberValue(isCustomer ? row.invoice_total : row.revenue);
+      if (minRevenue != null && revenue < minRevenue) return false;
+      if (maxRevenue != null && revenue > maxRevenue) return false;
+      if (!isCustomer && minQuantity != null && numberValue(row.quantity) < minQuantity) return false;
+      if (isCustomer && state.documentType !== 'all' && documentType(row) !== state.documentType) return false;
+      if (isCustomer && state.seller !== 'all' &&
+        normalizeText(sellerName(row)).indexOf(normalizeText(state.seller)) === -1) return false;
+      if (!query) return true;
+      var searchable = isCustomer
+        ? [decodeEntityText(row.client_name), rawDocument(row), documentDigits(row), sellerName(row)]
+        : [decodeEntityText(row.description), row.product_code, row.sku, row.code];
+      return normalizeText(searchable.join(' ')).indexOf(query) !== -1;
+    });
+
+    rows.sort(function (a, b) {
+      var direction = String(state.sort || '').endsWith('_asc') ? 1 : -1;
+      if (state.sort === 'name_asc') {
+        var aName = decodeEntityText(isCustomer ? a.client_name : a.description);
+        var bName = decodeEntityText(isCustomer ? b.client_name : b.description);
+        return String(aName || '').localeCompare(String(bName || ''), 'pt-BR');
+      }
+      var aValue;
+      var bValue;
+      if (state.sort.indexOf('quantity_') === 0) {
+        aValue = numberValue(a.quantity);
+        bValue = numberValue(b.quantity);
+      } else if (state.sort.indexOf('unit_') === 0) {
+        aValue = numberValue(a.quantity) ? numberValue(a.revenue) / numberValue(a.quantity) : 0;
+        bValue = numberValue(b.quantity) ? numberValue(b.revenue) / numberValue(b.quantity) : 0;
+      } else if (state.sort.indexOf('nfs_') === 0) {
+        aValue = numberValue(a.notes_count);
+        bValue = numberValue(b.notes_count);
+      } else {
+        aValue = numberValue(isCustomer ? a.invoice_total : a.revenue);
+        bValue = numberValue(isCustomer ? b.invoice_total : b.revenue);
+      }
+      return (aValue - bValue) * direction;
+    });
+
+    var count = root.querySelector('[data-ranking-count]');
+    count.textContent = rows.length + ' de ' + sourceRows.length +
+      (sourceRows.length === 1 ? ' resultado carregado' : ' resultados carregados');
+    var results = root.querySelector('[data-ranking-results]');
+    results.innerHTML = rows.length
+      ? renderRankingResults(chartId, rows, sourceRows)
+      : '<div class="dashboard-empty-state overview-ranking__empty">' +
+          '<span class="material-symbols-rounded" aria-hidden="true">filter_alt_off</span>' +
+          '<strong>Nenhum resultado com estes filtros</strong>' +
+          '<p>Revise a busca, os limites de receita ou os demais filtros.</p></div>';
+    if (rows.length) bindDetailToggles(results);
+  }
+
+  function renderRankingResults(chartId, rows, sourceRows) {
+    var isCustomer = chartId === 'top_customers';
+    var loadedRevenue = sourceRows.reduce(function (sum, row) {
+      return sum + numberValue(isCustomer ? row.invoice_total : row.revenue);
+    }, 0);
+    var filteredRevenue = rows.reduce(function (sum, row) {
+      return sum + numberValue(isCustomer ? row.invoice_total : row.revenue);
+    }, 0);
+    var totalQuantity = rows.reduce(function (sum, row) {
+      return sum + numberValue(row.quantity);
+    }, 0);
+    var totalNotes = rows.reduce(function (sum, row) {
+      return sum + numberValue(row.notes_count);
+    }, 0);
+    var topFiveShare = rows.slice().sort(function (a, b) {
+      return numberValue(isCustomer ? b.invoice_total : b.revenue) -
+        numberValue(isCustomer ? a.invoice_total : a.revenue);
+    }).slice(0, 5).reduce(function (sum, row) {
+      if (isCustomer && row.share_pct != null) return sum + numberValue(row.share_pct);
+      return sum + (loadedRevenue > 0 ? numberValue(row.revenue) * 100 / loadedRevenue : 0);
+    }, 0);
+
+    var kpis = isCustomer
+      ? [
+          ['Clientes exibidos', formatNumber(rows.length, 0)],
+          ['Receita filtrada', formatCurrency(filteredRevenue)],
+          ['NFs dos clientes', formatNumber(totalNotes, 0)],
+          ['Ticket médio por NF', formatCurrency(totalNotes > 0 ? filteredRevenue / totalNotes : 0)],
+          ['Concentração dos 5 maiores', formatNumber(topFiveShare, 1) + '%']
+        ]
+      : [
+          ['Produtos exibidos', formatNumber(rows.length, 0)],
+          ['Receita filtrada', formatCurrency(filteredRevenue)],
+          ['Unidades', formatNumber(totalQuantity, 2)],
+          ['Preço médio ponderado', formatCurrency(totalQuantity > 0 ? filteredRevenue / totalQuantity : 0)],
+          ['Concentração dos 5 maiores', formatNumber(topFiveShare, 1) + '%']
+        ];
+
+    var html = '<div class="overview-ranking__kpis">' + kpis.map(function (kpi) {
+      return '<div class="overview-ranking__kpi"><span>' + escapeHtml(kpi[0]) +
+        '</span><strong>' + escapeHtml(kpi[1]) + '</strong></div>';
+    }).join('') + '</div><div class="overview-ranking__table-wrap"><table class="mag-table overview-ranking__table">' +
+      '<caption class="sr-only">' +
+        (isCustomer ? 'Detalhamento dos clientes em destaque' : 'Detalhamento dos produtos em destaque') +
+      '</caption><thead><tr>';
+
+    if (isCustomer) {
+      html += '<th scope="col">#</th><th scope="col">Cliente</th><th scope="col">CPF/CNPJ</th>' +
+        '<th scope="col">Vendedor responsável</th><th scope="col" class="is-numeric">NFs</th>' +
+        '<th scope="col" class="is-numeric">Ticket médio</th><th scope="col" class="is-numeric">Receita</th>' +
+        '<th scope="col" class="is-numeric">Share</th></tr></thead><tbody>';
+
+      rows.forEach(function (row, index) {
+        var notes = numberValue(row.notes_count);
+        var type = documentType(row);
+        var vendors = numberValue(row.vendors_count);
+        var clientName = decodeEntityText(row.client_name) || 'Cliente não informado';
+        var clientAction = '<button type="button" class="row-inline-link overview-ranking__entity" ' +
+          'data-biomie-action="open-customer" data-client-id="' + escapeHtml(row.client_id || '') +
+          '" data-customer-document="' + escapeHtml(rawDocument(row)) +
+          '" data-customer-name="' + escapeHtml(clientName) +
+          '" title="Abrir Cliente 360">' + escapeHtml(clientName) + '</button>';
+        // average_ticket vem da API (AVG real por NF); o calculo local so cobre
+        // respostas antigas que ainda nao trazem o campo.
+        var ticket = row.average_ticket != null
+          ? numberValue(row.average_ticket)
+          : (notes > 0 ? numberValue(row.invoice_total) / notes : 0);
+        html += '<tr>' + detailToggleCell('customers', index) +
+          '<td>' + clientAction +
+            (row.client_id ? '<small>ID Omie ' + escapeHtml(row.client_id) + '</small>' : '') + '</td>' +
+          '<td><span class="overview-ranking__document">' + escapeHtml(formatDocument(row)) + '</span>' +
+            '<small>' + (type === 'cpf' ? 'Pessoa física' : type === 'cnpj' ? 'Pessoa jurídica' : 'Tipo não identificado') +
+            '</small></td>' +
+          '<td><span class="overview-ranking__seller">' + escapeHtml(sellerList(row)) + '</span>' +
+            (vendors > 1 ? '<small>' + formatNumber(vendors, 0) + ' vendedores — carteira compartilhada</small>' : '') + '</td>' +
+          '<td class="is-numeric">' + formatNumber(notes, 0) + '</td>' +
+          '<td class="is-numeric">' + formatCurrency(ticket) + '</td>' +
+          '<td class="is-numeric"><strong>' + formatCurrency(row.invoice_total) + '</strong></td>' +
+          '<td class="is-numeric"><span class="overview-ranking__share">' +
+            formatNumber(row.share_pct, 1) + '%</span></td></tr>' +
+          detailRow('customers', index, 8, customerDetailPanel(row));
+      });
+    } else {
+      html += '<th scope="col">#</th><th scope="col">Produto</th><th scope="col">Código</th>' +
+        '<th scope="col" class="is-numeric">Qtd.</th><th scope="col" class="is-numeric">NFs</th>' +
+        '<th scope="col" class="is-numeric">Clientes</th>' +
+        '<th scope="col" class="is-numeric">Preço médio</th><th scope="col" class="is-numeric">Receita</th>' +
+        '<th scope="col" class="is-numeric">Part. da lista</th></tr></thead><tbody>';
+
+      rows.forEach(function (row, index) {
+        var quantity = numberValue(row.quantity);
+        var revenue = numberValue(row.revenue);
+        var rawCode = row.product_code || row.sku || row.code || '';
+        var code = rawCode || 'Não informado';
+        var productName = decodeEntityText(row.description) || 'Produto não informado';
+        var productAction = rawCode
+          ? '<button type="button" class="row-inline-link overview-ranking__entity" ' +
+              'data-biomie-action="open-product" data-product-code="' + escapeHtml(rawCode) +
+              '" data-product-name="' + escapeHtml(productName) +
+              '" title="Abrir Produto 360">' + escapeHtml(productName) + '</button>'
+          : '<strong class="overview-ranking__entity">' + escapeHtml(productName) + '</strong>';
+        var share = loadedRevenue > 0 ? revenue * 100 / loadedRevenue : 0;
+        var customers = numberValue(row.customers_count);
+        // 94 unidades para 1 cliente e 94 para 40 clientes sao negocios
+        // diferentes; sem esta coluna a quantidade sozinha engana.
+        var customersCell = customers > 0
+          ? formatNumber(customers, 0) + (customers === 1 ? '<small>cliente único</small>' : '')
+          : '<span class="text-muted">—</span>';
+        html += '<tr>' + detailToggleCell('products', index) +
+          '<td>' + productAction + '</td>' +
+          '<td><span class="overview-ranking__code">' + escapeHtml(code) + '</span></td>' +
+          '<td class="is-numeric">' + formatNumber(quantity, 2) + '</td>' +
+          '<td class="is-numeric">' + formatNumber(row.orders, 0) + '</td>' +
+          '<td class="is-numeric">' + customersCell + '</td>' +
+          '<td class="is-numeric">' + formatCurrency(quantity > 0 ? revenue / quantity : 0) + '</td>' +
+          '<td class="is-numeric"><strong>' + formatCurrency(revenue) + '</strong></td>' +
+          '<td class="is-numeric"><span class="overview-ranking__share">' +
+            formatNumber(share, 1) + '%</span></td></tr>' +
+          detailRow('products', index, 9, productDetailPanel(row));
+      });
+    }
+
+    return html + '</tbody></table></div>';
   }
 
   function detectColumns(chartId, sample) {
@@ -261,20 +892,9 @@
         { key: 'revenue', label: 'Receita', format: 'currency' },
         { key: 'ticket', label: 'Ticket', format: 'currency' }
       ],
-      top_products: [
-        { key: 'description', label: 'Produto' },
-        { key: 'quantity', label: 'Qtd', format: 'number' },
-        { key: 'revenue', label: 'Receita', format: 'currency' }
-      ],
-      top_customers: [
-        { key: 'client_name', label: 'Cliente' },
-        { key: 'notes_count', label: 'NFs', format: 'number' },
-        { key: 'invoice_total', label: 'Receita', format: 'currency' },
-        { key: 'share_pct', label: 'Share' }
-      ],
       top_invoices: [
         { key: 'code', label: 'NF' },
-        { key: 'issue_date', label: 'Emissao', format: 'date' },
+        { key: 'issue_date', label: 'Emissão', format: 'date' },
         { key: 'client', label: 'Cliente' },
         { key: 'vendor_name', label: 'Vendedor' },
         { key: 'total', label: 'Valor', format: 'currency' }
@@ -285,16 +905,13 @@
         { key: 'share_pct', label: 'Share' }
       ]
     };
-
-    return maps[chartId] || Object.keys(sample).map(function (k) { return { key: k, label: k }; });
+    return maps[chartId] || Object.keys(sample).map(function (key) {
+      return { key: key, label: key };
+    });
   }
 
-  // Public API
   window.BIomieOverviewDetail = { open: open, close: close, isOpen: isOpen };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();

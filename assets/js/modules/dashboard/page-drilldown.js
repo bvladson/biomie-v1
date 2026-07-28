@@ -360,7 +360,10 @@
       vendor_nome: currentVendorName,
       cliente: getText('f_dash_cliente'),
       produto: getText('f_dash_produto'),
-      quick: currentQuick
+      quick: currentQuick,
+      // Mantém o mesmo recorte nos drilldowns. '' significa deixar o servidor
+      // resolver a preferência; 'all' representa a escolha explícita "Todas".
+      channel: currentChannel || (channelUserSelected ? 'all' : '')
     };
   }
 
@@ -1134,6 +1137,7 @@
     requestCurrentView: requestCurrentView,
     clearFilteredView: clearFilteredView,
     applyChannel: applyChannel,
+    getFilters: globalFilterValues,
     context: context
   };
 

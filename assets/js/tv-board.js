@@ -1,6 +1,6 @@
 /*
- * BIomie — Painel da Diretoria (modo TV) v4
- * Contexto explícito, escopo por canal, estados confiáveis e atualização resiliente.
+ * BIomie — Painel da Diretoria (modo TV) v8
+ * Hidratação inicial, contexto explícito e atualização resiliente.
  */
 (function () {
   'use strict';
@@ -9,7 +9,8 @@
   var API_URL = body.getAttribute('data-api') || 'api/board_consolidated.php';
   var CONTEXT_ID = body.getAttribute('data-context') || '';
   var REFRESH_SEC = Math.max(20, parseInt(body.getAttribute('data-refresh') || '300', 10));
-  var RETRY_DELAYS = [5, 15, 60, 60, 120];
+  var RETRY_DELAYS = [5, 15, 60, 300, 900];
+  var SOURCE_RETRY_DELAYS = [15, 60, 300, 900];
 
   var els = {
     period: document.getElementById('tvbPeriod'),
@@ -39,6 +40,7 @@
     error: document.getElementById('tvbError'),
     errorMsg: document.getElementById('tvbErrorMsg'),
     retry: document.getElementById('tvbRetry'),
+    initialData: document.getElementById('tvbInitialData'),
   };
 
   var state = {
@@ -47,14 +49,65 @@
     controller: null,
     timer: null,
     timeout: null,
+    heartbeat: null,
     retryAttempt: 0,
+    sourceRetryAttempt: 0,
     nextLoadAt: null,
     generatedAt: null,
     sourceAt: null,
+    lastCheckedAt: null,
     hasSnapshot: false,
     statusMessage: '',
     retryRedirect: '',
+    etag: '',
+    renderedEtag: '',
+    gridMarkup: '',
+    lastDataStatus: '',
+    lastWarnings: [],
   };
+
+  var formatters = {
+    number: new Intl.NumberFormat('pt-BR'),
+    integer: new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }),
+    oneDecimal: new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }),
+    flexibleDecimal: new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    }),
+    dateTime: new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    longDate: new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+    }),
+  };
+
+  function setText(element, value) {
+    if (!element) return;
+    var text = String(value == null ? '' : value);
+    if (element.textContent !== text) element.textContent = text;
+  }
+
+  function setHtml(element, value) {
+    if (!element || element.innerHTML === value) return;
+    element.innerHTML = value;
+  }
+
+  function setAttribute(element, name, value) {
+    if (!element || element.getAttribute(name) === value) return;
+    element.setAttribute(name, value);
+  }
 
   function finite(value) {
     if (value === null || value === undefined || value === '') return null;
@@ -70,29 +123,23 @@
       return 'R$\u00a0' + (parsed / 1000000).toFixed(2).replace('.', ',') + '\u00a0mi';
     }
     if (absolute >= 1000) {
-      return 'R$\u00a0' + (parsed / 1000).toLocaleString('pt-BR', {
-        minimumFractionDigits: absolute < 10000 ? 1 : 0,
-        maximumFractionDigits: 1,
-      }) + '\u00a0mil';
+      return 'R$\u00a0' +
+        (absolute < 10000 ? formatters.oneDecimal : formatters.flexibleDecimal)
+          .format(parsed / 1000) +
+        '\u00a0mil';
     }
-    return 'R$\u00a0' + parsed.toLocaleString('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+    return 'R$\u00a0' + formatters.integer.format(parsed);
   }
 
   function number(value) {
-    return (finite(value) || 0).toLocaleString('pt-BR');
+    return formatters.number.format(finite(value) || 0);
   }
 
   function pct(value, digits) {
     var parsed = finite(value);
     return parsed === null
       ? '—'
-      : parsed.toLocaleString('pt-BR', {
-          minimumFractionDigits: digits || 0,
-          maximumFractionDigits: digits || 0,
-        }) + '%';
+      : (digits === 1 ? formatters.oneDecimal : formatters.integer).format(parsed) + '%';
   }
 
   function plural(value, singular, pluralForm) {
@@ -117,18 +164,13 @@
   function shortDateTime(value) {
     var date = parseDate(value);
     if (!date) return 'horário indisponível';
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatters.dateTime.format(date);
   }
 
   function humanAge(date) {
     if (!date) return 'agora';
     var seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
-    if (seconds < 60) return 'há ' + seconds + 's';
+    if (seconds < 60) return 'há menos de 1 min';
     var minutes = Math.round(seconds / 60);
     if (minutes < 60) return 'há ' + minutes + ' min';
     var hours = Math.round(minutes / 60);
@@ -182,54 +224,53 @@
   function tickClock() {
     var now = new Date();
     if (els.clock) {
-      els.clock.textContent =
+      setText(
+        els.clock,
         String(now.getHours()).padStart(2, '0') + ':' +
-        String(now.getMinutes()).padStart(2, '0');
+        String(now.getMinutes()).padStart(2, '0')
+      );
     }
     if (els.date) {
-      var text = now.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-      });
-      els.date.textContent = text.charAt(0).toUpperCase() + text.slice(1);
+      var text = formatters.longDate.format(now);
+      setText(els.date, text.charAt(0).toUpperCase() + text.slice(1));
     }
-  }
-
-  function flash(element) {
-    if (!element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    element.classList.remove('tvb-flash');
-    void element.offsetWidth;
-    element.classList.add('tvb-flash');
   }
 
   function setMode(mode, label) {
     state.mode = mode;
-    if (els.connection) els.connection.setAttribute('data-state', mode);
-    if (els.connectionText) els.connectionText.textContent = label;
+    if (els.connection && els.connection.getAttribute('data-state') !== mode) {
+      els.connection.setAttribute('data-state', mode);
+    }
+    setText(els.connectionText, label);
   }
 
   function showError(show, message, actionLabel) {
     if (!els.error) return;
-    els.error.hidden = !show;
-    if (show && els.errorMsg) els.errorMsg.textContent = message;
+    if (els.error.hidden !== !show) els.error.hidden = !show;
+    if (show) setText(els.errorMsg, message);
     if (els.retry) {
-      els.retry.hidden = !show;
-      els.retry.textContent = actionLabel || 'Tentar agora';
+      if (els.retry.hidden !== !show) els.retry.hidden = !show;
+      setText(els.retry, actionLabel || 'Tentar agora');
     }
   }
 
   function setGauge(element, value, property, label, status) {
     if (!element) return;
     var numeric = finite(value);
-    element.style.setProperty(property, numeric === null ? 0 : Math.min(100, Math.max(0, numeric)));
-    element.style.setProperty('--gauge-color', goalColor(status));
+    var clamped = numeric === null ? 0 : Math.min(100, Math.max(0, numeric));
+    var color = goalColor(status);
+    if (element.style.getPropertyValue(property) !== String(clamped)) {
+      element.style.setProperty(property, clamped);
+    }
+    if (element.style.getPropertyValue('--gauge-color') !== color) {
+      element.style.setProperty('--gauge-color', color);
+    }
     if (numeric === null) {
       element.removeAttribute('aria-valuenow');
-      element.setAttribute('aria-valuetext', 'Meta não disponível');
+      setAttribute(element, 'aria-valuetext', 'Meta não disponível');
     } else {
-      element.setAttribute('aria-valuenow', String(Math.round(Math.min(100, Math.max(0, numeric)))));
-      element.setAttribute('aria-valuetext', label + ': ' + pct(numeric, 1));
+      setAttribute(element, 'aria-valuenow', String(Math.round(clamped)));
+      setAttribute(element, 'aria-valuetext', label + ': ' + pct(numeric, 1));
     }
   }
 
@@ -253,38 +294,37 @@
     );
 
     if (els.period && period) {
-      els.period.textContent = period.exact_label || period.label || '';
+      setText(els.period, period.exact_label || period.label || '');
     }
     if (els.groupRevenue) {
-      els.groupRevenue.textContent = brl(revenue);
-      flash(els.groupRevenue);
+      setText(els.groupRevenue, brl(revenue));
     }
     if (els.groupTarget) {
       if (unavailable) {
-        els.groupTarget.textContent = 'Fonte fiscal indisponível';
+        setText(els.groupTarget, 'Fonte fiscal indisponível');
       } else if (finite(group.target) > 0) {
-        els.groupTarget.textContent = (partial ? 'Meta parcial ' : 'Meta ') + brl(group.target);
+        setText(els.groupTarget, (partial ? 'Meta parcial ' : 'Meta ') + brl(group.target));
       } else {
-        els.groupTarget.textContent = 'Sem meta consolidada';
+        setText(els.groupTarget, 'Sem meta consolidada');
       }
     }
     if (els.groupOrders) {
-      els.groupOrders.textContent = unavailable
+      setText(els.groupOrders, unavailable
         ? 'Volume indisponível'
-        : plural(group.orders, 'NF', 'NFs') + ' · projeção ' + brl(group.projection);
+        : plural(group.orders, 'NF', 'NFs') + ' · projeção ' + brl(group.projection));
     }
     if (els.groupChannels) {
-      els.groupChannels.innerHTML = unavailable
+      setHtml(els.groupChannels, unavailable
         ? ''
         : '<span><i class="tvb-channel-dot tvb-channel-dot--retail"></i>Varejo ' +
             esc(brl(group.retail_revenue)) + '</span>' +
           '<span><i class="tvb-channel-dot tvb-channel-dot--bid"></i>Licitação ' +
-            esc(brl(group.bidding_revenue)) + '</span>';
+            esc(brl(group.bidding_revenue)) + '</span>');
     }
 
     setGauge(els.groupGauge, unavailable ? null : attainment, '--pct', 'Atingimento mensal', groupStatus);
     if (els.groupPct) {
-      els.groupPct.textContent = finite(group.target) > 0 && !unavailable ? pct(attainment, 0) : '—';
+      setText(els.groupPct, finite(group.target) > 0 && !unavailable ? pct(attainment, 0) : '—');
     }
     setGauge(
       els.groupGaugeAnn,
@@ -294,53 +334,54 @@
       annualStatus
     );
     if (els.groupAnnPct) {
-      els.groupAnnPct.textContent =
-        finite(group.annual_target) > 0 && !unavailable ? pct(annualAttainment, 0) : '—';
+      setText(
+        els.groupAnnPct,
+        finite(group.annual_target) > 0 && !unavailable ? pct(annualAttainment, 0) : '—'
+      );
     }
 
     if (els.groupAnnualRevenue) {
-      els.groupAnnualRevenue.textContent = brl(unavailable ? null : group.annual_revenue);
-      flash(els.groupAnnualRevenue);
+      setText(els.groupAnnualRevenue, brl(unavailable ? null : group.annual_revenue));
     }
     if (els.groupAnnualTarget) {
-      els.groupAnnualTarget.textContent = finite(group.annual_target) > 0
+      setText(els.groupAnnualTarget, finite(group.annual_target) > 0
         ? (annualPartial ? 'Meta YTD parcial ' : 'Meta YTD ') + brl(group.annual_target)
-        : 'Sem meta YTD consolidada';
+        : 'Sem meta YTD consolidada');
     }
     if (els.groupAnnualPctBadge) {
-      els.groupAnnualPctBadge.innerHTML = finite(group.annual_target) > 0 && !unavailable
+      setHtml(els.groupAnnualPctBadge, finite(group.annual_target) > 0 && !unavailable
         ? '<div class="tvb-hero__pct-badge ' + goalBadgeClass(annualStatus) + '">' +
             '<span>' + esc(pct(annualAttainment, 1)) +
             (annualPartial ? ' no recorte com meta' : ' da meta YTD') + '</span>' +
           '</div>'
-        : '';
+        : '');
     }
     if (els.groupCoverage) {
       if (finite(group.target) <= 0) {
-        els.groupCoverage.textContent = 'Nenhuma empresa possui meta no mês';
+        setText(els.groupCoverage, 'Nenhuma empresa possui meta no mês');
       } else if (partial) {
-        els.groupCoverage.textContent =
+        setText(els.groupCoverage,
           'Meta em ' + number(coverage.companies_with_target) + '/' +
           number(coverage.companies_total) + ' empresas · ' +
-          pct(coverage.revenue_pct, 1) + ' da receita coberta';
+          pct(coverage.revenue_pct, 1) + ' da receita coberta');
       } else {
-        els.groupCoverage.textContent = 'Cobertura completa de metas';
+        setText(els.groupCoverage, 'Cobertura completa de metas');
       }
     }
 
     if (els.leader) {
-      els.leader.textContent = group.leader && group.leader.name ? group.leader.name : 'Sem faturamento';
+      setText(els.leader, group.leader && group.leader.name ? group.leader.name : 'Sem faturamento');
     }
     if (els.leaderRevenue) {
-      els.leaderRevenue.textContent = group.leader
+      setText(els.leaderRevenue, group.leader
         ? brl(group.leader.revenue) + ' · ' + pct(group.leader.share_pct, 1) + ' do grupo'
-        : '—';
+        : '—');
     }
     if (els.leaderAtt) {
       if (group.leader && finite(group.leader.pace_pct) !== null) {
-        els.leaderAtt.textContent = pct(group.leader.pace_pct, 0) + ' do ritmo esperado';
+        setText(els.leaderAtt, pct(group.leader.pace_pct, 0) + ' do ritmo esperado');
       } else {
-        els.leaderAtt.textContent = 'Ranking por receita MTD';
+        setText(els.leaderAtt, 'Ranking por receita MTD');
       }
     }
   }
@@ -453,7 +494,7 @@
             '<span class="tvb-card__badge-initials">' + esc(company.initials || '') + '</span>' +
             (company.logo
               ? '<img class="tvb-card__badge-logo" src="' + esc(company.logo) +
-                  '" alt="" loading="lazy" onerror="this.remove()">'
+                  '" alt="" width="42" height="42" loading="lazy" decoding="async" onerror="this.remove()">'
               : '') +
           '</div>' +
           '<div class="tvb-card__identity">' +
@@ -513,19 +554,27 @@
   function renderCompanies(companies, group, sourceAt) {
     if (!els.grid) return;
     if (!Array.isArray(companies) || companies.length === 0) {
-      els.grid.innerHTML =
+      var emptyMarkup =
         '<div class="tvb-empty"><strong>Nenhuma empresa acessível</strong>' +
         '<span>Revise o vínculo de empresas deste usuário.</span></div>';
-      if (els.companySummary) els.companySummary.textContent = '0 empresas no escopo';
+      if (state.gridMarkup !== emptyMarkup) {
+        els.grid.innerHTML = emptyMarkup;
+        state.gridMarkup = emptyMarkup;
+      }
+      setText(els.companySummary, '0 empresas no escopo');
       return;
     }
 
-    els.grid.innerHTML = companies.map(cardHtml).join('');
+    var markup = companies.map(cardHtml).join('');
+    if (state.gridMarkup !== markup) {
+      els.grid.innerHTML = markup;
+      state.gridMarkup = markup;
+    }
     if (els.companySummary) {
       var summary = number(group.companies_with_sales) + '/' +
         number(group.companies_count) + ' com faturamento no mês';
       if (sourceAt) summary += ' · dados até ' + shortDateTime(sourceAt);
-      els.companySummary.textContent = summary;
+      setText(els.companySummary, summary);
     }
   }
 
@@ -536,14 +585,58 @@
     renderCompanies(data.companies || [], group, data.source_refreshed_at);
   }
 
+  function hydrateInitialSnapshot() {
+    var node = els.initialData;
+    if (!node) return false;
+
+    var etag = node.getAttribute('data-etag') || '';
+    var data = null;
+    try {
+      data = JSON.parse(node.textContent || '');
+    } catch (error) {
+      data = null;
+    }
+    if (typeof node.remove === 'function') {
+      node.remove();
+    } else if (node.parentNode) {
+      node.parentNode.removeChild(node);
+    }
+    els.initialData = null;
+
+    if (
+      !data ||
+      data.ok !== true ||
+      !data.meta ||
+      String(data.meta.context_id || '') !== CONTEXT_ID
+    ) {
+      return false;
+    }
+
+    render(data);
+    state.generatedAt = parseDate(data.generated_at) || new Date();
+    state.sourceAt = parseDate(data.source_refreshed_at);
+    state.lastCheckedAt = state.generatedAt;
+    state.hasSnapshot = true;
+    state.retryAttempt = 0;
+    state.statusMessage = '';
+    if (etag) {
+      state.etag = etag;
+      state.renderedEtag = etag;
+    } else {
+      state.renderedEtag = String(data.generated_at || Date.now());
+    }
+
+    applySnapshotState(
+      data.data_status,
+      Array.isArray(data.warnings) ? data.warnings : []
+    );
+    updateFreshness();
+    return true;
+  }
+
   function responsePayload(response) {
-    return response.text().then(function (text) {
-      if (!text) return null;
-      try {
-        return JSON.parse(text);
-      } catch (error) {
-        return null;
-      }
+    return response.json().catch(function () {
+      return null;
     });
   }
 
@@ -555,11 +648,47 @@
     return error;
   }
 
-  function schedule(seconds) {
+  function schedule(seconds, withJitter) {
     if (state.timer) clearTimeout(state.timer);
-    var delay = Math.max(1, seconds);
+    state.timer = null;
+    if (document.hidden || !navigator.onLine) {
+      state.nextLoadAt = null;
+      return;
+    }
+    var jitter = withJitter && seconds >= 60 ? 0.9 + Math.random() * 0.2 : 1;
+    var delay = Math.max(1, seconds * jitter);
     state.nextLoadAt = new Date(Date.now() + delay * 1000);
     state.timer = setTimeout(load, delay * 1000);
+  }
+
+  function applySnapshotState(dataStatus, warnings) {
+    warnings = Array.isArray(warnings) ? warnings : [];
+    state.lastDataStatus = dataStatus || '';
+    state.lastWarnings = warnings;
+
+    if (dataStatus === 'unavailable') {
+      var retryIndex = Math.min(state.sourceRetryAttempt, SOURCE_RETRY_DELAYS.length - 1);
+      var retryIn = SOURCE_RETRY_DELAYS[retryIndex];
+      state.sourceRetryAttempt++;
+      setMode('error', 'Fonte indisponível');
+      showError(
+        true,
+        'A fonte fiscal está indisponível; o último resultado válido continua na tela.',
+        'Tentar agora'
+      );
+      schedule(retryIn, retryIn >= 60);
+      return;
+    }
+
+    state.sourceRetryAttempt = 0;
+    if (warnings.length > 0) {
+      setMode('warning', 'Dados parciais');
+      showError(true, warnings[0].message || 'Parte dos dados está indisponível.', 'Atualizar');
+    } else {
+      setMode('live', 'Ao vivo');
+      showError(false);
+    }
+    schedule(REFRESH_SEC, true);
   }
 
   function handleFailure(error) {
@@ -587,19 +716,30 @@
     state.statusMessage = error && error.message ? error.message : message;
     showError(true, message, 'Tentar agora');
 
+    if (forbidden || !navigator.onLine || document.hidden) {
+      state.nextLoadAt = null;
+      return;
+    }
     var retryIndex = Math.min(state.retryAttempt, RETRY_DELAYS.length - 1);
-    var retryIn = forbidden ? 120 : RETRY_DELAYS[retryIndex];
+    var retryIn = RETRY_DELAYS[retryIndex];
     state.retryAttempt++;
-    schedule(retryIn);
+    schedule(retryIn, retryIn >= 60);
   }
 
   function load() {
     if (state.inFlight) return;
+    if (document.hidden) return;
+    if (!navigator.onLine) {
+      handleFailure(requestError('network', 'Sem conexão.'));
+      return;
+    }
     if (!CONTEXT_ID) {
       handleFailure(requestError('context', 'Contexto ausente.', 403, 'select_empresa.php?context_reset=1'));
       return;
     }
 
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = null;
     state.inFlight = true;
     state.nextLoadAt = null;
     setMode(state.hasSnapshot ? 'updating' : 'loading', state.hasSnapshot ? 'Atualizando' : 'Carregando');
@@ -613,16 +753,24 @@
 
     var options = {
       credentials: 'same-origin',
-      cache: 'no-store',
+      cache: 'no-cache',
       headers: {
         'Accept': 'application/json',
         'X-BIOMIE-Context': CONTEXT_ID,
       },
     };
+    if (state.etag) options.headers['If-None-Match'] = state.etag;
     if (controller) options.signal = controller.signal;
 
     fetch(API_URL, options)
       .then(function (response) {
+        var responseEtag = response.headers.get('ETag') || '';
+        if (response.status === 304 && state.hasSnapshot) {
+          return {
+            notModified: true,
+            etag: responseEtag || state.etag,
+          };
+        }
         return responsePayload(response).then(function (payload) {
           var redirect = response.headers.get('X-BIOMIE-Context-Redirect') ||
             (payload && payload.redirect) || '';
@@ -656,36 +804,37 @@
               response.status
             );
           }
-          return payload;
+          return {
+            notModified: false,
+            etag: responseEtag,
+            data: payload,
+          };
         });
       })
-      .then(function (data) {
-        render(data);
-        state.generatedAt = parseDate(data.generated_at) || new Date();
-        state.sourceAt = parseDate(data.source_refreshed_at);
-        state.hasSnapshot = true;
+      .then(function (result) {
+        state.lastCheckedAt = new Date();
         state.retryAttempt = 0;
         state.statusMessage = '';
         state.retryRedirect = '';
+        if (result.etag) state.etag = result.etag;
+
+        if (result.notModified) {
+          applySnapshotState(state.lastDataStatus, state.lastWarnings);
+          updateFreshness();
+          return;
+        }
+
+        var data = result.data;
+        if (!result.etag || result.etag !== state.renderedEtag) {
+          render(data);
+          state.renderedEtag = result.etag || String(data.generated_at || Date.now());
+        }
+        state.generatedAt = parseDate(data.generated_at) || new Date();
+        state.sourceAt = parseDate(data.source_refreshed_at);
+        state.hasSnapshot = true;
 
         var warnings = Array.isArray(data.warnings) ? data.warnings : [];
-        if (data.data_status === 'unavailable') {
-          setMode('error', 'Fonte indisponível');
-          showError(
-            true,
-            'A fonte fiscal está indisponível; valores não foram convertidos em zero.',
-            'Tentar agora'
-          );
-          schedule(RETRY_DELAYS[0]);
-        } else if (warnings.length > 0) {
-          setMode('warning', 'Dados parciais');
-          showError(true, warnings[0].message || 'Parte dos dados está indisponível.', 'Atualizar');
-          schedule(REFRESH_SEC);
-        } else {
-          setMode('live', 'Ao vivo');
-          showError(false);
-          schedule(REFRESH_SEC);
-        }
+        applySnapshotState(data.data_status, warnings);
         updateFreshness();
       })
       .catch(function (error) {
@@ -715,11 +864,11 @@
         initial += ' · nova tentativa em ' +
           humanSeconds((state.nextLoadAt.getTime() - Date.now()) / 1000);
       }
-      els.status.textContent = initial;
+      setText(els.status, initial);
       return;
     }
 
-    var status = 'Painel gerado ' + humanAge(state.generatedAt);
+    var status = 'Painel verificado ' + humanAge(state.lastCheckedAt || state.generatedAt);
     if (state.sourceAt) status += ' · fonte ' + humanAge(state.sourceAt);
     if (state.mode === 'offline' || state.mode === 'error' || state.mode === 'warning') {
       status += ' · último resultado preservado';
@@ -731,11 +880,11 @@
           : 'próxima em ') +
         humanSeconds((state.nextLoadAt.getTime() - Date.now()) / 1000);
     }
-    els.status.textContent = status;
+    setText(els.status, status);
 
     if (
-      state.generatedAt &&
-      Date.now() - state.generatedAt.getTime() > REFRESH_SEC * 2 * 1000 &&
+      state.lastCheckedAt &&
+      Date.now() - state.lastCheckedAt.getTime() > REFRESH_SEC * 2 * 1000 &&
       (state.mode === 'live' || state.mode === 'updating')
     ) {
       setMode('stale', 'Dados atrasados');
@@ -761,8 +910,8 @@
     var active = Boolean(document.fullscreenElement);
     els.fullscreen.setAttribute('aria-label', active ? 'Sair da tela cheia' : 'Entrar em tela cheia');
     els.fullscreen.setAttribute('title', active ? 'Sair da tela cheia' : 'Tela cheia');
-    var icon = els.fullscreen.querySelector('.material-symbols-rounded');
-    if (icon) icon.textContent = active ? 'fullscreen_exit' : 'fullscreen';
+    els.fullscreen.setAttribute('aria-pressed', active ? 'true' : 'false');
+    els.fullscreen.setAttribute('data-active', active ? 'true' : 'false');
   }
 
   if (els.fullscreen) els.fullscreen.addEventListener('click', toggleFullscreen);
@@ -775,27 +924,69 @@
       }
       if (state.timer) clearTimeout(state.timer);
       state.retryAttempt = 0;
+      state.sourceRetryAttempt = 0;
       load();
     });
   }
 
   window.addEventListener('online', function () {
     if (state.timer) clearTimeout(state.timer);
+    state.timer = null;
     state.retryAttempt = 0;
     load();
   });
   window.addEventListener('offline', function () {
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = null;
+    state.nextLoadAt = null;
     setMode('offline', 'Sem conexão');
     showError(true, 'Sem conexão. Os últimos dados continuam na tela.', 'Tentar agora');
     updateFreshness();
   });
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') load();
+    if (document.hidden) {
+      if (state.timer) clearTimeout(state.timer);
+      state.timer = null;
+      state.nextLoadAt = null;
+      if (state.heartbeat) clearTimeout(state.heartbeat);
+      state.heartbeat = null;
+      return;
+    }
+    heartbeat();
+    var lastCheckAge = state.lastCheckedAt
+      ? (Date.now() - state.lastCheckedAt.getTime()) / 1000
+      : REFRESH_SEC;
+    if (lastCheckAge >= Math.min(60, REFRESH_SEC)) {
+      load();
+    } else {
+      schedule(REFRESH_SEC - lastCheckAge, true);
+    }
   });
 
-  tickClock();
+  function heartbeat() {
+    if (state.heartbeat) clearTimeout(state.heartbeat);
+    state.heartbeat = null;
+    if (document.hidden) return;
+
+    tickClock();
+    updateFreshness();
+    var retrySeconds = state.nextLoadAt
+      ? (state.nextLoadAt.getTime() - Date.now()) / 1000
+      : Infinity;
+    var delay = retrySeconds <= 60 ? 1000 : 30000;
+    state.heartbeat = setTimeout(heartbeat, delay);
+  }
+
+  var hydrated = hydrateInitialSnapshot();
   updateFullscreenButton();
-  setInterval(tickClock, 1000);
-  setInterval(updateFreshness, 1000);
-  load();
+  if (hydrated && !navigator.onLine) {
+    setMode('offline', 'Sem conexão');
+    showError(true, 'Sem conexão com o servidor. Os últimos dados continuam na tela.', 'Tentar agora');
+  } else if (!hydrated && navigator.onLine && !document.hidden) {
+    load();
+  } else if (!hydrated && !navigator.onLine) {
+    setMode('offline', 'Sem conexão');
+    showError(true, 'Sem conexão. O painel atualizará quando a rede voltar.', 'Tentar agora');
+  }
+  heartbeat();
 }());

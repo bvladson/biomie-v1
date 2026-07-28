@@ -39,7 +39,7 @@ final class BoardConsolidatedService
     public function build(int $userId, string $start, string $end, ?string $annualStart = null): array
     {
         $annualStart = $annualStart ?? substr($start, 0, 4) . '-01-01';
-        $key = sprintf('board_consolidated_v7_u%d_%s_%s_%s', $userId, $start, $end, $annualStart);
+        $key = sprintf('board_consolidated_v8_u%d_%s_%s_%s', $userId, $start, $end, $annualStart);
 
         return $this->cache->getOrCompute(
             $key,
@@ -53,8 +53,9 @@ final class BoardConsolidatedService
      */
     private function compute(int $userId, string $start, string $end, string $annualStart): array
     {
-        $appPdo = Database::connect($this->config, 'db');
-        $companies = TenantContext::listAccessible($appPdo, $userId);
+        $companies = TenantContext::isBooted() && TenantContext::userId() === $userId
+            ? TenantContext::cachedAccessible()
+            : TenantContext::listAccessible(Database::connect($this->config, 'db'), $userId);
 
         $companyMap = [];
         $channelMap = [];
@@ -89,7 +90,6 @@ final class BoardConsolidatedService
         $targetedInvoices = [];
         $annualTargetedInvoices = [];
         $targetPopulationAvailable = true;
-        $fiscal = null;
         $sourceAvailable = false;
         $warnings = [];
         $monthTargets = $this->emptyTargetResult();
@@ -103,28 +103,49 @@ final class BoardConsolidatedService
                     'message' => 'A fonte fiscal consolidada está indisponível.',
                 ];
             } else {
+                SchemaCapabilities::warm($canonicalPdo, [
+                    'biomie_notas_fiscais_canonicas',
+                    'biomie_sales_targets_monthly',
+                    'biomie_company_targets',
+                ]);
+                $monthKey = substr($start, 0, 7);
+                $targetPeriods = $this->loadTargetPeriodsByCompany(
+                    $canonicalPdo,
+                    $ids,
+                    substr($annualStart, 0, 7),
+                    $monthKey,
+                    $channelMap,
+                );
+                $monthTargets = $targetPeriods['month'];
+                $annualTargets = $targetPeriods['annual'];
+                if (!$monthTargets['available'] || !$annualTargets['available']) {
+                    $warnings[] = [
+                        'code' => 'target_source_unavailable',
+                        'message' => 'As metas não puderam ser consultadas.',
+                    ];
+                }
+
                 try {
                     $fiscal = new FiscalReadRepository(fn (): PDO => $canonicalPdo);
-                    $invoices = $fiscal->summarizeInvoicesByCompanies(
+                    $periodSummaries = $fiscal->summarizeBoardPeriodsByCompanies(
                         $ids,
                         $start,
                         $end,
-                        $channelMap,
-                    );
-                    $annualInvoices = $fiscal->summarizeInvoicesByCompanies(
-                        $ids,
                         $annualStart,
-                        $end,
-                        $channelMap,
-                    );
-                    $comparisonInvoices = $fiscal->summarizeInvoicesByCompanies(
-                        $ids,
                         $comparison['start'],
                         $comparison['end'],
                         $channelMap,
+                        $monthTargets['seller_ids'],
+                        $annualTargets['seller_ids'],
                     );
+                    $invoices = $periodSummaries['current'];
+                    $annualInvoices = $periodSummaries['annual'];
+                    $comparisonInvoices = $periodSummaries['comparison'];
+                    $targetedInvoices = $periodSummaries['targeted_current'];
+                    $annualTargetedInvoices = $periodSummaries['targeted_annual'];
                     $sourceAvailable = true;
                 } catch (Throwable $exception) {
+                    $targetPopulationAvailable = false;
                     $this->logger->warning('Board: faturamento por empresa indisponivel.', [
                         'message' => $exception->getMessage(),
                     ]);
@@ -132,61 +153,6 @@ final class BoardConsolidatedService
                         'code' => 'invoice_source_unavailable',
                         'message' => 'Não foi possível consultar a fonte fiscal consolidada.',
                     ];
-                }
-
-                $monthKey = substr($start, 0, 7);
-                $monthTargets = $this->loadTargetsByCompany(
-                    $canonicalPdo,
-                    $ids,
-                    $monthKey,
-                    $monthKey,
-                    $channelMap,
-                );
-                $annualTargets = $this->loadTargetsByCompany(
-                    $canonicalPdo,
-                    $ids,
-                    substr($annualStart, 0, 7),
-                    $monthKey,
-                    $channelMap,
-                );
-                if (!$monthTargets['available'] || !$annualTargets['available']) {
-                    $warnings[] = [
-                        'code' => 'target_source_unavailable',
-                        'message' => 'As metas não puderam ser consultadas.',
-                    ];
-                }
-                if ($sourceAvailable && $fiscal instanceof FiscalReadRepository) {
-                    try {
-                        if ($monthTargets['seller_ids'] !== []) {
-                            $targetedIds = array_map('intval', array_keys($monthTargets['seller_ids']));
-                            $targetedInvoices = $fiscal->summarizeInvoicesByCompanies(
-                                $targetedIds,
-                                $start,
-                                $end,
-                                $channelMap,
-                                $monthTargets['seller_ids'],
-                            );
-                        }
-                        if ($annualTargets['seller_ids'] !== []) {
-                            $annualTargetedIds = array_map('intval', array_keys($annualTargets['seller_ids']));
-                            $annualTargetedInvoices = $fiscal->summarizeInvoicesByCompanies(
-                                $annualTargetedIds,
-                                $annualStart,
-                                $end,
-                                $channelMap,
-                                $annualTargets['seller_ids'],
-                            );
-                        }
-                    } catch (Throwable $exception) {
-                        $targetPopulationAvailable = false;
-                        $this->logger->warning('Board: populacao comparavel de metas indisponivel.', [
-                            'message' => $exception->getMessage(),
-                        ]);
-                        $warnings[] = [
-                            'code' => 'target_population_unavailable',
-                            'message' => 'A população comparável das metas está indisponível.',
-                        ];
-                    }
                 }
             }
         }
@@ -547,6 +513,11 @@ final class BoardConsolidatedService
             if (!Database::isConfigured($this->config, $connection)) {
                 return null;
             }
+            if (TenantContext::isBooted()
+                && ($connection === 'db' || $this->sameDatabaseConfig('db', $connection))
+            ) {
+                return TenantContext::storageConnection();
+            }
 
             return Database::connect($this->config, $connection);
         } catch (Throwable $exception) {
@@ -558,64 +529,78 @@ final class BoardConsolidatedService
         }
     }
 
-    /**
-     * @param list<int> $ids
-     * @param array<int,list<string>> $channelsByCompany
-     * @return array<string,mixed>
-     */
-    private function loadTargetsByCompany(
-        PDO $pdo,
-        array $ids,
-        string $fromYearMonth,
-        string $toYearMonth,
-        array $channelsByCompany,
-    ): array {
-        if ($ids === []) {
-            return $this->emptyTargetResult();
+    private function sameDatabaseConfig(string $left, string $right): bool
+    {
+        foreach (['driver', 'host', 'port', 'name', 'user'] as $field) {
+            $default = $field === 'port' ? 3306 : '';
+            if ((string) $this->config->get($left . '.' . $field, $default)
+                !== (string) $this->config->get($right . '.' . $field, $default)
+            ) {
+                return false;
+            }
         }
 
+        return true;
+    }
+
+    /**
+     * Carrega metas mensal e YTD com uma unica leitura de cada fonte. A versao
+     * anterior repetia as mesmas consultas para o mes e para o ano.
+     *
+     * @param list<int> $ids
+     * @param array<int,list<string>> $channelsByCompany
+     * @return array{month:array<string,mixed>,annual:array<string,mixed>}
+     */
+    private function loadTargetPeriodsByCompany(
+        PDO $pdo,
+        array $ids,
+        string $annualFromYearMonth,
+        string $currentYearMonth,
+        array $channelsByCompany,
+    ): array {
+        $monthUnavailable = $this->emptyTargetResult();
+        $monthUnavailable['months_expected'] = 1;
+        $annualUnavailable = $this->emptyTargetResult();
+        $annualUnavailable['months_expected'] = $this->monthSpanCount(
+            $annualFromYearMonth,
+            $currentYearMonth,
+        );
+        if ($ids === []) {
+            return ['month' => $monthUnavailable, 'annual' => $annualUnavailable];
+        }
+
+        /** @var array<int,array<string,float>> $sellerTargets */
         $sellerTargets = [];
+        /** @var array<int,array<string,array<string,true>>> $sellerIds */
         $sellerIds = [];
-        $sellerMonths = [];
+        /** @var array<int,array<string,float>> $companyTargets */
         $companyTargets = [];
-        $companyMonths = [];
-        $monthsExpected = $this->monthSpanCount($fromYearMonth, $toYearMonth);
+
         try {
+            $queries = [];
+            $params = [];
             if (SchemaCapabilities::tableExists($pdo, 'biomie_sales_targets_monthly')) {
-                [$inClause, $params] = $this->idPlaceholders($ids, 'seller_company_');
-                $params['seller_from'] = $fromYearMonth;
-                $params['seller_to'] = $toYearMonth;
-                $stmt = $pdo->prepare(
-                    "SELECT company_id, vendor_id, `year_month`,
-                            COALESCE(SUM(target_amount), 0) AS total
-                       FROM biomie_sales_targets_monthly
-                      WHERE `year_month` BETWEEN :seller_from AND :seller_to
-                        AND company_id IN ({$inClause})
-                      GROUP BY company_id, vendor_id, `year_month`",
-                );
-                $stmt->execute($params);
-                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                    $companyId = (int) ($row['company_id'] ?? 0);
-                    $sellerId = trim((string) ($row['vendor_id'] ?? ''));
-                    $yearMonth = trim((string) ($row['year_month'] ?? ''));
-                    if ($companyId <= 0) {
-                        continue;
-                    }
-                    $sellerTargets[$companyId] = ($sellerTargets[$companyId] ?? 0.0)
-                        + (float) ($row['total'] ?? 0);
-                    if ($sellerId !== '') {
-                        $sellerIds[$companyId][$sellerId] = true;
-                    }
-                    if ($yearMonth !== '') {
-                        $sellerMonths[$companyId][$yearMonth] = true;
-                    }
-                }
+                [$inClause, $sellerParams] = $this->idPlaceholders($ids, 'seller_period_company_');
+                $sellerParams['seller_period_from'] = $annualFromYearMonth;
+                $sellerParams['seller_period_to'] = $currentYearMonth;
+                $params += $sellerParams;
+                $queries[] = "
+                    SELECT 'seller' AS source_type,
+                           company_id,
+                           vendor_id AS seller_id,
+                           `year_month` AS target_month,
+                           COALESCE(SUM(target_amount), 0) AS total
+                      FROM biomie_sales_targets_monthly
+                     WHERE `year_month` BETWEEN :seller_period_from AND :seller_period_to
+                       AND company_id IN ({$inClause})
+                     GROUP BY company_id, vendor_id, `year_month`
+                ";
             }
 
             if (SchemaCapabilities::tableExists($pdo, 'biomie_company_targets')) {
-                [$inClause, $params] = $this->idPlaceholders($ids, 'target_company_');
-                $params['target_from'] = $fromYearMonth;
-                $params['target_to'] = $toYearMonth;
+                [$inClause, $companyParams] = $this->idPlaceholders($ids, 'target_period_company_');
+                $companyParams['target_period_from'] = $annualFromYearMonth;
+                $companyParams['target_period_to'] = $currentYearMonth;
                 $channelClauses = [];
                 foreach ($ids as $index => $companyId) {
                     $allowed = array_values(array_intersect(
@@ -625,12 +610,12 @@ final class BoardConsolidatedService
                     if ($allowed === []) {
                         continue;
                     }
-                    $companyKey = 'target_scope_company_' . $index;
-                    $params[$companyKey] = $companyId;
+                    $companyKey = 'target_period_scope_company_' . $index;
+                    $companyParams[$companyKey] = $companyId;
                     $channelPlaceholders = [];
                     foreach ($allowed as $channelIndex => $channel) {
-                        $channelKey = 'target_scope_channel_' . $index . '_' . $channelIndex;
-                        $params[$channelKey] = $channel;
+                        $channelKey = 'target_period_scope_channel_' . $index . '_' . $channelIndex;
+                        $companyParams[$channelKey] = $channel;
                         $channelPlaceholders[] = ':' . $channelKey;
                     }
                     $channelClauses[] = sprintf(
@@ -639,65 +624,136 @@ final class BoardConsolidatedService
                         implode(', ', $channelPlaceholders),
                     );
                 }
+                $params += $companyParams;
                 $scope = $channelClauses === [] ? '1 = 0' : implode(' OR ', $channelClauses);
-                $stmt = $pdo->prepare(
-                    "SELECT company_id, competencia, COALESCE(SUM(meta_valor), 0) AS total
-                       FROM biomie_company_targets
-                      WHERE competencia BETWEEN :target_from AND :target_to
-                        AND ativo = 1
-                        AND company_id IN ({$inClause})
-                        AND ({$scope})
-                      GROUP BY company_id, competencia",
-                );
+                $queries[] = "
+                    SELECT 'company' AS source_type,
+                           company_id,
+                           '' AS seller_id,
+                           competencia AS target_month,
+                           COALESCE(SUM(meta_valor), 0) AS total
+                      FROM biomie_company_targets
+                     WHERE competencia BETWEEN :target_period_from AND :target_period_to
+                       AND ativo = 1
+                       AND company_id IN ({$inClause})
+                       AND ({$scope})
+                     GROUP BY company_id, competencia
+                ";
+            }
+
+            if ($queries !== []) {
+                $stmt = $pdo->prepare(implode(' UNION ALL ', $queries));
                 $stmt->execute($params);
                 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                     $companyId = (int) ($row['company_id'] ?? 0);
-                    $yearMonth = trim((string) ($row['competencia'] ?? ''));
-                    if ($companyId <= 0) {
+                    $yearMonth = trim((string) ($row['target_month'] ?? ''));
+                    if ($companyId <= 0 || $yearMonth === '') {
                         continue;
                     }
-                    $companyTargets[$companyId] = ($companyTargets[$companyId] ?? 0.0)
-                        + (float) ($row['total'] ?? 0);
-                    if ($yearMonth !== '') {
-                        $companyMonths[$companyId][$yearMonth] = true;
+                    if (($row['source_type'] ?? '') === 'seller') {
+                        $sellerTargets[$companyId][$yearMonth] =
+                            ($sellerTargets[$companyId][$yearMonth] ?? 0.0)
+                            + (float) ($row['total'] ?? 0);
+                        $sellerId = trim((string) ($row['seller_id'] ?? ''));
+                        if ($sellerId !== '') {
+                            $sellerIds[$companyId][$yearMonth][$sellerId] = true;
+                        }
+                    } else {
+                        $companyTargets[$companyId][$yearMonth] =
+                            ($companyTargets[$companyId][$yearMonth] ?? 0.0)
+                            + (float) ($row['total'] ?? 0);
                     }
                 }
             }
         } catch (Throwable $exception) {
             $this->logger->warning('Board: metas por empresa indisponiveis.', [
                 'message' => $exception->getMessage(),
-                'from_year_month' => $fromYearMonth,
-                'to_year_month' => $toYearMonth,
+                'from_year_month' => $annualFromYearMonth,
+                'to_year_month' => $currentYearMonth,
             ]);
+            $monthUnavailable['available'] = false;
+            $annualUnavailable['available'] = false;
 
-            return [
-                'values' => [],
-                'sources' => [],
-                'grains' => [],
-                'seller_ids' => [],
-                'months_configured' => [],
-                'months_expected' => $monthsExpected,
-                'available' => false,
-            ];
+            return ['month' => $monthUnavailable, 'annual' => $annualUnavailable];
         }
 
+        return [
+            'month' => $this->selectTargetPeriod(
+                $ids,
+                $currentYearMonth,
+                $currentYearMonth,
+                $sellerTargets,
+                $sellerIds,
+                $companyTargets,
+            ),
+            'annual' => $this->selectTargetPeriod(
+                $ids,
+                $annualFromYearMonth,
+                $currentYearMonth,
+                $sellerTargets,
+                $sellerIds,
+                $companyTargets,
+            ),
+        ];
+    }
+
+    /**
+     * @param list<int> $ids
+     * @param array<int,array<string,float>> $sellerTargets
+     * @param array<int,array<string,array<string,true>>> $sellerIds
+     * @param array<int,array<string,float>> $companyTargets
+     * @return array<string,mixed>
+     */
+    private function selectTargetPeriod(
+        array $ids,
+        string $fromYearMonth,
+        string $toYearMonth,
+        array $sellerTargets,
+        array $sellerIds,
+        array $companyTargets,
+    ): array {
         $values = [];
         $sources = [];
         $grains = [];
         $selectedSellerIds = [];
         $monthsConfigured = [];
+
         foreach ($ids as $companyId) {
-            if (($sellerTargets[$companyId] ?? 0.0) > 0.0) {
-                $values[$companyId] = $sellerTargets[$companyId];
+            $sellerTotal = 0.0;
+            $sellerMonths = [];
+            $sellerSet = [];
+            foreach ($sellerTargets[$companyId] ?? [] as $yearMonth => $amount) {
+                if ($yearMonth < $fromYearMonth || $yearMonth > $toYearMonth) {
+                    continue;
+                }
+                $sellerTotal += $amount;
+                $sellerMonths[$yearMonth] = true;
+                foreach ($sellerIds[$companyId][$yearMonth] ?? [] as $sellerId => $_present) {
+                    $sellerSet[$sellerId] = true;
+                }
+            }
+
+            $companyTotal = 0.0;
+            $companyMonths = [];
+            foreach ($companyTargets[$companyId] ?? [] as $yearMonth => $amount) {
+                if ($yearMonth < $fromYearMonth || $yearMonth > $toYearMonth) {
+                    continue;
+                }
+                $companyTotal += $amount;
+                $companyMonths[$yearMonth] = true;
+            }
+
+            if ($sellerTotal > 0.0) {
+                $values[$companyId] = $sellerTotal;
                 $sources[$companyId] = 'sales_targets_monthly';
                 $grains[$companyId] = 'seller';
-                $selectedSellerIds[$companyId] = array_values(array_keys($sellerIds[$companyId] ?? []));
-                $monthsConfigured[$companyId] = count($sellerMonths[$companyId] ?? []);
-            } elseif (($companyTargets[$companyId] ?? 0.0) > 0.0) {
-                $values[$companyId] = $companyTargets[$companyId];
+                $selectedSellerIds[$companyId] = array_values(array_keys($sellerSet));
+                $monthsConfigured[$companyId] = count($sellerMonths);
+            } elseif ($companyTotal > 0.0) {
+                $values[$companyId] = $companyTotal;
                 $sources[$companyId] = 'company_targets';
                 $grains[$companyId] = 'company_channel';
-                $monthsConfigured[$companyId] = count($companyMonths[$companyId] ?? []);
+                $monthsConfigured[$companyId] = count($companyMonths);
             }
         }
 
@@ -707,7 +763,7 @@ final class BoardConsolidatedService
             'grains' => $grains,
             'seller_ids' => $selectedSellerIds,
             'months_configured' => $monthsConfigured,
-            'months_expected' => $monthsExpected,
+            'months_expected' => $this->monthSpanCount($fromYearMonth, $toYearMonth),
             'available' => true,
         ];
     }
@@ -777,7 +833,10 @@ final class BoardConsolidatedService
             $color = $manifest->brandColor() ?: $color;
             $logoPath = $manifest->logoIconPath();
             if ($logoPath !== '' && is_file(\BIomie\Bootstrap::rootPath($logoPath))) {
-                $logo = $logoPath;
+                $tvLogoPath = 'images/logos/tv/' . basename($logoPath);
+                $logo = is_file(\BIomie\Bootstrap::rootPath($tvLogoPath))
+                    ? $tvLogoPath
+                    : $logoPath;
             }
         } catch (Throwable) {
             // A identidade cadastrada na empresa continua sendo um fallback válido.

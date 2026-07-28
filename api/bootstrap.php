@@ -15,6 +15,7 @@ use BIomie\Http\ErrorBoundary;
 use BIomie\Logger;
 use BIomie\Omie\OmieClientFactory;
 use BIomie\OmieRepository;
+use BIomie\Observability\RequestPerformanceContext;
 use BIomie\RefreshQueue;
 use BIomie\SalesAnalyticsService;
 use BIomie\Support\PerformanceTimer;
@@ -24,6 +25,14 @@ use BIomie\Telemetry;
 
 require_once dirname(__DIR__) . '/app/Bootstrap.php';
 Bootstrap::init();
+
+$apiBootstrapProfile = defined('BIOMIE_API_BOOTSTRAP_PROFILE')
+    ? strtolower(trim((string) constant('BIOMIE_API_BOOTSTRAP_PROFILE')))
+    : 'full';
+if ($apiBootstrapProfile !== 'board-read') {
+    $apiBootstrapProfile = 'full';
+}
+RequestPerformanceContext::setTag('api_bootstrap_profile', $apiBootstrapProfile);
 
 ErrorBoundary::registerApiHandlers([
     'route' => 'api/' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'api')),
@@ -43,6 +52,7 @@ $telemetry->startRequestSpan(null, [
     'domain_name' => 'http',
     'source_name' => 'api',
     'script' => basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'bootstrap.php')),
+    'bootstrap_profile' => $apiBootstrapProfile,
 ]);
 $GLOBALS['biomie_performance_timer'] = PerformanceTimer::start(
     'api.' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'api'))
@@ -88,6 +98,16 @@ if (
     && in_array(strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')), ['GET', 'HEAD'], true)
 ) {
     session_write_close();
+}
+
+// O board consolidado consulta somente os read models fiscais e não usa cliente
+// Omie, bronze, fila de refresh ou SalesAnalyticsService. O perfil explícito é
+// definido pelo próprio endpoint antes deste require; requisições externas não
+// conseguem ativá-lo. Todo o núcleo de segurança e observabilidade acima continua
+// obrigatório.
+if ($apiBootstrapProfile === 'board-read') {
+    RequestPerformanceContext::increment('api_lightweight_bootstrap');
+    return;
 }
 
 $repository = null;

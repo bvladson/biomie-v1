@@ -104,10 +104,14 @@ final class Http
     /**
      * Responds with JSON and ETag-based conditional caching.
      *
-     * On cache hit (If-None-Match matches), sends 304 Not Modified with no body.
-     * Otherwise sends the payload with ETag + Cache-Control headers.
+     * The representation remains private and no-store. Callers that keep the
+     * validator in memory may send If-None-Match and receive 304 without
+     * persisting authenticated data in the browser cache.
      *
-     * @param int $maxAge Cache-Control max-age in seconds (default 60)
+     * $maxAge is retained as a compatibility/revalidation hint and is recorded
+     * in request telemetry. It never relaxes the authenticated no-store policy.
+     *
+     * @param int $maxAge Revalidation cadence hint in seconds (default 60)
      */
     public static function jsonWithEtag(array $payload, int $maxAge = 60, array $headers = []): never
     {
@@ -123,32 +127,91 @@ final class Http
 
         $etag = '"' . md5($json) . '"';
         $clientEtag = trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''));
+        $requestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        $isConditionalRequest = $clientEtag !== '';
+        $notModified = in_array($requestMethod, ['GET', 'HEAD'], true)
+            && $isConditionalRequest
+            && self::ifNoneMatchMatches($clientEtag, $etag);
+        $status = $notModified ? 304 : 200;
+        $responseBytes = $notModified || $requestMethod === 'HEAD' ? 0 : strlen($json);
 
-        if ($clientEtag !== '' && $clientEtag === $etag) {
-            http_response_code(304);
-            header('ETag: ' . $etag);
-            header('Vary: Accept, X-BIOMIE-Context');
-            header('Cache-Control: private, no-cache, must-revalidate, max-age=0');
-            foreach ($headers as $name => $value) {
-                header($name . ': ' . $value);
-            }
-            exit;
+        self::captureResponseContext($payload, $status);
+        RequestPerformanceContext::setTag('response_bytes', $responseBytes);
+        RequestPerformanceContext::setTag('etag_revalidation_hint_seconds', max(0, $maxAge));
+        RequestPerformanceContext::setTag('etag_match', $notModified);
+        if ($isConditionalRequest) {
+            RequestPerformanceContext::increment('etag_conditional_requests');
+        }
+        if ($notModified) {
+            RequestPerformanceContext::increment('etag_not_modified_responses');
+        } else {
+            RequestPerformanceContext::increment('etag_full_responses');
         }
 
-        http_response_code(200);
-        header('Content-Type: application/json; charset=utf-8');
+        // Do not inject performance diagnostics into the payload: their changing
+        // duration would change the ETag on every request and defeat revalidation.
+        $performance = self::finishPerformanceTimer();
+        if ($performance !== null) {
+            $headers['X-BIomie-Response-Time-Ms'] = (string) $performance['total_ms'];
+            $headers['Server-Timing'] = 'app;dur=' . $performance['total_ms'];
+        }
+
+        http_response_code($status);
+        foreach ($headers as $name => $value) {
+            header($name . ': ' . $value);
+        }
+        if (!$notModified) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
         header('X-Request-Id: ' . RequestContext::id());
         header('X-Correlation-Id: ' . RequestContext::correlationId());
         header('X-Trace-Id: ' . RequestContext::traceId());
         header('Vary: Accept, X-BIOMIE-Context');
         header('ETag: ' . $etag);
-        header('Cache-Control: private, no-cache, must-revalidate, max-age=0');
-        foreach ($headers as $name => $value) {
-            header($name . ': ' . $value);
+        header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        if ($notModified || $requestMethod === 'HEAD') {
+            exit;
         }
 
         echo $json;
         exit;
+    }
+
+    private static function ifNoneMatchMatches(string $headerValue, string $etag): bool
+    {
+        if (trim($headerValue) === '*') {
+            return true;
+        }
+
+        $normalizedEtag = self::normalizeWeakEtag($etag);
+        foreach (explode(',', $headerValue) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '' || $candidate === '*') {
+                if ($candidate === '*') {
+                    return true;
+                }
+                continue;
+            }
+
+            if (self::normalizeWeakEtag($candidate) === $normalizedEtag) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function normalizeWeakEtag(string $etag): string
+    {
+        $etag = trim($etag);
+        if (str_starts_with(strtoupper($etag), 'W/')) {
+            $etag = ltrim(substr($etag, 2));
+        }
+
+        return $etag;
     }
 
     /**
