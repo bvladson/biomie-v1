@@ -3969,9 +3969,13 @@ $d54Detail['mart_fiscal_items'] = [
 $fiscalApis   = glob($projectRoot . '/api/fiscal_*.php') ?: [];
 $d54SyntaxOk  = true;
 foreach ($fiscalApis as $apiFile) {
-    $out = shell_exec($php . ' -l ' . escapeshellarg($apiFile) . ' 2>&1');
-    if (strpos((string) $out, 'No syntax errors') === false) {
-        $d54Issues[] = 'Erro de sintaxe: ' . basename($apiFile) . ' — ' . trim((string) $out);
+    // rg_exec (proc_open), NAO shell_exec: a hospedagem desabilita system, exec,
+    // shell_exec, passthru e popen. A unica chamada a shell_exec que restou aqui
+    // matava o guard inteiro em producao com "Call to undefined function"
+    // (Fatal, exit 255, sem saida) — o resto do arquivo ja usava proc_open.
+    $lint = rg_exec(escapeshellarg($php) . ' -l ' . escapeshellarg($apiFile) . ' 2>&1');
+    if (strpos($lint['output'], 'No syntax errors') === false) {
+        $d54Issues[] = 'Erro de sintaxe: ' . basename($apiFile) . ' — ' . trim($lint['output']);
         $d54SyntaxOk = false;
     }
 }
