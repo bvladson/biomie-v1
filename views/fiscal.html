@@ -136,6 +136,25 @@
   </section>
 
   <!-- ══ 4 — Apuração Gerencial ════════════════════════════════════════ -->
+  <section class="fis-section fis-section--regime" id="fis-section-regime">
+    <div class="fis-section-head">
+      <div>
+        <div class="fis-eyebrow"><span class="material-symbols-rounded">account_balance</span>Regime tributário</div>
+        <h2>Imposto projetado por empresa</h2>
+        <p class="fis-section-desc">
+          A apuração ao lado soma apenas o tributo <strong>destacado na nota</strong>. Nem todo tributo passa por nota:
+          no Simples tudo vai no DAS, e no Presumido o IRPJ e a CSLL são pagos por fora.
+          Aqui cada empresa é projetada pelo <strong>seu</strong> regime.
+        </p>
+      </div>
+      <span class="fis-coverage-badge" id="fisRegimeTotal">Projetando…</span>
+    </div>
+    <div class="fis-regime-grid" id="fisRegimeGrid">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
+    </div>
+    <p class="fis-section-desc fis-regime-disclaimer" id="fisRegimeDisclaimer"></p>
+  </section>
+
   <section class="fis-section fis-section--settlement" id="fis-section-settlement">
     <div class="fis-section-head">
       <div>
@@ -215,7 +234,7 @@
       <div class="fis-nf-filters">
         <div class="fis-filter-group">
           <label class="filter-label" for="fisNfSearch">Buscar</label>
-          <input id="fisNfSearch" type="search" placeholder="Cliente, vendedor ou NF…" class="fis-search-input" />
+          <input id="fisNfSearch" type="search" placeholder="Cliente, vendedor, NF ou pedido…" class="fis-search-input" />
         </div>
         <div class="fis-filter-group">
           <label class="filter-label" for="fisNfStatus">Status</label>
@@ -223,6 +242,14 @@
             <option value="autorizada">Autorizadas</option>
             <option value="cancelada">Canceladas</option>
             <option value="todos">Todas</option>
+          </select>
+        </div>
+        <div class="fis-filter-group">
+          <label class="filter-label" for="fisNfVinculo">Vínculo com pedido</label>
+          <select id="fisNfVinculo" class="fis-select">
+            <option value="">Todas</option>
+            <option value="com_pedido">Com pedido</option>
+            <option value="sem_pedido">Sem pedido</option>
           </select>
         </div>
         <div class="fis-filter-group">
@@ -240,11 +267,13 @@
         </div>
       </div>
     </div>
+    <div class="fis-vinculo-bar" id="fisNfVinculoSummary" role="status" aria-live="polite"></div>
     <div class="fis-table-wrap" id="fisNfTableWrap">
       <table class="fis-table" id="fisNfTable">
         <thead>
           <tr>
             <th data-nf-sort="numero_nf">NF</th>
+            <th>Pedido</th>
             <th data-nf-sort="data_emissao">Data</th>
             <th data-nf-sort="nome_cliente">Cliente</th>
             <th data-nf-sort="nome_vendedor">Vendedor</th>
@@ -261,7 +290,7 @@
           </tr>
         </thead>
         <tbody id="fisNfTbody">
-          <tr><td colspan="14" class="fis-loading-cell">Carregando...</td></tr>
+          <tr><td colspan="15" class="fis-loading-cell">Carregando...</td></tr>
         </tbody>
       </table>
     </div>

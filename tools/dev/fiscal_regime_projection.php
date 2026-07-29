@@ -34,8 +34,8 @@ require $root . '/app/Support/CliGuard.php';
 require $root . '/app/Bootstrap.php';
 \BIomie\Bootstrap::init();
 
-use BIomie\Modules\Fiscal\Domain\RegimeTaxProjector;
 use BIomie\Modules\Fiscal\Domain\TaxRegime;
+use BIomie\Modules\Fiscal\Infrastructure\FiscalRegimeProjectionService;
 
 $opts = getopt('', ['start:', 'end:', 'company:', 'json']);
 $json = isset($opts['json']);
@@ -46,125 +46,24 @@ $only = strtoupper(trim((string) ($opts['company'] ?? '')));
 $config = new \BIomie\Config();
 $pdo = \BIomie\Database::connect($config, 'db');
 
-$regimes = [];
-try {
-    foreach ($pdo->query('SELECT source_company_id, regime_tributario FROM fiscal_establishments')->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        $regimes[(int) $r['source_company_id']] = (string) $r['regime_tributario'];
-    }
-} catch (Throwable) {
-    // Sem a tabela, o regime sai do dominio pelo slug.
-}
-
 $companies = $pdo->query('SELECT id, slug FROM biomie_companies WHERE ativo = 1 ORDER BY id')
     ->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-$scalar = static function (PDO $pdo, string $sql, array $params): array {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-};
-
-$result = [];
-foreach ($companies as $c) {
-    $slug = (string) $c['slug'];
-    if ($only !== '' && strtoupper($slug) !== $only) {
-        continue;
-    }
-    $cid = (int) $c['id'];
-    $regime = $regimes[$cid] ?? TaxRegime::forSlug($slug);
-
-    $rec = $scalar(
-        $pdo,
-        "SELECT COALESCE(SUM(valor_total),0) receita,
-                COUNT(DISTINCT DATE_FORMAT(data_competencia,'%Y-%m')) meses
-           FROM biomie_notas_fiscais_canonicas
-          WHERE company_id=:c AND data_competencia BETWEEN :s AND :e
-            AND status_fiscal='autorizada'",
-        [':c' => $cid, ':s' => $start, ':e' => $end]
-    );
-
-    // RBT12 do Simples: receita bruta dos ultimos 12 meses a contar do fim do periodo.
-    $rbt = $scalar(
-        $pdo,
-        "SELECT COALESCE(SUM(valor_total),0) rbt12
-           FROM biomie_notas_fiscais_canonicas
-          WHERE company_id=:c AND status_fiscal='autorizada'
-            AND data_competencia > DATE_SUB(:e1, INTERVAL 12 MONTH)
-            AND data_competencia <= :e2",
-        [':c' => $cid, ':e1' => $end, ':e2' => $end]
-    );
-
-    // Destacado nas saidas — MESMO filtro da apuracao, senao os dois lados
-    // medem universos diferentes e a comparacao perde sentido.
-    $dest = $scalar(
-        $pdo,
-        "SELECT COALESCE(SUM(valor_pis),0) pis,
-                COALESCE(SUM(valor_cofins),0) cofins,
-                COALESCE(SUM(valor_icms),0) icms,
-                COALESCE(SUM(valor_icms_st),0)+COALESCE(SUM(valor_difal_destino),0)
-                  +COALESCE(SUM(valor_fecop),0)+COALESCE(SUM(valor_ipi),0)
-                  +COALESCE(SUM(valor_iss),0) outros
-           FROM mart_fiscal_items
-          WHERE company_id=:c AND data_emissao BETWEEN :s AND :e
-            AND direction='saida' AND status_fiscal='autorizada'",
-        [':c' => $cid, ':s' => $start, ':e' => $end]
-    );
-
-    $cred = ['pis' => 0.0, 'cofins' => 0.0, 'icms' => 0.0, 'docs' => 0];
-    try {
-        $cred = $scalar(
-            $pdo,
-            "SELECT COALESCE(SUM(i.valor_pis),0) pis, COALESCE(SUM(i.valor_cofins),0) cofins,
-                    COALESCE(SUM(i.valor_icms),0) icms, COUNT(DISTINCT e.entry_key) docs
-               FROM fiscal_purchase_entries e
-               JOIN fiscal_purchase_entry_items i
-                 ON i.company_id=e.company_id AND i.entry_key=e.entry_key
-              WHERE e.company_id=:c AND e.competencia BETWEEN :s AND :e",
-            [':c' => $cid, ':s' => substr($start, 0, 7), ':e' => substr($end, 0, 7)]
-        ) + $cred;
-    } catch (Throwable) {
-        // Sem tabela de entradas o credito fica zero e o alerta do Real dispara.
-    }
-
-    $projection = RegimeTaxProjector::project($regime, [
-        'receita_mes' => (float) ($rec['receita'] ?? 0),
-        'rbt12' => (float) ($rbt['rbt12'] ?? 0),
-        'meses_no_periodo' => max(1, (int) ($rec['meses'] ?? 1)),
-        'destacado_pis' => (float) ($dest['pis'] ?? 0),
-        'destacado_cofins' => (float) ($dest['cofins'] ?? 0),
-        'destacado_icms' => (float) ($dest['icms'] ?? 0),
-        'destacado_outros' => (float) ($dest['outros'] ?? 0),
-        'credito_pis' => (float) ($cred['pis'] ?? 0),
-        'credito_cofins' => (float) ($cred['cofins'] ?? 0),
-        'credito_icms' => (float) ($cred['icms'] ?? 0),
-    ]);
-
-    $atual = $scalar(
-        $pdo,
-        'SELECT COALESCE(SUM(tributos_brutos),0) t FROM mart_fiscal_monthly_settlement
-          WHERE company_id=:c AND competencia BETWEEN :s AND :e',
-        [':c' => $cid, ':s' => substr($start, 0, 7), ':e' => substr($end, 0, 7)]
-    );
-
-    $result[] = [
-        'company' => $slug,
-        'company_id' => $cid,
-        'regime' => $regime,
-        'regime_label' => TaxRegime::profile($regime)['label'],
-        'apuracao_atual' => round((float) ($atual['t'] ?? 0), 2),
-        'documentos_entrada' => (int) ($cred['docs'] ?? 0),
-        'projecao' => $projection,
-        'diferenca' => round((float) $projection['tributo_total'] - (float) ($atual['t'] ?? 0), 2),
-    ];
+if ($only !== '') {
+    $companies = array_values(array_filter(
+        $companies,
+        static fn (array $c): bool => strtoupper((string) $c['slug']) === $only
+    ));
 }
 
+// MESMO servico que a API usa. Se cada lado montasse suas queries, o relatorio
+// e o painel divergiriam no primeiro ajuste de filtro.
+$service = new FiscalRegimeProjectionService($pdo);
+$payload = $service->forCompanies($companies, $start, $end);
+$result = $payload['companies'];
+
 if ($json) {
-    echo json_encode([
-        'ok' => true,
-        'period' => ['start' => $start, 'end' => $end],
-        'disclaimer' => 'Estimativa gerencial. Nao substitui a apuracao do contador.',
-        'companies' => $result,
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;
+    echo json_encode(['ok' => true] + $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;
     exit(0);
 }
 

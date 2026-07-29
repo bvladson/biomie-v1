@@ -695,8 +695,20 @@ final class FiscalIntelligenceService
         }
 
         if (!empty($filters['search'])) {
-            $where[] = '(n.nome_cliente LIKE :search OR n.nome_vendedor LIKE :search OR n.numero_nf LIKE :search)';
+            // Buscar pelo numero do PEDIDO tambem: quem cobra imposto costuma
+            // chegar pelo pedido, nao pelo numero da NF.
+            $where[] = '(n.nome_cliente LIKE :search OR n.nome_vendedor LIKE :search'
+                . ' OR n.numero_nf LIKE :search OR n.codigo_pedido_origem LIKE :search)';
             $params[':search'] = '%' . $filters['search'] . '%';
+        }
+
+        // Recorte de confiabilidade: ver so o que ainda nao amarrou com pedido
+        // (ou so o que amarrou), em vez de auditar a lista inteira no olho.
+        $vinculo = (string) ($filters['vinculo'] ?? '');
+        if ($vinculo === 'sem_pedido') {
+            $where[] = "(n.pedido_id_omie IS NULL OR n.pedido_id_omie = 0)";
+        } elseif ($vinculo === 'com_pedido') {
+            $where[] = 'n.pedido_id_omie IS NOT NULL AND n.pedido_id_omie <> 0';
         }
         if (!empty($filters['vendedor'])) {
             $where[]         = 'n.nome_vendedor LIKE :vend';
@@ -778,6 +790,11 @@ final class FiscalIntelligenceService
                 n.nota_key, n.numero_nf, n.serie_nf, n.chave_nfe,
                 n.data_emissao, n.nome_cliente, n.documento_cliente,
                 n.nome_vendedor, n.valor_total, n.status_fiscal,
+                -- O pedido faturado que originou a NF. Vem do canonico, onde
+                -- esta preenchido em 100% das notas; o mart fiscal so o tinha
+                -- para ~5% delas porque dependia de uma bridge quase vazia.
+                n.pedido_id_omie,
+                NULLIF(TRIM(COALESCE(n.codigo_pedido_origem, '')), '') AS codigo_pedido_origem,
                 {$taxSelect},
                 ({$hasTitleExpression}) AS has_titulo
             FROM biomie_notas_fiscais_canonicas n

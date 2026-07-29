@@ -881,6 +881,253 @@ body.fiscal-page .fis-shell > * {
   color: var(--fis-text);
 }
 
+/* ── Projecao por regime tributario ─────────────────────────────────── */
+.fis-regime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.fis-regime-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--fis-border, #eaecf0);
+  border-top: 3px solid var(--mag-muted, #98a2b3);
+  border-radius: 12px;
+  background: var(--fis-surface, #fff);
+}
+
+.fis-regime-card--danger  { border-top-color: var(--danger, #dc2626); }
+.fis-regime-card--warning { border-top-color: var(--warning, #f59e0b); }
+.fis-regime-card--success { border-top-color: var(--success, #16a34a); }
+
+.fis-regime-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fis-regime-card header strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fis-regime-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fis-surface-muted, #f2f4f7);
+  color: var(--fis-muted, #667085);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fis-regime-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fis-regime-figure small {
+  color: var(--fis-muted, #667085);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fis-regime-figure b {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.fis-regime-figure span {
+  color: var(--fis-muted, #667085);
+  font-size: 10.5px;
+}
+
+.fis-regime-compare {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--fis-muted, #667085);
+  font-size: 11px;
+}
+
+.fis-regime-compare strong {
+  color: var(--fis-text, #101828);
+  font-variant-numeric: tabular-nums;
+}
+
+.fis-regime-gap,
+.fis-regime-ok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.fis-regime-gap {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 13%, transparent);
+  color: var(--warning-dark, #b45309);
+}
+
+.fis-regime-ok {
+  background: color-mix(in srgb, var(--success, #16a34a) 11%, transparent);
+  color: var(--success-dark, #15803d);
+}
+
+.fis-regime-gap .material-symbols-rounded,
+.fis-regime-ok .material-symbols-rounded,
+.fis-regime-vinculo .material-symbols-rounded,
+.fis-regime-alert .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.fis-regime-taxes {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fis-regime-taxes li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.fis-regime-taxes li span {
+  color: var(--fis-muted, #667085);
+}
+
+.fis-regime-taxes li strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tributo que NAO da para projetar a partir de nota fiscal. */
+.fis-regime-na em {
+  color: var(--fis-muted, #98a2b3);
+  font-size: 10px;
+  font-style: italic;
+  text-align: right;
+}
+
+.fis-regime-vinculo {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--fis-border, #eaecf0);
+  color: var(--fis-muted, #667085);
+  font-size: 10.5px;
+}
+
+.fis-regime-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.fis-regime-alert--high {
+  background: color-mix(in srgb, var(--danger, #dc2626) 10%, transparent);
+  color: var(--danger-dark, #b91c1c);
+}
+
+.fis-regime-alert--medium {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
+  color: var(--warning-dark, #b45309);
+}
+
+.fis-regime-disclaimer {
+  margin-top: 10px;
+  font-size: 10.5px;
+  font-style: italic;
+}
+
+.fis-coverage-badge--warn {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 14%, transparent);
+  color: var(--warning-dark, #b45309);
+}
+
+.fis-empty-inline {
+  padding: 16px;
+  color: var(--fis-muted, #667085);
+  font-size: 12px;
+}
+
+/* Pedido faturado que originou a NF — o elo com o comercial. */
+.fis-pedido {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mag-accent, #2563eb) 10%, transparent);
+  color: var(--mag-accent, #2563eb);
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fis-pedido--ausente {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 14%, transparent);
+  color: var(--warning-dark, #b45309);
+  font-family: inherit;
+  font-style: italic;
+}
+
+.fis-vinculo-bar:empty {
+  display: none;
+}
+
+.fis-vinculo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.fis-vinculo .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.fis-vinculo strong {
+  font-weight: 800;
+}
+
+.fis-vinculo--ok {
+  background: color-mix(in srgb, var(--success, #16a34a) 12%, transparent);
+  color: var(--success-dark, #15803d);
+}
+
+.fis-vinculo--warning {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 14%, transparent);
+  color: var(--warning-dark, #b45309);
+}
+
+.fis-vinculo--critical {
+  background: color-mix(in srgb, var(--danger, #dc2626) 12%, transparent);
+  color: var(--danger-dark, #b91c1c);
+}
+
 .fis-status-badge {
   display: inline-flex;
   padding: 2px 6px;

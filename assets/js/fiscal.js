@@ -259,6 +259,7 @@
     client  : '',
     search  : '',
     status  : 'autorizada',
+    vinculo : '',
     nfSort  : 'data_emissao',
     nfDirection: 'desc',
     avgCarga: 0,
@@ -323,6 +324,10 @@
   function confidenceFor(row) {
     if (row.status === 'cancelada') return { key: 'cancel', label: 'Cancelada', icon: 'cancel' };
     if (!row.has_xml) return { key: 'critical', label: 'XML pendente', icon: 'link_off' };
+    // Sem pedido, o imposto da NF nao tem contra o que ser conferido no
+    // comercial. Pesa mais que NCM/ICMS porque invalida a conferencia inteira,
+    // nao um campo dela.
+    if (row.has_pedido === false) return { key: 'warning', label: 'Sem pedido', icon: 'link_off' };
     if (Number(row.sem_ncm_count || 0) > 0) return { key: 'warning', label: 'Sem NCM', icon: 'category_off' };
     if (Number(row.icms_zero_count || 0) > 0) return { key: 'warning', label: 'Imposto zerado', icon: 'percent' };
     if (!row.has_titulo) return { key: 'warning', label: 'Divergência', icon: 'sync_problem' };
@@ -419,6 +424,13 @@
       if (top) top.value = state.status;
       state.page = 1;
       loadAll();
+    });
+
+    const nfVinculo = $('fisNfVinculo');
+    if (nfVinculo) nfVinculo.addEventListener('change', () => {
+      state.vinculo = nfVinculo.value;
+      state.page = 1;
+      loadNfList();
     });
 
     const nfVendor = $('fisNfVendor');
@@ -562,6 +574,7 @@
     loadFiscalContext();
     loadPurchases();
     loadSettlement();
+    loadRegimeProjection();
     loadSummary();
     loadNfList();
     if (state.martOk) {
@@ -1259,37 +1272,146 @@
   function loadNfList() {
     const tbody = $('fisNfTbody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td class="fis-loading-cell" colspan="14">Carregando...</td></tr>`;
+    tbody.innerHTML = `<tr><td class="fis-loading-cell" colspan="15">Carregando...</td></tr>`;
 
     const extra = { page: state.page, per_page: state.perPage, sort: state.nfSort, direction: state.nfDirection };
     if (state.status) extra.status = state.status;
     if (state.search) extra.q = state.search;
     if (state.client) extra.cliente = state.client;
     if (state.vendor) extra.vendedor = state.vendor;
+    if (state.vinculo) extra.vinculo = state.vinculo;
 
     fetch(buildUrl('api/fiscal_nf_list.php', extra))
       .then(r => r.json())
       .then(d => {
-        if (!d.ok) { tbody.innerHTML = '<tr><td class="fis-loading-cell" colspan="14">Erro.</td></tr>'; return; }
+        if (!d.ok) { tbody.innerHTML = '<tr><td class="fis-loading-cell" colspan="15">Erro.</td></tr>'; return; }
         renderNfRows(d.rows || []);
         renderNfPagination({ page: d.page, total_pages: d.pages, total: d.total });
         renderNfSort();
+        renderVinculoSummary(d.rows || []);
       })
-      .catch(() => { tbody.innerHTML = '<tr><td class="fis-loading-cell" colspan="14">Erro de rede.</td></tr>'; });
+      .catch(() => { tbody.innerHTML = '<tr><td class="fis-loading-cell" colspan="15">Erro de rede.</td></tr>'; });
+  }
+
+  /**
+   * Projecao por regime: o que cada empresa realmente deve, contra o que a
+   * apuracao consegue enxergar. Empresa do Lucro Real bate exatamente (nada a
+   * projetar); a diferenca aparece so onde ha tributo fora da nota.
+   */
+  function loadRegimeProjection() {
+    const grid = $('fisRegimeGrid');
+    if (!grid) return;
+
+    fetch(buildUrl('api/fiscal_regime_projection.php', {}))
+      .then(r => r.json())
+      .then(d => {
+        if (!d.ok || !(d.companies || []).length) {
+          grid.innerHTML = '<div class="fis-empty-inline">Sem empresas no escopo atual.</div>';
+          const badge = $('fisRegimeTotal');
+          if (badge) badge.textContent = '—';
+          return;
+        }
+
+        grid.innerHTML = d.companies.map(c => {
+          const p = c.projecao || {};
+          const invisivel = Number(c.diferenca || 0);
+          const tributos = Object.entries(p.tributos || {})
+            .filter(([, v]) => Number(v) > 0)
+            .map(([k, v]) => `<li><span>${esc(k)}</span><strong>${fmtR(Number(v))}</strong></li>`)
+            .join('');
+          const alertas = (p.alertas || []).map(a =>
+            `<div class="fis-regime-alert fis-regime-alert--${esc(a.severity)}">
+               <span class="material-symbols-rounded">warning</span>${esc(a.message)}
+             </div>`).join('');
+          const naoProj = (p.nao_projetavel || []).map(n =>
+            `<li class="fis-regime-na"><span>${esc(n.tributo)}</span><em>${esc(n.motivo)}</em></li>`).join('');
+
+          return `
+            <article class="fis-regime-card fis-regime-card--${esc(c.regime_badge || 'neutral')}">
+              <header>
+                <strong>${esc(c.company)}</strong>
+                <span class="fis-regime-tag">${esc(c.regime_label)}</span>
+              </header>
+              <div class="fis-regime-figure">
+                <small>Projetado no período</small>
+                <b>${fmtR(Number(p.tributo_total || 0))}</b>
+                <span>carga ${fmtP(Number(p.carga_pct || 0))}</span>
+              </div>
+              <div class="fis-regime-compare">
+                <span>Apuração enxerga hoje</span><strong>${fmtR(Number(c.apuracao_atual || 0))}</strong>
+              </div>
+              ${invisivel > 1 ? `<div class="fis-regime-gap">
+                  <span class="material-symbols-rounded">visibility_off</span>
+                  <span><strong>${fmtR(invisivel)}</strong> não aparecem na apuração</span>
+                </div>` : '<div class="fis-regime-ok"><span class="material-symbols-rounded">check_circle</span>Apuração já cobre tudo que é projetável</div>'}
+              ${p.rbt12 ? `<div class="fis-regime-compare"><span>RBT12 · faixa ${esc(String(p.detalhe?.faixa ?? '-'))}</span><strong>${fmtR(Number(p.rbt12))}</strong></div>` : ''}
+              <ul class="fis-regime-taxes">${tributos}${naoProj}</ul>
+              <div class="fis-regime-vinculo">
+                <span class="material-symbols-rounded">link</span>
+                ${fmtP(Number(c.vinculo_pedido_pct || 0))} das NFs com pedido vinculado
+              </div>
+              ${alertas}
+            </article>`;
+        }).join('');
+
+        const badge = $('fisRegimeTotal');
+        if (badge) {
+          const inv = Number(d.total_invisivel || 0);
+          badge.textContent = inv > 1
+            ? `${fmtR(inv)} fora da apuração`
+            : 'Apuração completa';
+          badge.className = 'fis-coverage-badge' + (inv > 1 ? ' fis-coverage-badge--warn' : '');
+        }
+        const disc = $('fisRegimeDisclaimer');
+        if (disc) disc.textContent = d.disclaimer || '';
+      })
+      .catch(() => {
+        grid.innerHTML = '<div class="fis-empty-inline">Não foi possível projetar os tributos agora.</div>';
+      });
+  }
+
+  /**
+   * Barra de confiabilidade da pagina: quanto do que esta na tela amarra com
+   * pedido faturado. Sem isso o usuario nao tem como saber se o imposto que
+   * esta vendo cobre a operacao inteira ou so um pedaco dela.
+   */
+  function renderVinculoSummary(rows) {
+    const el = $('fisNfVinculoSummary');
+    if (!el) return;
+    if (!rows.length) { el.innerHTML = ''; return; }
+
+    const com = rows.filter(r => r.has_pedido).length;
+    const pct = rows.length > 0 ? (com * 100 / rows.length) : 0;
+    const impostoSemPedido = rows.reduce((s, r) => s + (r.has_pedido ? 0 : Number(r._trib || 0)), 0);
+    const level = pct >= 99 ? 'ok' : (pct >= 80 ? 'warning' : 'critical');
+
+    el.innerHTML = `
+      <span class="fis-vinculo fis-vinculo--${level}">
+        <span class="material-symbols-rounded">${level === 'ok' ? 'verified' : 'link_off'}</span>
+        <strong>${fmtP(pct)}</strong> das NFs desta página amarram com pedido
+        ${com < rows.length ? `· ${fmtR(impostoSemPedido)} em tributos sem pedido vinculado` : ''}
+      </span>`;
   }
 
   function renderNfRows(rows) {
     const tbody = $('fisNfTbody');
     if (!tbody) return;
-    if (!rows.length) { tbody.innerHTML = '<tr><td class="fis-loading-cell" colspan="14">Nenhuma NF no período.</td></tr>'; return; }
+    if (!rows.length) { tbody.innerHTML = '<tr><td class="fis-loading-cell" colspan="15">Nenhuma NF no período.</td></tr>'; return; }
 
     tbody.innerHTML = rows.map(r => {
       const carga = Number(r.carga_pct ?? (r._fat > 0 ? r._trib / r._fat * 100 : 0));
       const level = cargaLevel(carga);
       const confidence = confidenceFor(r);
+      // Pedido faturado que originou a NF. Sem ele, o imposto da linha nao tem
+      // como ser conferido contra o comercial — e o motivo de a tela nao gerar
+      // confianca. NF sem pedido fica marcada, nao escondida.
+      const pedido = r.has_pedido
+        ? `<span class="fis-pedido" title="Pedido ${esc(r.pedido || r.pedido_id)}">${esc(r.pedido || r.pedido_id)}</span>`
+        : '<span class="fis-pedido fis-pedido--ausente" title="NF sem pedido vinculado: imposto não conferível contra o comercial">sem pedido</span>';
       return `
         <tr>
           <td><span class="fis-nf-number">${esc(r.numero_nf || '-')}</span></td>
+          <td>${pedido}</td>
           <td>${esc(r.data_label || '-')}</td>
           <td class="fis-ellipsis" title="${esc(r.nome_cliente || '')}">${esc(r.nome_cliente || '-')}</td>
           <td>${esc(r.nome_vendedor || '-')}</td>
@@ -1751,10 +1873,10 @@
       .then(r => r.json())
       .then(data => {
         if (!data.ok) throw new Error('Falha ao exportar');
-        const headers = ['NF','Data','Cliente','Vendedor','Faturamento','Receita pós-tributos','ICMS','PIS','COFINS','IPI','Tributos','Carga %','Confiança'];
+        const headers = ['NF','Pedido','Data','Cliente','Vendedor','Faturamento','Receita pós-tributos','ICMS','PIS','COFINS','IPI','Tributos','Carga %','Confiança'];
         const rows = (data.rows || []).map(r => {
           const confidence = confidenceFor(r).label;
-          return [r.numero_nf,r.data_emissao,r.nome_cliente,r.nome_vendedor,r.valor_total,r.receita_pos_tributos,r.icms,r.pis,r.cofins,r.ipi,r.trib_total,fmtP(r.carga_pct),confidence];
+          return [r.numero_nf,(r.pedido || (r.has_pedido ? r.pedido_id : 'sem pedido')),r.data_emissao,r.nome_cliente,r.nome_vendedor,r.valor_total,r.receita_pos_tributos,r.icms,r.pis,r.cofins,r.ipi,r.trib_total,fmtP(r.carga_pct),confidence];
         });
         const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
         const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));

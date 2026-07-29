@@ -28,6 +28,8 @@ try {
     if ($c    = Http::query('cliente',   '')) $filters['cliente']   = $c;
     if ($sort = Http::query('sort',      '')) $filters['sort']      = $sort;
     if ($dir  = Http::query('direction', '')) $filters['direction'] = $dir;
+    $vinculo = Http::query('vinculo', '');
+    if (in_array($vinculo, ['com_pedido', 'sem_pedido'], true)) $filters['vinculo'] = $vinculo;
 
     $config = new \BIomie\Config();
     $conn   = Database::isConfigured($config, 'flight_plan_db') ? 'flight_plan_db' : 'db';
@@ -55,6 +57,11 @@ try {
             'nome_cliente' => $r['nome_cliente'],
             'documento'    => $r['documento_cliente'] ?? '',
             'nome_vendedor'=> $r['nome_vendedor'],
+            // Pedido faturado que originou a NF — o elo que faltava entre a
+            // Inteligencia Fiscal e o comercial.
+            'pedido'       => (string) ($r['codigo_pedido_origem'] ?? ''),
+            'pedido_id'    => (int) ($r['pedido_id_omie'] ?? 0),
+            'has_pedido'   => (int) ($r['pedido_id_omie'] ?? 0) > 0,
             'valor_total'  => $fmt((float) $r['valor_total']),
             'icms'         => $fmt((float) $r['valor_icms']  ),
             'pis'          => $fmt((float) $r['valor_pis']   ),
