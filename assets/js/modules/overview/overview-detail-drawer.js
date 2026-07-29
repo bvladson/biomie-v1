@@ -14,6 +14,13 @@
   var filterTimer = null;
   var cache = {};
   var CACHE_TTL = 60000;
+  var RANKING_LIMIT = 1000;
+  // Linhas atualmente visiveis por gráfico — o CSV exporta o que está na tela,
+  // com os filtros aplicados, não o payload cru.
+  var lastFilteredRows = {};
+  // summary da API por gráfico: guarda o total do período (COUNT(*) OVER ()),
+  // que é maior que o payload quando a lista foi truncada pelo LIMIT.
+  var rankingSummary = {};
   var focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
   var chartTitles = {
@@ -225,7 +232,10 @@
       if (filters[name]) params.set(name, filters[name]);
     });
     if (chartId === 'top_products' || chartId === 'top_customers') {
-      params.set('limit', '200');
+      // 200 truncava de verdade: a MAG_FILIAL tem 536 produtos e 1.284 clientes
+      // no ano. Quando ainda assim faltar linha, a tela avisa (ver renderTruncationNotice)
+      // em vez de deixar o usuario achar que esta vendo tudo.
+      params.set('limit', String(RANKING_LIMIT));
     }
 
     function handleResponse(response) {
@@ -313,7 +323,7 @@
     }
 
     if (chartId === 'top_products' || chartId === 'top_customers') {
-      renderRankingDetail(chartId, rows);
+      renderRankingDetail(chartId, rows, data.summary);
       return;
     }
 
@@ -421,13 +431,33 @@
       .trim();
   }
 
+  /**
+   * Numero em pt-BR. O ponto e separador de MILHAR, nao decimal.
+   *
+   * A versao anterior so tratava o ponto quando havia virgula junto, entao
+   * "10.000" virava 10 e "1.234.567" virava null — o filtro de receita minima
+   * silenciosamente nao filtrava nada, e o usuario nao tinha como perceber.
+   */
   function parseLocaleNumber(value) {
     var raw = String(value == null ? '' : value).trim().replace(/\s/g, '');
     if (!raw) return null;
-    if (raw.indexOf(',') >= 0) raw = raw.replace(/\./g, '').replace(',', '.');
-    raw = raw.replace(/[^\d.-]/g, '');
+
+    var negative = raw.indexOf('-') === 0;
+    raw = raw.replace(/[^\d.,]/g, '');
+    if (!raw) return null;
+
+    if (raw.indexOf(',') >= 0) {
+      // Virgula presente ⇒ ela e o decimal e todo ponto e milhar.
+      raw = raw.replace(/\./g, '').replace(',', '.');
+    } else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) {
+      // So pontos, em grupos de 3 ⇒ milhar puro ("1.500", "1.234.567").
+      raw = raw.replace(/\./g, '');
+    }
+    // Qualquer outro caso com ponto ("1.5") fica como decimal.
+
     var parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
+    if (!Number.isFinite(parsed)) return null;
+    return negative ? -parsed : parsed;
   }
 
   function rawDocument(row) {
@@ -541,6 +571,106 @@
       detailItem('Quem vendeu', sellerList(row));
   }
 
+  /** Ultima movimentacao como timestamp ordenavel; sem data vai para o fim. */
+  function recencyValue(row, isCustomer) {
+    var raw = String((isCustomer ? row.last_purchase : row.last_sale) || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return 0;
+    var parsed = Date.parse(raw + 'T00:00:00');
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  /** Uma celula de CSV: separador ";" (Excel pt-BR) e aspas duplicadas. */
+  function csvCell(value) {
+    var text = String(value == null ? '' : value).replace(/"/g, '""');
+    return '"' + text + '"';
+  }
+
+  function csvNumber(value) {
+    // Decimal com virgula para o Excel em pt-BR nao ler como texto.
+    return csvCell(String(numberValue(value).toFixed(2)).replace('.', ','));
+  }
+
+  function exportRankingCsv(chartId, root) {
+    var isCustomer = chartId === 'top_customers';
+    var rows = lastFilteredRows[chartId] || [];
+    if (!rows.length) return;
+
+    var header = isCustomer
+      ? ['#', 'Cliente', 'ID Omie', 'CPF/CNPJ', 'Tipo', 'Vendedores', 'Qtd vendedores',
+         'NFs', 'Ticket medio', 'Receita', 'Mercadorias', 'Desconto', 'Share %',
+         'Primeira compra', 'Ultima compra', 'NF mais recente']
+      : ['#', 'Produto', 'Codigo', 'Quantidade', 'NFs', 'Clientes', 'Vendedores',
+         'Preco medio', 'Receita media por NF', 'Qtd media por NF', 'Receita',
+         'Desconto', 'Part. da lista %', 'Primeira venda', 'Ultima venda', 'NF mais recente'];
+
+    var loadedRevenue = rows.reduce(function (sum, row) {
+      return sum + numberValue(isCustomer ? row.invoice_total : row.revenue);
+    }, 0);
+
+    var lines = [header.map(csvCell).join(';')];
+    rows.forEach(function (row, index) {
+      if (isCustomer) {
+        var notes = numberValue(row.notes_count);
+        lines.push([
+          csvCell(index + 1),
+          csvCell(decodeEntityText(row.client_name)),
+          csvCell(row.client_id || ''),
+          csvCell(formatDocument(row)),
+          csvCell(documentType(row).toUpperCase()),
+          csvCell(sellerList(row)),
+          csvCell(numberValue(row.vendors_count)),
+          csvCell(notes),
+          csvNumber(row.average_ticket != null ? row.average_ticket : (notes > 0 ? numberValue(row.invoice_total) / notes : 0)),
+          csvNumber(row.invoice_total),
+          csvNumber(row.merchandise_total),
+          csvNumber(row.discount_total),
+          csvNumber(row.share_pct),
+          csvCell(formatDate(row.first_purchase)),
+          csvCell(formatDate(row.last_purchase)),
+          csvCell(row.latest_nf || '')
+        ].join(';'));
+      } else {
+        var quantity = numberValue(row.quantity);
+        var revenue = numberValue(row.revenue);
+        lines.push([
+          csvCell(index + 1),
+          csvCell(decodeEntityText(row.description)),
+          csvCell(row.product_code || row.sku || row.code || ''),
+          csvNumber(quantity),
+          csvCell(numberValue(row.orders)),
+          csvCell(numberValue(row.customers_count)),
+          csvCell(numberValue(row.vendors_count)),
+          csvNumber(quantity > 0 ? revenue / quantity : 0),
+          csvNumber(row.average_revenue_per_nf),
+          csvNumber(row.average_quantity_per_nf),
+          csvNumber(revenue),
+          csvNumber(row.discount_total),
+          csvNumber(loadedRevenue > 0 ? revenue * 100 / loadedRevenue : 0),
+          csvCell(formatDate(row.first_sale)),
+          csvCell(formatDate(row.last_sale)),
+          csvCell(row.latest_nf || '')
+        ].join(';'));
+      }
+    });
+
+    var period = periodValues();
+    var name = (isCustomer ? 'clientes-destaque' : 'produtos-destaque') +
+      (period.start ? '_' + period.start : '') + (period.end ? '_a_' + period.end : '') + '.csv';
+
+    // BOM: sem ele o Excel abre UTF-8 como Latin-1 e quebra os acentos.
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
   function detailToggleCell(kind, index) {
     var domId = 'rankingDetail-' + kind + '-' + index;
     return '<td class="overview-ranking__rank">' +
@@ -570,13 +700,35 @@
     });
   }
 
+  /** Nomes de vendedor da linha, ja separados. */
+  function sellerNames(row) {
+    var seller = sellerName(row);
+    if (!seller) return [];
+    return seller.split(/\s*[|;]\s*/).map(function (name) {
+      return name.trim();
+    }).filter(Boolean);
+  }
+
+  /**
+   * Casamento EXATO, nunca substring.
+   *
+   * "ALEXANDRE SOUZA" e substring de "ALEXANDRE SOUZA - REV" — com indexOf,
+   * filtrar o vendedor de varejo trazia junto as notas de revenda dele e
+   * misturava os canais que a separacao varejo/revenda existe para manter
+   * apartados. Mesmo caso de NUBIA OLIVEIRA e SAMANTHA ROCHA.
+   */
+  function rowHasSeller(row, wanted) {
+    var target = normalizeText(wanted);
+    return sellerNames(row).some(function (name) {
+      return normalizeText(name) === target;
+    });
+  }
+
   function uniqueSellers(rows) {
     var values = {};
     rows.forEach(function (row) {
-      var seller = sellerName(row);
-      if (!seller) return;
-      seller.split(/\s*[|;]\s*/).forEach(function (name) {
-        if (name) values[name] = true;
+      sellerNames(row).forEach(function (name) {
+        values[name] = true;
       });
     });
     return Object.keys(values).sort(function (a, b) {
@@ -584,8 +736,32 @@
     });
   }
 
-  function renderRankingDetail(chartId, rows) {
+  /**
+   * Total real do periodo (COUNT(*) OVER () no servidor, antes do LIMIT).
+   * Sem isso a tela mostra a fatia carregada como se fosse o universo.
+   */
+  function serverTotal(chartId, summary) {
+    if (!summary) return null;
+    var value = chartId === 'top_customers' ? summary.clients_count : summary.products_count;
+    var parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function renderTruncationNotice(chartId, loaded, total) {
+    if (total == null || total <= loaded) return '';
+    var noun = chartId === 'top_customers' ? 'clientes' : 'produtos';
+    return '<div class="module-alert module-alert--info overview-ranking__truncated">' +
+      '<span class="material-symbols-rounded" aria-hidden="true">info</span>' +
+      '<span>Exibindo os <strong>' + formatNumber(loaded, 0) + '</strong> maiores de <strong>' +
+        formatNumber(total, 0) + '</strong> ' + noun + ' do período. ' +
+        'Os percentuais abaixo são calculados sobre o que está carregado, não sobre o total. ' +
+        'Reduza o período ou use os filtros para trabalhar com a lista completa.</span></div>';
+  }
+
+  function renderRankingDetail(chartId, rows, summary) {
     var isCustomer = chartId === 'top_customers';
+    rankingSummary[chartId] = summary || null;
+    var total = serverTotal(chartId, summary);
     var sellers = isCustomer ? uniqueSellers(rows) : [];
     var sortOptions = isCustomer
       ? [
@@ -593,6 +769,8 @@
           ['revenue_asc', 'Menor receita'],
           ['nfs_desc', 'Mais NFs'],
           ['nfs_asc', 'Menos NFs'],
+          ['recency_desc', 'Compra mais recente'],
+          ['recency_asc', 'Parado há mais tempo'],
           ['name_asc', 'Cliente A–Z']
         ]
       : [
@@ -601,6 +779,10 @@
           ['quantity_desc', 'Maior quantidade'],
           ['quantity_asc', 'Menor quantidade'],
           ['unit_desc', 'Maior preço médio'],
+          ['customers_desc', 'Mais clientes'],
+          ['customers_asc', 'Menos clientes (concentrado)'],
+          ['recency_desc', 'Venda mais recente'],
+          ['recency_asc', 'Parado há mais tempo'],
           ['name_asc', 'Produto A–Z']
         ];
 
@@ -643,8 +825,16 @@
         '<input type="text" inputmode="decimal" data-ranking-filter="maxRevenue" placeholder="Sem limite"></label>' +
       '<div class="overview-ranking__toolbar-action"><button type="button" class="overview-ranking__clear" data-ranking-clear>' +
         '<span class="material-symbols-rounded" aria-hidden="true">filter_alt_off</span>Limpar filtros</button></div>' +
-      '</div><div class="overview-ranking__meta">' +
+      '</div>' +
+      renderTruncationNotice(chartId, rows.length, total) +
+      '<div class="overview-ranking__meta">' +
         '<span data-ranking-count role="status" aria-live="polite"></span>' +
+        '<span class="overview-ranking__meta-actions">' +
+          '<button type="button" class="overview-ranking__action" data-ranking-expand aria-pressed="false">' +
+            '<span class="material-symbols-rounded" aria-hidden="true">unfold_more</span>Expandir todos</button>' +
+          '<button type="button" class="overview-ranking__action" data-ranking-export>' +
+            '<span class="material-symbols-rounded" aria-hidden="true">download</span>Exportar CSV</button>' +
+        '</span>' +
         '<span class="overview-ranking__scope"><span class="material-symbols-rounded" aria-hidden="true">verified</span>' +
           'Orç-PD · remessas excluídas</span></div>' +
       '<div data-ranking-results></div>' +
@@ -668,6 +858,27 @@
           updateRankingDetail(chartId, rows, root);
         }
       });
+    });
+
+    root.querySelector('[data-ranking-expand]').addEventListener('click', function () {
+      var button = this;
+      var expand = button.getAttribute('aria-pressed') !== 'true';
+      button.setAttribute('aria-pressed', expand ? 'true' : 'false');
+      button.lastChild.nodeValue = expand ? 'Recolher todos' : 'Expandir todos';
+      var icon = button.querySelector('.material-symbols-rounded');
+      if (icon) icon.textContent = expand ? 'unfold_less' : 'unfold_more';
+      root.querySelectorAll('.overview-ranking__toggle').forEach(function (toggle) {
+        var target = document.getElementById(toggle.getAttribute('aria-controls'));
+        if (!target) return;
+        toggle.setAttribute('aria-expanded', expand ? 'true' : 'false');
+        target.hidden = !expand;
+        var chevron = toggle.querySelector('.material-symbols-rounded');
+        if (chevron) chevron.textContent = expand ? 'expand_more' : 'chevron_right';
+      });
+    });
+
+    root.querySelector('[data-ranking-export]').addEventListener('click', function () {
+      exportRankingCsv(chartId, root);
     });
 
     root.querySelector('[data-ranking-clear]').addEventListener('click', function () {
@@ -706,8 +917,7 @@
       if (maxRevenue != null && revenue > maxRevenue) return false;
       if (!isCustomer && minQuantity != null && numberValue(row.quantity) < minQuantity) return false;
       if (isCustomer && state.documentType !== 'all' && documentType(row) !== state.documentType) return false;
-      if (isCustomer && state.seller !== 'all' &&
-        normalizeText(sellerName(row)).indexOf(normalizeText(state.seller)) === -1) return false;
+      if (isCustomer && state.seller !== 'all' && !rowHasSeller(row, state.seller)) return false;
       if (!query) return true;
       var searchable = isCustomer
         ? [decodeEntityText(row.client_name), rawDocument(row), documentDigits(row), sellerName(row)]
@@ -733,6 +943,12 @@
       } else if (state.sort.indexOf('nfs_') === 0) {
         aValue = numberValue(a.notes_count);
         bValue = numberValue(b.notes_count);
+      } else if (state.sort.indexOf('customers_') === 0) {
+        aValue = numberValue(a.customers_count);
+        bValue = numberValue(b.customers_count);
+      } else if (state.sort.indexOf('recency_') === 0) {
+        aValue = recencyValue(a, isCustomer);
+        bValue = recencyValue(b, isCustomer);
       } else {
         aValue = numberValue(isCustomer ? a.invoice_total : a.revenue);
         bValue = numberValue(isCustomer ? b.invoice_total : b.revenue);
@@ -740,9 +956,30 @@
       return (aValue - bValue) * direction;
     });
 
+    // O CSV exporta exatamente o que a tela mostra, ja filtrado e ordenado.
+    lastFilteredRows[chartId] = rows;
+
     var count = root.querySelector('[data-ranking-count]');
-    count.textContent = rows.length + ' de ' + sourceRows.length +
+    var total = serverTotal(chartId, rankingSummary[chartId]);
+    var label = formatNumber(rows.length, 0) + ' de ' + formatNumber(sourceRows.length, 0) +
       (sourceRows.length === 1 ? ' resultado carregado' : ' resultados carregados');
+    // Nunca deixar a fatia carregada passar por universo quando ha mais no periodo.
+    if (total != null && total > sourceRows.length) {
+      label += ' · ' + formatNumber(total, 0) + ' no período';
+    }
+    count.textContent = label;
+
+    var exportBtn = root.querySelector('[data-ranking-export]');
+    if (exportBtn) exportBtn.disabled = rows.length === 0;
+    var expandBtn = root.querySelector('[data-ranking-expand]');
+    if (expandBtn) {
+      expandBtn.disabled = rows.length === 0;
+      expandBtn.setAttribute('aria-pressed', 'false');
+      expandBtn.lastChild.nodeValue = 'Expandir todos';
+      var expandIcon = expandBtn.querySelector('.material-symbols-rounded');
+      if (expandIcon) expandIcon.textContent = 'unfold_more';
+    }
+
     var results = root.querySelector('[data-ranking-results]');
     results.innerHTML = rows.length
       ? renderRankingResults(chartId, rows, sourceRows)

@@ -6,7 +6,12 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+// Normaliza CRLF: varias assercoes abaixo casam trechos de codigo com a quebra
+// e a indentacao literais ("array_merge(\n            self::BASE_JS_HEAD,").
+// Como o repo usa core.autocrlf=false, no Windows os arquivos ficam com \r\n e
+// essas comparacoes falhavam por causa do \r — sem nenhum defeito real no
+// codigo verificado.
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
 const runtimeSource = read('assets/js/tenant-tab-context.js');
 const runtimeMinSource = read('assets/js/tenant-tab-context.min.js');
 const selectorSource = read('assets/js/select-empresa.js');

@@ -2501,8 +2501,65 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
   color: var(--mag-muted, #667085);
   font-size: 11px;
+}
+
+.overview-ranking__meta-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+.overview-ranking__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border: 1px solid var(--mag-border, #eaecf0);
+  border-radius: 999px;
+  background: var(--mag-surface, #fff);
+  color: var(--mag-text, #344054);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.overview-ranking__action:hover:not(:disabled) {
+  border-color: var(--mag-accent, #2563eb);
+  color: var(--mag-accent, #2563eb);
+}
+
+.overview-ranking__action:focus-visible {
+  outline: 2px solid var(--mag-accent, #2563eb);
+  outline-offset: 1px;
+}
+
+.overview-ranking__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.overview-ranking__action .material-symbols-rounded {
+  font-size: 14px;
+}
+
+/* Aviso de lista truncada pelo LIMIT: precisa competir com a tabela. */
+.overview-ranking__truncated {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 2px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.overview-ranking__truncated .material-symbols-rounded {
+  flex: 0 0 auto;
+  font-size: 16px;
 }
 
 .overview-ranking__scope {
