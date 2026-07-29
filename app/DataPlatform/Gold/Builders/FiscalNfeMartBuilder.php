@@ -57,8 +57,14 @@ final class FiscalNfeMartBuilder extends AbstractMartBuilder
                 n.valor_total{$targetBaseValue},
                 n.valor_mercadorias,
                 n.valor_descontos,
-                b.pedido_id_omie,
-                IF(b.pedido_id_omie IS NOT NULL, 1, 0),
+                -- O pedido vinha SO da bridge. Como mart_bridge_pedido_nfe_titulo
+                -- so tem ~200 linhas para ~2.150 NFs, 2.054 notas ficavam sem
+                -- pedido no mart fiscal — embora o canonico traga
+                -- pedido_id_omie preenchido em 100% delas, vindo da propria Omie.
+                -- A bridge segue tendo precedencia (ela reconcilia pedido x NF x
+                -- titulo); o canonico e o fallback, nao o contrario.
+                COALESCE(b.pedido_id_omie, NULLIF(n.pedido_id_omie, 0)),
+                IF(COALESCE(b.pedido_id_omie, NULLIF(n.pedido_id_omie, 0)) IS NOT NULL, 1, 0),
                 IF(b.titulo_key IS NOT NULL, 1, 0),
                 COALESCE(b.bridge_status, 'nf_sem_titulo'),
                 NOW()
