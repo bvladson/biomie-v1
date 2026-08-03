@@ -101,8 +101,15 @@ mv -Tf "$BASE/live.new" "$BASE/live"
 systemctl reload "$FPM_SVC"
 
 # ----------------------------------------------------------- 8. smoke test
+# Precisa ser HTTPS: sobre HTTP puro o nginx devolve 301 antes de chegar no PHP.
+# Além do código, confere que a versão SERVIDA é a que acabou de subir — é isso
+# que prova que o opcache foi limpo e não sobrou código da release anterior.
 sleep 1
-CODE="$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $VHOST" http://127.0.0.1/biomie/login.php || echo 000)"
+SMOKE_URL="https://${VHOST}/biomie/login.php"
+BODY="$(curl -s --resolve "${VHOST}:443:127.0.0.1" -w '\n%{http_code}' "$SMOKE_URL" || echo $'\n000')"
+CODE="$(printf '%s' "$BODY" | tail -1)"
+SERVED="$(printf '%s' "$BODY" | grep -o 'name="biomie-build" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"//')"
+
 if [ "$CODE" != "200" ] && [ "$CODE" != "302" ]; then
     log "SMOKE FALHOU (HTTP $CODE) — revertendo"
     if [ -n "$PREV" ] && [ -d "$PREV" ]; then
@@ -113,7 +120,17 @@ if [ "$CODE" != "200" ] && [ "$CODE" != "302" ]; then
     fi
     fail "release $STAMP rejeitada pelo smoke test"
 fi
-log "smoke OK (HTTP $CODE)"
+
+if [ -n "$SERVED" ] && [ "$SERVED" != "$VERSION" ]; then
+    log "SMOKE FALHOU: o site ainda serve a versão '$SERVED', esperada '$VERSION' — revertendo"
+    if [ -n "$PREV" ] && [ -d "$PREV" ]; then
+        ln -sfn "$PREV" "$BASE/live.new"
+        mv -Tf "$BASE/live.new" "$BASE/live"
+        systemctl reload "$FPM_SVC"
+    fi
+    fail "opcache/symlink não pegou a release nova"
+fi
+log "smoke OK (HTTP $CODE · versão servida: ${SERVED:-?})"
 
 # --------------------------------------------------------------- 9. limpeza
 CURRENT="$(readlink -f "$BASE/live")"

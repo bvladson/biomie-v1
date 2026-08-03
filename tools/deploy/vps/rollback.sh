@@ -38,7 +38,8 @@ mv -Tf "\$BASE/live.new" "\$BASE/live"
 systemctl reload php8.3-fpm
 sleep 1
 
-CODE="\$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: biomie.magmoveiscorporativos.com.br' http://127.0.0.1/biomie/login.php || echo 000)"
+VHOST=biomie.magmoveiscorporativos.com.br
+CODE="\$(curl -s -o /dev/null -w '%{http_code}' --resolve "\$VHOST:443:127.0.0.1" "https://\$VHOST/biomie/login.php" || echo 000)"
 echo "smoke: HTTP \$CODE"
 [ "\$CODE" = "200" ] || [ "\$CODE" = "302" ] || { echo "ATENÇÃO: smoke falhou mesmo após o rollback." >&2; exit 1; }
 echo "rollback OK — live = \$TARGET"
