@@ -93,11 +93,11 @@ $SSH_VPS "ls -lh $REMOTE_DUMP | awk '{print \"    recebido: \" \$5}'
 
 # ------------------------------------------------------- 3. importar na VPS
 step "importando na VPS"
-$SSH_VPS "BIOMIE_APP_ROOT='$VPS_ROOT' php -r $(printf '%q' "$(creds_php)") > /tmp/.c_vps && . /tmp/.c_vps && rm -f /tmp/.c_vps
-    gunzip -c $REMOTE_DUMP | MYSQL_PWD=\"\$DB_PASS\" mysql -h \"\$DB_HOST\" -P \"\$DB_PORT\" -u \"\$DB_USER\" \"\$DB_NAME\"
-    echo '    import concluído'"
+$SSH_VPS "cat > /tmp/biomie_remote_db_import.sh" < tools/deploy/vps/remote_db_import.sh
+$SSH_VPS "bash /tmp/biomie_remote_db_import.sh '$REMOTE_DUMP' '$VPS_ROOT'" \
+    || fail "o import falhou — o banco da VPS pode estar em estado misto. Restaure com: $BACKUP"
 
-step "conferindo"
+step "conferindo (os contadores dos dois lados têm que bater)"
 bash "$0" --check
 
 echo
