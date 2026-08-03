@@ -121,7 +121,12 @@ if [ "$CODE" != "200" ] && [ "$CODE" != "302" ]; then
     fail "release $STAMP rejeitada pelo smoke test"
 fi
 
-if [ -n "$SERVED" ] && [ "$SERVED" != "$VERSION" ]; then
+if [ -z "$SERVED" ]; then
+    # login.php não carrega a meta biomie-build (só páginas autenticadas carregam).
+    # Aqui a garantia contra código velho é o `systemctl reload` do php-fpm, que
+    # zera o opcache — não a conferência de versão.
+    log "  (a versão servida não é exposta em login.php; opcache garantido pelo reload)"
+elif [ "$SERVED" != "$VERSION" ]; then
     log "SMOKE FALHOU: o site ainda serve a versão '$SERVED', esperada '$VERSION' — revertendo"
     if [ -n "$PREV" ] && [ -d "$PREV" ]; then
         ln -sfn "$PREV" "$BASE/live.new"
