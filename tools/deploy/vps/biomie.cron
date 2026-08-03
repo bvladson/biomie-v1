@@ -1,0 +1,48 @@
+# /etc/cron.d/biomie — agendamento do BIomie na VPS.
+# Instale com: bash tools/deploy/vps/install_cron.sh
+#
+# ORIGEM: os 13 jobs do BIomie que estavam no PAINEL da Hostinger (host antigo).
+#
+# ATENÇÃO AO FUSO: o host antigo rodava em UTC; esta VPS roda em -03.
+# Os horários abaixo foram CONVERTIDOS para preservar o horário real de execução
+# (ex.: o digest saía 11:00 UTC = 08:00 no Ceará; aqui está 08:00 direto).
+# Os jobs de intervalo (*/5, */15, */30) não precisam de conversão.
+#
+# Roda como www-data — o MESMO usuário do php-fpm. Se rodar como outro usuário,
+# os arquivos criados em storage/ ficam com dono trocado e a web para de escrever.
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+BIOMIE_PROJECT_ROOT=/var/www/biomie/live
+BIOMIE_PHP_BIN=/usr/bin/php
+
+# --- tempo real -------------------------------------------------------------
+*/5  * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/worker.sh
+*/15 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/sync_commercial.sh
+*/15 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/sync_finance.sh
+*/15 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/ops_sentinel.sh
+0,30 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/materialize.sh
+
+# --- agenda de orçamentos ---------------------------------------------------
+7,22,37,52 * * * *  www-data /bin/sh /var/www/biomie/live/cron/hostinger/quote_agenda_scan.sh
+*/30 * * * *        www-data /bin/sh /var/www/biomie/live/cron/hostinger/quote_agenda_notify.sh stale
+0 8  * * 1-5        www-data /bin/sh /var/www/biomie/live/cron/hostinger/quote_agenda_notify.sh digest
+
+# --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
+30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh
+0  23 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/compute_forecasts.sh
+30 23 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/compute_opportunities.sh
+45 23 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_finance_titulos.sh
+15 0  * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/finance_future_receivables.sh
+
+# --- NUNCA foram agendados no host antigo ------------------------------------
+# Os scripts existem e estão prontos, mas nunca entraram no painel. Deixados
+# desligados de propósito: ligar é decisão de operação, não do deploy.
+# 0 */6 * * *  www-data /bin/sh /var/www/biomie/live/cron/hostinger/notifications_digest.sh
+# 10 4  * * *  www-data /bin/sh /var/www/biomie/live/cron/hostinger/geo_enrich.sh
+# 0 9   * * *  www-data /bin/sh /var/www/biomie/live/cron/hostinger/management_alerts.sh
+# 0 5   * * *  www-data /bin/sh /var/www/biomie/live/cron/hostinger/daily_integrity.sh
+#
+# NÃO migrado: o cron de /public_html/logistica (schedule-run.sh) é de OUTRO
+# sistema que continua no host antigo.

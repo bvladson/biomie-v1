@@ -67,6 +67,7 @@
 /temp/
 *.sql
 !/database/migrations/sql/*.sql
+!/database/migrations/*.sql
 !/database/*.sql
 *.sql.gz
 *.dump
