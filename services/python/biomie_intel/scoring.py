@@ -21,11 +21,25 @@ from datetime import date, datetime
 from typing import Any
 
 # Pesos máximos por componente. Somam 100.
-W_FOLLOWUP_OVERDUE = 35   # cadência de follow-up estourada — o sinal mais forte
-W_FORECAST_PRESSURE = 25  # previsão de fechamento chegando ou vencida
-W_VALUE = 20              # tamanho do negócio, relativo à própria empresa
+#
+# CALIBRADO CONTRA A POPULAÇÃO REAL (218 orçamentos abertos, 2026-08-03), não
+# contra intuição. A medição mostrou que 93% estão com follow-up atrasado e 91%
+# com previsão vencida: tratados como binário, esses dois davam 60/100 para
+# quase todo mundo e a agenda inteira virava "alta" — que é o mesmo que não ter
+# prioridade nenhuma.
+#
+# Por isso os dois viraram MAGNITUDE (quanto atrasado), e o peso migrou para o
+# que realmente varia nesta base: o valor, que vai de R$ 0 a R$ 523 mil.
+W_FOLLOWUP_OVERDUE = 30   # QUANTO a cadência estourou, não SE estourou
+W_FORECAST_PRESSURE = 20  # janela de fechamento — pico perto da data, decai depois
+W_VALUE = 30              # tamanho do negócio, relativo à própria empresa
 W_SILENCE = 12            # tempo parado sem avançar de etapa
 W_CHARGE_FATIGUE = 8      # cobranças acumuladas sem desfecho
+
+#: atraso a partir do qual não faz diferença estar "mais atrasado"
+SATURACAO_ATRASO_DIAS = 30
+#: previsão estourada além disto sugere negócio à deriva, não urgência
+DERIVA_PREVISAO_DIAS = 45
 
 BAND_HIGH = 70.0
 BAND_MEDIUM = 40.0
@@ -58,29 +72,48 @@ def _as_date(value: Any) -> date | None:
 
 
 def _followup_overdue(days_late: int | None) -> tuple[float, str | None]:
-    """Follow-up atrasado. Satura em 7 dias: passou disso, já está ruim igual."""
-    if days_late is None:
+    """Follow-up atrasado, por MAGNITUDE.
+
+    Satura em 30 dias, não em 7: com 61% da base entre 4 e 15 dias de atraso,
+    saturar cedo empilharia a maioria no teto e o score deixaria de ordenar.
+    """
+    if days_late is None or days_late <= 0:
         return 0.0, None
-    if days_late <= 0:
-        return 0.0, None
-    points = W_FOLLOWUP_OVERDUE * min(days_late, 7) / 7
+    points = W_FOLLOWUP_OVERDUE * min(days_late, SATURACAO_ATRASO_DIAS) / SATURACAO_ATRASO_DIAS
     plural = "s" if days_late > 1 else ""
-    return points, f"Follow-up atrasado há {days_late} dia{plural}"
+    # Só vira motivo visível quando o atraso é material.
+    reason = f"Follow-up atrasado há {days_late} dia{plural}" if days_late >= 7 else None
+    return points, reason
 
 
 def _forecast_pressure(days_to_forecast: int | None) -> tuple[float, str | None]:
-    """Previsão de faturamento. Vencida pesa o máximo; longe não pesa nada."""
+    """Janela de fechamento — curva em U invertido.
+
+    Pico quando a data está chegando ou acabou de passar: é aí que a ação do
+    vendedor muda o resultado. Previsão estourada há muito tempo NÃO é urgência,
+    é negócio à deriva — tratá-la como máxima urgência (o que 91% da base faria)
+    afogaria os orçamentos realmente quentes.
+    """
     if days_to_forecast is None:
         return 0.0, None
-    if days_to_forecast < 0:
-        return W_FORECAST_PRESSURE, f"Previsão de fechamento venceu há {abs(days_to_forecast)} dia(s)"
-    if days_to_forecast <= 3:
-        return W_FORECAST_PRESSURE * 0.8, f"Previsão de fechamento em {days_to_forecast} dia(s)"
-    if days_to_forecast <= 7:
-        return W_FORECAST_PRESSURE * 0.48, "Previsão de fechamento nesta semana"
-    if days_to_forecast <= 15:
-        return W_FORECAST_PRESSURE * 0.24, "Previsão de fechamento em até 15 dias"
-    return 0.0, None
+
+    if days_to_forecast >= 0:
+        if days_to_forecast <= 3:
+            return W_FORECAST_PRESSURE, f"Fecha em {days_to_forecast} dia(s) pela previsão"
+        if days_to_forecast <= 7:
+            return W_FORECAST_PRESSURE * 0.7, "Previsão de fechamento nesta semana"
+        if days_to_forecast <= 15:
+            return W_FORECAST_PRESSURE * 0.35, None
+        return 0.0, None
+
+    atraso = abs(days_to_forecast)
+    if atraso <= 15:
+        return W_FORECAST_PRESSURE * 0.9, f"Previsão venceu há {atraso} dia(s)"
+    if atraso <= DERIVA_PREVISAO_DIAS:
+        # Decai linearmente de 0,9 até 0,3 entre 15 e 45 dias.
+        fator = 0.9 - 0.6 * (atraso - 15) / (DERIVA_PREVISAO_DIAS - 15)
+        return W_FORECAST_PRESSURE * fator, f"Previsão venceu há {atraso} dias"
+    return W_FORECAST_PRESSURE * 0.2, f"À deriva: previsão venceu há {atraso} dias"
 
 
 def _value_weight(percentile: float | None, valor: float | None) -> tuple[float, str | None]:
@@ -91,7 +124,11 @@ def _value_weight(percentile: float | None, valor: float | None) -> tuple[float,
     o score de uma empresa dominar o da outra.
     """
     if percentile is None:
-        return 0.0, None
+        # 78 dos 218 orçamentos não casam com pedido canônico e ficam sem valor.
+        # Zerar o componente os empurraria todos para "baixa" por FALTA DE DADO,
+        # não por mérito — um viés silencioso contra orçamentos mal ligados.
+        # Trata como mediano e marca a lacuna nas features, que ficam auditáveis.
+        return W_VALUE * 0.35, None
     if percentile >= 0.90:
         return W_VALUE, f"Entre os 10% maiores da empresa (R$ {valor:,.0f})".replace(",", ".")
     if percentile >= 0.75:
@@ -99,8 +136,8 @@ def _value_weight(percentile: float | None, valor: float | None) -> tuple[float,
     if percentile >= 0.50:
         return W_VALUE * 0.50, None
     if percentile >= 0.25:
-        return W_VALUE * 0.25, None
-    return W_VALUE * 0.10, None
+        return W_VALUE * 0.22, None
+    return W_VALUE * 0.08, None
 
 
 def _silence(days_open: int | None, etapa: str | None) -> tuple[float, str | None]:
@@ -171,6 +208,7 @@ def score_quote(row: dict[str, Any], as_of: date, value_percentile: float | None
         "etapa_omie": etapa,
         "valor_total": valor,
         "valor_percentil": round(value_percentile, 4) if value_percentile is not None else None,
+        "valor_desconhecido": valor is None,
         "business_channel": row.get("business_channel"),
         "componentes": {name: round(points, 2) for name, points, _ in parts},
     }

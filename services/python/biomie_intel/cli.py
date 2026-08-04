@@ -30,6 +30,31 @@ from .logging_setup import setup as setup_logging
 from .tenancy import UnknownCompanyError, resolve
 
 
+def _dispersao(scores) -> dict[str, Any]:
+    """Quanto o score realmente separa a população.
+
+    Existe porque a primeira calibração colocou 100% dos orçamentos em "alta" —
+    um score que não separa é indistinguível de não ter score, e isso precisa
+    aparecer na saída do job, não só numa inspeção manual.
+    """
+    if not scores:
+        return {}
+    valores = sorted(s.score for s in scores)
+    n = len(valores)
+
+    def pct(p: float) -> float:
+        return round(valores[min(n - 1, int(p * n))], 1)
+
+    return {
+        "min": round(valores[0], 1),
+        "p25": pct(0.25),
+        "mediana": pct(0.50),
+        "p75": pct(0.75),
+        "max": round(valores[-1], 1),
+        "amplitude": round(valores[-1] - valores[0], 1),
+    }
+
+
 def _saida(payload: dict[str, Any], code: int = 0) -> int:
     json.dump(payload, sys.stdout, ensure_ascii=False, indent=2, default=str)
     sys.stdout.write("\n")
@@ -55,11 +80,12 @@ def cmd_score(args, settings, logger) -> int:
             bandas: dict[str, int] = {}
             for s in scores:
                 bandas[s.band] = bandas.get(s.band, 0) + 1
+            dispersao = _dispersao(scores)
 
             if args.dry_run:
                 resumo.append({
                     "empresa": empresa.slug, "orcamentos": len(scores),
-                    "bandas": bandas, "gravado": False,
+                    "bandas": bandas, "dispersao": dispersao, "gravado": False,
                 })
                 continue
 
@@ -86,7 +112,7 @@ def cmd_score(args, settings, logger) -> int:
             )
             resumo.append({
                 "empresa": empresa.slug, "orcamentos": len(scores),
-                "bandas": bandas, "gravado": True,
+                "bandas": bandas, "dispersao": dispersao, "gravado": True,
             })
 
     return _saida({"ok": True, "comando": "score", "as_of": as_of.isoformat(), "empresas": resumo})
