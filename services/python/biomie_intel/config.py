@@ -32,10 +32,20 @@ class ConfigError(RuntimeError):
 
 def _load_env_file(path: Path) -> dict[str, str]:
     """Lê um arquivo KEY=value simples. Ignora comentários e linhas vazias."""
-    if not path.is_file():
-        return {}
+    try:
+        if not path.is_file():
+            return {}
+        content = path.read_text(encoding="utf-8")
+    except PermissionError as exc:
+        # Sem permissão é diferente de "não existe" — um traceback de os.stat
+        # esconde que o problema é grupo do arquivo, não configuração ausente.
+        raise ConfigError(
+            f"Sem permissão para ler {path}. O processo precisa estar no grupo "
+            f"dono do arquivo (ver provision_intelligence_db_user.sh)."
+        ) from exc
+
     values: dict[str, str] = {}
-    for raw in path.read_text(encoding="utf-8").splitlines():
+    for raw in content.splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

@@ -44,7 +44,11 @@ ALTER USER '${USER_NAME}'@'127.0.0.1' IDENTIFIED BY '${PASS}';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${USER_NAME}'@'127.0.0.1';
 
 -- LEITURA: só o que o score e o dataset consultam.
-GRANT SELECT ON ${DB}.biomie_companies                        TO '${USER_NAME}'@'127.0.0.1';
+-- biomie_companies é por COLUNA de propósito: a tabela guarda omie_app_key e
+-- omie_app_secret, e um job de análise não tem nada que ver credencial de
+-- integração. SELECT na tabela inteira daria isso de graça.
+GRANT SELECT (id, slug, nome_fantasia, razao_social, ativo)
+      ON ${DB}.biomie_companies                               TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_sales_quote_followup_schedule    TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_pedidos_canonicos                TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_notas_fiscais_canonicas          TO '${USER_NAME}'@'127.0.0.1';
@@ -57,7 +61,10 @@ GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME
 FLUSH PRIVILEGES;
 SQL
 
-install -d -m 750 -o root -g biomie /etc/biomie
+# Grupo biomieapp: é o grupo que o servidor já usa para acesso compartilhado à
+# aplicação (contém www-data E biomie). Trocar para outro grupo aqui barra o
+# www-data de ler a própria config.
+install -d -m 750 -o root -g biomieapp /etc/biomie
 cat > "$ENV_FILE" <<ENV
 # Credenciais do serviço de inteligência (usuário RESTRITO, não o da aplicação).
 # Gerado por tools/deploy/vps/provision_intelligence_db_user.sh
@@ -71,11 +78,14 @@ INTEL_MODEL_DIR=/var/www/biomie/shared/storage/intelligence/models
 # baseline | shadow | active  — trocar para 'active' é decisão humana.
 INTEL_RUN_MODE=baseline
 ENV
-chown root:biomie "$ENV_FILE"
+# O serviço roda como www-data — o MESMO usuário do php-fpm e dos demais crons,
+# para o dono dos arquivos de storage ficar consistente. A barreira de segurança
+# aqui é o usuário RESTRITO do banco, não o usuário do sistema operacional.
+chown root:biomieapp "$ENV_FILE"
 chmod 640 "$ENV_FILE"
 
-install -d -m 2770 -o www-data -g biomie /var/www/biomie/shared/storage/logs/intelligence
-install -d -m 2770 -o www-data -g biomie /var/www/biomie/shared/storage/intelligence/models
+install -d -m 2770 -o www-data -g www-data /var/www/biomie/shared/storage/logs/intelligence
+install -d -m 2770 -o www-data -g www-data /var/www/biomie/shared/storage/intelligence/models
 
 echo "  usuário ${USER_NAME}@127.0.0.1 configurado"
 echo "  privilégios concedidos:"

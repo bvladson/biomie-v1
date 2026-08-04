@@ -34,9 +34,12 @@ def resolve(conn: pymysql.connections.Connection, selector: str = "all") -> list
     """
     rows = fetch_all(
         conn,
-        "SELECT id, slug, name FROM biomie_companies WHERE is_active = 1 ORDER BY id",
+        """SELECT id, slug, COALESCE(NULLIF(nome_fantasia,''), razao_social) AS nome
+             FROM biomie_companies
+            WHERE ativo = 1
+            ORDER BY id""",
     )
-    companies = [Company(int(r["id"]), str(r["slug"]), str(r["name"])) for r in rows]
+    companies = [Company(int(r["id"]), str(r["slug"]), str(r["nome"])) for r in rows]
 
     if selector in ("all", "", None):
         if not companies:
