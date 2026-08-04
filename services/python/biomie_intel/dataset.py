@@ -50,6 +50,9 @@ class DatasetSpec:
     step_days: int = 7
     #: pedidos mais velhos que isso em T saem (orçamento morto não é decisão real)
     max_age_days: int = 120
+    #: idade FIXA, em dias após a emissão, em que cada pedido é observado.
+    #: Ver _build_for_cut: sem isto o dataset sofre viés de sobrevivência.
+    decision_age_days: int = 14
 
 
 def _cut_dates(spec: DatasetSpec, latest: date) -> list[date]:
@@ -81,7 +84,27 @@ def build(
 def _build_for_cut(
     conn: pymysql.connections.Connection, spec: DatasetSpec, cut: date
 ) -> list[dict[str, Any]]:
+    """Coorte de IDADE FIXA observada na data de corte.
+
+    VIÉS DE SOBREVIVÊNCIA — o erro que a primeira versão deste builder cometeu:
+    observar todo pedido aberto em cada corte faz o pedido SAIR da amostra assim
+    que converte. Quem aparece em muitos cortes (dias_aberto alto) é, por
+    construção, quem nunca converteu. `dias_aberto` passa a codificar o rótulo,
+    e o modelo "acerta" 94% medindo a própria montagem da amostra.
+    (Diagnóstico: coeficiente de dias_aberto -3,57, várias vezes maior que
+    qualquer outro, com AUC 0,94 — bom demais para 10 features simples.)
+
+    A correção: cada pedido é observado UMA vez, exatamente `decision_age_days`
+    após a emissão. A idade vira constante e não pode carregar o desfecho; o
+    ponto de decisão fica igual para todos; e um pedido não aparece em dois
+    cortes, o que também elimina o vazamento entre treino e teste.
+    """
     horizon_end = cut + timedelta(days=spec.horizon_days)
+    # Só entram os pedidos que completam a idade de decisão EXATAMENTE neste
+    # corte — a janela é o passo entre cortes, para nenhum pedido ficar de fora
+    # nem entrar duas vezes.
+    emissao_ate = cut - timedelta(days=spec.decision_age_days)
+    emissao_desde = emissao_ate - timedelta(days=spec.step_days - 1)
     oldest = cut - timedelta(days=spec.max_age_days)
 
     rows = fetch_all(
@@ -122,7 +145,9 @@ def _build_for_cut(
           FROM biomie_pedidos_canonicos p
          WHERE p.company_id = %(company)s
            AND p.data_emissao IS NOT NULL
-           AND p.data_emissao <= %(cut)s
+           -- Idade de decisão FIXA: cada pedido entra em UM corte só.
+           AND p.data_emissao <= %(emissao_ate)s
+           AND p.data_emissao >= %(emissao_desde)s
            AND p.data_emissao >= %(oldest)s
            -- Aberto EM T: nenhuma NF anterior ou igual ao corte.
            AND NOT EXISTS (
@@ -138,6 +163,8 @@ def _build_for_cut(
             "cut": cut,
             "horizon_end": horizon_end,
             "oldest": oldest,
+            "emissao_ate": emissao_ate,
+            "emissao_desde": emissao_desde,
         },
     )
 
@@ -173,8 +200,9 @@ def _build_for_cut(
     return samples
 
 
+# `dias_aberto` NÃO entra: com a coorte de idade fixa ele é constante e não
+# carrega informação. Continua gravado na linha para auditoria do dataset.
 FEATURE_COLUMNS = (
-    "dias_aberto",
     "valor_total",
     "valor_percentil",
     "quantidade_itens",
@@ -198,6 +226,26 @@ def _assert_sem_vazamento(samples: list[dict[str, Any]]) -> None:
     faltando = set(FEATURE_COLUMNS) - set(samples[0])
     if faltando:
         raise RuntimeError(f"Dataset sem as features declaradas: {sorted(faltando)}")
+
+    # Um pedido só pode aparecer UMA vez. Se aparecer em dois cortes, o mesmo
+    # registro pode cair no treino e no teste e a métrica sai inflada.
+    chaves = [(s["company_id"], s["pedido_id_omie"]) for s in samples]
+    if len(chaves) != len(set(chaves)):
+        repetidos = len(chaves) - len(set(chaves))
+        raise RuntimeError(
+            f"{repetidos} pedido(s) aparecem em mais de um corte — a coorte de "
+            f"idade fixa deveria impedir isso."
+        )
+
+
+def features_sem_variancia(samples: list[dict[str, Any]]) -> list[str]:
+    """Features constantes no dataset — não informam nada e mascaram problemas."""
+    mortas = []
+    for col in FEATURE_COLUMNS:
+        vistos = {s.get(col) for s in samples}
+        if len(vistos) <= 1:
+            mortas.append(col)
+    return mortas
 
 
 def to_csv(samples: list[dict[str, Any]], path: Path) -> Path:

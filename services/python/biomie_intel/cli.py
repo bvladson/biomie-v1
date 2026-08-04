@@ -166,16 +166,25 @@ def cmd_train(args, settings, logger) -> int:
             resultados.append({
                 "empresa": empresa.slug,
                 "apto": resultado.apto,
+                "apto_para_ativacao": resultado.apto_para_ativacao,
+                "comparado_ao_baseline": resultado.comparado_ao_baseline,
                 "motivo": resultado.motivo,
                 "model_version": resultado.model_version,
                 "metricas": resultado.metricas,
                 "coeficientes": resultado.coeficientes,
                 "dataset": dataset_mod.summarize(amostras),
+                "features_sem_variancia": dataset_mod.features_sem_variancia(amostras),
             })
 
     algum_apto = any(r["apto"] for r in resultados)
     return _saida(
-        {"ok": True, "comando": "train", "algum_modelo_apto": algum_apto, "empresas": resultados},
+        {
+            "ok": True,
+            "comando": "train",
+            "algum_modelo_apto": algum_apto,
+            "algum_apto_para_ativacao": any(r["apto_para_ativacao"] for r in resultados),
+            "empresas": resultados,
+        },
         0 if algum_apto else 3,
     )
 

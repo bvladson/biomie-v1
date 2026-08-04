@@ -39,12 +39,22 @@ GANHO_MINIMO_AUC = 0.03
 
 @dataclass
 class TrainResult:
+    #: passou no teste temporal e virou artefato utilizável
     apto: bool
     motivo: str
     model_version: str | None = None
     metricas: dict[str, Any] = field(default_factory=dict)
     coeficientes: dict[str, float] = field(default_factory=dict)
     artifact_path: str | None = None
+    #: houve baseline comparável? Sem isto, o modelo NÃO pode ser promovido —
+    #: "não consegui comparar" não é "ganhou". Só vira True quando existe uma
+    #: série de baseline sobre os mesmos registros de teste.
+    comparado_ao_baseline: bool = False
+
+    @property
+    def apto_para_ativacao(self) -> bool:
+        """Pré-requisito para sair do modo silencioso: treinou E venceu o baseline."""
+        return self.apto and self.comparado_ao_baseline
 
 
 def _auc(y_true: list[int], scores: list[float]) -> float | None:
@@ -165,7 +175,8 @@ def train(
     if auc_modelo is None:
         return TrainResult(apto=False, motivo="não foi possível calcular AUC no teste", metricas=metricas)
 
-    if auc_baseline is not None and auc_modelo < auc_baseline + GANHO_MINIMO_AUC:
+    comparado = auc_baseline is not None
+    if comparado and auc_modelo < auc_baseline + GANHO_MINIMO_AUC:
         return TrainResult(
             apto=False,
             motivo=(
@@ -174,18 +185,26 @@ def train(
             ),
             metricas=metricas,
             coeficientes=coefs,
+            comparado_ao_baseline=True,
         )
 
     version = f"logreg-{datetime.now(timezone.utc):%Y%m%d%H%M%S}"
     artifact = _salvar(pipe, model_dir, version, metricas, coefs)
 
+    motivo = (
+        "modelo aprovado no corte temporal e venceu o baseline"
+        if comparado
+        else "modelo treinado, mas SEM baseline comparável — não pode ser ativado"
+    )
+
     return TrainResult(
         apto=True,
-        motivo="modelo aprovado no corte temporal",
+        motivo=motivo,
         model_version=version,
         metricas=metricas,
         coeficientes=coefs,
         artifact_path=str(artifact),
+        comparado_ao_baseline=comparado,
     )
 
 
