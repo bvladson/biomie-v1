@@ -33,6 +33,8 @@ MIN_NOTAS_PARA_TENDENCIA = 8
 LIMIAR_CONCENTRACAO = 0.35
 #: por quantas horas a leitura continua válida na tela
 VALIDADE_HORAS = 8
+#: por quantos dias a leitura vencida fica guardada antes do expurgo
+RETENCAO_DIAS = 30
 
 # UNIVERSO COMERCIAL — espelha app/Support/CommercialNfUniverse.php.
 #
@@ -341,6 +343,45 @@ def persist(
                 metric_json, link_url, valid_until, is_current, computed_at)
            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1,UTC_TIMESTAMP())""",
         rows,
+    )
+    conn.commit()
+    return n
+
+
+def purge_expired(
+    conn: pymysql.connections.Connection,
+    company_id: int,
+    retencao_dias: int = RETENCAO_DIAS,
+) -> int:
+    """Apaga leituras VENCIDAS e já substituídas, de UMA empresa.
+
+    Sem isto a tabela cresce para sempre: cada execução marca as vigentes como
+    `is_current = 0` e insere novas, e nada nunca sai. São 4 execuções por dia ×
+    5 empresas — pequeno por linha, ilimitado no tempo.
+
+    Três travas de propósito:
+
+    1. `is_current = 0` — nunca apaga o que está na tela. Uma leitura vigente é
+       apagada só quando a execução seguinte a substitui.
+    2. `valid_until` fora da janela de retenção — o histórico recente continua
+       disponível para conferir o que o painel dizia semana passada. Expurgo
+       imediato transformaria "por que apareceu esse insight?" em pergunta sem
+       resposta.
+    3. `company_id` explícito — mesma regra do resto desta camada: não existe
+       escrita "para todas as empresas" escondida num WHERE.
+
+    O DELETE exige a permissão correspondente no usuário restrito, concedida
+    APENAS nesta tabela (ver provision_intelligence_db_user.sh).
+    """
+    from .db import execute
+
+    n = execute(
+        conn,
+        """DELETE FROM intelligence_insights
+            WHERE company_id = %s
+              AND is_current = 0
+              AND valid_until < (UTC_TIMESTAMP() - INTERVAL %s DAY)""",
+        (company_id, int(retencao_dias)),
     )
     conn.commit()
     return n

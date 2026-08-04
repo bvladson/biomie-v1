@@ -225,8 +225,12 @@ def cmd_insights(args, settings, logger) -> int:
                 correlation_id=args.correlation_id,
             ) as run:
                 gravados = insights_mod.persist(conn, empresa.id, achados, run.id)
+                # Expurgo junto da gravação: é o único momento em que já se sabe
+                # o que virou histórico. Job separado só para isso seria mais um
+                # agendamento para parar calado.
+                expurgados = insights_mod.purge_expired(conn, empresa.id)
                 run.rows_out = gravados
-                run.metrics = {"tipos": [i.kind for i in achados]}
+                run.metrics = {"tipos": [i.kind for i in achados], "expurgados": expurgados}
 
             saidas.append({
                 "empresa": empresa.slug,

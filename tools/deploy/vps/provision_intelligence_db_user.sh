@@ -54,9 +54,24 @@ GRANT SELECT ON ${DB}.biomie_pedidos_canonicos                TO '${USER_NAME}'@
 GRANT SELECT ON ${DB}.biomie_notas_fiscais_canonicas          TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.intelligence_quote_feedback             TO '${USER_NAME}'@'127.0.0.1';
 
--- ESCRITA: exatamente duas tabelas. Sem DELETE.
+-- ESCRITA: exatamente TRÊS tabelas — as mesmas de WRITABLE_TABLES em config.py.
+-- As duas listas são declarações da mesma verdade; tests/test_permissions.py
+-- falha se separarem.
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_job_runs      TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME}'@'127.0.0.1';
+
+-- intelligence_insights ESTAVA FALTANDO AQUI.
+--
+-- O cron de insights grava nesta tabela desde que existe, mas a concessão só
+-- vivia no banco, feita à mão. Como este script começa com REVOKE ALL, a
+-- próxima execução dele teria removido a permissão e derrubado o job — sem
+-- ninguém ter tocado em código, e sem alerta nenhum.
+--
+-- DELETE é o único aqui, e é deliberado: as leituras vencidas precisam sair
+-- (insights.purge_expired). A alternativa seria dar DELETE amplo ou deixar a
+-- tabela crescer para sempre — nenhuma das duas se justifica para expurgar
+-- linhas de uma tabela só.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ${DB}.intelligence_insights TO '${USER_NAME}'@'127.0.0.1';
 
 FLUSH PRIVILEGES;
 SQL

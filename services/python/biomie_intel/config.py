@@ -20,9 +20,18 @@ ENV_FILE = Path(os.environ.get("BIOMIE_INTEL_ENV", "/etc/biomie/intelligence.env
 
 # Tabelas que este serviço escreve. Qualquer escrita fora daqui é bug — e o
 # usuário do banco é configurado para recusar, não só por convenção.
+#
+# Esta tupla e os GRANTs de provision_intelligence_db_user.sh são DUAS
+# declarações da mesma verdade e precisam concordar. Já divergiram: o insights
+# gravava em intelligence_insights com a tabela ausente daqui E do script — a
+# permissão só existia porque foi concedida à mão no banco. Como o script começa
+# com `REVOKE ALL PRIVILEGES`, a próxima execução dele teria apagado a concessão
+# e derrubado o cron sem ninguém mexer em código.
+# `tests/test_permissions.py` compara as duas fontes e falha se separarem.
 WRITABLE_TABLES = (
     "intelligence_job_runs",
     "intelligence_quote_scores",
+    "intelligence_insights",
 )
 
 
