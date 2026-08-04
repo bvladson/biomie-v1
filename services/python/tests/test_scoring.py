@@ -18,6 +18,7 @@ from biomie_intel.scoring import (
     BAND_MEDIUM,
     MIN_AMOSTRA_PERCENTIL,
     band_for,
+    movimento,
     percentile_ranks,
     score_quote,
 )
@@ -116,6 +117,50 @@ class TestInvariantes(unittest.TestCase):
         self.assertEqual(band_for(BAND_HIGH - 0.01), "media")
         self.assertEqual(band_for(BAND_MEDIUM), "media")
         self.assertEqual(band_for(BAND_MEDIUM - 0.01), "baixa")
+
+
+class TestRelacionamento(unittest.TestCase):
+    def test_cliente_novo_nao_pontua(self):
+        s = score_quote(quote(cliente_nfs=0), HOJE, None)
+        self.assertEqual(s.features["componentes"]["relacionamento"], 0.0)
+
+    def test_recorrente_pontua_mais_que_primeira_compra(self):
+        uma = score_quote(quote(cliente_nfs=1), HOJE, None)
+        varias = score_quote(quote(cliente_nfs=8), HOJE, None)
+        self.assertLess(
+            uma.features["componentes"]["relacionamento"],
+            varias.features["componentes"]["relacionamento"],
+        )
+
+    def test_ausencia_do_campo_nao_quebra(self):
+        """O join pode não trazer cliente_nfs; isso não pode explodir o score."""
+        s = score_quote(quote(), HOJE, None)
+        self.assertEqual(s.features["componentes"]["relacionamento"], 0.0)
+
+
+class TestMovimento(unittest.TestCase):
+    def test_sem_anterior_e_novo(self):
+        direcao, delta, motivo = movimento(60.0, None)
+        self.assertEqual(direcao, "novo")
+        self.assertIsNone(delta)
+        self.assertIsNotNone(motivo)
+
+    def test_variacao_pequena_e_estavel(self):
+        """Ruído de 1-2 pontos não pode virar alerta na tela todo dia."""
+        direcao, _, motivo = movimento(60.0, 58.0)
+        self.assertEqual(direcao, "estavel")
+        self.assertIsNone(motivo)
+
+    def test_salto_relevante_vira_motivo(self):
+        direcao, delta, motivo = movimento(72.0, 40.0)
+        self.assertEqual(direcao, "subiu")
+        self.assertEqual(delta, 32.0)
+        self.assertIn("32", motivo or "")
+
+    def test_queda_nao_polui_a_tela(self):
+        direcao, _, motivo = movimento(30.0, 70.0)
+        self.assertEqual(direcao, "desceu")
+        self.assertIsNone(motivo, "queda não é chamada para ação")
 
 
 class TestPercentil(unittest.TestCase):

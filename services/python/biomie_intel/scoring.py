@@ -32,9 +32,10 @@ from typing import Any
 # que realmente varia nesta base: o valor, que vai de R$ 0 a R$ 523 mil.
 W_FOLLOWUP_OVERDUE = 30   # QUANTO a cadência estourou, não SE estourou
 W_FORECAST_PRESSURE = 20  # janela de fechamento — pico perto da data, decai depois
-W_VALUE = 30              # tamanho do negócio, relativo à própria empresa
-W_SILENCE = 12            # tempo parado sem avançar de etapa
-W_CHARGE_FATIGUE = 8      # cobranças acumuladas sem desfecho
+W_VALUE = 26              # tamanho do negócio, relativo à própria empresa
+W_SILENCE = 10            # tempo parado sem avançar de etapa
+W_CHARGE_FATIGUE = 6      # cobranças acumuladas sem desfecho
+W_RELACIONAMENTO = 8      # cliente que já comprou — perder é mais caro
 
 #: atraso a partir do qual não faz diferença estar "mais atrasado"
 SATURACAO_ATRASO_DIAS = 30
@@ -180,6 +181,41 @@ def _charge_fatigue(charge_count: int) -> tuple[float, str | None]:
     return 0.0, None
 
 
+def _relacionamento(nfs_do_cliente: int | None) -> tuple[float, str | None]:
+    """Cliente que já comprou antes.
+
+    Um orçamento parado para quem nunca comprou é prospecção; para quem já é
+    cliente, é relacionamento em risco — e recuperar custa menos que conquistar.
+    Escala com o histórico, mas satura rápido: o salto que importa é de "nunca
+    comprou" para "já comprou".
+    """
+    if not nfs_do_cliente:
+        return 0.0, None
+    if nfs_do_cliente >= 5:
+        return W_RELACIONAMENTO, f"Cliente recorrente ({nfs_do_cliente} compras)"
+    if nfs_do_cliente >= 2:
+        return W_RELACIONAMENTO * 0.75, f"Cliente recorrente ({nfs_do_cliente} compras)"
+    return W_RELACIONAMENTO * 0.5, "Cliente já comprou antes"
+
+
+def movimento(score_atual: float, score_anterior: float | None) -> tuple[str, float | None, str | None]:
+    """Compara com a rodada anterior.
+
+    O gestor não abre a agenda para reler a mesma lista: ele quer saber O QUE
+    MUDOU desde ontem. Um orçamento que saltou de 40 para 72 merece atenção hoje
+    mesmo que outro esteja em 75 parado há duas semanas.
+    """
+    if score_anterior is None:
+        return "novo", None, "Entrou na fila de prioridade"
+
+    delta = round(score_atual - score_anterior, 2)
+    if abs(delta) < 5:
+        return "estavel", delta, None
+    if delta > 0:
+        return "subiu", delta, f"Subiu {delta:.0f} pontos desde a última leitura"
+    return "desceu", delta, None
+
+
 def band_for(score: float) -> str:
     if score >= BAND_HIGH:
         return "alta"
@@ -212,6 +248,9 @@ def score_quote(
         ("value_weight", *_value_weight(value_percentile, valor, amostra_empresa)),
         ("silence", *_silence(days_open, etapa)),
         ("charge_fatigue", *_charge_fatigue(charge_count)),
+        ("relacionamento", *_relacionamento(
+            int(row["cliente_nfs"]) if row.get("cliente_nfs") is not None else None
+        )),
     ]
 
     total = round(sum(p[1] for p in parts), 2)
@@ -229,6 +268,7 @@ def score_quote(
         "valor_percentil": round(value_percentile, 4) if value_percentile is not None else None,
         "valor_desconhecido": valor is None,
         "business_channel": row.get("business_channel"),
+        "cliente_nfs": row.get("cliente_nfs"),
         "componentes": {name: round(points, 2) for name, points, _ in parts},
     }
 

@@ -77,15 +77,25 @@ def cmd_score(args, settings, logger) -> int:
             linhas = quotes_mod.load_open_quotes(conn, empresa.id)
             scores = quotes_mod.score_company(linhas, as_of)
 
+            # Movimento desde a rodada anterior — o gestor quer saber O QUE
+            # MUDOU, não reler a mesma lista.
+            anteriores = quotes_mod.load_previous_scores(
+                conn, empresa.id, "deterministic", settings.run_mode
+            )
+            quotes_mod.apply_movement(scores, anteriores)
+
             bandas: dict[str, int] = {}
+            movimentos: dict[str, int] = {}
             for s in scores:
                 bandas[s.band] = bandas.get(s.band, 0) + 1
+                mv = str(s.features.get("movimento", "?"))
+                movimentos[mv] = movimentos.get(mv, 0) + 1
             dispersao = _dispersao(scores)
 
             if args.dry_run:
                 resumo.append({
                     "empresa": empresa.slug, "orcamentos": len(scores),
-                    "bandas": bandas, "dispersao": dispersao, "gravado": False,
+                    "bandas": bandas, "dispersao": dispersao, "movimento": movimentos, "gravado": False,
                 })
                 continue
 
@@ -104,7 +114,8 @@ def cmd_score(args, settings, logger) -> int:
                     run_mode=settings.run_mode,
                 )
                 run.rows_out = gravados
-                run.metrics = {"bandas": bandas, "as_of": as_of.isoformat()}
+                run.metrics = {"bandas": bandas, "dispersao": dispersao,
+                               "movimento": movimentos, "as_of": as_of.isoformat()}
 
             logger.info(
                 "scores gravados",
@@ -112,7 +123,7 @@ def cmd_score(args, settings, logger) -> int:
             )
             resumo.append({
                 "empresa": empresa.slug, "orcamentos": len(scores),
-                "bandas": bandas, "dispersao": dispersao, "gravado": True,
+                "bandas": bandas, "dispersao": dispersao, "movimento": movimentos, "gravado": True,
             })
 
     return _saida({"ok": True, "comando": "score", "as_of": as_of.isoformat(), "empresas": resumo})

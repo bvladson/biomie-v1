@@ -121,7 +121,18 @@ if [ -d "$REL/services/python" ]; then
         head -5 /tmp/pyimport.err
         fail "o pacote biomie_intel não importa — symlink NÃO foi trocado"
     fi
-    log "serviço Python valida (import ok)"
+
+    # Os testes travam a CALIBRAÇÃO do score, não só a sintaxe: já houve uma
+    # versão que jogava 100% dos orçamentos em "alta" e isso só apareceu numa
+    # inspeção manual. Teste que não roda no pipeline é decoração.
+    if [ -d "$REL/services/python/tests" ]; then
+        if ! (cd "$REL/services/python" && "$VENV/bin/python" -m unittest discover -s tests -q > /tmp/pytests.out 2>&1); then
+            tail -25 /tmp/pytests.out
+            fail "testes do serviço Python falharam — symlink NÃO foi trocado"
+        fi
+        log "testes Python: $(grep -oE 'Ran [0-9]+ test' /tmp/pytests.out | head -1) OK"
+    fi
+    log "serviço Python valida (import + testes)"
 fi
 
 # ------------------------------------------------------- 7. troca atômica

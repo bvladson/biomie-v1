@@ -9,7 +9,7 @@ from typing import Any
 import pymysql
 
 from .db import execute, execute_many, fetch_all
-from .scoring import QuoteScore, percentile_ranks, score_quote
+from .scoring import QuoteScore, movimento, percentile_ranks, score_quote
 
 # "Aberto" = ainda não teve desfecho. A agenda marca desfecho em resolved_at;
 # enquanto isso for NULL o orçamento continua cobrável.
@@ -29,7 +29,14 @@ OPEN_QUOTES_SQL = """
            p.status_comercial,
            p.business_channel,
            p.nome_cliente,
-           p.nome_vendedor
+           p.nome_vendedor,
+
+           -- Quantas NFs autorizadas este cliente já tem. É o que separa
+           -- prospecção de relacionamento em risco.
+           (SELECT COUNT(*) FROM biomie_notas_fiscais_canonicas n
+             WHERE n.company_id = s.company_id
+               AND n.codigo_cliente_omie = p.codigo_cliente_omie
+               AND n.status_fiscal = 'autorizada') AS cliente_nfs
       FROM biomie_sales_quote_followup_schedule s
       LEFT JOIN biomie_pedidos_canonicos p
              ON p.pedido_id_omie = s.omie_order_id
@@ -59,6 +66,40 @@ def score_company(
     # direito de afirmar "entre os 10% maiores".
     amostra = sum(1 for v in values if v is not None)
     return [score_quote(row, as_of, rank, amostra) for row, rank in zip(rows, ranks)]
+
+
+def load_previous_scores(
+    conn: pymysql.connections.Connection,
+    company_id: int,
+    scorer: str,
+    run_mode: str,
+) -> dict[int, float]:
+    """Scores vigentes ANTES desta rodada, para calcular o movimento."""
+    rows = fetch_all(
+        conn,
+        """SELECT omie_order_id, score
+             FROM intelligence_quote_scores
+            WHERE company_id = %s AND scorer = %s AND run_mode = %s AND is_current = 1""",
+        (company_id, scorer, run_mode),
+    )
+    return {int(r["omie_order_id"]): float(r["score"]) for r in rows}
+
+
+def apply_movement(scores: list[QuoteScore], anteriores: dict[int, float]) -> None:
+    """Enriquece cada score com a variação desde a rodada anterior.
+
+    Muta a lista de propósito: o movimento faz parte do MESMO score gravado, e
+    separar em outra estrutura só criaria a chance de os dois divergirem.
+    """
+    for s in scores:
+        direcao, delta, motivo = movimento(s.score, anteriores.get(s.omie_order_id))
+        s.features["movimento"] = direcao
+        s.features["delta"] = delta
+        s.features["score_anterior"] = anteriores.get(s.omie_order_id)
+        # "Novo na fila" só interessa se o orçamento já merece atenção — para um
+        # score baixo, é ruído na tela.
+        if motivo and (direcao != "novo" or s.band != "baixa"):
+            s.reasons.insert(0, motivo)
 
 
 def persist_scores(
