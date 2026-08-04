@@ -21,6 +21,7 @@ from typing import Any
 
 from . import dataset as dataset_mod
 from . import health as health_mod
+from . import insights as insights_mod
 from . import model as model_mod
 from . import quotes as quotes_mod
 from .config import ConfigError, load_settings
@@ -200,6 +201,42 @@ def cmd_train(args, settings, logger) -> int:
     )
 
 
+def cmd_insights(args, settings, logger) -> int:
+    """Calcula as leituras narrativas que a home exibe."""
+    saidas = []
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            achados = insights_mod.compute(conn, empresa.id)
+
+            if args.dry_run:
+                saidas.append({
+                    "empresa": empresa.slug,
+                    "insights": [{"kind": i.kind, "severity": i.severity,
+                                  "title": i.title, "body": i.body} for i in achados],
+                    "gravado": False,
+                })
+                continue
+
+            with track(
+                conn, "insights",
+                company_id=empresa.id,
+                run_mode=settings.run_mode,
+                correlation_id=args.correlation_id,
+            ) as run:
+                gravados = insights_mod.persist(conn, empresa.id, achados, run.id)
+                run.rows_out = gravados
+                run.metrics = {"tipos": [i.kind for i in achados]}
+
+            saidas.append({
+                "empresa": empresa.slug,
+                "insights": [{"kind": i.kind, "severity": i.severity,
+                              "title": i.title, "body": i.body} for i in achados],
+                "gravado": True,
+            })
+
+    return _saida({"ok": True, "comando": "insights", "empresas": saidas})
+
+
 def cmd_compare(args, settings, logger) -> int:
     """Compara baseline e shadow lado a lado — a evidência para decidir ativar."""
     with connect(settings) as conn:
@@ -240,6 +277,10 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--horizon", type=int, default=30)
     t.add_argument("--cuts", type=int, default=12)
 
+    i = sub.add_parser("insights", help="leituras narrativas para a home")
+    i.add_argument("--company", default="all")
+    i.add_argument("--dry-run", action="store_true")
+
     sub.add_parser("compare", help="baseline vs shadow lado a lado")
     return p
 
@@ -260,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         "score": cmd_score,
         "dataset": cmd_dataset,
         "train": cmd_train,
+        "insights": cmd_insights,
         "compare": cmd_compare,
     }
     try:

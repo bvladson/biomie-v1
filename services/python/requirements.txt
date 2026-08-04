@@ -2,4 +2,7 @@
 # Versões fixadas: um deploy que resolve versão sozinho não é reproduzível.
 PyMySQL==1.2.0
 numpy==2.5.1
+# Janelas e comparacoes de serie temporal nos insights: SQL faria, mas ficaria
+# ilegivel -- e a leitura precisa continuar auditavel por quem for mexer.
+pandas==3.0.5
 scikit-learn==1.7.2

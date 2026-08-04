@@ -143,6 +143,7 @@ final class PageAssetRegistry
             'js_head' => ['assets/js/chart.umd.js'],
             'js_body' => [
                 'assets/js/modules/quote-priority-panel.js',      // "Ação de hoje"
+                'assets/js/modules/insights-panel.js',            // "Leitura da operação"
                 'assets/js/mag-chart-defaults.js',
                 'assets/js/core/chart-factory.js',
                 'assets/js/client_dossier.js',

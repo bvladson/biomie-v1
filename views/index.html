@@ -81,6 +81,24 @@
     </a>
   </section>
 
+  <!-- Faixa de leitura+ação: "o que está acontecendo" à esquerda, "o que eu faço
+       agora" à direita. As duas colunas colapsam para uma em telas estreitas, e
+       cada painel some sozinho quando não tem conteúdo — em vez de deixar meia
+       faixa vazia, o que sobra ocupa a largura toda. -->
+  <div class="qi-strip" id="indexInsightStrip">
+
+  <!-- Leitura da operação — conclusões calculadas em Python fora do request. -->
+  <section class="anim d1 qi-panel" id="indexInsights" hidden>
+    <div class="qi-head">
+      <div class="qi-title">
+        <span class="material-symbols-rounded qi-title-icon" aria-hidden="true">insights</span>
+        <strong>Leitura da operação</strong>
+      </div>
+      <span class="qi-stamp" id="qiStamp"></span>
+    </div>
+    <ul class="qi-list" id="qiList"></ul>
+  </section>
+
   <!-- Ação de hoje — os poucos orçamentos que mudam o resultado do dia.
        Fica ACIMA da agenda de propósito: a home responde "o que eu faço agora?"
        antes de mostrar o calendário do mês. -->
@@ -98,6 +116,8 @@
     <ol class="qp-list" id="qpList"></ol>
     <p class="qp-note" id="qpNote" hidden></p>
   </section>
+
+  </div><!-- /qi-strip -->
 
   <!-- Agenda de Orçamentos — mini-calendário dinâmico de cobranças -->
   <section class="anim d1" id="indexQuoteCalendar" style="margin:0 0 12px;">

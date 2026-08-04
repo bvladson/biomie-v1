@@ -152,3 +152,125 @@
 @media (prefers-reduced-motion: reduce) {
   .qp-item { transition: none; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Faixa "leitura + ação" e o painel de insights.
+ *
+ * O problema que ela resolve: nos prints, blocos sem conteúdo ocupavam a mesma
+ * altura de quando tinham (o "Metas do time" vazio, a coluna da direita em
+ * "Pontos de atenção"). Aqui, painel sem conteúdo recebe `hidden` e SAI do
+ * grid — o irmão passa a ocupar a largura toda em vez de sobrar meia faixa.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.qi-strip {
+  display: grid;
+  /* auto-fit + minmax: com dois painéis dá duas colunas; com um só, ele ocupa
+     tudo. É o que evita o buraco quando um dos lados não tem o que mostrar. */
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
+  align-items: start;
+  margin: 0 0 12px;
+}
+
+.qi-strip > .qp-panel { margin: 0; }
+
+.qi-panel {
+  padding: 14px 16px;
+  background: var(--mag-surface, #fff);
+  border: 1px solid var(--mag-border, #e2e8f0);
+  border-left: 3px solid var(--info, #2563eb);
+  border-radius: 12px;
+}
+
+.qi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.qi-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--mag-text, #0f172a);
+}
+
+.qi-title-icon { font-size: 18px; color: var(--info, #2563eb); }
+
+.qi-stamp { font-size: 11px; color: var(--mag-muted, #94a3b8); }
+
+.qi-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.qi-item {
+  padding: 9px 10px 9px 11px;
+  border-radius: 9px;
+  background: var(--mag-surface-2, #f8fafc);
+  /* A severidade vive numa borda fina, não no fundo: fundo colorido em vários
+     itens seguidos vira faixa de semáforo e cansa a leitura. */
+  border-left: 3px solid var(--mag-border, #cbd5e1);
+}
+
+.qi-item[data-sev="critico"]  { border-left-color: var(--danger, #dc2626); }
+.qi-item[data-sev="atencao"]  { border-left-color: var(--warning, #d97706); }
+.qi-item[data-sev="positivo"] { border-left-color: var(--success, #16a34a); }
+
+.qi-item-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mag-text, #0f172a);
+}
+
+.qi-item-body {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-2, #475569);
+}
+
+/* Os números que sustentam a frase. Ficam recolhidos: quem só quer a conclusão
+   lê a frase; quem desconfia abre e confere a conta. */
+.qi-metrics { margin-top: 6px; }
+
+.qi-metrics > summary {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--mag-muted, #64748b);
+  cursor: pointer;
+  list-style: none;
+}
+
+.qi-metrics > summary::-webkit-details-marker { display: none; }
+.qi-metrics > summary::before { content: "▸ "; }
+.qi-metrics[open] > summary::before { content: "▾ "; }
+
+.qi-metrics-grid {
+  margin-top: 5px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 4px 12px;
+  font-size: 10.5px;
+  color: var(--text-2, #475569);
+}
+
+.qi-metric-k { color: var(--mag-muted, #94a3b8); }
+.qi-metric-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.qi-link {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--page-accent, #96140a);
+  text-decoration: none;
+}
