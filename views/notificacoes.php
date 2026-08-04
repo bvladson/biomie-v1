@@ -181,15 +181,51 @@ $catLabels = [
     var ids = String(el.getAttribute('data-ids') || el.getAttribute('data-id') || '')
       .split(',').map(function (s) { return parseInt(s, 10); }).filter(Boolean);
     if (!ids.length || !el.classList.contains('is-unread')) return;
-    el.classList.remove('is-unread');
+
     var btn = el.querySelector('[data-notif-read]');
-    if (btn) btn.remove();
-    ids.forEach(function (id) {
-      fetch('api/notifications.php', { method: 'POST', credentials: 'same-origin',
+    // NÃO remove o botão antes da confirmação. Removê-lo cedo (o que este código
+    // fazia) deixava o usuário sem como tentar de novo quando a chamada falhava:
+    // a notificação seguia não lida no banco, voltava no reload, e não havia
+    // mais botão. Daí "cliquei no visto e não apaga".
+    if (btn) { btn.disabled = true; }
+
+    Promise.all(ids.map(function (id) {
+      return fetch('api/notifications.php', {
+        method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'read', id: id, csrf_token: csrf() }) });
+        body: JSON.stringify({ action: 'read', id: id, csrf_token: csrf() })
+      }).then(function (r) {
+        if (r.status === 403) throw new Error('Sessão expirada. Recarregue a página.');
+        if (!r.ok) throw new Error('Falha ao marcar como lida.');
+        return r.json();
+      }).then(function (d) {
+        if (!d || !d.ok) throw new Error('Falha ao marcar como lida.');
+      });
+    })).then(function () {
+      // Só agora o estado da tela muda — quando o servidor já confirmou.
+      el.classList.remove('is-unread');
+      if (btn) btn.remove();
+      applyFilters();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; btn.title = err.message || 'Falha ao marcar como lida.'; }
+      if (typeof avisarPagina === 'function') avisarPagina(err.message);
     });
-    applyFilters();
+  }
+
+  /** Aviso visível na página. Silêncio foi o que escondeu este bug. */
+  function avisarPagina(texto) {
+    var el = document.getElementById('notifPageToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'notifPageToast';
+      el.className = 'biomie-notif__toast';
+      el.style.margin = '10px 0';
+      page.insertBefore(el, page.firstChild);
+    }
+    el.textContent = texto || 'Não foi possível marcar como lida.';
+    el.hidden = false;
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.hidden = true; }, 6000);
   }
 
   page.querySelectorAll('.biomie-notif__item').forEach(function (el) {
