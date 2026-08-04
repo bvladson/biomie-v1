@@ -90,6 +90,12 @@ Thumbs.db
 # Build and debug artifacts
 *.map
 
+# Bytecode do Python (services/python). Nasce sozinho ao importar o pacote e
+# suja a arvore — o deploy da VPS exige arvore limpa e ABORTA por causa disso.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # Scripts descartaveis soltos na raiz do projeto.
 # Ancorados com "/" de proposito: sem isso, "test*.php" casa com
 # tests/TestDatabaseGuard.php, TestRunner.php e TestSupport.php
