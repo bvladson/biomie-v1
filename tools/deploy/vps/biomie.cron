@@ -29,6 +29,11 @@ BIOMIE_PHP_BIN=/usr/bin/php
 */30 * * * *        www-data /bin/sh /var/www/biomie/live/cron/hostinger/quote_agenda_notify.sh stale
 0 8  * * 1-5        www-data /bin/sh /var/www/biomie/live/cron/hostinger/quote_agenda_notify.sh digest
 
+# --- inteligência -----------------------------------------------------------
+# De 2 em 2 horas: o score depende de datas (atraso de follow-up, previsão), que
+# mudam por DIA — rodar de 15 em 15 minutos gastaria CPU sem mudar resultado.
+20 */2 * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_score.sh
+
 # --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
 30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh
 0  23 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/compute_forecasts.sh

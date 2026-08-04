@@ -40,6 +40,9 @@ final class QuoteAgendaReadService
     private const T_SNAPSHOT = 'biomie_quote_live_snapshot_sync';
     private const T_AUDIT    = 'biomie_quote_followup_charge_audit';
 
+    /** @var array<string,array{score:float,band:string,reasons:list<string>,scored_at:string,scorer:string}>|null */
+    private ?array $priorityCache = null;
+
     public function __construct(
         private readonly PDO $pdo,
         private readonly int $companyId,
@@ -133,12 +136,31 @@ final class QuoteAgendaReadService
         $st = $this->pdo->prepare($sql);
         $st->execute($params);
 
+        // Uma consulta só para as prioridades da empresa inteira, em vez de uma
+        // por item: a agenda de um dia costuma trazer dezenas de linhas.
+        $priorities = $this->priorities();
+
         $items = [];
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            $items[] = $this->decorate($r, $policy, $today);
+            $items[] = $this->decorate($r, $policy, $today, $priorities);
         }
 
         return $items;
+    }
+
+    /**
+     * Prioridades vigentes, memorizadas por instância.
+     *
+     * @return array<string,array{score:float,band:string,reasons:list<string>,scored_at:string,scorer:string}>
+     */
+    private function priorities(): array
+    {
+        if ($this->priorityCache === null) {
+            $this->priorityCache = (new \BIomie\Intelligence\QuotePriorityReadService($this->pdo))
+                ->forCompany($this->companyId);
+        }
+
+        return $this->priorityCache;
     }
 
     /**
@@ -523,8 +545,15 @@ final class QuoteAgendaReadService
      * @param array<string,mixed> $r
      * @return array<string,mixed>
      */
-    private function decorate(array $r, FollowupDatePolicy $policy, DateTimeImmutable $today): array
-    {
+    /**
+     * @param array<string,array{score:float,band:string,reasons:list<string>,scored_at:string,scorer:string}> $priorities
+     */
+    private function decorate(
+        array $r,
+        FollowupDatePolicy $policy,
+        DateTimeImmutable $today,
+        array $priorities = [],
+    ): array {
         $due = (string) ($r['next_followup_on'] ?? '');
         $step = (int) $r['followup_step'];
         $urgency = $due !== '' ? $policy->urgency($due, $step, $today) : 'normal';
@@ -576,6 +605,11 @@ final class QuoteAgendaReadService
 
             'missing_since' => $r['missing_since'], // UTC
             'is_missing' => ($r['missing_since'] ?? null) !== null,
+
+            // Prioridade calculada. NULL quando ainda não foi pontuado — a
+            // agenda nunca inventa "baixa" para quem não tem score, senão o
+            // gestor lê ausência de cálculo como julgamento.
+            'priority' => $priorities[(string) $r['omie_order_id']] ?? null,
         ];
     }
 
