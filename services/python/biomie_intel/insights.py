@@ -34,6 +34,22 @@ LIMIAR_CONCENTRACAO = 0.35
 #: por quantas horas a leitura continua válida na tela
 VALIDADE_HORAS = 8
 
+# UNIVERSO COMERCIAL — espelha app/Support/CommercialNfUniverse.php.
+#
+# Sem isto a leitura soma remessa, uso interno e transferência, e a home mostra
+# "R$ 1,16 mi nas últimas 4 semanas" logo ao lado de um KPI de R$ 70 mil. Dois
+# números contraditórios na mesma tela destroem a confiança no painel inteiro —
+# o usuário passa a não acreditar em nenhum dos dois.
+#
+# Regra: autorizada + escopo comercial + (licitação SEMPRE preservada OU
+# varejo visível). Se o PHP mudar a regra, esta constante tem que acompanhar.
+UNIVERSO_COMERCIAL = (
+    "status_fiscal = 'autorizada' "
+    "AND operation_scope = 'commercial' "
+    "AND (business_channel = 'licitacao' "
+    "     OR COALESCE(is_biomie_commercial_visible, 1) = 1)"
+)
+
 
 @dataclass
 class Insight:
@@ -60,7 +76,7 @@ def _faturamento_diario(
                   SUM(valor_total)    AS receita
              FROM biomie_notas_fiscais_canonicas
             WHERE company_id = %s
-              AND status_fiscal = 'autorizada'
+              AND """ + UNIVERSO_COMERCIAL + """
               AND data_emissao >= %s
             GROUP BY data_emissao
             ORDER BY data_emissao""",
@@ -137,7 +153,7 @@ def _concentracao(
         """SELECT COALESCE(NULLIF(nome_cliente,''), 'Sem cliente') AS cliente,
                   SUM(valor_total) AS receita
              FROM biomie_notas_fiscais_canonicas
-            WHERE company_id = %s AND status_fiscal = 'autorizada'
+            WHERE company_id = %s AND """ + UNIVERSO_COMERCIAL + """
               AND data_emissao >= %s
             GROUP BY cliente
             ORDER BY receita DESC""",
@@ -222,7 +238,7 @@ def _vendedor_destaque(
                   data_emissao AS dia,
                   SUM(valor_total) AS receita
              FROM biomie_notas_fiscais_canonicas
-            WHERE company_id = %s AND status_fiscal = 'autorizada'
+            WHERE company_id = %s AND """ + UNIVERSO_COMERCIAL + """
               AND data_emissao >= %s
             GROUP BY vendedor, data_emissao""",
         (company_id, desde),
