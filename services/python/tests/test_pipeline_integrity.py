@@ -342,5 +342,69 @@ class TestTrilhaDeExecucao(unittest.TestCase):
         self.assertEqual(status, ["completed", "failed", "completed"])
 
 
+class TestFaxinaNaoDerrubaAMissao(unittest.TestCase):
+    """O expurgo é manutenção; produzir as leituras é a missão.
+
+    ISTO ACONTECEU (2026-08-04): o DELETE do expurgo foi ao ar antes do GRANT
+    correspondente. O job passava a falhar INTEIRO — depois de já ter gravado as
+    leituras com sucesso. A home ficava correta e o dead-man switch disparava.
+    """
+
+    def _rodar(self, purge_erro: Exception | None):
+        import argparse
+        from unittest import mock
+
+        from biomie_intel import cli
+
+        conn = FakeConnection({
+            CONSULTA_EMPRESAS: EMPRESAS[:1],
+            "SELECT LAST_INSERT_ID()": [{"id": 5}],
+        })
+
+        args = argparse.Namespace(company="all", dry_run=False, correlation_id="x")
+        settings = mock.Mock(run_mode="baseline")
+        logger = mock.Mock()
+
+        with mock.patch.object(cli, "connect") as fake_connect, \
+                mock.patch.object(cli.insights_mod, "compute", return_value=[_insight()]), \
+                mock.patch.object(cli.insights_mod, "persist", return_value=1), \
+                mock.patch.object(cli.insights_mod, "purge_expired") as purge, \
+                mock.patch.object(cli, "_saida", side_effect=lambda payload, code=0: code):
+            fake_connect.return_value.__enter__ = lambda _self: conn
+            fake_connect.return_value.__exit__ = lambda *_: None
+            if purge_erro is not None:
+                purge.side_effect = purge_erro
+            else:
+                purge.return_value = 3
+            código = cli.cmd_insights(args, settings, logger)
+
+        return código, conn, logger
+
+    def test_expurgo_que_falha_nao_marca_o_job_como_failed(self) -> None:
+        código, conn, logger = self._rodar(RuntimeError("DELETE command denied"))
+
+        self.assertEqual(código, 0, "o job caiu por causa da faxina")
+        status = conn.params_de("UPDATE intelligence_job_runs")[0]
+        self.assertEqual(
+            status, "completed",
+            "as leituras foram gravadas e estão na tela; marcar failed faria o "
+            "dead-man switch disparar com a home correta",
+        )
+        logger.warning.assert_called()
+
+    def test_a_falha_do_expurgo_fica_registrada(self) -> None:
+        """Engolir sem deixar rastro seria o outro extremo."""
+        _, conn, _ = self._rodar(RuntimeError("DELETE command denied"))
+        metrics = conn.params_de("UPDATE intelligence_job_runs")[4]
+        self.assertIn("expurgo_falhou", metrics)
+        self.assertIn("DELETE command denied", metrics)
+
+    def test_expurgo_bem_sucedido_entra_nas_metricas(self) -> None:
+        código, conn, _ = self._rodar(None)
+        self.assertEqual(código, 0)
+        metrics = conn.params_de("UPDATE intelligence_job_runs")[4]
+        self.assertIn("expurgados", metrics)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

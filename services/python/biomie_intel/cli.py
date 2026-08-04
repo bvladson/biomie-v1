@@ -225,12 +225,27 @@ def cmd_insights(args, settings, logger) -> int:
                 correlation_id=args.correlation_id,
             ) as run:
                 gravados = insights_mod.persist(conn, empresa.id, achados, run.id)
+                run.rows_out = gravados
+                run.metrics = {"tipos": [i.kind for i in achados]}
+
                 # Expurgo junto da gravação: é o único momento em que já se sabe
                 # o que virou histórico. Job separado só para isso seria mais um
                 # agendamento para parar calado.
-                expurgados = insights_mod.purge_expired(conn, empresa.id)
-                run.rows_out = gravados
-                run.metrics = {"tipos": [i.kind for i in achados], "expurgados": expurgados}
+                #
+                # MAS a limpeza NÃO pode derrubar o job. A missão aqui é produzir
+                # as leituras — elas já foram gravadas e já estão na tela. Deixar
+                # uma tarefa de manutenção marcar a execução como `failed` faria o
+                # dead-man switch disparar com a home perfeitamente correta.
+                # Aconteceu de verdade: o DELETE foi ao ar antes do GRANT
+                # correspondente e o job inteiro passou a falhar por causa da
+                # faxina. O erro fica REGISTRADO nas métricas — engolir sem
+                # deixar rastro seria o outro extremo.
+                try:
+                    run.metrics["expurgados"] = insights_mod.purge_expired(conn, empresa.id)
+                except Exception as exc:  # noqa: BLE001 — faxina não derruba a missão
+                    conn.rollback()
+                    run.metrics["expurgo_falhou"] = f"{type(exc).__name__}: {exc}"
+                    logger.warning("expurgo de insights falhou (empresa %s): %s", empresa.id, exc)
 
             saidas.append({
                 "empresa": empresa.slug,
