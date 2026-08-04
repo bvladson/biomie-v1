@@ -136,9 +136,13 @@ final class PageAssetRegistry
      */
     private const PAGE_ASSETS = [
         'dashboard' => [
-            'css'     => ['assets/css/quote-calendar-widget.css'],
+            'css'     => [
+                'assets/css/quote-calendar-widget.css',
+                'assets/css/quote-priority.css',
+            ],
             'js_head' => ['assets/js/chart.umd.js'],
             'js_body' => [
+                'assets/js/modules/quote-priority-panel.js',      // "Ação de hoje"
                 'assets/js/mag-chart-defaults.js',
                 'assets/js/core/chart-factory.js',
                 'assets/js/client_dossier.js',

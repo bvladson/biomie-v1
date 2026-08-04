@@ -81,6 +81,24 @@
     </a>
   </section>
 
+  <!-- Ação de hoje — os poucos orçamentos que mudam o resultado do dia.
+       Fica ACIMA da agenda de propósito: a home responde "o que eu faço agora?"
+       antes de mostrar o calendário do mês. -->
+  <section class="anim d1 qp-panel" id="indexQuotePriority" hidden>
+    <div class="qp-head">
+      <div class="qp-title">
+        <span class="material-symbols-rounded qp-title-icon" aria-hidden="true">bolt</span>
+        <strong>Ação de hoje</strong>
+        <span class="qp-count" id="qpCount"></span>
+      </div>
+      <a class="qp-open" href="quote_agenda.php">Ver agenda
+        <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
+      </a>
+    </div>
+    <ol class="qp-list" id="qpList"></ol>
+    <p class="qp-note" id="qpNote" hidden></p>
+  </section>
+
   <!-- Agenda de Orçamentos — mini-calendário dinâmico de cobranças -->
   <section class="anim d1" id="indexQuoteCalendar" style="margin:0 0 12px;">
     <a href="quote_agenda.php" class="wallboard-card" style="display:block;padding:14px 16px;text-decoration:none;color:inherit;">
