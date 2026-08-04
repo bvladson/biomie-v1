@@ -116,7 +116,16 @@ def _forecast_pressure(days_to_forecast: int | None) -> tuple[float, str | None]
     return W_FORECAST_PRESSURE * 0.2, f"À deriva: previsão venceu há {atraso} dias"
 
 
-def _value_weight(percentile: float | None, valor: float | None) -> tuple[float, str | None]:
+#: abaixo disto, dizer "entre os 10% maiores" é ruído — com 2 orçamentos na
+#: empresa, um deles é sempre o topo, e a frase induz o gestor a erro.
+MIN_AMOSTRA_PERCENTIL = 10
+
+
+def _value_weight(
+    percentile: float | None,
+    valor: float | None,
+    amostra: int = 0,
+) -> tuple[float, str | None]:
     """Valor RELATIVO à própria empresa.
 
     Percentil em vez de faixa fixa em reais de propósito: R$ 50 mil é um negócio
@@ -129,10 +138,15 @@ def _value_weight(percentile: float | None, valor: float | None) -> tuple[float,
         # não por mérito — um viés silencioso contra orçamentos mal ligados.
         # Trata como mediano e marca a lacuna nas features, que ficam auditáveis.
         return W_VALUE * 0.35, None
+    reais = f"R$ {valor:,.0f}".replace(",", ".") if valor is not None else "valor não ligado"
+    confiavel = amostra >= MIN_AMOSTRA_PERCENTIL
+
     if percentile >= 0.90:
-        return W_VALUE, f"Entre os 10% maiores da empresa (R$ {valor:,.0f})".replace(",", ".")
+        return W_VALUE, (f"Entre os 10% maiores da empresa ({reais})" if confiavel
+                         else f"Maior valor em aberto da empresa ({reais})")
     if percentile >= 0.75:
-        return W_VALUE * 0.75, f"Entre os 25% maiores da empresa (R$ {valor:,.0f})".replace(",", ".")
+        return W_VALUE * 0.75, (f"Entre os 25% maiores da empresa ({reais})" if confiavel
+                                else None)
     if percentile >= 0.50:
         return W_VALUE * 0.50, None
     if percentile >= 0.25:
@@ -174,7 +188,12 @@ def band_for(score: float) -> str:
     return "baixa"
 
 
-def score_quote(row: dict[str, Any], as_of: date, value_percentile: float | None) -> QuoteScore:
+def score_quote(
+    row: dict[str, Any],
+    as_of: date,
+    value_percentile: float | None,
+    amostra_empresa: int = 0,
+) -> QuoteScore:
     """Pontua UM orçamento. Função pura: sem I/O, testável isoladamente."""
     created = _as_date(row.get("quote_created_at"))
     forecast = _as_date(row.get("quote_forecast_on"))
@@ -190,7 +209,7 @@ def score_quote(row: dict[str, Any], as_of: date, value_percentile: float | None
     parts = [
         ("followup_overdue", *_followup_overdue(days_late)),
         ("forecast_pressure", *_forecast_pressure(days_to_forecast)),
-        ("value_weight", *_value_weight(value_percentile, valor)),
+        ("value_weight", *_value_weight(value_percentile, valor, amostra_empresa)),
         ("silence", *_silence(days_open, etapa)),
         ("charge_fatigue", *_charge_fatigue(charge_count)),
     ]

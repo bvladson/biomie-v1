@@ -55,7 +55,10 @@ def score_company(
     """
     values = [float(r["valor_total"]) if r.get("valor_total") is not None else None for r in rows]
     ranks = percentile_ranks(values)
-    return [score_quote(row, as_of, rank) for row, rank in zip(rows, ranks)]
+    # Quantos orçamentos DE FATO têm valor: é essa a amostra que dá (ou não)
+    # direito de afirmar "entre os 10% maiores".
+    amostra = sum(1 for v in values if v is not None)
+    return [score_quote(row, as_of, rank, amostra) for row, rank in zip(rows, ranks)]
 
 
 def persist_scores(
