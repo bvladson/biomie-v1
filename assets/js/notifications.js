@@ -163,18 +163,69 @@
       .catch(function () {});
   }
 
+  /**
+   * Marca todas como lidas.
+   *
+   * O que estava errado antes: em caso de falha (CSRF expirado, 403, rede) o
+   * `.catch` vazio engolia tudo e a tela não dizia nada. Como a API também
+   * devolvia `unread: 0` fixo, o sininho zerava e voltava a 99+ no polling
+   * seguinte — "cliquei e não conclui", sem pista alguma do motivo.
+   *
+   * Agora: o badge recebe a contagem REAL que o servidor recontou, a lista é
+   * relida do servidor (em vez de editar o DOM no otimismo), e falha vira aviso
+   * visível.
+   */
   function doMarkAll() {
+    if (markAll) markAll.disabled = true;
+
     fetch(API, {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'read_all', csrf_token: csrf() })
-    }).then(function (r) { return r.json(); })
+    }).then(function (r) {
+      // 403 costuma ser token expirado depois de horas com a aba aberta —
+      // recarregar resolve, e o usuário precisa saber disso.
+      if (r.status === 403) throw new Error('Sessão expirada. Recarregue a página.');
+      if (!r.ok) throw new Error('Falha ao marcar as notificações.');
+      return r.json();
+    })
       .then(function (d) {
-        if (d && d.ok) {
-          setBadge(0);
-          listEl.querySelectorAll('.biomie-notif__item.is-unread').forEach(function (el) { el.classList.remove('is-unread'); });
+        if (!d || !d.ok) throw new Error((d && d.message) || 'Falha ao marcar as notificações.');
+
+        setBadge(d.unread || 0);
+        // Relê do servidor: o estado da tela passa a ser o do banco, não uma
+        // suposição do cliente.
+        fetchList();
+
+        // Sobrou não-lida: a marcação só alcança o contexto ativo. Dizer isso é
+        // melhor que deixar o usuário clicando de novo sem entender.
+        if (d.partial) {
+          avisar('Marcadas as desta empresa. Troque de empresa para as demais.');
         }
-      }).catch(function () {});
+      })
+      .catch(function (err) {
+        avisar(err && err.message ? err.message : 'Não foi possível marcar todas.');
+      })
+      .finally(function () {
+        if (markAll) markAll.disabled = false;
+      });
+  }
+
+  /** Aviso curto dentro do próprio painel — não usa alert(), que bloqueia. */
+  function avisar(texto) {
+    var el = root.querySelector('[data-notif-toast]');
+    if (!el) {
+      el = document.createElement('div');
+      el.setAttribute('data-notif-toast', '');
+      el.className = 'biomie-notif__toast';
+      var head = panel.querySelector('.biomie-notif__head');
+      if (head && head.parentNode) head.parentNode.insertBefore(el, head.nextSibling);
+      else panel.appendChild(el);
+    }
+    el.textContent = texto;
+    el.hidden = false;
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.hidden = true; }, 6000);
   }
 
   // Portal: o painel usa position:fixed, mas dentro do .topbar o backdrop-filter

@@ -126,10 +126,21 @@ try {
 
     if ($action === 'read_all') {
         $marked = $service->markAllRead($userId, $allowed);
+        // RECONTA de verdade em vez de devolver 0 fixo.
+        //
+        // Com 0 fixo, uma marcação que falhou parcialmente (ou não marcou nada)
+        // devolvia "ok, zero não lidas": o sininho zerava e voltava a 99+ no
+        // polling seguinte. O usuário via "cliquei e não concluiu" sem nenhuma
+        // pista do motivo — e o log também não registrava nada.
+        $restantes = $service->unreadCountForUser($userId, $allowed);
         Http::json([
             'ok' => true,
             'marked' => $marked,
-            'unread' => 0,
+            'unread' => $restantes,
+            // Quando sobra não-lida depois de "marcar todas", quase sempre é
+            // ESCOPO: a marcação só alcança o contexto ativo. A tela precisa
+            // poder dizer isso em vez de fingir sucesso.
+            'partial' => $restantes > 0,
             'request_id' => RequestContext::id(),
         ]);
     }

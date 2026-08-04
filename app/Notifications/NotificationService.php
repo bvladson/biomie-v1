@@ -177,7 +177,12 @@ final class NotificationService
             );
             $stmt->execute([':uid' => $userId, ':uid2' => $userId]);
             return $stmt->rowCount();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            // Engolir o erro em silêncio era o que tornava esta falha
+            // indiagnosticável: o usuário via o sininho zerar e voltar, e não
+            // sobrava rastro em lugar nenhum. Continua devolvendo 0 (a API
+            // reconta e diz a verdade), mas agora deixa o motivo registrado.
+            error_log('NotificationService::markAllRead falhou: ' . $e->getMessage());
             return 0;
         }
     }
@@ -208,9 +213,16 @@ final class NotificationService
     private function companyScopeSql(array $allowedCompanyIds): string
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $allowedCompanyIds), static fn (int $i): bool => $i > 0)));
+
+        // company_id = 0 é "sem empresa" gravado por algum emissor que usou 0 em
+        // vez de NULL. Sem tratar aqui, a linha não é NULL nem está na lista
+        // permitida: fica invisível na contagem E fora do "marcar todas" em
+        // TODOS os contextos — uma notificação que ninguém consegue ler nunca.
+        $global = '(n.company_id IS NULL OR n.company_id = 0)';
+
         if ($ids === []) {
-            return 'n.company_id IS NULL';
+            return $global;
         }
-        return '(n.company_id IS NULL OR n.company_id IN (' . implode(',', $ids) . '))';
+        return '(' . $global . ' OR n.company_id IN (' . implode(',', $ids) . '))';
     }
 }
