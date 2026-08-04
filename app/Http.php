@@ -381,6 +381,9 @@ final class Http
         if ($token === null || $token === '') {
             $token = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : null;
         }
+        if ($token === null || $token === '') {
+            $token = self::csrfTokenFromJsonBody();
+        }
 
         if (!Auth::verifyCsrf($token)) {
             $logger?->warning('CSRF inválido', ['request_id' => RequestContext::id()]);
@@ -390,6 +393,43 @@ final class Http
                 'request_id' => RequestContext::id(),
             ], 419);
         }
+    }
+
+    /**
+     * Token CSRF vindo do corpo JSON da requisição.
+     *
+     * Um POST com `Content-Type: application/json` NÃO popula `$_POST` — o PHP
+     * só preenche esse array para form-urlencoded e multipart. Quem mandava o
+     * token apenas dentro do JSON (o padrão de vários fetch nossos) chegava
+     * aqui sem token nenhum e levava 419 no bootstrap, ANTES de o endpoint
+     * rodar uma linha. Era essa a causa de "marquei como lida e não apaga": a
+     * requisição morria na porta, e o log só dizia "CSRF inválido" — o que
+     * parecia token expirado, mas era token nunca lido.
+     *
+     * Não há afrouxamento de segurança: um POST cross-origin não consegue
+     * mandar `Content-Type: application/json` sem preflight, então este caminho
+     * é tão protegido quanto o do header.
+     *
+     * O gate por content-type é deliberado: em multipart o `php://input` NÃO é
+     * relegível, e ler aqui quebraria uploads. Em JSON é relegível (PHP >= 5.6),
+     * então os endpoints seguem lendo o corpo normalmente depois.
+     */
+    private static function csrfTokenFromJsonBody(): ?string
+    {
+        $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? self::headerValue('Content-Type', '') ?? ''));
+        if (!str_contains($contentType, 'json')) {
+            return null;
+        }
+
+        $raw = file_get_contents('php://input');
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+        $token = is_array($decoded) ? ($decoded['csrf_token'] ?? null) : null;
+
+        return is_string($token) && $token !== '' ? $token : null;
     }
 
     /**

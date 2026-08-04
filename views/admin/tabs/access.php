@@ -287,8 +287,11 @@
                 : { action: 'revoke', user_id: u, company_id: st.cid, csrf_token: csrf() };
 
               saveMsg.textContent = 'Salvando ' + (i + 1) + ' de ' + pending.length + '…';
+              // Token TAMBÉM no header: corpo JSON não popula $_POST no PHP, e o
+              // guard de CSRF do bootstrap lê header ou $_POST. Só no corpo, o
+              // salvamento morria com 419 antes de chegar ao endpoint.
               fetch('api/company_access.php', { method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() }, body: JSON.stringify(payload) })
                 .then(function (r) { return r.json(); })
                 .then(function (d) { (d && d.ok) ? done++ : failed++; step(i + 1); })
                 .catch(function () { failed++; step(i + 1); });
@@ -508,8 +511,9 @@
               var payload = { action: 'save', user_id: u, company_id: st.cid, mode: st.mode,
                 seller_ids: st.mode === 'selected' ? st.picks : [], csrf_token: csrf() };
               saveMsg.textContent = 'Salvando ' + (i + 1) + ' de ' + pending.length + '…';
+              // Token também no header — ver comentário em salvarAcessos().
               fetch('api/seller_visibility.php', { method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() }, body: JSON.stringify(payload) })
                 .then(function (r) { return r.json(); })
                 .then(function (d) { if (d && d.ok) { done++; } else { failed++; lastErr = (d && d.message) || ''; } step(i + 1); })
                 .catch(function () { failed++; step(i + 1); });

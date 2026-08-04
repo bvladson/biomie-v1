@@ -76,7 +76,10 @@
       credentials: 'same-origin',
       keepalive: true,
       cache: 'no-store',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      // Token também no header: o guard de CSRF do bootstrap lê header ou
+      // $_POST, e um corpo JSON não popula $_POST. Só no corpo, o beacon levava
+      // 419 e a coleta de latência do browser nunca chegava ao disco.
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken() },
       body: JSON.stringify({
         csrf_token: csrfToken(),
         records: pending.map((record) => ({

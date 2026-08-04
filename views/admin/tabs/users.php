@@ -524,9 +524,12 @@
             nextBtn.setAttribute('aria-busy', 'true');
             clearError();
 
+            // Token também no header: corpo JSON não popula $_POST no PHP, e o
+            // guard de CSRF do bootstrap lê header ou $_POST. Só no corpo, o
+            // provisionamento morria com 419 antes de chegar ao endpoint.
             fetch('api/admin_provision_user.php', {
               method: 'POST', credentials: 'same-origin',
-              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrf() },
               body: JSON.stringify(payload)
             })
               .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })

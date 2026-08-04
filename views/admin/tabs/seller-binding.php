@@ -109,8 +109,12 @@
               var uid = Number(userSel.value || 0), cid = Number(compSel.value || 0);
               if (!uid || !cid || !sellerId) return;
               setStatus('Salvando…');
+              // Token também no header: corpo JSON não popula $_POST no PHP, e o
+              // guard de CSRF do bootstrap lê header ou $_POST. Só no corpo, o
+              // vínculo morria com 419 antes de chegar ao endpoint.
               fetch('api/quote_seller_binding.php', {
-                method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
                 body: JSON.stringify({ action: action, user_id: uid, company_id: cid, seller_id: sellerId, csrf_token: csrf() })
               }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
                 .then(function (res) {

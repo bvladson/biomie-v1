@@ -253,7 +253,11 @@
         var csrf = meta ? meta.getAttribute('content') : '';
         fetch('api/quote_agenda_refresh_request.php', {
             method: 'POST', credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
+            // Token no header além do corpo: um corpo JSON não popula $_POST, e
+            // o guard de CSRF do bootstrap recusava o pedido com 419 antes de o
+            // endpoint rodar. O `.catch` vazio abaixo escondia isso — o botão
+            // "Atualizar" só recarregava o local e nunca pedia a sincronização.
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': csrf },
             body: JSON.stringify({ csrf_token: csrf })
         })
             .then(function (r) { return r.ok ? r.json() : null; })

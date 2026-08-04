@@ -190,12 +190,17 @@ $catLabels = [
     if (btn) { btn.disabled = true; }
 
     Promise.all(ids.map(function (id) {
+      var token = csrf();
+      // O token vai no HEADER, não só no corpo. `Content-Type: application/json`
+      // não popula `$_POST` no PHP, então o guard de CSRF do bootstrap recusava
+      // a requisição com 419 antes de o endpoint rodar — e o 419 nem era tratado
+      // aqui, virando a mensagem genérica. Era esse o "visto que não apaga".
       return fetch('api/notifications.php', {
         method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'read', id: id, csrf_token: csrf() })
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': token },
+        body: JSON.stringify({ action: 'read', id: id, csrf_token: token })
       }).then(function (r) {
-        if (r.status === 403) throw new Error('Sessão expirada. Recarregue a página.');
+        if (r.status === 419 || r.status === 403) throw new Error('Sessão expirada. Recarregue a página.');
         if (!r.ok) throw new Error('Falha ao marcar como lida.');
         return r.json();
       }).then(function (d) {

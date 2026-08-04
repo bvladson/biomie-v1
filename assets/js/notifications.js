@@ -25,6 +25,40 @@
     return m ? (m.getAttribute('content') || '') : '';
   }
 
+  /**
+   * POST autenticado para a API de notificações.
+   *
+   * O token vai no HEADER, não só no corpo. Mandar apenas no JSON era o bug:
+   * `Content-Type: application/json` não popula `$_POST` no PHP, então o guard
+   * de CSRF do bootstrap não via token algum e devolvia 419 antes de o endpoint
+   * rodar. Nada nunca era marcado, e o log só dizia "CSRF inválido".
+   *
+   * Rejeita com mensagem legível: 419/403 é sessão, o resto é falha genérica.
+   */
+  function postJson(payload) {
+    var token = csrf();
+    payload = Object.assign({}, payload, { csrf_token: token });
+
+    return fetch(API, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': token },
+      body: JSON.stringify(payload),
+      // O item costuma ser um link: sem keepalive, a navegação cancela a
+      // marcação em voo e a notificação volta não-lida no destino.
+      keepalive: true
+    }).then(function (r) {
+      if (r.status === 419 || r.status === 403) {
+        throw new Error('Sessão expirada. Recarregue a página.');
+      }
+      if (!r.ok) throw new Error('Falha ao marcar as notificações.');
+      return r.json();
+    }).then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.message) || 'Falha ao marcar as notificações.');
+      return d;
+    });
+  }
+
   var CAT_ICON = {
     sync: 'sync', webhook: 'cloud_sync', business: 'trending_up',
     security: 'shield', system: 'settings'
@@ -120,7 +154,7 @@
         '</span>';
 
       a.addEventListener('click', function (ev) {
-        if (!it.is_read) { markRead(it.id); a.classList.remove('is-unread'); it.is_read = true; }
+        if (!it.is_read) { a.classList.remove('is-unread'); it.is_read = true; markRead(it.id, a, it); }
         if (!it.link) { ev.preventDefault(); }
       });
       frag.appendChild(a);
@@ -153,14 +187,22 @@
       .catch(function () {});
   }
 
-  function markRead(id) {
-    fetch(API, {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'read', id: id, csrf_token: csrf() })
-    }).then(function (r) { return r.json(); })
-      .then(function (d) { if (d && d.ok) setBadge(d.unread || 0); })
-      .catch(function () {});
+  /**
+   * Marca UMA notificação como lida.
+   *
+   * O item costuma ser um link, então não dá para segurar o destaque até a
+   * confirmação: o clique já está navegando. A marcação é otimista, mas é
+   * DESFEITA se o servidor recusar — antes o `.catch` vazio engolia a falha e o
+   * item simplesmente reaparecia não-lido no reload, sem explicação.
+   */
+  function markRead(id, itemEl, item) {
+    postJson({ action: 'read', id: id })
+      .then(function (d) { setBadge(d.unread || 0); })
+      .catch(function (err) {
+        if (itemEl) itemEl.classList.add('is-unread');
+        if (item) item.is_read = false;
+        avisar(err && err.message ? err.message : 'Não foi possível marcar como lida.');
+      });
   }
 
   /**
@@ -173,25 +215,14 @@
    *
    * Agora: o badge recebe a contagem REAL que o servidor recontou, a lista é
    * relida do servidor (em vez de editar o DOM no otimismo), e falha vira aviso
-   * visível.
+   * visível. O token vai no header via postJson — mandá-lo só no corpo JSON era
+   * o motivo de a chamada nunca chegar ao endpoint.
    */
   function doMarkAll() {
     if (markAll) markAll.disabled = true;
 
-    fetch(API, {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'read_all', csrf_token: csrf() })
-    }).then(function (r) {
-      // 403 costuma ser token expirado depois de horas com a aba aberta —
-      // recarregar resolve, e o usuário precisa saber disso.
-      if (r.status === 403) throw new Error('Sessão expirada. Recarregue a página.');
-      if (!r.ok) throw new Error('Falha ao marcar as notificações.');
-      return r.json();
-    })
+    postJson({ action: 'read_all' })
       .then(function (d) {
-        if (!d || !d.ok) throw new Error((d && d.message) || 'Falha ao marcar as notificações.');
-
         setBadge(d.unread || 0);
         // Relê do servidor: o estado da tela passa a ser o do banco, não uma
         // suposição do cliente.
