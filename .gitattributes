@@ -1,3 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 *.sh text eol=lf
+
+# Arquivos de crontab DEVEM ser LF: o cron trata uma linha em branco com CRLF
+# como "" e responde "bad minute", IGNORANDO O ARQUIVO INTEIRO -- calado.
+# Foi assim que os 14 jobs da VPS ficaram 14h parados em 2026-08-04.
+*.cron text eol=lf

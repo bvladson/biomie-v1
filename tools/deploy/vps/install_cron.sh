@@ -15,6 +15,18 @@ SSH="ssh -o BatchMode=yes -o ConnectTimeout=15 -i $KEY ${SSH_USER}@${HOST}"
 cd "$(git rev-parse --show-toplevel)"
 MODE="${1:-install}"
 
+# O crontab TEM de chegar na VPS com LF.
+#
+# Com CRLF, uma linha em branco vira "\r" — que o cron tenta ler como campo de
+# minuto, responde `Error: bad minute` e IGNORA O ARQUIVO INTEIRO. Sem MAILTO,
+# em silêncio: nenhum job roda e nada avisa. Foi assim que os 15 jobs da VPS
+# passaram 14h parados em 2026-08-04 (sync, materialize, ops_sentinel, tudo).
+#
+# `.gitattributes` já fixa `*.cron eol=lf`, mas isso protege só o checkout. Esta
+# normalização protege o INSTALADOR: um arquivo editado no Bloco de Notas, vindo
+# de outro clone ou de um zip não pode derrubar a produção de novo.
+cron_source() { tr -d '\r' < tools/deploy/vps/biomie.cron; }
+
 case "$MODE" in
   --status)
     $SSH 'bash -s' <<'REMOTE'
@@ -35,7 +47,7 @@ REMOTE
 
   --enable)
     # cron ignora arquivos em /etc/cron.d com ponto no nome — por isso o .disabled funciona como chave.
-    $SSH "cat > /etc/cron.d/biomie.disabled" < tools/deploy/vps/biomie.cron
+    cron_source | $SSH "cat > /etc/cron.d/biomie.disabled"
     $SSH 'set -e
         chown root:root /etc/cron.d/biomie.disabled
         chmod 644 /etc/cron.d/biomie.disabled
@@ -45,7 +57,7 @@ REMOTE
     ;;
 
   install)
-    $SSH "cat > /etc/cron.d/biomie.disabled" < tools/deploy/vps/biomie.cron
+    cron_source | $SSH "cat > /etc/cron.d/biomie.disabled"
     $SSH 'set -e
         chown root:root /etc/cron.d/biomie.disabled
         chmod 644 /etc/cron.d/biomie.disabled
