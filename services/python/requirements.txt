@@ -1,0 +1,5 @@
+# Dependências do serviço de inteligência.
+# Versões fixadas: um deploy que resolve versão sozinho não é reproduzível.
+PyMySQL==1.2.0
+numpy==2.5.1
+scikit-learn==1.7.2

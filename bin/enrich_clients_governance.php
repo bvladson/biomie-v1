@@ -28,6 +28,7 @@ use BIomie\Config;
 use BIomie\Database;
 use BIomie\DataGovernance\ClientGovernanceService;
 use BIomie\Logger;
+use BIomie\PipelineStatusRepository;
 
 require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
 \BIomie\Support\CliGuard::requireCli();
@@ -89,13 +90,24 @@ if (!Database::isConfigured($config, $connection)) {
     exit(1);
 }
 
+$pipeline = null;
+$jobId    = 0;
+
 try {
     $pdo     = Database::connect($config, $connection);
     $service = new ClientGovernanceService($pdo, $logger);
 
+    // Registra a execução em biomie_pipeline_jobs. Sem isto o AlertEngine
+    // acusa "job nunca executou" para sempre, mesmo com o cron rodando todo dia.
+    // Este job não é por competência: usa o dia corrente como período.
+    $pipeline = new PipelineStatusRepository($pdo, $logger);
+    $jobId    = $pipeline->startJob('enrich_clients_governance', date('Y-m-d'), date('Y-m-d'));
+
     $t0    = microtime(true);
     $total = $service->enrichAll($batchSize);
     $secs  = round(microtime(true) - $t0, 2);
+
+    $pipeline->completeJob($jobId, ['clients_enriched' => $total], $secs);
 
     $result = [
         'ok'               => true,
@@ -108,6 +120,7 @@ try {
     exit(0);
 } catch (\Throwable $e) {
     $msg = $e->getMessage();
+    $pipeline?->failJob($jobId, $msg);
     echo "[ERRO] {$msg}\n";
     $logger->error('enrich_clients_governance: falha fatal.', [
         'message' => $msg,

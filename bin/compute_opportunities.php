@@ -28,6 +28,7 @@ use BIomie\Config;
 use BIomie\Database;
 use BIomie\Intelligence\OpportunityDetector;
 use BIomie\Logger;
+use BIomie\PipelineStatusRepository;
 use BIomie\Support\TenantCliContext;
 
 require_once dirname(__DIR__) . '/app/Support/CliGuard.php';
@@ -84,14 +85,28 @@ if (!Database::isConfigured($config, $connection)) {
     exit(1);
 }
 
+$pipeline = null;
+$jobId    = 0;
+
 try {
     $pdo      = Database::connect($config, $connection);
     $tenant   = TenantCliContext::boot($pdo, $argv ?? []);
     $detector = new OpportunityDetector($pdo, $logger);
 
+    // Registra a execução em biomie_pipeline_jobs. Sem isto o AlertEngine
+    // acusa "job nunca executou" para sempre, mesmo com o cron rodando todo dia.
+    $pipeline = new PipelineStatusRepository($pdo, $logger);
+    $jobId    = $pipeline->startJob(
+        'compute_opportunities',
+        $competencia . '-01',
+        date('Y-m-t', (int) strtotime($competencia . '-01'))
+    );
+
     $t0     = microtime(true);
     $counts = $detector->refreshForCompetencia($competencia);
     $secs   = round(microtime(true) - $t0, 2);
+
+    $pipeline->completeJob($jobId, $counts, $secs);
 
     $totalOportunidades = array_sum($counts);
 
@@ -109,6 +124,7 @@ try {
     exit(0);
 } catch (\Throwable $e) {
     $msg = $e->getMessage();
+    $pipeline?->failJob($jobId, $msg);
     echo "[ERRO] {$msg}\n";
     $logger->error('compute_opportunities: falha fatal.', [
         'message' => $msg,

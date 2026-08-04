@@ -31,6 +31,7 @@ declare(strict_types=1);
 use BIomie\Config;
 use BIomie\Database;
 use BIomie\Logger;
+use BIomie\PipelineStatusRepository;
 use BIomie\Predictive\ForecastEngine;
 use BIomie\Support\TenantCliContext;
 
@@ -92,14 +93,28 @@ if (!Database::isConfigured($config, $connection)) {
     exit(1);
 }
 
+$pipeline = null;
+$jobId    = 0;
+
 try {
     $pdo    = Database::connect($config, $connection);
     $tenant = TenantCliContext::boot($pdo, $argv ?? []);
     $engine = new ForecastEngine($pdo, $logger);
 
+    // Registra a execução em biomie_pipeline_jobs. Sem isto o AlertEngine
+    // acusa "job nunca executou" para sempre, mesmo com o cron rodando todo dia.
+    $pipeline = new PipelineStatusRepository($pdo, $logger);
+    $jobId    = $pipeline->startJob(
+        'compute_forecasts',
+        $competencia . '-01',
+        date('Y-m-t', (int) strtotime($competencia . '-01'))
+    );
+
     $t0     = microtime(true);
     $counts = $engine->refreshForCompetencia($competencia);
     $secs   = round(microtime(true) - $t0, 2);
+
+    $pipeline->completeJob($jobId, $counts, $secs);
 
     $totalForecasts = array_sum($counts);
 
@@ -120,6 +135,7 @@ try {
     exit(0);
 } catch (\Throwable $e) {
     $msg = $e->getMessage();
+    $pipeline?->failJob($jobId, $msg);
     echo "[ERRO] {$msg}\n";
     $logger->error('compute_forecasts: falha fatal.', [
         'message' => $msg,

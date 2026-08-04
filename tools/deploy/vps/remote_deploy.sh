@@ -91,6 +91,39 @@ sudo -u www-data php -r "
   echo \"bootstrap+banco OK\n\";
 " || fail "a release não sobe com a config real — symlink NÃO foi trocado"
 
+# ------------------------------------- 6b. serviço Python (services/python)
+# O venv fica em shared/ e NÃO dentro da release: recriar 200 MB de pacotes a
+# cada deploy seria lento e deixaria o rollback sem venv. As dependências só são
+# reinstaladas quando o requirements.txt muda — o hash é a chave.
+if [ -d "$REL/services/python" ]; then
+    VENV="$SHARED/python-venv"
+    REQ="$REL/services/python/requirements.txt"
+    REQ_HASH="$(md5sum "$REQ" | cut -d' ' -f1)"
+    STAMP_FILE="$VENV/.requirements-hash"
+
+    if [ ! -d "$VENV" ]; then
+        log "criando venv do serviço Python"
+        python3 -m venv "$VENV"
+    fi
+    if [ ! -f "$STAMP_FILE" ] || [ "$(cat "$STAMP_FILE")" != "$REQ_HASH" ]; then
+        log "instalando dependências Python (requirements mudou)"
+        "$VENV/bin/pip" install --quiet --upgrade pip
+        "$VENV/bin/pip" install --quiet -r "$REQ"
+        echo "$REQ_HASH" > "$STAMP_FILE"
+    else
+        log "dependências Python já em dia"
+    fi
+    chown -R biomie:www-data "$VENV"
+
+    # Importa o pacote da release nova ANTES da troca — um erro de sintaxe em
+    # Python não pode derrubar o deploy do PHP depois do symlink trocado.
+    if ! (cd "$REL/services/python" && "$VENV/bin/python" -c "import biomie_intel, biomie_intel.cli" 2>/tmp/pyimport.err); then
+        head -5 /tmp/pyimport.err
+        fail "o pacote biomie_intel não importa — symlink NÃO foi trocado"
+    fi
+    log "serviço Python valida (import ok)"
+fi
+
 # ------------------------------------------------------- 7. troca atômica
 log "trocando symlink live -> $STAMP"
 ln -sfn "$REL" "$BASE/live.new"
