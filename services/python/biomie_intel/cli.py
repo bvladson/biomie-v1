@@ -21,6 +21,7 @@ from typing import Any
 
 from . import dataset as dataset_mod
 from . import health as health_mod
+from . import forecast as forecast_mod
 from . import insights as insights_mod
 from . import model as model_mod
 from . import quotes as quotes_mod
@@ -237,6 +238,27 @@ def cmd_insights(args, settings, logger) -> int:
     return _saida({"ok": True, "comando": "insights", "empresas": saidas})
 
 
+def cmd_forecast(args, settings, logger) -> int:
+    """Previsao vs realizado. Saida pronta para o grafico consumir."""
+    from dataclasses import asdict
+    saidas = []
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            f = forecast_mod.build(conn, empresa.id, horizonte=args.horizonte)
+            saidas.append({
+                "empresa": empresa.slug,
+                "ok": f.ok,
+                "motivo": f.motivo,
+                "tendencia_pct_semana": f.tendencia_pct_semana,
+                "erro_medio_pct": f.erro_medio_pct,
+                "total_previsto_horizonte": f.total_previsto_horizonte,
+                "metrics": f.metrics,
+                "eventos": f.eventos,
+                "serie": [asdict(d) for d in f.serie] if args.completo else len(f.serie),
+            })
+    return _saida({"ok": True, "comando": "forecast", "empresas": saidas})
+
+
 def cmd_compare(args, settings, logger) -> int:
     """Compara baseline e shadow lado a lado — a evidência para decidir ativar."""
     with connect(settings) as conn:
@@ -281,6 +303,11 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--company", default="all")
     i.add_argument("--dry-run", action="store_true")
 
+    fc = sub.add_parser("forecast", help="previsao vs realizado com banda e anomalias")
+    fc.add_argument("--company", default="all")
+    fc.add_argument("--horizonte", type=int, default=14)
+    fc.add_argument("--completo", action="store_true", help="devolve a serie inteira")
+
     sub.add_parser("compare", help="baseline vs shadow lado a lado")
     return p
 
@@ -302,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
         "dataset": cmd_dataset,
         "train": cmd_train,
         "insights": cmd_insights,
+        "forecast": cmd_forecast,
         "compare": cmd_compare,
     }
     try:
