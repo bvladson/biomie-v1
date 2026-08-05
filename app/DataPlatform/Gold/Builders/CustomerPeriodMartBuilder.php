@@ -70,7 +70,19 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
                 p.codigo_cliente_omie,
                 MAX(p.nome_cliente),
                 MAX(p.documento_cliente),
-                COALESCE(MAX(d.tipo_pessoa), 'desconhecido'),
+                -- NULLIF antes do COALESCE: a dimensao tem 118 grupos com
+                -- tipo_pessoa = '' — o sentinela de ENUM INVALIDO do MySQL
+                -- (indice 0), gravado quando algum dia entrou valor fora da
+                -- enumeracao. '' NAO e NULL, entao o COALESCE sozinho deixava
+                -- passar; o destino recusa sob STRICT_TRANS_TABLES e derruba a
+                -- transacao inteira do mart com "1265 Data truncated for column
+                -- 'tipo_pessoa'". Aconteceu 40 vezes em 2026-08-04.
+                --
+                -- Mapear para 'desconhecido' e NORMALIZACAO, nao mascaramento:
+                -- 'desconhecido' e membro legitimo da enumeracao e significa
+                -- exatamente isto. Truncar com SUBSTRING esconderia a
+                -- classificacao errada. Guard: tests/run_enum_sentinel_guard.php
+                COALESCE(NULLIF(MAX(d.tipo_pessoa), ''), 'desconhecido'),
                 COALESCE(MAX(d.segmento_macro), 'Não classificado'),
                 SUM(p.status_comercial = 'faturado'),
                 SUM(IF(p.status_comercial = 'faturado', p.valor_total, 0)),
@@ -126,7 +138,19 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
                 n.codigo_cliente_omie,
                 MAX(n.nome_cliente),
                 MAX(n.documento_cliente),
-                COALESCE(MAX(d.tipo_pessoa), 'desconhecido'),
+                -- NULLIF antes do COALESCE: a dimensao tem 118 grupos com
+                -- tipo_pessoa = '' — o sentinela de ENUM INVALIDO do MySQL
+                -- (indice 0), gravado quando algum dia entrou valor fora da
+                -- enumeracao. '' NAO e NULL, entao o COALESCE sozinho deixava
+                -- passar; o destino recusa sob STRICT_TRANS_TABLES e derruba a
+                -- transacao inteira do mart com "1265 Data truncated for column
+                -- 'tipo_pessoa'". Aconteceu 40 vezes em 2026-08-04.
+                --
+                -- Mapear para 'desconhecido' e NORMALIZACAO, nao mascaramento:
+                -- 'desconhecido' e membro legitimo da enumeracao e significa
+                -- exatamente isto. Truncar com SUBSTRING esconderia a
+                -- classificacao errada. Guard: tests/run_enum_sentinel_guard.php
+                COALESCE(NULLIF(MAX(d.tipo_pessoa), ''), 'desconhecido'),
                 COALESCE(MAX(d.segmento_macro), 'Não classificado'),
                 0, 0, 0,
                 SUM(n.status_fiscal = 'autorizada'),
@@ -170,7 +194,19 @@ final class CustomerPeriodMartBuilder extends AbstractMartBuilder
                 t.codigo_cliente_omie,
                 MAX(t.nome_cliente),
                 MAX(t.documento_cliente),
-                COALESCE(MAX(d.tipo_pessoa), 'desconhecido'),
+                -- NULLIF antes do COALESCE: a dimensao tem 118 grupos com
+                -- tipo_pessoa = '' — o sentinela de ENUM INVALIDO do MySQL
+                -- (indice 0), gravado quando algum dia entrou valor fora da
+                -- enumeracao. '' NAO e NULL, entao o COALESCE sozinho deixava
+                -- passar; o destino recusa sob STRICT_TRANS_TABLES e derruba a
+                -- transacao inteira do mart com "1265 Data truncated for column
+                -- 'tipo_pessoa'". Aconteceu 40 vezes em 2026-08-04.
+                --
+                -- Mapear para 'desconhecido' e NORMALIZACAO, nao mascaramento:
+                -- 'desconhecido' e membro legitimo da enumeracao e significa
+                -- exatamente isto. Truncar com SUBSTRING esconderia a
+                -- classificacao errada. Guard: tests/run_enum_sentinel_guard.php
+                COALESCE(NULLIF(MAX(d.tipo_pessoa), ''), 'desconhecido'),
                 COALESCE(MAX(d.segmento_macro), 'Não classificado'),
                 0, 0, 0,
                 0, 0,
