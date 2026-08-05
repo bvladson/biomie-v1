@@ -67,6 +67,37 @@ class TestPermissaoNaoViraAusenciaDeDado(unittest.TestCase):
             insights._metas(conn, 1, "2026-08")
 
 
+class TestPalavrasReservadasNoSQL(unittest.TestCase):
+    """Identificador que colide com palavra reservada precisa de crase.
+
+    `year_month` é unidade de intervalo no MariaDB (YEAR_MONTH). A query de
+    metas por vendedor ficou meses devolvendo 1064 sem que ninguém notasse,
+    porque o `except Exception` de `_metas` transformava o erro de sintaxe em
+    "esta empresa não tem meta cadastrada". Havia 4 metas de agosto somando
+    R$ 160 mil sendo descartadas em silêncio.
+
+    Este teste é estático porque o duplo de conexão não valida SQL — só um
+    MariaDB de verdade recusaria, e é justamente o que não roda no laptop.
+    """
+
+    #: Palavras reservadas que já apareceram como nome de coluna neste schema.
+    RESERVADAS = ("year_month", "rank", "system", "groups", "lead", "rows")
+
+    def test_toda_coluna_reservada_aparece_entre_crases(self) -> None:
+        fonte = Path(insights.__file__).read_text(encoding="utf-8")
+        # Remove as ocorrências corretas para sobrar só as nuas.
+        nuas = []
+        for palavra in self.RESERVADAS:
+            for trecho in re.finditer(rf"(?<![`\w.]){re.escape(palavra)}(?![`\w])", fonte):
+                linha = fonte[: trecho.start()].count("\n") + 1
+                contexto = fonte.splitlines()[linha - 1].strip()
+                # Só interessa dentro de SQL; comentário e nome de variável não.
+                if contexto.startswith("#") or "%s" not in contexto and "SELECT" not in contexto.upper():
+                    continue
+                nuas.append(f"{palavra} @ linha {linha}: {contexto[:70]}")
+        self.assertEqual(nuas, [], f"palavra reservada sem crase em SQL: {nuas}")
+
+
 class TestProvaDeAcessoDoHealth(unittest.TestCase):
     """`SHOW GRANTS` diz o que foi concedido; só o SELECT diz o que funciona."""
 

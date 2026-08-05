@@ -363,9 +363,14 @@ def _metas(conn, company_id: int, competencia: str) -> tuple[float, dict[str, fl
             WHERE company_id = %s AND competencia = %s AND ativo = 1""",
         (company_id, competencia),
     )
+    # `year_month` PRECISA de crase: YEAR_MONTH é palavra reservada do MariaDB
+    # (unidade de intervalo). Sem as crases a query devolve 1064 e, enquanto o
+    # `except` daqui era genérico, isso virava "empresa sem meta de vendedor" —
+    # em silêncio, desde que o forecast por vendedor foi ao ar. Havia 4 metas de
+    # agosto somando R$ 160 mil sendo descartadas.
     vendedores = _tolerando_schema_antigo(
         """SELECT vendor_id, target_amount FROM biomie_sales_targets_monthly
-            WHERE company_id = %s AND year_month = %s""",
+            WHERE company_id = %s AND `year_month` = %s""",
         (company_id, competencia),
     )
     por_canal = {str(r["canal"]): float(r["meta_valor"] or 0) for r in canais}
