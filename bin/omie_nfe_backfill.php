@@ -28,7 +28,7 @@ use BIomie\OmieFiscalSyncService;
 use BIomie\OmieRepository;
 use BIomie\SharedDatabaseConnection;
 use BIomie\Support\CommercialProjectionInvalidator;
-use BIomie\Support\SecretMask;
+use BIomie\Support\DatabaseErrorEnvelope;
 use BIomie\Support\TenantCliContext;
 use BIomie\SyncPipelineRepository;
 
@@ -189,11 +189,20 @@ try {
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
         exit(0);
     } catch (Throwable $exception) {
-        $message = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
+        // P2/Etapa 1 — o backfill morria gravando "Erro de banco de dados";
+        // agora o SQLSTATE e o codigo do driver chegam ao registro do run.
+        $captured = DatabaseErrorEnvelope::capture($exception, [
+            'run_id' => $runId,
+            'mode' => 'backfill',
+            'domain' => 'fiscal',
+            'trigger_source' => 'cron-backfill',
+            'company_id' => $tenant['company_id'],
+        ]);
+        $message = $captured['summary'];
         try {
             $failurePdo = $sharedConnection->current();
             $pipeline = new SyncPipelineRepository($failurePdo, $logger, $tenant['company_id']);
-            $pipeline->finishRun($runId, 'failed_terminal', [], $message);
+            $pipeline->finishRun($runId, 'failed_terminal', ['error_detail' => $captured['detail']], $message);
         } catch (Throwable) {
         }
         throw $exception;
@@ -215,10 +224,12 @@ try {
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . PHP_EOL;
     exit(2);
 } catch (Throwable $exception) {
+    $captured = DatabaseErrorEnvelope::capture($exception, ['mode' => 'backfill']);
     echo json_encode([
         'ok' => false,
         'status' => 'error',
-        'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 500),
+        'message' => $captured['summary'],
+        'error_detail' => $captured['detail'],
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . PHP_EOL;
     exit(1);
 }

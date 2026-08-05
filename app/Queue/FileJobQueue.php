@@ -210,7 +210,10 @@ final class FileJobQueue implements JobQueueInterface
 
         $job['status'] = $status;
         $job['last_error'] = $message;
-        $job['error_summary'] = substr($message, 0, 255);
+        // mb_substr, não substr: um corte em byte no meio de um acento gera
+        // UTF-8 inválido e json_encode devolve false — o arquivo de estado do
+        // job não é gravado e a falha se perde inteira.
+        $job['error_summary'] = mb_substr($message, 0, 255);
         $job['updated_at'] = $now;
         $job['failed_at'] = $now;
         $job['locked_by'] = null;

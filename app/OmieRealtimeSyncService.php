@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie;
 
-use BIomie\Support\SecretMask;
+use BIomie\Support\DatabaseErrorEnvelope;
 use DateTimeImmutable;
 
 final class OmieRealtimeSyncService
@@ -75,31 +75,41 @@ final class OmieRealtimeSyncService
                 ];
             } catch (\Throwable $exception) {
                 $retryable = $this->isRetryable($exception);
-                $messageText = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
+                $captured = DatabaseErrorEnvelope::capture($exception, [
+                    'run_id' => $runId,
+                    'mode' => 'webhook_dispatch',
+                    'domain' => $domain,
+                    'endpoint_group' => $endpointGroup,
+                    'inbox_id' => (int) $message['id'],
+                ]);
+                $errorDetail = $captured['detail'];
+                $messageText = $captured['summary'];
                 if ($retryable) {
                     $retryableFailures++;
                     $this->pipeline->markWebhookTemporaryFailure(
                         (int) $message['id'],
                         $messageText,
                         300,
-                        ['exception' => $exception::class]
+                        ['exception' => $exception::class] + $errorDetail
                     );
                     $this->pipeline->finishRun($runId, 'failed_retryable', [
                         'items_discovered' => 1,
                         'items_processed' => 0,
                         'items_failed' => 1,
+                        'error_detail' => $errorDetail,
                     ], $messageText);
                 } else {
                     $terminalFailures++;
                     $this->pipeline->markWebhookPermanentFailure(
                         (int) $message['id'],
                         $messageText,
-                        ['exception' => $exception::class]
+                        ['exception' => $exception::class] + $errorDetail
                     );
                     $this->pipeline->finishRun($runId, 'failed_terminal', [
                         'items_discovered' => 1,
                         'items_processed' => 0,
                         'items_failed' => 1,
+                        'error_detail' => $errorDetail,
                     ], $messageText);
                 }
 
@@ -109,6 +119,7 @@ final class OmieRealtimeSyncService
                     'endpoint_group' => $endpointGroup,
                     'retryable' => $retryable,
                     'message' => $messageText,
+                    'error_detail' => $errorDetail,
                 ]);
             }
 
@@ -168,10 +179,17 @@ final class OmieRealtimeSyncService
                 );
             } catch (\Throwable $exception) {
                 $errors++;
+                $captured = DatabaseErrorEnvelope::capture($exception, [
+                    'run_id' => $runId,
+                    'mode' => 'delta',
+                    'domain' => (string) $group['domain'],
+                    'trigger_source' => 'cron-delta',
+                ]);
                 $results[] = [
                     'domain' => $group['domain'],
                     'status' => 'failed_terminal',
-                    'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 500),
+                    'message' => $captured['summary'],
+                    'error_detail' => $captured['detail'],
                 ];
             }
         }
@@ -396,10 +414,16 @@ final class OmieRealtimeSyncService
                 $results[] = $this->runDomainWindow($domain, $profile, [], $startAt, $endAt, $runType, $source);
             } catch (\Throwable $exception) {
                 $errors++;
+                $captured = DatabaseErrorEnvelope::capture($exception, [
+                    'mode' => $runType,
+                    'domain' => $domain,
+                    'trigger_source' => $source,
+                ]);
                 $results[] = [
                     'domain' => $domain,
                     'status' => 'failed_terminal',
-                    'message' => SecretMask::sanitizeErrorMessage($exception->getMessage(), 500),
+                    'message' => $captured['summary'],
+                    'error_detail' => $captured['detail'],
                 ];
             }
         }
@@ -521,7 +545,17 @@ final class OmieRealtimeSyncService
             $retryable = $this->isRetryable($exception);
             $failureStatus = $retryable ? 'failed_retryable' : 'failed_terminal';
             $finishedAt = new DateTimeImmutable('now');
-            $messageText = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
+            // P2/Etapa 1 — preserva SQLSTATE e código do driver. NÃO muda o
+            // que é retryable: $retryable acima segue sendo a política antiga.
+            $captured = DatabaseErrorEnvelope::capture($exception, [
+                'run_id' => $runId,
+                'mode' => $runType,
+                'domain' => $domain,
+                'endpoint_group' => $endpointGroup,
+                'trigger_source' => $source,
+            ]);
+            $errorDetail = $captured['detail'];
+            $messageText = $captured['summary'];
 
             foreach ($cursorTargets as $cursor) {
                 $values = [
@@ -544,12 +578,14 @@ final class OmieRealtimeSyncService
                 'items_discovered' => count($cursorTargets),
                 'items_processed' => 0,
                 'items_failed' => count($cursorTargets),
+                'error_detail' => $errorDetail,
             ], $messageText);
             $telemetry?->recordEvent('ERROR', 'sync.domain_window.error', 'Falha em janela de sync por dominio.', [
                 'domain' => $domain,
                 'run_type' => $runType,
                 'source' => $source,
                 'message' => $messageText,
+                'error_detail' => $errorDetail,
             ], 'sync', 'realtime_pipeline');
             $telemetry?->recordMetric('sync_run_duration_ms', $this->durationBetween($startedAt, $finishedAt), 'histogram', [
                 'domain' => $domain,

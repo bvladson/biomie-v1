@@ -168,7 +168,10 @@ final class DatabaseJobQueue implements JobQueueInterface
             'status' => $status,
             'terminal' => $canRetry ? 0 : 1,
             'last_error' => $message,
-            'error_summary' => substr($message, 0, 255),
+            // mb_substr, não substr: cortar em BYTE parte um caractere acentuado
+            // ao meio e o utf8mb4 recusa com SQLSTATE[HY000] 1366 "Incorrect
+            // string value" — falha ao gravar a falha. Mensagens são em PT-BR.
+            'error_summary' => mb_substr($message, 0, 255),
             'id' => (int) ($job['id'] ?? 0),
         ]);
         $this->logger?->error($canRetry ? 'job.failed_retryable' : 'job.failed_terminal', [

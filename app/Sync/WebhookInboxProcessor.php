@@ -9,6 +9,7 @@ use BIomie\FinanceAnalyticsService;
 use BIomie\Logger;
 use BIomie\RefreshQueue;
 use BIomie\SalesAnalyticsService;
+use BIomie\Support\DatabaseErrorEnvelope;
 use BIomie\SyncPipelineRepository;
 use BIomie\Telemetry;
 use DateTimeImmutable;
@@ -87,31 +88,44 @@ final class WebhookInboxProcessor
                 ];
             } catch (\Throwable $exception) {
                 $retryable = $this->isRetryable($exception);
+                // P2/Etapa 1 — SQLSTATE + código do driver preservados. A
+                // política de retry acima permanece exatamente a mesma.
+                $captured    = DatabaseErrorEnvelope::capture($exception, [
+                    'run_id'         => $runId,
+                    'mode'           => 'webhook_dispatch',
+                    'domain'         => $domain,
+                    'endpoint_group' => $endpointGroup,
+                    'inbox_id'       => (int) $message['id'],
+                ]);
+                $errorDetail = $captured['detail'];
+                $messageText = $captured['summary'];
                 if ($retryable) {
                     $retryableFailures++;
                     $this->pipeline->markWebhookTemporaryFailure(
                         (int) $message['id'],
-                        $exception->getMessage(),
+                        $messageText,
                         300,
-                        ['exception' => $exception::class]
+                        ['exception' => $exception::class] + $errorDetail
                     );
                     $this->pipeline->finishRun($runId, 'failed_retryable', [
                         'items_discovered' => 1,
                         'items_processed'  => 0,
                         'items_failed'     => 1,
-                    ], $exception->getMessage());
+                        'error_detail'     => $errorDetail,
+                    ], $messageText);
                 } else {
                     $terminalFailures++;
                     $this->pipeline->markWebhookPermanentFailure(
                         (int) $message['id'],
-                        $exception->getMessage(),
-                        ['exception' => $exception::class]
+                        $messageText,
+                        ['exception' => $exception::class] + $errorDetail
                     );
                     $this->pipeline->finishRun($runId, 'failed_terminal', [
                         'items_discovered' => 1,
                         'items_processed'  => 0,
                         'items_failed'     => 1,
-                    ], $exception->getMessage());
+                        'error_detail'     => $errorDetail,
+                    ], $messageText);
                 }
 
                 $this->logger->warning('Falha ao despachar webhook Omie.', [
@@ -119,7 +133,8 @@ final class WebhookInboxProcessor
                     'domain'         => $domain,
                     'endpoint_group' => $endpointGroup,
                     'retryable'      => $retryable,
-                    'message'        => $exception->getMessage(),
+                    'message'        => $messageText,
+                    'error_detail'   => $errorDetail,
                 ]);
             }
 

@@ -794,7 +794,11 @@ final class SyncPipelineRepository
         array $result,
     ): void {
         $this->ensureSchema();
-        $message = $message !== null ? SecretMask::sanitizeErrorMessage($message, 500) : null;
+        // `biomie_webhook_inbox.error_summary` é VARCHAR(255) e o banco roda com
+        // STRICT_TRANS_TABLES: 500 caracteres aqui viram SQLSTATE[22001] 1406
+        // "Data too long" DENTRO do tratador de falha — o erro original some e
+        // sobra um erro sobre gravar o erro. 250 + o sufixo "..." cabe.
+        $message = $message !== null ? SecretMask::sanitizeErrorMessage($message, 250) : null;
 
         $availableAt = $status === 'falhou_temporariamente'
             ? date('Y-m-d H:i:s', time() + max($delaySeconds, 60))

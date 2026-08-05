@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\Sync;
 
 use BIomie\SyncPipelineRepository;
+use BIomie\Support\DatabaseErrorEnvelope;
 use BIomie\Support\SecretMask;
 use Throwable;
 
@@ -56,24 +57,44 @@ final class SyncRunLogger
 
     /**
      * @param array<string,mixed> $result
+     * @param array<string,mixed> $context
      */
-    public function finishFailure(int $runId, Throwable|string $error, array $result = []): void
+    public function finishFailure(int $runId, Throwable|string $error, array $result = [], array $context = []): void
     {
-        $message = $error instanceof Throwable
-            ? SecretMask::sanitizeErrorMessage($error->getMessage())
-            : SecretMask::sanitizeErrorMessage($error);
+        [$message, $result] = $this->describe($error, $result, $runId, $context);
         $this->finish($runId, 'failed_retryable', $result, $message);
     }
 
     /**
      * @param array<string,mixed> $result
+     * @param array<string,mixed> $context
      */
-    public function finishTerminal(int $runId, Throwable|string $error, array $result = []): void
+    public function finishTerminal(int $runId, Throwable|string $error, array $result = [], array $context = []): void
     {
-        $message = $error instanceof Throwable
-            ? SecretMask::sanitizeErrorMessage($error->getMessage())
-            : SecretMask::sanitizeErrorMessage($error);
+        [$message, $result] = $this->describe($error, $result, $runId, $context);
         $this->finish($runId, 'failed_terminal', $result, $message);
+    }
+
+    /**
+     * P2/Etapa 1 — de uma exceção sai o resumo `[SQLSTATE/code] msg` e o
+     * detalhe estruturado em `result.error_detail`. Sem isso, deadlock,
+     * timeout de lock, conexão perdida e truncamento de coluna gravavam
+     * todos a mesma frase de seis palavras.
+     *
+     * @param array<string,mixed> $result
+     * @param array<string,mixed> $context
+     * @return array{0:string,1:array<string,mixed>}
+     */
+    private function describe(Throwable|string $error, array $result, int $runId, array $context): array
+    {
+        if (!$error instanceof Throwable) {
+            return [SecretMask::sanitizeErrorMessage($error), $result];
+        }
+
+        $captured = DatabaseErrorEnvelope::capture($error, ['run_id' => $runId] + $context);
+        $result['error_detail'] = $captured['detail'];
+
+        return [$captured['summary'], $result];
     }
 
     /**

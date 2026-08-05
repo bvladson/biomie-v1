@@ -84,9 +84,19 @@ final class SecretMask
 
     /**
      * Sanitiza uma mensagem de erro removendo segredos comuns.
+     *
+     * `$collapseDatabaseDetail` continua `true` por padrão: toda superfície
+     * HTTP/HTML segue trocando o trecho SQLSTATE por uma frase genérica.
+     * Passe `false` APENAS em log operacional (admin) — é o que permite ao
+     * {@see DatabaseErrorEnvelope} guardar SQLSTATE e código do driver em vez
+     * de "Erro de banco de dados" para deadlock, timeout, conexão e truncamento
+     * indistintamente.
      */
-    public static function sanitizeErrorMessage(string $message, int $maxLength = 500): string
-    {
+    public static function sanitizeErrorMessage(
+        string $message,
+        int $maxLength = 500,
+        bool $collapseDatabaseDetail = true,
+    ): string {
         // Remove possíveis credenciais inline
         $sanitized = preg_replace(
             '/(?:app_key|app_secret|password|token|secret)\s*[=:]\s*["\']?[^\s"\']+["\']?/i',
@@ -102,11 +112,13 @@ final class SecretMask
         ) ?? $sanitized;
 
         // Remove SQLSTATE detalhes com parâmetros
-        $sanitized = preg_replace(
-            '/SQLSTATE\[\w+\]:\s*[^.]+/i',
-            'Erro de banco de dados',
-            $sanitized
-        ) ?? $sanitized;
+        if ($collapseDatabaseDetail) {
+            $sanitized = preg_replace(
+                '/SQLSTATE\[\w+\]:\s*[^.]+/i',
+                'Erro de banco de dados',
+                $sanitized
+            ) ?? $sanitized;
+        }
 
         $sanitized = trim($sanitized);
         if (mb_strlen($sanitized) > $maxLength) {

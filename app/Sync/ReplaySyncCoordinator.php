@@ -12,6 +12,7 @@ use BIomie\OmieFiscalSyncService;
 use BIomie\OmieOrderEventSyncService;
 use BIomie\RefreshQueue;
 use BIomie\SalesAnalyticsService;
+use BIomie\Support\DatabaseErrorEnvelope;
 use BIomie\SyncDeltaWindowPlanner;
 use BIomie\SyncPipelineRepository;
 use BIomie\Telemetry;
@@ -224,12 +225,22 @@ final class ReplaySyncCoordinator
             $retryable     = $this->isRetryable($exception);
             $failureStatus = $retryable ? 'failed_retryable' : 'failed_terminal';
             $finishedAt    = new DateTimeImmutable('now');
+            // P2/Etapa 1 — SQLSTATE + código do driver preservados. A política
+            // de retry acima permanece exatamente a mesma.
+            $captured      = DatabaseErrorEnvelope::capture($exception, [
+                'run_id'         => $runId,
+                'mode'           => $runType,
+                'domain'         => $domain,
+                'trigger_source' => $source,
+            ]);
+            $errorDetail   = $captured['detail'];
+            $messageText   = $captured['summary'];
 
             foreach ($cursorTargets as $cursor) {
                 $values = [
                     'last_run_finished_at' => $finishedAt->format('Y-m-d H:i:s'),
                     'status'               => $failureStatus,
-                    'last_error'           => $exception->getMessage(),
+                    'last_error'           => $messageText,
                     'rule_version'         => self::RULE_VERSION,
                 ];
 
@@ -246,12 +257,14 @@ final class ReplaySyncCoordinator
                 'items_discovered' => count($cursorTargets),
                 'items_processed'  => 0,
                 'items_failed'     => count($cursorTargets),
-            ], $exception->getMessage());
+                'error_detail'     => $errorDetail,
+            ], $messageText);
             $telemetry?->recordEvent('ERROR', 'sync.domain_window.error', 'Falha em janela de sync por dominio.', [
-                'domain'   => $domain,
-                'run_type' => $runType,
-                'source'   => $source,
-                'message'  => $exception->getMessage(),
+                'domain'       => $domain,
+                'run_type'     => $runType,
+                'source'       => $source,
+                'message'      => $messageText,
+                'error_detail' => $errorDetail,
             ], 'sync', 'realtime_pipeline');
             $telemetry?->recordMetric('sync_run_duration_ms', $this->durationBetween($startedAt, $finishedAt), 'histogram', [
                 'domain'   => $domain,
@@ -261,7 +274,7 @@ final class ReplaySyncCoordinator
             $span?->finish('error', [
                 'cursor_count' => count($cursorTargets),
                 'status'       => $failureStatus,
-                'message'      => $exception->getMessage(),
+                'message'      => $messageText,
             ]);
 
             throw $exception;
