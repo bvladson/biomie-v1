@@ -22,10 +22,27 @@ MODE="${1:-install}"
 # em silêncio: nenhum job roda e nada avisa. Foi assim que os 15 jobs da VPS
 # passaram 14h parados em 2026-08-04 (sync, materialize, ops_sentinel, tudo).
 #
-# `.gitattributes` já fixa `*.cron eol=lf`, mas isso protege só o checkout. Esta
-# normalização protege o INSTALADOR: um arquivo editado no Bloco de Notas, vindo
-# de outro clone ou de um zip não pode derrubar a produção de novo.
-cron_source() { tr -d '\r' < tools/deploy/vps/biomie.cron; }
+# `.gitattributes` já fixa `*.cron eol=lf`, mas isso protege só o checkout. Aqui
+# o instalador RECUSA a fonte, em vez de consertá-la calado.
+#
+# Por que falhar e não normalizar: um `tr -d '\r'` deixaria o deploy verde com
+# uma fonte errada no repositório — o problema seguiria existindo, invisível,
+# até alguém instalar por outro caminho. E `tr -d '\r'` remove QUALQUER CR, não
+# só o de fim de linha. Errar alto aqui custa um deploy; errar calado custou 14h.
+CRON_SOURCE="tools/deploy/vps/biomie.cron"
+
+verificar_fonte_do_cron() {
+    if LC_ALL=C grep -qU $'\r' "$CRON_SOURCE"; then
+        echo "ERRO: $CRON_SOURCE contém CR/CRLF." >&2
+        echo "      O cron responde 'bad minute' e IGNORA O ARQUIVO INTEIRO —" >&2
+        echo "      todos os jobs param, em silêncio." >&2
+        echo "      Corrija com:  sed -i 's/\\r\$//' $CRON_SOURCE" >&2
+        echo "      (o .gitattributes já fixa '*.cron text eol=lf')" >&2
+        exit 1
+    fi
+}
+
+cron_source() { verificar_fonte_do_cron; cat "$CRON_SOURCE"; }
 
 case "$MODE" in
   --status)
