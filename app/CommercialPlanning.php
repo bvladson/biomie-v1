@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Commercial\TargetLadder;
 use DateTimeImmutable;
 
 final class CommercialPlanning
@@ -92,6 +93,8 @@ final class CommercialPlanning
         $teamRealized = 0.0;
         $teamBacklog = 0.0;
         $teamTarget = 0.0;
+        $teamActiveTarget = 0.0;
+        $teamMaximumTarget = 0.0;
         $missingTargets = 0;
 
         foreach ($vendorsByKey as $row) {
@@ -104,12 +107,19 @@ final class CommercialPlanning
             $forecasts = self::calculateForecast($realized, $backlog, $workdays, $today, $start, $end);
             $forecast = $forecasts['probable'];
             $orders = (int) ($row['orders'] ?? 0);
+            $ladder = self::resolveTargetLadderForPeriod(
+                $vendorId, $vendorName, $months, $targetsMap, $targetPeriod, $targetMonth, $realized
+            );
+            $activeTarget = $ladder === null
+                ? ($targetPeriod > 0 ? $targetPeriod : null)
+                : $ladder['active_target'];
+            $maximumTarget = (float) ($ladder['maximum_target'] ?? $targetPeriod);
 
             if ($targetPeriod <= 0.0 && ($realized > 0.0 || $backlog > 0.0)) {
                 $missingTargets++;
             }
 
-            $vendors[] = [
+            $vendorPayload = [
                 'vendor_id' => $vendorId,
                 'vendor_name' => (string) ($row['vendor_name'] ?? 'Sem vendedor'),
                 'realized_period' => $realized,
@@ -121,16 +131,26 @@ final class CommercialPlanning
                 'target_month' => $targetMonth,
                 'forecast_period' => $forecast,
                 'forecasts' => $forecasts,
-                'gap_to_target' => Support::money(max($targetPeriod - $realized, 0.0)),
+                'base_target' => $targetPeriod,
+                'active_target' => $activeTarget,
+                'maximum_target' => $maximumTarget,
+                'base_gap' => Support::money(max($targetPeriod - $realized, 0.0)),
+                'gap_to_target' => $activeTarget !== null ? Support::money(max((float) $activeTarget - $realized, 0.0)) : 0.0,
                 'attainment_pct' => $targetPeriod > 0 ? round(($realized / $targetPeriod) * 100, 2) : 0.0,
-                'new_daily_target' => self::calculateNewDailyTarget($realized, $targetPeriod, $workdays),
+                'new_daily_target' => self::calculateNewDailyTarget($realized, (float) ($activeTarget ?? 0), $workdays),
                 'risk_status' => self::riskStatus($forecast, $targetPeriod, Support::money($targetPeriod * (self::RISK_ATTENTION_PCT / 100))),
                 'ticket_avg' => $orders > 0 ? Support::money($realized / $orders) : 0.0,
             ];
+            if ($ladder !== null) {
+                $vendorPayload = array_merge($vendorPayload, $ladder);
+            }
+            $vendors[] = $vendorPayload;
 
             $teamRealized += $realized;
             $teamBacklog += $backlog;
             $teamTarget += $targetPeriod;
+            $teamActiveTarget += (float) ($activeTarget ?? $maximumTarget);
+            $teamMaximumTarget += $maximumTarget;
         }
 
         usort($vendors, static function (array $left, array $right): int {
@@ -148,10 +168,15 @@ final class CommercialPlanning
             'vendors' => $vendors,
             'team' => [
                 'target_period' => Support::money($teamTarget),
+                'base_target' => Support::money($teamTarget),
+                'active_target' => Support::money($teamActiveTarget),
+                'maximum_target' => Support::money($teamMaximumTarget),
                 'realized_period' => Support::money($teamRealized),
                 'backlog_value' => Support::money($teamBacklog),
                 'forecast_period' => $teamForecast,
-                'gap_to_target' => Support::money(max($teamTarget - $teamRealized, 0.0)),
+                'base_gap' => Support::money(max($teamTarget - $teamRealized, 0.0)),
+                'gap_to_target' => Support::money(max($teamActiveTarget - $teamRealized, 0.0)),
+                'active_gap' => Support::money(max($teamActiveTarget - $teamRealized, 0.0)),
                 'goal_progress' => $teamTarget > 0 ? round(($teamRealized / $teamTarget) * 100, 2) : 0.0,
                 'missing_targets_count' => $missingTargets,
                 'workdays' => $workdays,
@@ -159,6 +184,40 @@ final class CommercialPlanning
             ],
             'months' => $months,
         ];
+    }
+
+    /**
+     * @param list<string> $months
+     * @param array<string,array<string,mixed>> $targetsMap
+     * @return array<string,mixed>|null
+     */
+    private static function resolveTargetLadderForPeriod(
+        string $vendorId,
+        string $vendorName,
+        array $months,
+        array $targetsMap,
+        float $targetPeriod,
+        float $targetMonth,
+        float $realized
+    ): ?array {
+        if ($targetPeriod <= 0 || $targetMonth <= 0) return null;
+        $tierSums = [];
+        foreach ($targetsMap as $targetRow) {
+            if (!in_array((string) ($targetRow['year_month'] ?? ''), $months, true)
+                || !self::targetRowMatchesVendor($targetRow, $vendorId, $vendorName)) continue;
+            foreach (array_values(is_array($targetRow['tiers'] ?? null) ? $targetRow['tiers'] : []) as $index => $value) {
+                $tierSums[$index] = ($tierSums[$index] ?? 0.0) + (float) $value;
+            }
+        }
+        if ($tierSums === []) return null;
+        ksort($tierSums);
+        $levels = [$targetPeriod];
+        $ratio = $targetPeriod / $targetMonth;
+        foreach ($tierSums as $sum) {
+            $level = Support::money($sum * $ratio);
+            if ($level > end($levels)) $levels[] = $level;
+        }
+        return TargetLadder::evaluate($levels, $realized);
     }
 
     /** @return list<string> */

@@ -51,6 +51,7 @@ READABLE_TABLES = (
     "intelligence_quote_feedback",
     "biomie_company_targets",
     "biomie_sales_targets_monthly",
+    "biomie_sales_target_levels",
 )
 
 

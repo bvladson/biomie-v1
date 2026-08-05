@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
+import json
 
 import pymysql
 
@@ -74,6 +75,53 @@ def _prova_de_acesso(conn: pymysql.connections.Connection) -> tuple[dict[str, st
                 problemas.append(f"{tabela}: erro {codigo} ao ler")
 
     return acesso, problemas
+
+
+def _target_ladder_consistency(conn: pymysql.connections.Connection) -> dict[str, Any]:
+    """Compara fonte normalizada com o JSON legado sem esconder divergência."""
+    monthly = fetch_all(
+        conn,
+        """SELECT company_id, vendor_id, `year_month`, target_amount, tiers_json
+             FROM biomie_sales_targets_monthly WHERE target_amount > 0""",
+    )
+    normalized = fetch_all(
+        conn,
+        """SELECT company_id, vendor_id, `year_month`, level_number, target_amount
+             FROM biomie_sales_target_levels WHERE active = 1
+            ORDER BY company_id, vendor_id, `year_month`, level_number""",
+    )
+    actual: dict[tuple[int, str, str], list[float]] = {}
+    for row in normalized:
+        key = (int(row["company_id"]), str(row["vendor_id"]), str(row["year_month"]))
+        actual.setdefault(key, []).append(round(float(row["target_amount"] or 0), 2))
+    mismatches: list[dict[str, Any]] = []
+    expected_keys: set[tuple[int, str, str]] = set()
+    for row in monthly:
+        key = (int(row["company_id"]), str(row["vendor_id"]), str(row["year_month"]))
+        expected_keys.add(key)
+        expected = [round(float(row["target_amount"] or 0), 2)]
+        try:
+            extras = json.loads(row.get("tiers_json") or "[]")
+        except (TypeError, ValueError):
+            extras = []
+        expected.extend(round(float(value), 2) for value in extras if isinstance(value, (int, float)))
+        expected = sorted(set(value for value in expected if value > 0))
+        if actual.get(key, []) != expected:
+            mismatches.append({
+                "company_id": key[0], "vendor_id": key[1], "year_month": key[2],
+                "legacy": expected, "normalized": actual.get(key, []),
+            })
+    for key in set(actual) - expected_keys:
+        mismatches.append({
+            "company_id": key[0], "vendor_id": key[1], "year_month": key[2],
+            "legacy": [], "normalized": actual[key], "reason": "orphan_normalized_levels",
+        })
+    return {
+        "ok": not mismatches,
+        "targets_checked": len(monthly),
+        "mismatches_count": len(mismatches),
+        "mismatches": mismatches[:20],
+    }
 
 
 def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
@@ -143,6 +191,18 @@ def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
 
     acesso_leitura, problemas_de_acesso = _prova_de_acesso(conn)
     problemas.extend(problemas_de_acesso)
+    target_ladder = {"ok": False, "status": "indisponivel"}
+    if acesso_leitura.get("biomie_sales_targets_monthly") == "ok" \
+            and acesso_leitura.get("biomie_sales_target_levels") == "ok":
+        try:
+            target_ladder = _target_ladder_consistency(conn)
+            if not target_ladder["ok"]:
+                problemas.append(
+                    f"escada de metas: {target_ladder['mismatches_count']} divergencia(s) entre JSON e níveis normalizados"
+                )
+        except pymysql.err.MySQLError as exc:
+            target_ladder = {"ok": False, "status": f"erro_{exc.args[0] if exc.args else 'sql'}"}
+            problemas.append("escada de metas: não foi possível reconciliar as duas fontes")
 
     # Cobertura por empresa: um job "completed" que só atendeu 2 de 5 empresas
     # passa no dead-man switch e deixa três telas vazias. O total agregado
@@ -177,6 +237,7 @@ def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
         "tabelas_gravaveis": list(WRITABLE_TABLES),
         "acesso_leitura": acesso_leitura,
         "cobertura": cobertura,
+        "target_ladder": target_ladder,
         "jobs": jobs,
         "scores_vigentes": int(scores["vigentes"] or 0) if scores else 0,
         "ultimo_score_em": scores["ultimo"].isoformat() if scores and scores.get("ultimo") else None,

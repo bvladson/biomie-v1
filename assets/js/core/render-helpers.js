@@ -694,13 +694,20 @@
           return '<span class="tier-progress__mark' + (done ? ' tier-progress__mark--done' : '') + '" style="left:' + pos.toFixed(1) + '%" title="' + B.escapeHtml(B.formatCurrency(lvl)) + '"></span>';
         }).join('');
         var nextVal   = row.next_tier_value != null ? Number(row.next_tier_value) : null;
+        var targetSummary = '<span class="fp-target-base"><small>Compromisso</small> ' + B.escapeHtml(B.formatCurrency(Number(row.base_target || target_))) + '</span>';
+        targetSummary += row.all_levels_achieved
+          ? '<br><span class="fp-target-active fp-target-active--done"><small>Meta máxima conquistada</small> ' + B.escapeHtml(B.formatCurrency(Number(row.maximum_target || topLevel))) + '</span>'
+          : (nextVal != null ? '<br><span class="fp-target-active"><small>Desafio ativo</small> ' + B.escapeHtml(B.formatCurrency(nextVal)) + '</span>' : '');
         var tierTitle = curTier >= tiersTotal
           ? 'Todos os níveis atingidos!'
           : (nextVal != null ? ('Próximo nível: ' + B.formatCurrency(nextVal) + ' (falta ' + B.formatCurrency(Number(row.next_tier_gap || 0)) + ')') : '');
-        metaCellExtra = '<span class="fp-tier-badge" title="' + B.escapeHtml(tierTitle) + '">' +
+        metaCellExtra = targetSummary + '<br><span class="fp-tier-badge" title="' + B.escapeHtml(tierTitle) + '">' +
           '<span class="material-symbols-rounded">' + (curTier >= tiersTotal ? 'military_tech' : 'stairs') + '</span>' +
           'Meta ' + Math.min(curTier + (curTier < tiersTotal ? 1 : 0), tiersTotal) + '/' + tiersTotal + (curTier >= tiersTotal ? ' ✓' : '') + '</span>' +
-          '<span class="tier-progress"><span class="tier-progress__fill" style="width:' + fillPct.toFixed(1) + '%"></span>' + marks + '</span>';
+          '<span class="tier-progress"><span class="tier-progress__fill" style="width:' + fillPct.toFixed(1) + '%"></span>' + marks + '</span>' +
+          (row.all_levels_achieved
+            ? (Number(row.over_maximum_amount || 0) > 0 ? '<small class="fp-tier-step">Superação: ' + B.escapeHtml(B.formatCurrency(Number(row.over_maximum_amount))) + '</small>' : '')
+            : '<small class="fp-tier-step">' + Number(row.step_progress_pct || 0).toFixed(1) + '% do caminho neste nível</small>');
       }
       return '<tr class="' + rowClass.trim() + '"' + rowStyle + rowAttrs + '><td>' + vendorEntity + '</td><td>' + B.commercialMetric('Base comercial', B.formatCurrency(merc), 'accent') + '</td><td>' + B.commercialMetric('Meta proporcional', target_ > 0 ? B.formatCurrency(target_) : '-') + metaCellExtra + '</td><td>' + B.commercialMetric('Atingimento', target_ > 0 ? attPct.toFixed(1) + '%' : '-', achieved ? 'accent' : '') + '</td><td><span class="' + B.vendorRiskClass(row.risk_status) + '">' + B.vendorRiskLabel(row.risk_status) + '</span></td><td>' + B.commercialMetric('Carteira', B.formatCurrency(row.authorized_value), 'warning') + '</td><td>' + B.commercialMetric('Canceladas', B.formatCurrency(row.cancelled_value), Number(row.cancelled_value) > 0 ? 'danger' : '') + '</td><td><span class="badge-status ' + conversionClass + '">' + row.conversion_rate + '%</span></td><td>' + B.commercialMetric('Ticket medio', B.formatCurrency(row.avg_ticket_billed)) + '</td><td>' + conflictBadge + '</td></tr>';
     }).join('');

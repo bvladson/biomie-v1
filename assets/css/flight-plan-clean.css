@@ -402,3 +402,4 @@
     white-space: nowrap;
 }
 .fp-tier-badge .material-symbols-rounded { font-size: 13px; }
+.fp-target-base,.fp-target-active{display:inline-flex;gap:6px;align-items:baseline}.fp-target-base small,.fp-target-active small,.fp-tier-step{color:var(--text-3);font-size:.68rem}.fp-target-active{font-weight:700;color:var(--page-accent,#96140a)}.fp-target-active--done{color:var(--success)}.fp-tier-step{display:block;margin-top:4px}

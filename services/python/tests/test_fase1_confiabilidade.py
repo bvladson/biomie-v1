@@ -214,6 +214,21 @@ class TestPersistenciaDoForecast(unittest.TestCase):
         self.assertEqual(sum(1 for s in conn.sql_executado() if s.startswith("INSERT")), 2)
         self.assertEqual(conn.commits, 1)
 
+    def test_grava_probabilidade_auditavel_por_nivel(self) -> None:
+        conn = FakeConnection()
+        niveis = [
+            {"level": 1, "target": 40000.0, "achieved": True, "probability": 1.0, "actionable": True},
+            {"level": 2, "target": 60000.0, "achieved": False, "probability": 0.72, "actionable": True},
+        ]
+        forecast_store.persist(conn, 1, "2026-08", [self._linha(
+            base_target=40000.0, active_target=60000.0, maximum_target=80000.0,
+            achieved_level=1, active_level=2, levels_total=3,
+            level_probabilities=niveis,
+        )])
+        params = conn.params_de("INSERT INTO intelligence_forecasts")
+        payload = next(p for p in params if isinstance(p, str) and '"level"' in p)
+        self.assertIn('"probability": 0.72', payload)
+
 
 class TestCalculoDoForecastMensal(unittest.TestCase):
     """Contrato dos números antes de virarem linha no banco."""
@@ -313,6 +328,87 @@ class TestJanelaDeInatividade(unittest.TestCase):
                     health.MAX_IDLE_HORAS[job], cadencia,
                     "limite menor que a cadência dispara alarme falso a cada execução",
                 )
+
+
+class TestConfiancaBaixaNuncaViraNotificacao(unittest.TestCase):
+    """DE PONTA A PONTA: MAPE alto não pode chegar ao sininho.
+
+    O teste anterior verificava só `_confianca()` — a função de limiar, isolada.
+    Isso passaria mesmo se alguém religasse o alerta DEPOIS do portão, que é
+    exatamente o caminho por onde o defeito voltaria. O invariante que interessa
+    atravessa três componentes:
+
+        calcular_forecasts  →  severidade do Insight  →  filtro do publicador
+
+    O publicador (`bin/publish_intelligence_notifications.php`) só publica
+    `severity IN ('atencao','critico')`. Logo, o contrato acionável é: nenhuma
+    linha com erro >= ERRO_CONFIANCA_MINIMA pode produzir uma dessas duas
+    severidades — por maior que seja o risco calculado.
+    """
+
+    #: severidades que o publicador transforma em notificação
+    ACIONAVEIS = {"atencao", "critico"}
+
+    @staticmethod
+    def _linha(erro: float, risco: float | None, **kw) -> ForecastLinha:
+        base = dict(
+            dimensao="vendedor", entidade_codigo="v1", entidade_nome="Vendedor 1",
+            competencia="2026-08", realizado=5000.0, projecao=32000.0,
+            valor_min=5000.0, valor_max=64000.0, meta_valor=40000.0,
+            risco_nao_bater=risco, erro_historico=erro, meses_historicos=3,
+            dados_usados=20, fatores=["ritmo"],
+        )
+        base.update(kw)
+        return ForecastLinha(**base)
+
+    def _severidades(self, linhas: list[ForecastLinha]) -> list[str]:
+        original = insights.calcular_forecasts
+        insights.calcular_forecasts = lambda *_a, **_k: linhas
+        try:
+            return [i.severity for i in insights._forecasts_segmentados(None, 1, date.today())]
+        finally:
+            insights.calcular_forecasts = original
+
+    def test_erro_alto_nunca_produz_severidade_acionavel(self) -> None:
+        """Varre o pior caso: erro no teto e risco quase certo."""
+        for erro in (0.50, 0.60, 0.75, 0.90, 1.00):
+            for risco in (0.45, 0.70, 0.95, 0.99):
+                with self.subTest(erro=erro, risco=risco):
+                    severidades = self._severidades([self._linha(erro, risco)])
+                    self.assertTrue(severidades, "esperava ao menos uma leitura")
+                    for s in severidades:
+                        self.assertNotIn(
+                            s, self.ACIONAVEIS,
+                            f"erro {erro:.0%} com risco {risco:.0%} virou '{s}' e iria para o sininho",
+                        )
+
+    def test_erro_baixo_com_risco_alto_CONTINUA_alertando(self) -> None:
+        """O portão não pode virar mordaça: confiança boa tem que alertar."""
+        severidades = self._severidades([self._linha(0.15, 0.85)])
+        self.assertIn("critico", severidades)
+
+    def test_confianca_baixa_nao_mostra_projecao_nem_probabilidade(self) -> None:
+        original = insights.calcular_forecasts
+        insights.calcular_forecasts = lambda *_a, **_k: [self._linha(0.90, 0.80)]
+        try:
+            achados = insights._forecasts_segmentados(None, 1, date.today())
+        finally:
+            insights.calcular_forecasts = original
+
+        corpo = achados[0].body
+        self.assertIn("irregular", corpo, "o texto precisa dizer POR QUE está neutro")
+        self.assertNotIn("chance estimada", corpo)
+        self.assertNotIn("Risco de não bater", corpo)
+
+    def test_o_publicador_so_publica_as_duas_severidades(self) -> None:
+        """Se o filtro do publicador mudar, o invariante acima perde o sentido."""
+        publicador = (
+            Path(__file__).resolve().parents[3] / "bin" / "publish_intelligence_notifications.php"
+        )
+        if not publicador.is_file():
+            self.skipTest("publicador não encontrado")
+        sql = publicador.read_text(encoding="utf-8")
+        self.assertIn("severity IN ('atencao', 'critico')", sql)
 
 
 if __name__ == "__main__":

@@ -1,42 +1,42 @@
 {
-    "ok": true,
-    "generated_at_utc": "2026-07-25T21:30:55Z",
+    "ok": false,
+    "generated_at_utc": "2026-08-05T21:26:17Z",
     "read_model_reads": {
-        "total_detected": 825,
-        "architecture_debt": 658,
-        "high_criticality": 158,
+        "total_detected": 806,
+        "architecture_debt": 639,
+        "high_criticality": 131,
         "entries": [
             {
                 "file": "api/canonical_vendors.php",
-                "line": 199,
+                "line": 200,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "high"
             },
             {
                 "file": "api/canonical_vendors.php",
-                "line": 205,
+                "line": 206,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "high"
             },
             {
                 "file": "api/canonical_vendors.php",
-                "line": 227,
+                "line": 228,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "high"
             },
             {
                 "file": "api/canonical_vendors.php",
-                "line": 236,
+                "line": 237,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "high"
             },
             {
                 "file": "api/canonical_vendors.php",
-                "line": 237,
+                "line": 238,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "high"
@@ -92,21 +92,21 @@
             },
             {
                 "file": "api/commercial_dashboard.php",
-                "line": 167,
+                "line": 280,
                 "table": "biomie_notas_fiscais_itens_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "high"
             },
             {
                 "file": "api/commercial_dashboard.php",
-                "line": 297,
+                "line": 505,
                 "table": "biomie_vendedores_omie",
                 "classification": "architecture_debt",
                 "criticality": "high"
             },
             {
                 "file": "api/commercial_dashboard.php",
-                "line": 530,
+                "line": 770,
                 "table": "biomie_notas_fiscais_itens_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "high"
@@ -302,7 +302,7 @@
             },
             {
                 "file": "api/geo_composite_sales.php",
-                "line": 180,
+                "line": 199,
                 "table": "mart_compradores_por_geo",
                 "classification": "architecture_debt",
                 "criticality": "high"
@@ -352,153 +352,6 @@
             {
                 "file": "api/geo_sales_coverage_audit.php",
                 "line": 124,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 142,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 149,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 174,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 191,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 228,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 275,
-                "table": "biomie_clientes_dim",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 288,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 335,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 399,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 414,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 417,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 425,
-                "table": "biomie_clientes_dim",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 433,
-                "table": "biomie_clientes_para_enriquecer",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 535,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 538,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 541,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 544,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 567,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 577,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 633,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/geo_summary.php",
-                "line": 641,
                 "table": "mart_compradores_por_geo",
                 "classification": "architecture_debt",
                 "criticality": "high"
@@ -764,7 +617,7 @@
             },
             {
                 "file": "api/nf_periodo_table.php",
-                "line": 138,
+                "line": 144,
                 "table": "biomie_notas_fiscais_itens_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "high"
@@ -959,48 +812,6 @@
                 "criticality": "high"
             },
             {
-                "file": "api/sales_by_neighborhood.php",
-                "line": 169,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/sales_by_neighborhood.php",
-                "line": 197,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/sales_by_neighborhood.php",
-                "line": 218,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/sales_by_neighborhood.php",
-                "line": 236,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/sales_by_neighborhood.php",
-                "line": 346,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
-                "file": "api/sales_by_neighborhood.php",
-                "line": 350,
-                "table": "mart_compradores_por_geo",
-                "classification": "architecture_debt",
-                "criticality": "high"
-            },
-            {
                 "file": "api/seller_visibility.php",
                 "line": 80,
                 "table": "biomie_vendedores_omie",
@@ -1093,7 +904,7 @@
             },
             {
                 "file": "api/vendors_list.php",
-                "line": 109,
+                "line": 110,
                 "table": "biomie_vendedores_omie",
                 "classification": "architecture_debt",
                 "criticality": "high"
@@ -2199,35 +2010,35 @@
             },
             {
                 "file": "app/CustomerDimensionMaterializationService.php",
-                "line": 199,
+                "line": 200,
                 "table": "biomie_pedidos_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/CustomerDimensionMaterializationService.php",
-                "line": 255,
+                "line": 256,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/CustomerDimensionMaterializationService.php",
-                "line": 400,
+                "line": 407,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/CustomerDimensionMaterializationService.php",
-                "line": 808,
+                "line": 815,
                 "table": "biomie_clientes_geo_dim",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/CustomerDimensionMaterializationService.php",
-                "line": 1025,
+                "line": 1032,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -2353,49 +2164,49 @@
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 81,
+                "line": 93,
                 "table": "biomie_pedidos_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 82,
+                "line": 94,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 136,
+                "line": 160,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 137,
+                "line": 161,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 182,
+                "line": 218,
                 "table": "biomie_titulos_financeiros_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 183,
+                "line": 219,
                 "table": "biomie_clientes_dim",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/CustomerPeriodMartBuilder.php",
-                "line": 213,
+                "line": 249,
                 "table": "mart_cliente_periodo",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -2451,14 +2262,14 @@
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/FiscalNfeMartBuilder.php",
-                "line": 65,
+                "line": 71,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Gold/Builders/FiscalNfeMartBuilder.php",
-                "line": 66,
+                "line": 72,
                 "table": "mart_bridge_pedido_nfe_titulo",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -2836,63 +2647,63 @@
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 410,
+                "line": 421,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 437,
+                "line": 448,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 456,
+                "line": 467,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 474,
+                "line": 485,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 637,
+                "line": 648,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 791,
+                "line": 811,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 846,
+                "line": 866,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 860,
+                "line": 880,
                 "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/DataPlatform/Repository/GeoReadRepository.php",
-                "line": 1045,
+                "line": 1078,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
@@ -3375,105 +3186,105 @@
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 161,
+                "line": 162,
                 "table": "biomie_clientes_dim",
-                "classification": "allowed_infrastructure",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 188,
-                "table": "biomie_clientes_para_enriquecer",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
                 "line": 189,
-                "table": "biomie_clientes_dim",
+                "table": "biomie_clientes_para_enriquecer",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 211,
-                "table": "mart_compradores_por_geo",
+                "line": 190,
+                "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
                 "line": 212,
-                "table": "biomie_clientes_dim",
+                "table": "mart_compradores_por_geo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 234,
-                "table": "mart_cliente_periodo",
+                "line": 213,
+                "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
                 "line": 235,
-                "table": "biomie_clientes_dim",
+                "table": "mart_cliente_periodo",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 260,
-                "table": "biomie_notas_fiscais_canonicas",
+                "line": 236,
+                "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
                 "line": 261,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "allowed_infrastructure",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
+                "line": 262,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 306,
+                "line": 307,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 344,
+                "line": 345,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 376,
+                "line": 377,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 402,
+                "line": 403,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 525,
+                "line": 537,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php",
-                "line": 778,
+                "line": 790,
                 "table": "biomie_clientes_dim",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
@@ -3606,203 +3417,182 @@
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 727,
+                "line": 739,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 757,
+                "line": 769,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 783,
+                "line": 800,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 822,
+                "line": 839,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 855,
+                "line": 872,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 886,
+                "line": 903,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 920,
+                "line": 937,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 944,
+                "line": 961,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 958,
+                "line": 975,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1009,
+                "line": 1026,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1010,
+                "line": 1027,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1024,
+                "line": 1041,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1025,
+                "line": 1042,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1044,
+                "line": 1061,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1051,
+                "line": 1068,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1066,
+                "line": 1083,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1075,
+                "line": 1092,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1097,
+                "line": 1114,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1098,
+                "line": 1115,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1111,
+                "line": 1128,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1112,
+                "line": 1129,
                 "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1130,
-                "table": "mart_fiscal_items",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1131,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1146,
-                "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
                 "line": 1147,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1165,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1183,
-                "table": "mart_fiscal_items",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1184,
+                "line": 1148,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1199,
+                "line": 1163,
+                "table": "mart_fiscal_items",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1164,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1182,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -3810,55 +3600,69 @@
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
                 "line": 1200,
+                "table": "mart_fiscal_items",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1201,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1222,
+                "line": 1216,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1223,
+                "line": 1217,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1228,
+                "line": 1239,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1246,
-                "table": "mart_fiscal_items",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1247,
+                "line": 1240,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1252,
+                "line": 1245,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1273,
+                "line": 1263,
+                "table": "mart_fiscal_items",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1264,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1269,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -3872,70 +3676,77 @@
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1291,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1305,
+                "line": 1307,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1306,
+                "line": 1308,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1324,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1332,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1359,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1361,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1364,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1375,
+                "line": 1322,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
-                "line": 1411,
+                "line": 1323,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1341,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1349,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1376,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1378,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1381,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1392,
+                "table": "mart_fiscal_items",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php",
+                "line": 1428,
                 "table": "mart_fiscal_items",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -4040,16 +3851,51 @@
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalReadRepository.php",
-                "line": 499,
+                "line": 918,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "allowed_infrastructure",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Fiscal/Infrastructure/FiscalReadRepository.php",
-                "line": 500,
+                "line": 919,
                 "table": "biomie_vendedores_omie",
                 "classification": "allowed_infrastructure",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalRegimeProjectionService.php",
+                "line": 40,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalRegimeProjectionService.php",
+                "line": 48,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalRegimeProjectionService.php",
+                "line": 62,
+                "table": "mart_fiscal_items",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalRegimeProjectionService.php",
+                "line": 92,
+                "table": "mart_fiscal_monthly_settlement",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Fiscal/Infrastructure/FiscalRegimeProjectionService.php",
+                "line": 101,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
@@ -4341,91 +4187,105 @@
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 227,
+                "line": 285,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 259,
+                "line": 317,
                 "table": "biomie_notas_fiscais_canonicas",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 308,
-                "table": "mart_produto_periodo",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 371,
-                "table": "mart_cliente_periodo",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 372,
-                "table": "mart_cliente_periodo",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 412,
+                "line": 383,
                 "table": "biomie_notas_fiscais_itens_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 437,
-                "table": "biomie_notas_fiscais_canonicas",
-                "classification": "architecture_debt",
-                "criticality": "medium"
-            },
-            {
-                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 462,
+                "line": 446,
                 "table": "biomie_notas_fiscais_itens_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 466,
+                "line": 447,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
+                "line": 566,
+                "table": "biomie_notas_fiscais_itens_canonicos",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
+                "line": 659,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
+                "line": 742,
+                "table": "biomie_notas_fiscais_itens_canonicos",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
+                "line": 767,
+                "table": "biomie_notas_fiscais_canonicas",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
+                "line": 792,
+                "table": "biomie_notas_fiscais_itens_canonicos",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
+                "line": 796,
                 "table": "mart_bridge_pedido_nfe_titulo",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 489,
+                "line": 819,
                 "table": "mart_fiscal_nfe",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 554,
+                "line": 884,
                 "table": "mart_compradores_por_geo",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 633,
+                "line": 963,
                 "table": "mart_financeiro_titulo",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php",
-                "line": 672,
+                "line": 1002,
                 "table": "mart_bridge_pedido_nfe_titulo",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -4859,28 +4719,35 @@
             },
             {
                 "file": "app/Ops/ManagementAlerts.php",
-                "line": 241,
+                "line": 286,
                 "table": "biomie_titulos_financeiros_canonicos",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Ops/TenantIsolationGuard.php",
-                "line": 112,
+                "line": 124,
                 "table": "mart_vendas_por_cnae_cnpj",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Ops/TenantIsolationGuard.php",
-                "line": 115,
+                "line": 127,
                 "table": "mart_vendas_por_cnae_cnpj",
                 "classification": "architecture_debt",
                 "criticality": "medium"
             },
             {
                 "file": "app/Ops/TenantIsolationGuard.php",
-                "line": 193,
+                "line": 246,
+                "table": "mart_compradores_por_geo",
+                "classification": "architecture_debt",
+                "criticality": "medium"
+            },
+            {
+                "file": "app/Ops/TenantIsolationGuard.php",
+                "line": 282,
                 "table": "mart_vendedor_dia",
                 "classification": "architecture_debt",
                 "criticality": "medium"
@@ -5784,8 +5651,41 @@
         ]
     },
     "complexity_ratchet": {
-        "existing_files_above_1000_lines": 14,
-        "growth_violations": [],
+        "existing_files_above_1000_lines": 16,
+        "growth_violations": {
+            "app/Canonical/CanonicalWriteRepository.php": {
+                "baseline": 1404,
+                "current": 1405
+            },
+            "app/CustomerDimensionMaterializationService.php": {
+                "baseline": 1153,
+                "current": 1160
+            },
+            "app/DataPlatform/Repository/GeoReadRepository.php": {
+                "baseline": 1416,
+                "current": 1449
+            },
+            "app/FlightPlanV2Service.php": {
+                "baseline": 1042,
+                "current": 1096
+            },
+            "app/Modules/Customers/Infrastructure/CustomerDimensionRepository.php": {
+                "baseline": 1023,
+                "current": 1035
+            },
+            "app/Modules/Fiscal/Infrastructure/FiscalIntelligenceService.php": {
+                "baseline": 1422,
+                "current": 1439
+            },
+            "app/Modules/Sales/Application/Board/BoardConsolidatedService.php": {
+                "baseline": null,
+                "current": 1071
+            },
+            "app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php": {
+                "baseline": null,
+                "current": 1029
+            }
+        },
         "baseline": "config/architecture-complexity-baseline.json"
     }
 }

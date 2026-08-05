@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\Modules\Sales\Application\Vendors;
 
 use BIomie\CanonicalRepository;
+use BIomie\Commercial\TargetLadder;
 use BIomie\CommercialPlanning;
 use BIomie\Support;
 use BIomie\Support\ActiveVendorResolver;
@@ -268,6 +269,15 @@ final class CanonicalVendorPayloadBuilder
             );
             if ($tierInfo !== null) {
                 $vendorMatrix[$index] = array_merge($vendorMatrix[$index], $tierInfo);
+                $active = $tierInfo['active_target'];
+                $vendorMatrix[$index]['base_gap'] = Support::money(max($target - $bm, 0));
+                $vendorMatrix[$index]['gap_to_target'] = $active !== null
+                    ? Support::money(max((float) $active - $bm, 0))
+                    : 0.0;
+                $forecast = Support::toFloat($plan['forecast_period'] ?? 0);
+                $vendorMatrix[$index]['active_forecast_pct'] = $active !== null && (float) $active > 0
+                    ? round(($forecast / (float) $active) * 100, 2)
+                    : 100.0;
             }
         }
 
@@ -482,13 +492,6 @@ final class CanonicalVendorPayloadBuilder
             }
         }
 
-        return [
-            'tier_levels'     => $levels,
-            'tiers_total'     => count($levels),
-            'current_tier'    => $achieved,
-            'next_tier_value' => $nextValue,
-            'next_tier_gap'   => $nextValue !== null ? round(max($nextValue - $realized, 0), 2) : 0.0,
-            'next_tier_pct'   => ($nextValue !== null && $nextValue > 0) ? round($realized / $nextValue * 100, 2) : 100.0,
-        ];
+        return TargetLadder::evaluate($levels, $realized);
     }
 }

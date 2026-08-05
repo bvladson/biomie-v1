@@ -12,6 +12,7 @@ final class TargetsRepository
 {
     private ?bool $tableExists = null;
     private ?bool $tiersColumnExists = null;
+    private ?bool $levelsTableExists = null;
 
     public function __construct(
         private readonly PDO $pdo,
@@ -104,7 +105,7 @@ final class TargetsRepository
             ];
         }
 
-        return $rows;
+        return $this->applyNormalizedLevels($rows);
     }
 
     public function getLastUpdatedAt(): ?string
@@ -164,13 +165,13 @@ final class TargetsRepository
                 'updated_at'    => isset($row['updated_at']) ? (string) $row['updated_at'] : null,
             ];
         }
-        return $rows;
+        return array_values($this->applyNormalizedLevels($rows));
     }
 
     /**
      * Returns diagnostic info about targets for a given month (Phase F).
      *
-     * @return array{targets_count:int,active_count:int,inactive_count:int,duplicate_targets:list<array<string,mixed>>,invalid_targets:list<array<string,mixed>>,team_total:float,last_updated_at:?string}
+     * @return array<string,mixed>
      */
     public function listTargetDiagnostics(string $yearMonth): array
     {
@@ -187,12 +188,14 @@ final class TargetsRepository
             ];
         }
 
+        $tiersDiagnosticColumn = $this->supportsTiers() ? ', tiers_json' : '';
         $sql  = sprintf(
-            'SELECT vendor_id, vendor_name, target_amount, updated_at
+            'SELECT vendor_id, vendor_name, target_amount, updated_at%s
              FROM %s
               WHERE company_id = :company_id
                 AND `year_month` = :year_month
              ORDER BY vendor_name ASC',
+            $tiersDiagnosticColumn,
             $this->targetsTable
         );
         $stmt = $this->pdo->prepare($sql);
@@ -226,6 +229,7 @@ final class TargetsRepository
             $teamTotal += $amount;
         }
 
+        $levelConsistency = $this->levelConsistencyForMonth($yearMonth, $allRows);
         return [
             'targets_count'    => count($allRows),
             'active_count'     => $activeCount,
@@ -234,6 +238,8 @@ final class TargetsRepository
             'invalid_targets'  => $invalid,
             'team_total'       => Support::money($teamTotal),
             'last_updated_at'  => $this->getLastUpdatedAt(),
+            'levels_consistent' => $levelConsistency['ok'],
+            'levels_mismatches' => $levelConsistency['mismatches'],
             'reason_code'      => $activeCount === 0 ? 'no_active_targets' : null,
         ];
     }
@@ -310,6 +316,16 @@ final class TargetsRepository
 
         $stmt = $this->pdo->prepare($upsertSql);
         $stmt->execute($upsertParams);
+
+        if ($this->supportsNormalizedLevels()) {
+            $this->syncNormalizedLevels(
+                $vendorId,
+                $yearMonth,
+                array_merge([$targetAmount], $cleanTiers),
+                $changedBy,
+                $changeReason
+            );
+        }
 
         // Auditoria
         $auditSql = '
@@ -425,6 +441,163 @@ final class TargetsRepository
         }
         sort($tiers);
         return array_slice(array_values(array_unique($tiers)), 0, 9); // máx. 10 metas no total
+    }
+
+    private function supportsNormalizedLevels(): bool
+    {
+        if ($this->levelsTableExists !== null) {
+            return $this->levelsTableExists;
+        }
+        try {
+            return $this->levelsTableExists = SchemaCapabilities::tableExists($this->pdo, 'biomie_sales_target_levels');
+        } catch (Throwable) {
+            return $this->levelsTableExists = false;
+        }
+    }
+
+    /**
+     * @param list<array<string,mixed>> $legacyRows
+     * @return array{ok:bool,mismatches:list<array<string,mixed>>}
+     */
+    private function levelConsistencyForMonth(string $yearMonth, array $legacyRows): array
+    {
+        if (!$this->supportsNormalizedLevels()) return ['ok' => true, 'mismatches' => []];
+        $stmt = $this->pdo->prepare(
+            'SELECT vendor_id, level_number, target_amount FROM biomie_sales_target_levels
+              WHERE company_id = :company_id AND `year_month` = :year_month AND active = 1
+              ORDER BY vendor_id, level_number'
+        );
+        $stmt->execute(['company_id' => $this->companyId(), 'year_month' => $yearMonth]);
+        $normalized = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $normalized[(string) $row['vendor_id']][] = Support::money((float) $row['target_amount']);
+        }
+        $mismatches = [];
+        foreach ($legacyRows as $row) {
+            $vendorId = (string) ($row['vendor_id'] ?? '');
+            $expected = [Support::money((float) ($row['target_amount'] ?? 0))];
+            foreach (self::parseTiers(isset($row['tiers_json']) ? (string) $row['tiers_json'] : null) as $tier) {
+                $expected[] = Support::money($tier);
+            }
+            sort($expected, SORT_NUMERIC);
+            if (($normalized[$vendorId] ?? []) !== $expected) {
+                $mismatches[] = [
+                    'vendor_id' => $vendorId,
+                    'legacy' => $expected,
+                    'normalized' => $normalized[$vendorId] ?? [],
+                ];
+            }
+        }
+        return ['ok' => $mismatches === [], 'mismatches' => $mismatches];
+    }
+
+    /**
+     * A tabela normalizada é a fonte preferida; tiers_json é fallback de deploy.
+     * @param array<int|string,array<string,mixed>> $rows
+     * @return array<int|string,array<string,mixed>>
+     */
+    private function applyNormalizedLevels(array $rows): array
+    {
+        if ($rows === [] || !$this->supportsNormalizedLevels()) return $rows;
+        $months = array_values(array_unique(array_map(
+            static fn (array $row): string => (string) ($row['year_month'] ?? ''),
+            array_values($rows)
+        )));
+        $months = array_values(array_filter($months, static fn (string $month): bool => $month !== ''));
+        if ($months === []) return $rows;
+        $params = ['company_id' => $this->companyId()];
+        $holders = [];
+        foreach ($months as $index => $month) {
+            $holders[] = ':month_' . $index;
+            $params['month_' . $index] = $month;
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT vendor_id, `year_month`, level_number, target_amount
+               FROM biomie_sales_target_levels
+              WHERE company_id = :company_id AND active = 1
+                AND `year_month` IN (' . implode(',', $holders) . ')
+              ORDER BY vendor_id, `year_month`, level_number'
+        );
+        $stmt->execute($params);
+        $levels = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $level) {
+            $levels[(string) $level['vendor_id'] . '|' . (string) $level['year_month']][] = (float) $level['target_amount'];
+        }
+        foreach ($rows as $key => $row) {
+            $pair = (string) ($row['vendor_id'] ?? '') . '|' . (string) ($row['year_month'] ?? '');
+            if (!isset($levels[$pair])) continue;
+            $rows[$key]['target_amount'] = Support::money($levels[$pair][0]);
+            $rows[$key]['tiers'] = array_map(
+                static fn (float $amount): float => Support::money($amount),
+                array_slice($levels[$pair], 1)
+            );
+        }
+        return $rows;
+    }
+
+    /** @param list<float> $levels */
+    private function syncNormalizedLevels(
+        string $vendorId,
+        string $yearMonth,
+        array $levels,
+        string $changedBy,
+        ?string $changeReason
+    ): void {
+        $companyId = $this->companyId();
+        $select = $this->pdo->prepare(
+            'SELECT level_number, target_amount FROM biomie_sales_target_levels
+              WHERE company_id = :company_id AND vendor_id = :vendor_id AND `year_month` = :year_month'
+        );
+        $select->execute(['company_id' => $companyId, 'vendor_id' => $vendorId, 'year_month' => $yearMonth]);
+        $before = [];
+        foreach ($select->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $before[(int) $row['level_number']] = (float) $row['target_amount'];
+        }
+
+        $this->pdo->prepare(
+            'DELETE FROM biomie_sales_target_levels
+              WHERE company_id = :company_id AND vendor_id = :vendor_id AND `year_month` = :year_month'
+        )->execute(['company_id' => $companyId, 'vendor_id' => $vendorId, 'year_month' => $yearMonth]);
+
+        $insert = $this->pdo->prepare(
+            'INSERT INTO biomie_sales_target_levels
+                (company_id, vendor_id, `year_month`, level_number, level_name, target_amount, created_by, updated_by)
+             VALUES (:company_id, :vendor_id, :year_month, :level_number, :level_name, :amount, :created_by, :updated_by)'
+        );
+        $audit = $this->pdo->prepare(
+            'INSERT INTO biomie_sales_target_level_audit
+                (company_id, vendor_id, `year_month`, level_number, old_amount, new_amount, changed_by, change_reason)
+             VALUES (:company_id, :vendor_id, :year_month, :level_number, :old_amount, :new_amount, :changed_by, :reason)'
+        );
+        $max = max(count($levels), count($before));
+        for ($index = 0; $index < $max; $index++) {
+            $number = $index + 1;
+            $newAmount = isset($levels[$index]) ? Support::money((float) $levels[$index]) : null;
+            $oldAmount = $before[$number] ?? null;
+            if ($newAmount !== null) {
+                $insert->execute([
+                    'company_id' => $companyId, 'vendor_id' => $vendorId, 'year_month' => $yearMonth,
+                    'level_number' => $number, 'level_name' => self::levelName($number),
+                    'amount' => $newAmount, 'created_by' => $changedBy, 'updated_by' => $changedBy,
+                ]);
+            }
+            if ($oldAmount === $newAmount) {
+                continue;
+            }
+            $audit->execute([
+                'company_id' => $companyId, 'vendor_id' => $vendorId, 'year_month' => $yearMonth,
+                'level_number' => $number, 'old_amount' => $oldAmount, 'new_amount' => $newAmount,
+                'changed_by' => $changedBy, 'reason' => $changeReason,
+            ]);
+        }
+    }
+
+    private static function levelName(int $number): string
+    {
+        return match ($number) {
+            1 => 'Compromisso', 2 => 'Superação', 3 => 'Excelência',
+            default => 'Nível ' . $number,
+        };
     }
 
     private function companyId(): int

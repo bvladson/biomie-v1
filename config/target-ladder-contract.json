@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "_comment": "Cenarios que PHP (app/Commercial/TargetLadder.php) e Python (biomie_intel/target_ladder.py) DEVEM responder igual. Os quatro primeiros sao o caminho feliz; os seguintes existem porque os dois motores JA divergiram neles: o Python explodia com valor nao numerico e omitia chaves na escada vazia, e o PHP devolvia 0.0 onde o Python devolvia null. Caso novo entra aqui, nao so na suite de um dos lados.",
+  "cases": [
+    {"name":"before_base","levels":[40000,60000,80000],"realized":25000,"achieved_level":0,"active_level":1,"active_target":40000,"active_gap":15000,"all_levels_achieved":false},
+    {"name":"promoted_to_second","levels":[40000,60000,80000],"realized":47000,"achieved_level":1,"active_level":2,"active_target":60000,"active_gap":13000,"step_progress_pct":35,"all_levels_achieved":false},
+    {"name":"promoted_to_third","levels":[40000,60000,80000],"realized":67000,"achieved_level":2,"active_level":3,"active_target":80000,"active_gap":13000,"step_progress_pct":35,"all_levels_achieved":false},
+    {"name":"all_achieved","levels":[40000,60000,80000],"realized":86000,"achieved_level":3,"active_level":null,"active_target":null,"active_gap":0,"all_levels_achieved":true,"over_maximum_amount":6000},
+
+    {"name":"sem_meta_nenhuma","levels":[],"realized":12000,"achieved_level":0,"active_level":null,"base_target":null,"active_target":null,"maximum_target":null,"active_gap":0,"step_progress_pct":0,"all_levels_achieved":false,"over_maximum_amount":0},
+    {"name":"so_meta_base","levels":[30000],"realized":15000,"achieved_level":0,"active_level":1,"base_target":30000,"active_target":30000,"maximum_target":30000,"active_gap":15000,"base_attainment_pct":50,"step_progress_pct":50,"all_levels_achieved":false},
+    {"name":"so_meta_base_conquistada","levels":[30000],"realized":33000,"achieved_level":1,"active_level":null,"base_target":30000,"active_target":null,"maximum_target":30000,"active_gap":0,"all_levels_achieved":true,"over_maximum_amount":3000},
+    {"name":"valores_duplicados","levels":[40000,40000,60000],"realized":45000,"achieved_level":1,"active_level":2,"base_target":40000,"active_target":60000,"maximum_target":60000,"active_gap":15000,"all_levels_achieved":false},
+    {"name":"fora_de_ordem","levels":[80000,40000,60000],"realized":45000,"achieved_level":1,"active_level":2,"base_target":40000,"active_target":60000,"maximum_target":80000,"active_gap":15000,"all_levels_achieved":false},
+    {"name":"valores_invalidos","levels":[0,-5000,40000,"abc",null,60000],"realized":45000,"achieved_level":1,"active_level":2,"base_target":40000,"active_target":60000,"maximum_target":60000,"active_gap":15000,"all_levels_achieved":false},
+    {"name":"realizado_zero","levels":[40000,60000],"realized":0,"achieved_level":0,"active_level":1,"base_target":40000,"active_target":40000,"active_gap":40000,"base_attainment_pct":0,"step_progress_pct":0,"all_levels_achieved":false},
+    {"name":"dizima_periodica","levels":[30000],"realized":10000,"achieved_level":0,"active_level":1,"base_attainment_pct":33.33,"step_progress_pct":33.33,"active_gap":20000,"all_levels_achieved":false},
+    {"name":"acima_do_maximo","levels":[40000,60000],"realized":95000,"achieved_level":2,"active_level":null,"active_target":null,"maximum_target":60000,"active_gap":0,"all_levels_achieved":true,"over_maximum_amount":35000}
+  ]
+}

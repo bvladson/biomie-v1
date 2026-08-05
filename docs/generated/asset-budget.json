@@ -1,13 +1,232 @@
 {
-    "ok": true,
-    "generated_at_utc": "2026-07-25T21:42:46Z",
+    "ok": false,
+    "generated_at_utc": "2026-08-05T21:26:17Z",
     "summary": {
-        "assets": 243,
-        "raw_bytes": 4650319,
-        "gzip_bytes": 1201912,
-        "violations": 0
+        "assets": 251,
+        "raw_bytes": 4929930,
+        "gzip_bytes": 1275678,
+        "violations": 35
     },
-    "violations": [],
+    "violations": {
+        "assets/css/context-filters.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 2224,
+            "current_gzip_bytes": 4346,
+            "limit_gzip_bytes": 2335
+        },
+        "assets/css/context-filters.min.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1949,
+            "current_gzip_bytes": 3132,
+            "limit_gzip_bytes": 2046
+        },
+        "assets/css/fiscal.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 8492,
+            "current_gzip_bytes": 9295,
+            "limit_gzip_bytes": 8916
+        },
+        "assets/css/fiscal.min.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 6615,
+            "current_gzip_bytes": 7257,
+            "limit_gzip_bytes": 6945
+        },
+        "assets/css/notifications.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 2515,
+            "current_gzip_bytes": 3383,
+            "limit_gzip_bytes": 2640
+        },
+        "assets/css/notifications.min.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1631,
+            "current_gzip_bytes": 2154,
+            "limit_gzip_bytes": 1712
+        },
+        "assets/css/quote-priority.css": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 7168,
+                "gzip_bytes": 2359
+            }
+        },
+        "assets/css/quote-priority.min.css": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 4108,
+                "gzip_bytes": 1207
+            }
+        },
+        "assets/css/shell-index.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 15340,
+            "current_gzip_bytes": 16758,
+            "limit_gzip_bytes": 16107
+        },
+        "assets/css/shell-index.min.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 11620,
+            "current_gzip_bytes": 12895,
+            "limit_gzip_bytes": 12201
+        },
+        "assets/css/tv-board.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 5129,
+            "current_gzip_bytes": 6327,
+            "limit_gzip_bytes": 5385
+        },
+        "assets/css/tv-board.min.css": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 3897,
+            "current_gzip_bytes": 4967,
+            "limit_gzip_bytes": 4091
+        },
+        "assets/js/commercial-channel-toggle.js": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 7913,
+                "gzip_bytes": 2991
+            }
+        },
+        "assets/js/commercial-channel-toggle.min.js": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 3959,
+                "gzip_bytes": 1725
+            }
+        },
+        "assets/js/context-filters.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 6334,
+            "current_gzip_bytes": 12870,
+            "limit_gzip_bytes": 6650
+        },
+        "assets/js/context-filters.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 4399,
+            "current_gzip_bytes": 7389,
+            "limit_gzip_bytes": 4618
+        },
+        "assets/js/fiscal.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 27757,
+            "current_gzip_bytes": 29510,
+            "limit_gzip_bytes": 29144
+        },
+        "assets/js/modules/dashboard/page-drilldown.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 8735,
+            "current_gzip_bytes": 11733,
+            "limit_gzip_bytes": 9171
+        },
+        "assets/js/modules/dashboard/page-drilldown.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 6371,
+            "current_gzip_bytes": 7801,
+            "limit_gzip_bytes": 6689
+        },
+        "assets/js/modules/flight-plan/index.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1460,
+            "current_gzip_bytes": 1600,
+            "limit_gzip_bytes": 1533
+        },
+        "assets/js/modules/flight-plan/index.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1119,
+            "current_gzip_bytes": 1220,
+            "limit_gzip_bytes": 1174
+        },
+        "assets/js/modules/flight-plan/vendor-table.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 2474,
+            "current_gzip_bytes": 2703,
+            "limit_gzip_bytes": 2597
+        },
+        "assets/js/modules/flight-plan/vendor-table.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1849,
+            "current_gzip_bytes": 2068,
+            "limit_gzip_bytes": 1941
+        },
+        "assets/js/modules/insights-panel.js": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 4608,
+                "gzip_bytes": 2096
+            }
+        },
+        "assets/js/modules/insights-panel.min.js": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 2812,
+                "gzip_bytes": 1443
+            }
+        },
+        "assets/js/modules/overview/overview-detail-drawer.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 3566,
+            "current_gzip_bytes": 12729,
+            "limit_gzip_bytes": 3744
+        },
+        "assets/js/modules/overview/overview-detail-drawer.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 2743,
+            "current_gzip_bytes": 9059,
+            "limit_gzip_bytes": 2880
+        },
+        "assets/js/modules/quote-priority-panel.js": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 5513,
+                "gzip_bytes": 2287
+            }
+        },
+        "assets/js/modules/quote-priority-panel.min.js": {
+            "reason": "new_asset_requires_review",
+            "current": {
+                "bytes": 2645,
+                "gzip_bytes": 1255
+            }
+        },
+        "assets/js/notifications.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 2706,
+            "current_gzip_bytes": 4152,
+            "limit_gzip_bytes": 2841
+        },
+        "assets/js/notifications.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1831,
+            "current_gzip_bytes": 2262,
+            "limit_gzip_bytes": 1922
+        },
+        "assets/js/performance-monitor.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 1977,
+            "current_gzip_bytes": 2113,
+            "limit_gzip_bytes": 2075
+        },
+        "assets/js/tv-board.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 3913,
+            "current_gzip_bytes": 8893,
+            "limit_gzip_bytes": 4108
+        },
+        "assets/js/tv-board.min.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 2748,
+            "current_gzip_bytes": 6908,
+            "limit_gzip_bytes": 2885
+        },
+        "assets/js/vendor-filter.js": {
+            "reason": "gzip_growth_above_5_pct",
+            "baseline_gzip_bytes": 5217,
+            "current_gzip_bytes": 5837,
+            "limit_gzip_bytes": 5477
+        }
+    },
     "assets": {
         "assets/css/admin-insights.css": {
             "bytes": 4603,
@@ -58,12 +277,12 @@
             "gzip_bytes": 1169
         },
         "assets/css/context-filters.css": {
-            "bytes": 9726,
-            "gzip_bytes": 2224
+            "bytes": 19902,
+            "gzip_bytes": 4346
         },
         "assets/css/context-filters.min.css": {
-            "bytes": 8060,
-            "gzip_bytes": 1949
+            "bytes": 15396,
+            "gzip_bytes": 3132
         },
         "assets/css/filters.css": {
             "bytes": 18529,
@@ -90,20 +309,20 @@
             "gzip_bytes": 8028
         },
         "assets/css/fiscal.css": {
-            "bytes": 46909,
-            "gzip_bytes": 8492
+            "bytes": 52226,
+            "gzip_bytes": 9295
         },
         "assets/css/fiscal.min.css": {
-            "bytes": 34360,
-            "gzip_bytes": 6615
+            "bytes": 38657,
+            "gzip_bytes": 7257
         },
         "assets/css/flight-plan-clean.css": {
-            "bytes": 8676,
-            "gzip_bytes": 2108
+            "bytes": 9012,
+            "gzip_bytes": 2200
         },
         "assets/css/flight-plan-clean.min.css": {
-            "bytes": 6008,
-            "gzip_bytes": 1639
+            "bytes": 6343,
+            "gzip_bytes": 1709
         },
         "assets/css/global-search.css": {
             "bytes": 12181,
@@ -186,12 +405,12 @@
             "gzip_bytes": 6777
         },
         "assets/css/notifications.css": {
-            "bytes": 8030,
-            "gzip_bytes": 2515
+            "bytes": 12075,
+            "gzip_bytes": 3383
         },
         "assets/css/notifications.min.css": {
-            "bytes": 5951,
-            "gzip_bytes": 1631
+            "bytes": 8911,
+            "gzip_bytes": 2154
         },
         "assets/css/observability.css": {
             "bytes": 19424,
@@ -217,13 +436,21 @@
             "bytes": 3304,
             "gzip_bytes": 1018
         },
+        "assets/css/quote-priority.css": {
+            "bytes": 7168,
+            "gzip_bytes": 2359
+        },
+        "assets/css/quote-priority.min.css": {
+            "bytes": 4108,
+            "gzip_bytes": 1207
+        },
         "assets/css/shell-index.css": {
-            "bytes": 88704,
-            "gzip_bytes": 15340
+            "bytes": 100858,
+            "gzip_bytes": 16758
         },
         "assets/css/shell-index.min.css": {
-            "bytes": 63509,
-            "gzip_bytes": 11620
+            "bytes": 72886,
+            "gzip_bytes": 12895
         },
         "assets/css/theme-tokens.css": {
             "bytes": 15475,
@@ -234,20 +461,20 @@
             "gzip_bytes": 2967
         },
         "assets/css/tv-board.css": {
-            "bytes": 22969,
-            "gzip_bytes": 5129
+            "bytes": 30273,
+            "gzip_bytes": 6327
         },
         "assets/css/tv-board.min.css": {
-            "bytes": 15049,
-            "gzip_bytes": 3897
+            "bytes": 21039,
+            "gzip_bytes": 4967
         },
         "assets/js/app.js": {
-            "bytes": 109787,
-            "gzip_bytes": 25700
+            "bytes": 112624,
+            "gzip_bytes": 26485
         },
         "assets/js/app.min.js": {
-            "bytes": 65454,
-            "gzip_bytes": 19612
+            "bytes": 66524,
+            "gzip_bytes": 19956
         },
         "assets/js/biomie-formatters.js": {
             "bytes": 3182,
@@ -274,12 +501,12 @@
             "gzip_bytes": 4036
         },
         "assets/js/biomie-map.js": {
-            "bytes": 236086,
-            "gzip_bytes": 56897
+            "bytes": 236933,
+            "gzip_bytes": 57196
         },
         "assets/js/biomie-map.min.js": {
-            "bytes": 134483,
-            "gzip_bytes": 40211
+            "bytes": 134800,
+            "gzip_bytes": 40306
         },
         "assets/js/biomie-states.js": {
             "bytes": 8314,
@@ -333,6 +560,14 @@
             "bytes": 90387,
             "gzip_bytes": 23827
         },
+        "assets/js/commercial-channel-toggle.js": {
+            "bytes": 7913,
+            "gzip_bytes": 2991
+        },
+        "assets/js/commercial-channel-toggle.min.js": {
+            "bytes": 3959,
+            "gzip_bytes": 1725
+        },
         "assets/js/commercial-language.js": {
             "bytes": 14160,
             "gzip_bytes": 4400
@@ -342,12 +577,12 @@
             "gzip_bytes": 4074
         },
         "assets/js/context-filters.js": {
-            "bytes": 26667,
-            "gzip_bytes": 6334
+            "bytes": 50082,
+            "gzip_bytes": 12870
         },
         "assets/js/context-filters.min.js": {
-            "bytes": 14361,
-            "gzip_bytes": 4399
+            "bytes": 24377,
+            "gzip_bytes": 7389
         },
         "assets/js/core/chart-factory.js": {
             "bytes": 62841,
@@ -406,12 +641,12 @@
             "gzip_bytes": 743
         },
         "assets/js/core/render-helpers.js": {
-            "bytes": 67209,
-            "gzip_bytes": 15818
+            "bytes": 68154,
+            "gzip_bytes": 16060
         },
         "assets/js/core/render-helpers.min.js": {
-            "bytes": 43652,
-            "gzip_bytes": 12467
+            "bytes": 44396,
+            "gzip_bytes": 12671
         },
         "assets/js/core/request-controller.js": {
             "bytes": 1775,
@@ -454,12 +689,12 @@
             "gzip_bytes": 10842
         },
         "assets/js/fiscal.js": {
-            "bytes": 105389,
-            "gzip_bytes": 27757
+            "bytes": 111470,
+            "gzip_bytes": 29510
         },
         "assets/js/fiscal.min.js": {
-            "bytes": 80426,
-            "gzip_bytes": 24580
+            "bytes": 84426,
+            "gzip_bytes": 25753
         },
         "assets/js/flight-plan-targets.js": {
             "bytes": 20578,
@@ -566,12 +801,12 @@
             "gzip_bytes": 4525
         },
         "assets/js/modules/dashboard/page-drilldown.js": {
-            "bytes": 35388,
-            "gzip_bytes": 8735
+            "bytes": 45528,
+            "gzip_bytes": 11733
         },
         "assets/js/modules/dashboard/page-drilldown.min.js": {
-            "bytes": 18515,
-            "gzip_bytes": 6371
+            "bytes": 22761,
+            "gzip_bytes": 7801
         },
         "assets/js/modules/drilldown-router.js": {
             "bytes": 11100,
@@ -686,12 +921,12 @@
             "gzip_bytes": 1014
         },
         "assets/js/modules/flight-plan/index.js": {
-            "bytes": 4362,
-            "gzip_bytes": 1460
+            "bytes": 5059,
+            "gzip_bytes": 1600
         },
         "assets/js/modules/flight-plan/index.min.js": {
-            "bytes": 2662,
-            "gzip_bytes": 1119
+            "bytes": 3064,
+            "gzip_bytes": 1220
         },
         "assets/js/modules/flight-plan/kpis.js": {
             "bytes": 8588,
@@ -726,12 +961,12 @@
             "gzip_bytes": 1296
         },
         "assets/js/modules/flight-plan/vendor-table.js": {
-            "bytes": 7188,
-            "gzip_bytes": 2474
+            "bytes": 8115,
+            "gzip_bytes": 2703
         },
         "assets/js/modules/flight-plan/vendor-table.min.js": {
-            "bytes": 4183,
-            "gzip_bytes": 1849
+            "bytes": 4853,
+            "gzip_bytes": 2068
         },
         "assets/js/modules/geo-detail/charts.js": {
             "bytes": 3320,
@@ -756,6 +991,14 @@
         "assets/js/modules/geo-detail/tabs.min.js": {
             "bytes": 7633,
             "gzip_bytes": 2462
+        },
+        "assets/js/modules/insights-panel.js": {
+            "bytes": 4608,
+            "gzip_bytes": 2096
+        },
+        "assets/js/modules/insights-panel.min.js": {
+            "bytes": 2812,
+            "gzip_bytes": 1443
         },
         "assets/js/modules/invoice-detail/index.js": {
             "bytes": 29872,
@@ -790,12 +1033,12 @@
             "gzip_bytes": 3466
         },
         "assets/js/modules/overview/overview-detail-drawer.js": {
-            "bytes": 11707,
-            "gzip_bytes": 3566
+            "bytes": 51717,
+            "gzip_bytes": 12729
         },
         "assets/js/modules/overview/overview-detail-drawer.min.js": {
-            "bytes": 6936,
-            "gzip_bytes": 2743
+            "bytes": 27897,
+            "gzip_bytes": 9059
         },
         "assets/js/modules/product-detail/charts.js": {
             "bytes": 3892,
@@ -838,12 +1081,20 @@
             "gzip_bytes": 5348
         },
         "assets/js/modules/quote-calendar-widget.js": {
-            "bytes": 14520,
-            "gzip_bytes": 4977
+            "bytes": 14902,
+            "gzip_bytes": 5142
         },
         "assets/js/modules/quote-calendar-widget.min.js": {
-            "bytes": 7599,
-            "gzip_bytes": 3196
+            "bytes": 7642,
+            "gzip_bytes": 3217
+        },
+        "assets/js/modules/quote-priority-panel.js": {
+            "bytes": 5513,
+            "gzip_bytes": 2287
+        },
+        "assets/js/modules/quote-priority-panel.min.js": {
+            "bytes": 2645,
+            "gzip_bytes": 1255
         },
         "assets/js/modules/reconciliation/search-drilldown.js": {
             "bytes": 26069,
@@ -894,12 +1145,12 @@
             "gzip_bytes": 2880
         },
         "assets/js/notifications.js": {
-            "bytes": 8510,
-            "gzip_bytes": 2706
+            "bytes": 11866,
+            "gzip_bytes": 4152
         },
         "assets/js/notifications.min.js": {
-            "bytes": 5144,
-            "gzip_bytes": 1831
+            "bytes": 5950,
+            "gzip_bytes": 2262
         },
         "assets/js/observability.js": {
             "bytes": 38135,
@@ -918,12 +1169,12 @@
             "gzip_bytes": 6414
         },
         "assets/js/performance-monitor.js": {
-            "bytes": 5693,
-            "gzip_bytes": 1977
+            "bytes": 6002,
+            "gzip_bytes": 2113
         },
         "assets/js/performance-monitor.min.js": {
-            "bytes": 3259,
-            "gzip_bytes": 1536
+            "bytes": 3278,
+            "gzip_bytes": 1551
         },
         "assets/js/pwa.js": {
             "bytes": 5379,
@@ -966,20 +1217,20 @@
             "gzip_bytes": 5496
         },
         "assets/js/tv-board.js": {
-            "bytes": 14676,
-            "gzip_bytes": 3913
+            "bytes": 36812,
+            "gzip_bytes": 8893
         },
         "assets/js/tv-board.min.js": {
-            "bytes": 7791,
-            "gzip_bytes": 2748
+            "bytes": 20858,
+            "gzip_bytes": 6908
         },
         "assets/js/vendor-filter.js": {
-            "bytes": 19707,
-            "gzip_bytes": 5217
+            "bytes": 21868,
+            "gzip_bytes": 5837
         },
         "assets/js/vendor-filter.min.js": {
-            "bytes": 10156,
-            "gzip_bytes": 3419
+            "bytes": 10810,
+            "gzip_bytes": 3567
         }
     }
 }

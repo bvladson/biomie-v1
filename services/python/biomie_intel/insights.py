@@ -28,6 +28,7 @@ import pymysql
 
 from .db import fetch_all
 from .forecast_store import ForecastLinha
+from .target_ladder import evaluate as evaluate_target_ladder
 
 #: abaixo disto, variação percentual é ruído — não vira frase
 MIN_NOTAS_PARA_TENDENCIA = 8
@@ -348,7 +349,7 @@ _ERROS_DE_SCHEMA = (
 )
 
 
-def _metas(conn, company_id: int, competencia: str) -> tuple[float, dict[str, float], dict[str, float]]:
+def _metas_com_escadas(conn, company_id: int, competencia: str) -> tuple[float, dict[str, float], dict[str, float], dict[str, list[float]]]:
     """Metas por canal e por vendedor.
 
     O `except` aqui é ESTREITO de propósito. Um `except Exception` genérico
@@ -377,13 +378,44 @@ def _metas(conn, company_id: int, competencia: str) -> tuple[float, dict[str, fl
     # em silêncio, desde que o forecast por vendedor foi ao ar. Havia 4 metas de
     # agosto somando R$ 160 mil sendo descartadas.
     vendedores = _tolerando_schema_antigo(
-        """SELECT vendor_id, target_amount FROM biomie_sales_targets_monthly
+        """SELECT vendor_id, target_amount, tiers_json FROM biomie_sales_targets_monthly
             WHERE company_id = %s AND `year_month` = %s""",
+        (company_id, competencia),
+    )
+    niveis_normalizados = _tolerando_schema_antigo(
+        """SELECT vendor_id, level_number, target_amount
+             FROM biomie_sales_target_levels
+            WHERE company_id = %s AND `year_month` = %s AND active = 1
+            ORDER BY vendor_id, level_number""",
         (company_id, competencia),
     )
     por_canal = {str(r["canal"]): float(r["meta_valor"] or 0) for r in canais}
     por_vendedor = {str(r["vendor_id"]): float(r["target_amount"] or 0) for r in vendedores}
-    return sum(por_canal.values()), por_canal, por_vendedor
+    escadas: dict[str, list[float]] = {}
+    import json
+    for row in vendedores:
+        levels = [float(row["target_amount"] or 0)]
+        try:
+            extras = json.loads(row.get("tiers_json") or "[]")
+        except (TypeError, ValueError):
+            extras = []
+        levels.extend(float(value) for value in extras if isinstance(value, (int, float)) and value > 0)
+        escadas[str(row["vendor_id"])] = sorted(set(value for value in levels if value > 0))
+    # A tabela normalizada é a fonte preferida; JSON permanece como fallback
+    # durante a transição e para releases anteriores à migration.
+    normalizadas: dict[str, list[float]] = {}
+    for row in niveis_normalizados:
+        normalizadas.setdefault(str(row["vendor_id"]), []).append(float(row["target_amount"] or 0))
+    escadas.update(normalizadas)
+    for vendor_id, levels in escadas.items():
+        escadas[vendor_id] = sorted(set(value for value in levels if value > 0))
+    return sum(por_canal.values()), por_canal, por_vendedor, escadas
+
+
+def _metas(conn, company_id: int, competencia: str) -> tuple[float, dict[str, float], dict[str, float]]:
+    """Contrato legado: metas simples; a evolução usa `_metas_com_escadas`."""
+    total, canais, vendedores, _ = _metas_com_escadas(conn, company_id, competencia)
+    return total, canais, vendedores
 
 
 def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]:
@@ -399,7 +431,7 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
     if hoje.day < MIN_DIAS_FORECAST:
         return []
     competencia = hoje.strftime("%Y-%m")
-    meta_empresa, metas_canal, metas_vendedor = _metas(conn, company_id, competencia)
+    meta_empresa, metas_canal, metas_vendedor, escadas_vendedor = _metas_com_escadas(conn, company_id, competencia)
     saida: list[ForecastLinha] = []
 
     for dimensao in ("empresa", "canal", "vendedor"):
@@ -430,6 +462,26 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
                 metas_canal.get(str(codigo), 0.0) if dimensao == "canal"
                 else metas_vendedor.get(str(codigo), 0.0)
             )
+            ladder = evaluate_target_ladder(escadas_vendedor.get(str(codigo), []), realizado) \
+                if dimensao == "vendedor" else None
+            level_probabilities: list[dict[str, Any]] = []
+            if ladder:
+                for level_number, level_value in enumerate(ladder["levels"], start=1):
+                    risk = _risco_nao_bater(level_value, projetado, erro)
+                    level_probabilities.append({
+                        "level": level_number,
+                        "target": round(level_value, 2),
+                        "achieved": realizado >= level_value,
+                        "probability": 1.0 if realizado >= level_value else (
+                            round(1.0 - risk, 4) if risk is not None else None
+                        ),
+                        "actionable": erro < ERRO_CONFIANCA_MINIMA,
+                    })
+            if ladder and ladder["base_target"] is not None:
+                # O compromisso continua nas métricas, mas risco/gap miram o
+                # primeiro nível ainda não conquistado. Depois do máximo não se
+                # inventa uma nova meta nem se gera alerta.
+                meta_bruta = ladder["active_target"] or 0.0
             # 0.0 aqui significa "não achei meta", não "a meta é zero".
             meta = meta_bruta if meta_bruta > 0 else None
             saida.append(ForecastLinha(
@@ -450,7 +502,15 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
                     f"ritmo atual de {_brl(ritmo)}",
                     f"média de {len(historicos)} meses: {_brl(media_hist)}",
                     f"peso do mês corrente: {peso * 100:.0f}%",
+                    *([f"escada: nível {ladder['achieved_level']} conquistado; próximo {ladder['active_level']}"] if ladder else []),
                 ],
+                base_target=ladder["base_target"] if ladder else meta,
+                active_target=ladder["active_target"] if ladder else meta,
+                maximum_target=ladder["maximum_target"] if ladder else meta,
+                achieved_level=int(ladder["achieved_level"]) if ladder else 0,
+                active_level=ladder["active_level"] if ladder else (1 if meta else None),
+                levels_total=len(ladder["levels"]) if ladder else (1 if meta else 0),
+                level_probabilities=level_probabilities,
             ))
 
     return saida
@@ -500,12 +560,27 @@ def _forecasts_segmentados(conn, company_id: int, hoje: date) -> list[Insight]:
 
         risco_txt = f" Risco de não bater a meta: {risco * 100:.0f}%." if risco is not None else ""
         confianca_txt = "" if confianca == "alta" else f" Confiança média (erro de {linha.erro_historico * 100:.0f}%)."
+        ladder_txt = ""
+        if linha.levels_total > 1:
+            if linha.active_target is None:
+                superacao = max(linha.realizado - (linha.maximum_target or linha.realizado), 0)
+                ladder_txt = f" Todos os {linha.levels_total} níveis conquistados; superação de {_brl(superacao)}."
+            else:
+                chance = next((
+                    p.get("probability") for p in linha.level_probabilities
+                    if p.get("level") == linha.active_level
+                ), None)
+                chance_txt = f", chance estimada {chance * 100:.0f}%" if chance is not None else ""
+                ladder_txt = (
+                    f" Meta {linha.achieved_level} conquistada; desafio ativo Meta "
+                    f"{linha.active_level} em {_brl(linha.active_target)}{chance_txt}."
+                )
         saida.append(Insight(
             kind=f"forecast_{linha.dimensao}_{linha.entidade_codigo[:20]}",
             severity="critico" if risco is not None and risco >= .70 else "atencao" if risco is not None and risco >= .45 else "neutro",
             title=titulo,
             body=(f"Realizado {_brl(linha.realizado)}; projeção provável {_brl(linha.projecao)}, "
-                  f"faixa {_brl(linha.valor_min)}–{_brl(linha.valor_max)}.{risco_txt}{confianca_txt}"),
+                  f"faixa {_brl(linha.valor_min)}–{_brl(linha.valor_max)}.{risco_txt}{confianca_txt}{ladder_txt}"),
             rank_weight=95 if linha.dimensao == "empresa" else (75 if risco is not None and risco >= .45 else 25),
             metrics=metricas,
             link_url="plano_voo.php" if linha.dimensao != "canal" else "index.php",

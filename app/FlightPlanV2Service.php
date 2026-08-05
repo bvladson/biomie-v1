@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\Commercial\TargetLadder;
 use BIomie\Support\VendorAliasResolver;
 use DateTimeImmutable;
 
@@ -165,6 +166,9 @@ final class FlightPlanV2Service
             'discount_total' => 0.0,
             'target_period' => 0.0,
             'target_month' => 0.0,
+            'base_target' => 0.0,
+            'active_target' => 0.0,
+            'maximum_target' => 0.0,
             'forecast_period' => 0.0,
             'gap_to_target' => 0.0,
             'new_daily_target' => 0.0,
@@ -323,6 +327,30 @@ final class FlightPlanV2Service
                 $row = array_merge($row, $tierInfo);
             }
 
+            // A conquista da meta-base permanece registrada; gap, ritmo e risco
+            // do desafio passam a mirar o primeiro nível ainda não atingido.
+            $row['base_target'] = (float) ($row['base_target'] ?? $targetPeriod);
+            $row['maximum_target'] = (float) ($row['maximum_target'] ?? $targetPeriod);
+            $activeTarget = $tierInfo === null
+                ? ($targetPeriod > 0 ? $targetPeriod : null)
+                : (isset($row['active_target']) && $row['active_target'] !== null
+                    ? (float) $row['active_target']
+                    : null);
+            $row['active_target_period'] = $activeTarget;
+            $row['base_gap'] = Support::money(max($targetPeriod - $realized, 0));
+            $row['gap_to_target'] = $activeTarget !== null
+                ? Support::money(max($activeTarget - $realized, 0))
+                : 0.0;
+            $row['new_daily_target'] = $activeTarget !== null && $remainingWeight > 0
+                ? Support::money($row['gap_to_target'] / $remainingWeight)
+                : 0.0;
+            $row['active_forecast_pct'] = $activeTarget !== null && $activeTarget > 0
+                ? round(($probableForecast / $activeTarget) * 100, 2)
+                : 100.0;
+            $row['challenge_risk'] = $activeTarget === null
+                ? 'all_levels_achieved'
+                : self::classifyRisk($activeTarget, $realized, (float) $row['active_forecast_pct']);
+
             // Phase F: risk classification (on_track / attention / critical / no_sales)
             $riskNew            = self::classifyRisk($targetPeriod, $realized, $forecastPct);
             $row['risk']        = $riskNew;
@@ -351,6 +379,9 @@ final class FlightPlanV2Service
             $team['discount_total'] += $discountTotal;
             $team['target_period'] += $targetPeriod;
             $team['target_month'] += $targetMonth;
+            $team['base_target'] += (float) $row['base_target'];
+            $team['active_target'] += $activeTarget ?? (float) $row['maximum_target'];
+            $team['maximum_target'] += (float) $row['maximum_target'];
             $team['notes_count'] += $notesCount;
             $team['orders'] += $billedOrdersCount;
             $team['pipeline_orders_count'] += $pipelineOrders;
@@ -376,15 +407,23 @@ final class FlightPlanV2Service
             'probable' => $teamProbableForecast,
             'commit' => $teamCommitForecast,
         ];
-        $team['gap_to_target'] = Support::money(max((float) $team['target_period'] - (float) $team['realized_period'], 0));
+        $team['base_gap'] = Support::money(max((float) $team['target_period'] - (float) $team['realized_period'], 0));
+        $team['active_gap'] = Support::money(max((float) $team['active_target'] - (float) $team['realized_period'], 0));
+        $team['gap_to_target'] = $team['active_gap'];
         $team['new_daily_target'] = $remainingWeight > 0
-            ? Support::money((float) $team['gap_to_target'] / $remainingWeight)
+            ? Support::money((float) $team['active_gap'] / $remainingWeight)
             : 0.0;
         $team['attainment_pct'] = (float) $team['target_period'] > 0
             ? round(((float) $team['realized_period'] / (float) $team['target_period']) * 100, 2)
             : 0.0;
         $team['forecast_pct'] = (float) $team['target_period'] > 0
             ? round(($teamProbableForecast / (float) $team['target_period']) * 100, 2)
+            : 0.0;
+        $team['active_forecast_pct'] = (float) $team['active_target'] > 0
+            ? round(($teamProbableForecast / (float) $team['active_target']) * 100, 2)
+            : 0.0;
+        $team['maximum_attainment_pct'] = (float) $team['maximum_target'] > 0
+            ? round(((float) $team['realized_period'] / (float) $team['maximum_target']) * 100, 2)
             : 0.0;
         $team['line_85_value'] = Support::money((float) $team['target_period'] * (CommercialPlanning::RISK_ATTENTION_PCT / 100));
         $team['line_85_gap'] = Support::money(max((float) $team['line_85_value'] - (float) $team['realized_period'], 0));
@@ -433,6 +472,15 @@ final class FlightPlanV2Service
         $team['vendors_attention'] = count(array_filter($vendors, static fn (array $v): bool => $v['risk'] === 'attention'));
         $team['vendors_critical']  = count(array_filter($vendors, static fn (array $v): bool => $v['risk'] === 'critical'));
         $team['vendors_no_sales']  = count(array_filter($vendors, static fn (array $v): bool => $v['risk'] === 'no_sales'));
+        $team['vendors_base_achieved'] = count(array_filter($vendors, static fn (array $v): bool => (int) ($v['achieved_level'] ?? 0) >= 1));
+        $team['vendors_all_levels_achieved'] = count(array_filter($vendors, static fn (array $v): bool => ($v['all_levels_achieved'] ?? false) === true));
+        $team['vendors_by_active_level'] = [];
+        foreach ($vendors as $vendor) {
+            $level = $vendor['active_level'] ?? null;
+            if ($level === null) continue;
+            $key = (string) $level;
+            $team['vendors_by_active_level'][$key] = ($team['vendors_by_active_level'][$key] ?? 0) + 1;
+        }
 
         $dailySalesMap = [];
         foreach (Support::eachDate($start, $end) as $date) {
@@ -711,6 +759,19 @@ final class FlightPlanV2Service
                     'level' => 'danger',
                     'title' => (string) ($vendor['vendor_name'] ?? 'Vendedor em risco'),
                     'message' => 'A projecao do periodo ficou abaixo da linha minima de seguranca. Revisar carteira e conversao.',
+                ];
+            }
+            if ((int) ($vendor['achieved_level'] ?? 0) >= 1
+                && ($vendor['all_levels_achieved'] ?? false) !== true
+                && in_array((string) ($vendor['challenge_risk'] ?? ''), ['attention', 'critical'], true)) {
+                $alerts[] = [
+                    'level' => 'info',
+                    'title' => (string) ($vendor['vendor_name'] ?? 'Próximo desafio'),
+                    'message' => sprintf(
+                        'Compromisso cumprido. Meta %d ativa; faltam %s para o próximo nível.',
+                        (int) ($vendor['active_level'] ?? 1),
+                        'R$ ' . number_format((float) ($vendor['active_gap'] ?? $vendor['gap_to_target'] ?? 0), 2, ',', '.')
+                    ),
                 ];
             }
         }
@@ -1030,13 +1091,6 @@ final class FlightPlanV2Service
             }
         }
 
-        return [
-            'tier_levels'     => $levels,
-            'tiers_total'     => count($levels),
-            'current_tier'    => $achieved,
-            'next_tier_value' => $nextValue,
-            'next_tier_gap'   => $nextValue !== null ? round(max($nextValue - $realized, 0), 2) : 0.0,
-            'next_tier_pct'   => ($nextValue !== null && $nextValue > 0) ? round($realized / $nextValue * 100, 2) : 100.0,
-        ];
+        return TargetLadder::evaluate($levels, $realized);
     }
 }

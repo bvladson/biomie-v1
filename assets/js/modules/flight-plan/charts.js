@@ -38,8 +38,9 @@
 
     const labels    = top.map(v => (v.vendor_name || '').substring(0, 15));
     const realized  = top.map(v => Number(v.realized_period || 0));
-    const target    = top.map(v => Number(v.target_period || 0));
-    const barColors = top.map(v => achievementColor(Number(v.realized_period || 0), Number(v.target_period || 0)));
+    const target    = top.map(v => Number(v.active_target || v.maximum_target || v.target_period || 0));
+    const baseTarget = top.map(v => Number(v.target_period || 0));
+    const barColors = top.map(v => achievementColor(Number(v.realized_period || 0), Number(v.active_target || v.maximum_target || v.target_period || 0)));
 
     const formatters = window.BIomieFlightPlan.Formatters;
     const border = formatters ? formatters.theme('--border', '#eee') : '#eee';
@@ -59,7 +60,7 @@
             order: 1
           },
           {
-            label: 'Meta do período',
+            label: 'Desafio ativo',
             data: target,
             backgroundColor: 'rgba(15,23,42,0.07)',
             borderColor: 'rgba(15,23,42,0.15)',
@@ -67,6 +68,16 @@
             borderRadius: 4,
             barPercentage: 0.55,
             order: 2
+          },
+          {
+            type: 'line',
+            label: 'Compromisso-base',
+            data: baseTarget,
+            borderColor: 'rgba(22,163,74,0.7)',
+            borderWidth: 2,
+            pointRadius: 2,
+            fill: false,
+            order: 0
           }
         ]
       },
@@ -80,9 +91,10 @@
               label: function (ctx) {
                 var v = ctx.raw;
                 var row = top[ctx.dataIndex] || {};
-                if (ctx.dataset.label === 'Vendas faturadas' && row.target_period > 0) {
-                  var pct = (Number(v) / Number(row.target_period) * 100).toFixed(1);
-                  return 'Vendas faturadas: ' + fmt(v) + ' (' + pct + '% da meta)';
+                var comparison = Number(row.active_target || row.maximum_target || row.target_period || 0);
+                if (ctx.dataset.label === 'Vendas faturadas' && comparison > 0) {
+                  var pct = (Number(v) / comparison * 100).toFixed(1);
+                  return 'Vendas faturadas: ' + fmt(v) + ' (' + pct + '% do desafio)';
                 }
                 return ctx.dataset.label + ': ' + fmt(v);
               }
@@ -103,11 +115,11 @@
       var G = window.BIOMIE_CHART_GOVERNANCE;
       // Insight: how many above vs below target
       var aboveMeta  = top.filter(function (v) { return Number(v.realized_period) >= Number(v.target_period) && Number(v.target_period) > 0; }).length;
-      var belowWarn  = top.filter(function (v) { return Number(v.target_period) > 0 && Number(v.realized_period) / Number(v.target_period) < 0.8; }).length;
+      var belowWarn  = top.filter(function (v) { var a = Number(v.active_target || v.maximum_target || v.target_period || 0); return a > 0 && Number(v.realized_period) / a < 0.8; }).length;
       var noTarget = top.filter(function (v) { return Number(v.target_period) <= 0; }).length;
       var text = noTarget > 0 ? noTarget + ' vendedor(es) com meta pendente. ' : '';
-      text += aboveMeta + ' vendedor(es) acima da meta.';
-      if (belowWarn > 0) text += ' ' + belowWarn + ' abaixo de 80%.';
+      text += aboveMeta + ' vendedor(es) cumpriram o compromisso-base.';
+      if (belowWarn > 0) text += ' ' + belowWarn + ' abaixo de 80% do desafio ativo.';
       var variant = noTarget > 0 || belowWarn > 0 ? 'warning' : (aboveMeta === top.length ? 'success' : 'neutral');
       var cSuccess  = formatters ? formatters.theme('--chart-target',    '#16a34a') : '#16a34a';
       var cWarn     = formatters ? formatters.theme('--chart-pending',   '#d97706') : '#d97706';
@@ -118,7 +130,8 @@
         { label: '80-99% (atenção)',        borderColor: cWarn,    backgroundColor: cWarn,    type: 'bar' },
         { label: '< 80% (abaixo)',          borderColor: cDanger,  backgroundColor: cDanger,  type: 'bar' },
         { label: 'Meta pendente',            borderColor: cNeutral, backgroundColor: cNeutral, type: 'bar' },
-        { label: 'Meta do período',         borderColor: 'rgba(15,23,42,0.15)', backgroundColor: 'rgba(15,23,42,0.07)', type: 'bar' },
+        { label: 'Desafio ativo',           borderColor: 'rgba(15,23,42,0.15)', backgroundColor: 'rgba(15,23,42,0.07)', type: 'bar' },
+        { label: 'Compromisso-base',        borderColor: 'rgba(22,163,74,0.7)', backgroundColor: 'rgba(22,163,74,0.15)', type: 'line' },
       ];
       G.ensureLegend(container, legendDs);
       G.renderInsight(container, { text: text, variant: variant });

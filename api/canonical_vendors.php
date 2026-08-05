@@ -13,6 +13,7 @@ declare(strict_types=1);
  */
 
 use BIomie\CanonicalRepository;
+use BIomie\Commercial\TargetLadder;
 use BIomie\CommercialPlanning;
 use BIomie\Database;
 use BIomie\Http;
@@ -307,16 +308,11 @@ try {
                 $tierPeriod = $goalCalc->calculate($start, $end, $tierMap)['meta_total_periodo'];
                 if ($tierPeriod > end($levels)) $levels[] = round($tierPeriod, 2);
             }
-            $achieved = 0;
-            foreach ($levels as $lvl) { if ($vNfReal >= $lvl && $lvl > 0) $achieved++; }
-            $nextVal = null;
-            foreach ($levels as $lvl) { if ($lvl > $vNfReal) { $nextVal = $lvl; break; } }
-            $vm['tier_levels']     = $levels;
-            $vm['tiers_total']     = count($levels);
-            $vm['current_tier']    = $achieved;
-            $vm['next_tier_value'] = $nextVal;
-            $vm['next_tier_gap']   = $nextVal !== null ? round(max($nextVal - $vNfReal, 0), 2) : 0.0;
-            $vm['next_tier_pct']   = ($nextVal !== null && $nextVal > 0) ? round($vNfReal / $nextVal * 100, 2) : 100.0;
+            $vm = array_merge($vm, TargetLadder::evaluate($levels, $vNfReal));
+            $vm['base_gap'] = round(max($vTarget - $vNfReal, 0), 2);
+            $vm['gap_to_target'] = $vm['active_target'] !== null
+                ? round(max((float) $vm['active_target'] - $vNfReal, 0), 2)
+                : 0.0;
         }
         // Conflict counts
         $vConf = $vendorConflictCounts[$vName] ?? null;

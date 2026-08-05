@@ -62,7 +62,7 @@
       '<table class="mag-flight-table">' +
       '<thead><tr>' +
       '<th>Vendedor</th>' +
-      '<th>Meta do período</th>' +
+      '<th>Compromisso / desafio</th>' +
       '<th>Vendas faturadas</th>' +
       '<th>% da meta</th>' +
       '<th>Quanto falta</th>' +
@@ -88,7 +88,8 @@
         '<td class="mag-flight-table__vendor">' +
           '<strong>' + esc(v.vendor_name || '') + '</strong>' +
         '</td>' +
-        '<td>' + fmt(v.target_period || 0) + '</td>' +
+        '<td><small>Base ' + fmt(v.target_period || 0) + '</small><br><strong>' +
+          (v.active_target != null ? 'Próxima ' + fmt(v.active_target) : 'Todos os níveis ✓') + '</strong></td>' +
         '<td>' + fmt(v.realized_period || 0) + '</td>' +
         '<td>' + ating + '</td>' +
         '<td>' + fmt(v.gap_to_target || 0) + '</td>' +
@@ -125,7 +126,8 @@
           '<span class="mag-flight-status ' + riskCls + '">' + esc(riskLbl) + '</span>' +
         '</div>' +
         '<div class="mag-flight-card__kpis">' +
-          '<div><span>Meta do período</span><strong>' + fmt(v.target_period || 0) + '</strong></div>' +
+          '<div><span>Compromisso-base</span><strong>' + fmt(v.target_period || 0) + '</strong></div>' +
+          '<div><span>Desafio ativo</span><strong>' + (v.active_target != null ? fmt(v.active_target) : 'Concluído') + '</strong></div>' +
           '<div><span>Vendas faturadas</span><strong>' + fmt(v.realized_period || 0) + '</strong></div>' +
           '<div><span>% da meta</span><strong>' + fmtN(v.attainment_pct || 0, 1) + '%</strong></div>' +
           '<div><span>Quanto falta</span><strong>' + fmt(v.gap_to_target || 0) + '</strong></div>' +

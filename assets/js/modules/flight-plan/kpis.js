@@ -47,9 +47,15 @@
     if (!dom || !formatters) return;
 
     dom.setText('[data-bind="fp-meta-total"]', formatters.fmt(t.target_period));
+    var activeTarget = Number(t.active_target || 0);
+    var maximumTarget = Number(t.maximum_target || t.target_period || 0);
+    var activeText = activeTarget > 0
+      ? 'Desafio ativo: ' + formatters.fmt(activeTarget)
+      : (maximumTarget > 0 ? 'Todos os níveis conquistados · máximo ' + formatters.fmt(maximumTarget) : 'Sem níveis adicionais');
+    dom.setText('[data-bind="fp-active-target"]', activeText);
     dom.setText('[data-bind="fp-realizado"]', formatters.fmt(t.realized_period));
     dom.setText('[data-bind="fp-gap-total"]', formatters.fmt(t.gap_to_target));
-    dom.setText('[data-bind="fp-atingimento-total"]', `Atingimento ${formatters.fmtN(t.attainment_pct, 1)}%`);
+    dom.setText('[data-bind="fp-atingimento-total"]', `Atingimento-base ${formatters.fmtN(t.attainment_pct, 1)}%`);
     dom.setText('[data-bind="fp-projecao"]', formatters.fmt(t.forecast_period));
     dom.setText('[data-bind="fp-carteira-valor"]', formatters.fmt(t.pipeline_value || 0));
     dom.setText('[data-bind="fp-pedidos-carteira"]', formatters.fmtN(t.pipeline_orders_count || 0));
@@ -85,7 +91,8 @@
     if (!formatters) return;
     
     const fcs = team.forecasts || {base:0, probable:0, commit:0};
-    const tgt = Number(team.target_period||0);
+    const baseTgt = Number(team.target_period||0);
+    const tgt = Number(team.active_target||baseTgt);
     const mx = Math.max(tgt, fcs.base, fcs.probable, fcs.commit) * 1.05;
     const track = formatters.theme('--surface-3', '#f0f0f0');
     const targetLine = formatters.theme('--text-1', '#222');
@@ -108,7 +115,7 @@
         </div>
         <div style="height:12px;background:${track};border-radius:2px;position:relative">
           <div style="position:absolute;top:0;bottom:0;left:0;width:${p}%;background:${clr};border-radius:2px"></div>
-          ${tgt>0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${pt}%;width:2px;background:${targetLine};z-index:2" title="Meta"></div>` : ''}
+          ${tgt>0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${pt}%;width:2px;background:${targetLine};z-index:2" title="Desafio ativo"></div>` : ''}
         </div>
       </div>`;
     }
@@ -118,7 +125,7 @@
       ${makeBar('Provavel', Number(fcs.probable||0), probableColor)}
       ${makeBar('Base', Number(fcs.base||0), baseColor)}
       <div style="margin-top:16px;font-size:11px;color:var(--text-secondary);text-align:right">
-        Meta: <strong>${formatters.fmt(tgt)}</strong>
+        Compromisso: <strong>${formatters.fmt(baseTgt)}</strong> · Desafio ativo: <strong>${formatters.fmt(tgt)}</strong>
       </div>
     `;
   }

@@ -55,6 +55,7 @@ GRANT SELECT ON ${DB}.biomie_notas_fiscais_canonicas          TO '${USER_NAME}'@
 GRANT SELECT ON ${DB}.intelligence_quote_feedback             TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_company_targets                  TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_sales_targets_monthly            TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT ON ${DB}.biomie_sales_target_levels              TO '${USER_NAME}'@'127.0.0.1';
 
 -- ESCRITA: exatamente as tabelas de WRITABLE_TABLES em config.py.
 -- As duas listas são declarações da mesma verdade; tests/test_permissions.py

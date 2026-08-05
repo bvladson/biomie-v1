@@ -89,6 +89,12 @@
       if (tiersTotal > 1 && target > 0) {
         var curTier  = Number(v.current_tier || 0);
         var nextVal  = v.next_tier_value != null ? Number(v.next_tier_value) : null;
+        targetCell = '<span class="fp-target-base"><small>Compromisso</small> ' + fmt(Number(v.base_target || target)) + '</span>';
+        if (v.all_levels_achieved) {
+          targetCell += '<br><span class="fp-target-active fp-target-active--done"><small>Meta máxima conquistada</small> ' + fmt(Number(v.maximum_target || target)) + '</span>';
+        } else if (nextVal != null) {
+          targetCell += '<br><span class="fp-target-active"><small>Desafio ativo</small> ' + fmt(nextVal) + '</span>';
+        }
         var tierText = 'Meta ' + Math.min(curTier + (curTier < tiersTotal ? 1 : 0), tiersTotal) + '/' + tiersTotal;
         var tierTitle = curTier >= tiersTotal
           ? 'Todos os níveis de meta atingidos!'
@@ -107,6 +113,11 @@
             return '<span class="tier-progress__mark' + (realized >= lvl ? ' tier-progress__mark--done' : '') + '" style="left:' + pos.toFixed(1) + '%" title="' + escH(fmt(lvl)) + '"></span>';
           }).join('');
           targetCell += '<span class="tier-progress"><span class="tier-progress__fill" style="width:' + fillPct.toFixed(1) + '%"></span>' + marks + '</span>';
+        }
+        if (!v.all_levels_achieved && v.step_progress_pct != null) {
+          targetCell += '<small class="fp-tier-step">' + fmtN(Number(v.step_progress_pct), 1) + '% do caminho neste nível</small>';
+        } else if (v.all_levels_achieved && Number(v.over_maximum_amount || 0) > 0) {
+          targetCell += '<small class="fp-tier-step">Superação: ' + fmt(Number(v.over_maximum_amount)) + '</small>';
         }
       }
 

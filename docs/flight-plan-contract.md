@@ -25,6 +25,28 @@ Alimentado por `plano_voo_metas.php` e integrado com Vendor 360, Dashboard e pá
 7. Licitação e remessa não entram na visão comercial padrão.
 8. Realizado, série diária e Vendor 360 usam a mesma base comercial da NF.
 
+## Escada de metas
+
+Uma meta mensal pode ter níveis crescentes. `target_amount` continua sendo o
+compromisso-base (Meta 1); os demais níveis são persistidos de forma auditável
+em `biomie_sales_target_levels`, com `tiers_json` mantido apenas para
+retrocompatibilidade.
+
+- Um nível é conquistado somente pelo realizado fiscal confirmado.
+- `active_target` é o primeiro nível ainda não atingido.
+- Ao conquistar um nível, o compromisso permanece visível e o desafio avança.
+- Forecast e carteira nunca desbloqueiam nível; apenas estimam a chance de alcançá-lo.
+- Depois do nível máximo, `active_target = null` e `all_levels_achieved = true`.
+- `target_period` e `base_target` preservam a série histórica do compromisso.
+- `gap_to_target`, `active_gap` e `new_daily_target` miram o desafio ativo.
+- O risco-base informa cumprimento do compromisso; `challenge_risk` informa a
+  situação do próximo nível.
+
+Campos canônicos: `base_target`, `active_target`, `maximum_target`,
+`achieved_level`, `active_level`, `tiers_total`, `active_gap`,
+`base_attainment_pct`, `active_attainment_pct`, `step_progress_pct`,
+`overall_progress_pct`, `all_levels_achieved` e `over_maximum_amount`.
+
 ## Endpoint
 
 ```

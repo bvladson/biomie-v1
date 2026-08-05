@@ -41,8 +41,15 @@
     ultima_atualizacao: 'Última atualização', dimensao: 'Dimensão', entidade: 'Entidade'
   };
 
-  var MONETARIOS = /^(receita|realizado|projecao|antes|depois|meta|faixa_)/;
-  var PERCENTUAIS = /^(variacao|share|queda_relativa|risco_nao_bater|erro_historico|crescimento)$/;
+  Object.assign(ROTULOS, {
+    base_target: 'Compromisso-base', active_target: 'Desafio ativo',
+    maximum_target: 'Meta máxima', achieved_level: 'Níveis conquistados',
+    active_level: 'Nível ativo', levels_total: 'Total de níveis',
+    level_probabilities: 'Chance por nível', confianca: 'Confiança'
+  });
+
+  var MONETARIOS = /^(receita|realizado|projecao|antes|depois|meta|faixa_|base_target|active_target|maximum_target)/;
+  var PERCENTUAIS = /^(variacao|share|queda_relativa|risco_nao_bater|erro_historico|crescimento|.*_pct)$/;
 
   function fmt(chave, valor) {
     if (valor === null || valor === undefined) return '—';
@@ -57,7 +64,15 @@
       }
       return String(Math.round(valor * 100) / 100);
     }
-    if (Array.isArray(valor)) return valor.join(' · ');
+    if (Array.isArray(valor)) {
+      if (valor.length && typeof valor[0] === 'object') {
+        return valor.map(function (nivel) {
+          var chance = nivel.achieved ? 'conquistada' : (nivel.probability == null ? 'sem previsão' : Math.round(Number(nivel.probability) * 100) + '%');
+          return 'Meta ' + nivel.level + ': ' + chance + (nivel.actionable === false ? ' · baixa confiança' : '');
+        }).join(' · ');
+      }
+      return valor.join(' · ');
+    }
     return String(valor);
   }
 

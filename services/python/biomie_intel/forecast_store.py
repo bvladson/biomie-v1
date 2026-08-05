@@ -42,6 +42,13 @@ class ForecastLinha:
     meses_historicos: int
     dados_usados: int
     fatores: list[str] = field(default_factory=list)
+    base_target: float | None = None
+    active_target: float | None = None
+    maximum_target: float | None = None
+    achieved_level: int = 0
+    active_level: int | None = None
+    levels_total: int = 0
+    level_probabilities: list[dict[str, Any]] = field(default_factory=list)
 
     def to_metrics(self) -> dict[str, Any]:
         """Espelho para o `metric_json` do insight — mesma verdade, um formato."""
@@ -49,6 +56,13 @@ class ForecastLinha:
             "dimensao": self.dimensao,
             "entidade": self.entidade_nome,
             "meta": round(self.meta_valor, 2) if self.meta_valor is not None else None,
+            "base_target": round(self.base_target, 2) if self.base_target is not None else None,
+            "active_target": round(self.active_target, 2) if self.active_target is not None else None,
+            "maximum_target": round(self.maximum_target, 2) if self.maximum_target is not None else None,
+            "achieved_level": self.achieved_level,
+            "active_level": self.active_level,
+            "levels_total": self.levels_total,
+            "level_probabilities": self.level_probabilities,
             "realizado": round(self.realizado, 2),
             "projecao": round(self.projecao, 2),
             "faixa_min": round(self.valor_min, 2),
@@ -96,9 +110,11 @@ def persist(
             """INSERT INTO intelligence_forecasts
                    (company_id, job_run_id, dimensao, entidade_codigo, entidade_nome,
                     competencia, realizado, projecao, valor_min, valor_max,
-                    meta_valor, risco_nao_bater, erro_historico, meses_historicos,
+                    meta_valor, base_target, active_target, maximum_target,
+                    achieved_level, active_level, levels_total, level_probabilities_json,
+                    risco_nao_bater, erro_historico, meses_historicos,
                     dados_usados, fatores_json, is_current, computed_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1,
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1,
                        UTC_TIMESTAMP())""",
             (
                 company_id,
@@ -112,6 +128,13 @@ def persist(
                 round(linha.valor_min, 2),
                 round(linha.valor_max, 2),
                 round(linha.meta_valor, 2) if linha.meta_valor is not None else None,
+                round(linha.base_target, 2) if linha.base_target is not None else None,
+                round(linha.active_target, 2) if linha.active_target is not None else None,
+                round(linha.maximum_target, 2) if linha.maximum_target is not None else None,
+                linha.achieved_level,
+                linha.active_level,
+                linha.levels_total,
+                json.dumps(linha.level_probabilities, ensure_ascii=False) if linha.level_probabilities else None,
                 round(linha.risco_nao_bater, 4) if linha.risco_nao_bater is not None else None,
                 round(linha.erro_historico, 4),
                 linha.meses_historicos,
