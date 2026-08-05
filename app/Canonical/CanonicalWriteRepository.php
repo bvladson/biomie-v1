@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\Canonical;
 
 use BIomie\Canonical\Support\CanonicalHashing;
+use BIomie\Canonical\Support\CanonicalSyncSource;
 use BIomie\Canonical\Support\CanonicalJsonCodec;
 use BIomie\Support\BiVisibilityScope;
 use BIomie\Support\ChannelClassifierService;
@@ -193,7 +194,7 @@ final class CanonicalWriteRepository
             'valor_descontos'   => (float) ($order['valor_descontos'] ?? 0),
             'qtd_itens'      => (int) ($order['quantidade_itens'] ?? 0),
             'hash'           => $hash,
-            'fonte'          => (string) ($order['fonte_sync'] ?? 'cron'),
+            'fonte'          => CanonicalSyncSource::normalize($order['fonte_sync'] ?? null),
         ]);
 
         $this->tryUpdateOrderScope($pedidoId, $order);
@@ -499,7 +500,7 @@ final class CanonicalWriteRepository
                 'valor_descontos'     => (float) ($invoice['valor_descontos'] ?? 0),
                 'quantidade_itens'    => (int) ($invoice['quantidade_itens'] ?? 0),
                 'hash_payload'        => $hash,
-                'fonte_sync'          => (string) ($invoice['fonte_sync'] ?? 'cron'),
+                'fonte_sync'          => CanonicalSyncSource::normalize($invoice['fonte_sync'] ?? null),
             ]);
 
             $deleteItems = $pdo->prepare(
@@ -1007,7 +1008,7 @@ final class CanonicalWriteRepository
             'valor_liquido'            => (float) ($title['valor_liquido'] ?? 0),
             'valor_aberto'             => (float) ($title['valor_aberto'] ?? 0),
             'hash_payload'             => $hash,
-            'fonte_sync'               => (string) ($title['fonte_sync'] ?? 'cron'),
+            'fonte_sync'               => CanonicalSyncSource::normalize($title['fonte_sync'] ?? null),
         ]);
 
         return $row ? 'updated' : 'inserted';
@@ -1094,7 +1095,7 @@ final class CanonicalWriteRepository
                 ? $this->codec->encode($document['metadata'])
                 : null,
             'hash_payload'         => $hash,
-            'fonte_sync'           => (string) ($document['fonte_sync'] ?? 'cron'),
+            'fonte_sync'           => CanonicalSyncSource::normalize($document['fonte_sync'] ?? null),
         ]);
 
         return $row ? 'updated' : 'inserted';
@@ -1398,7 +1399,7 @@ final class CanonicalWriteRepository
                 'hash_invoice'   => $invoiceHash,
                 'xml_disponivel' => !empty($invoice['xml_payload']),
             ],
-            'fonte_sync' => $invoice['fonte_sync'] ?? 'cron',
+            'fonte_sync' => CanonicalSyncSource::normalize($invoice['fonte_sync'] ?? null),
         ];
     }
 }
