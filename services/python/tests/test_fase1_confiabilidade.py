@@ -274,6 +274,30 @@ class TestCalculoDoForecastMensal(unittest.TestCase):
         )
 
 
+class TestPortaoDeConfianca(unittest.TestCase):
+    """Projeção com erro alto é gravada, mas não vira alerta.
+
+    Na primeira execução real apareceram vendedores com `erro_historico = 1.0`
+    (MAPE de 100%) produzindo "risco de não bater a meta: 66%" e severidade
+    `atencao` — ou seja, notificação no sininho a partir de um modelo sem
+    nenhum poder preditivo para aquela entidade. A faixa ia de R$ 5.493 a
+    R$ 64.081: cobre qualquer desfecho.
+    """
+
+    def test_erro_alto_nao_gera_severidade_de_alerta(self) -> None:
+        self.assertEqual(insights._confianca(1.0), "baixa")
+        self.assertEqual(insights._confianca(0.60), "baixa")
+
+    def test_erro_baixo_continua_confiavel(self) -> None:
+        self.assertEqual(insights._confianca(0.10), "alta")
+        self.assertEqual(insights._confianca(0.30), "media")
+
+    def test_o_limite_de_alerta_e_menor_que_o_teto_do_erro(self) -> None:
+        """Se o limite fosse 1.0, o portão nunca fecharia — `_erro_historico` satura em 1."""
+        self.assertLess(insights.ERRO_CONFIANCA_MINIMA, 1.0)
+        self.assertLess(insights.ERRO_CONFIANCA_ALTA, insights.ERRO_CONFIANCA_MINIMA)
+
+
 class TestJanelaDeInatividade(unittest.TestCase):
     def test_todo_job_agendado_tem_limite_declarado(self) -> None:
         """Job sem limite não tem dead-man switch — foi o caso do insights."""

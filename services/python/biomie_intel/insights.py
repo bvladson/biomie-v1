@@ -39,6 +39,14 @@ VALIDADE_HORAS = 8
 RETENCAO_DIAS = 30
 MIN_DIAS_FORECAST = 5
 
+#: MAPE abaixo disto é projeção utilizável.
+ERRO_CONFIANCA_ALTA = 0.25
+#: MAPE a partir daqui significa que o modelo não ordena nada para aquela
+#: entidade — a faixa cobre qualquer desfecho. A linha continua sendo gravada
+#: (para o erro poder ser cobrado depois), mas não pode virar alerta: número sem
+#: lastro apresentado como conclusão é pior que ausência de número.
+ERRO_CONFIANCA_MINIMA = 0.50
+
 # UNIVERSO COMERCIAL — espelha app/Support/CommercialNfUniverse.php.
 #
 # Sem isto a leitura soma remessa, uso interno e transferência, e a home mostra
@@ -448,22 +456,56 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
     return saida
 
 
+def _confianca(erro_historico: float) -> str:
+    """Rótulo honesto sobre quanto a projeção merece ser levada a sério."""
+    if erro_historico < ERRO_CONFIANCA_ALTA:
+        return "alta"
+    if erro_historico < ERRO_CONFIANCA_MINIMA:
+        return "media"
+    return "baixa"
+
+
 def _forecasts_segmentados(conn, company_id: int, hoje: date) -> list[Insight]:
     """A NARRATIVA do forecast — derivada de `calcular_forecasts`, nunca recalculada."""
     saida: list[Insight] = []
     for linha in calcular_forecasts(conn, company_id, hoje):
         risco = linha.risco_nao_bater
+        confianca = _confianca(linha.erro_historico)
         metricas = linha.to_metrics() | {
+            "confianca": confianca,
             "ultima_atualizacao": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         }
         titulo = "Previsão do mês" if linha.dimensao == "empresa" else f"Previsão — {linha.entidade_nome}"
+
+        # PORTÃO DE CONFIANÇA. Com MAPE acima do limite o modelo não tem poder
+        # preditivo para esta entidade: a faixa fica tão larga que cobre
+        # qualquer desfecho, e um "risco de 66%" calculado sobre ela é um número
+        # sem lastro. A linha continua sendo GRAVADA — a previsão precisa ficar
+        # registrada para o erro poder ser cobrado depois —, mas NÃO vira alerta.
+        # Vimos vendedores com erro histórico de 100% gerando notificação de
+        # atenção no primeiro dia em que isto rodou.
+        if confianca == "baixa":
+            saida.append(Insight(
+                kind=f"forecast_{linha.dimensao}_{linha.entidade_codigo[:20]}",
+                severity="neutro",
+                title=titulo,
+                body=(f"Realizado {_brl(linha.realizado)}. Histórico irregular demais para projetar "
+                      f"com confiança (erro de {linha.erro_historico * 100:.0f}%): "
+                      f"a faixa iria de {_brl(linha.valor_min)} a {_brl(linha.valor_max)}."),
+                rank_weight=10,
+                metrics=metricas,
+                link_url="plano_voo.php" if linha.dimensao != "canal" else "index.php",
+            ))
+            continue
+
         risco_txt = f" Risco de não bater a meta: {risco * 100:.0f}%." if risco is not None else ""
+        confianca_txt = "" if confianca == "alta" else f" Confiança média (erro de {linha.erro_historico * 100:.0f}%)."
         saida.append(Insight(
             kind=f"forecast_{linha.dimensao}_{linha.entidade_codigo[:20]}",
             severity="critico" if risco is not None and risco >= .70 else "atencao" if risco is not None and risco >= .45 else "neutro",
             title=titulo,
             body=(f"Realizado {_brl(linha.realizado)}; projeção provável {_brl(linha.projecao)}, "
-                  f"faixa {_brl(linha.valor_min)}–{_brl(linha.valor_max)}.{risco_txt}"),
+                  f"faixa {_brl(linha.valor_min)}–{_brl(linha.valor_max)}.{risco_txt}{confianca_txt}"),
             rank_weight=95 if linha.dimensao == "empresa" else (75 if risco is not None and risco >= .45 else 25),
             metrics=metricas,
             link_url="plano_voo.php" if linha.dimensao != "canal" else "index.php",
