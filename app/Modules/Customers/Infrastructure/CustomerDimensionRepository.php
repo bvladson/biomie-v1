@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie\Modules\Customers\Infrastructure;
 
+use BIomie\DataGovernance\SegmentDictionary;
 use BIomie\GeoNameNormalizer;
 use BIomie\Logger;
 use BIomie\Support\CnaeCodeNormalizer;
@@ -421,7 +422,9 @@ final class CustomerDimensionRepository
         $doc = trim((string) ($seed['seed_documento'] ?? $seed['documento'] ?? $seed['documento_cliente'] ?? ''));
         $digits = preg_replace('/\D+/', '', $doc) ?? '';
         $tipoDocumento = strlen($digits) === 14 ? 'CNPJ' : (strlen($digits) === 11 ? 'CPF' : null);
-        $tipoPessoa = $tipoDocumento === 'CNPJ' ? 'PJ' : ($tipoDocumento === 'CPF' ? 'PF' : 'OUTRO');
+        // A coluna e um ENUM canonico em minusculas. Valores fora dele viram o
+        // sentinela '' do MySQL quando a conexao nao esta em modo estrito.
+        $tipoPessoa = $tipoDocumento === 'CNPJ' ? 'pj' : ($tipoDocumento === 'CPF' ? 'pf' : 'desconhecido');
 
         $columns = ['company_id', 'codigo_cliente_omie', 'nome_cliente'];
         $values = [':company_id', ':codigo_cliente_omie', ':nome_cliente'];
@@ -440,6 +443,15 @@ final class CustomerDimensionRepository
             'documento_normalizado' => $digits,
             'documento_mascarado' => $this->maskDocument($digits !== '' ? $digits : $doc),
             'tipo_pessoa' => $tipoPessoa,
+            // Sem isto valeria o DEFAULT da coluna ('PJ_SEM_CNAE'), que afirma
+            // "pessoa juridica" para uma semente sem documento nenhum. Nao entra
+            // em $updates: o enriquecimento por CNAE continua livre para
+            // sobrescrever depois com o segmento real.
+            'segmento_macro' => match ($tipoPessoa) {
+                'pf' => 'PF',
+                'pj' => 'PJ_SEM_CNAE',
+                default => SegmentDictionary::UNCLASSIFIED,
+            },
             'cliente_nome_exibicao' => mb_substr($nome, 0, 255),
             'geo_status' => 'pending_enrichment',
             'enrichment_status' => 'pending_omie',

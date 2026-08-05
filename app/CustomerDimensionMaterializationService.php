@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BIomie;
 
+use BIomie\DataGovernance\SegmentDictionary;
 use BIomie\Support\SecretMask;
 use PDO;
 use Throwable;
@@ -303,9 +304,9 @@ final class CustomerDimensionMaterializationService
                 default => null,
             };
             $tipoPessoa = match ($tipoDoc) {
-                'cpf'  => 'PF',
-                'cnpj' => 'PJ',
-                default => null,
+                'cpf'  => 'pf',
+                'cnpj' => 'pj',
+                default => 'desconhecido',
             };
 
             // Name: prefer NF then pedido; never leave blank
@@ -318,11 +319,17 @@ final class CustomerDimensionMaterializationService
                 ? $nomeCliente
                 : ($docMask ?? 'Cliente nao informado');
 
-            // Segmento macro
+            // Segmento macro.
+            //
+            // 'desconhecido' NAO cai em PJ_SEM_CNAE: esse rotulo afirma que o
+            // cliente e pessoa juridica, e para quem nao tem documento nenhum
+            // isso e uma afirmacao que o dado nao sustenta — a mesma mascara que
+            // acabamos de tirar do tipo_pessoa, uma coluna ao lado. Sem CNAE
+            // conhecido, o valor canonico do dicionario e 'Nao classificado'.
             $segmentoMacro = match ($tipoPessoa) {
-                'PF'    => 'PF',
-                'PJ'    => 'PJ_SEM_CNAE',
-                default => 'PJ_SEM_CNAE',
+                'pf'    => 'PF',
+                'pj'    => 'PJ_SEM_CNAE',
+                default => SegmentDictionary::UNCLASSIFIED,
             };
 
             // Vendor resolution: pedido > NF > sem_vinculo
