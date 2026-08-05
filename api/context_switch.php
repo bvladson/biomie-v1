@@ -25,7 +25,7 @@ ErrorBoundary::registerApiHandlers([
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Referrer-Policy: same-origin');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 $config = new Config();
 $logger = new Logger(dirname(__DIR__) . '/storage/logs/biomie.log');

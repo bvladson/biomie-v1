@@ -21,7 +21,9 @@ ErrorBoundary::registerPageHandlers([
     'route' => basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'page')),
     'handler' => 'app/page_bootstrap.php',
 ]);
-header('Referrer-Policy: same-origin');
+// Preserve privacy while allowing third-party assets (for example OSM tiles)
+// to receive the origin required by their usage policy.
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 Auth::boot($config, $logger);
 
