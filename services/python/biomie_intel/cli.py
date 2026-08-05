@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from . import dataset as dataset_mod
+from . import forecast_store
 from . import health as health_mod
 from . import forecast as forecast_mod
 from . import insights as insights_mod
@@ -278,6 +279,77 @@ def cmd_forecast(args, settings, logger) -> int:
     return _saida({"ok": True, "comando": "forecast", "empresas": saidas})
 
 
+def cmd_forecast_mensal(args, settings, logger) -> int:
+    """Calcula e PERSISTE a previsao mensal por empresa, canal e vendedor.
+
+    Este e o job que o cron agenda. Ele grava em `intelligence_forecasts` para
+    que a previsao possa ser confrontada com o realizado depois — sem isso o
+    "erro historico" e autodeclarado, porque sai do mesmo calculo que produziu
+    o numero.
+
+    Empresa que falha NAO derruba o restante: com cinco empresas no mesmo
+    processo, abortar na primeira deixaria as outras quatro sem previsao por um
+    problema que talvez seja so daquela. As falhas voltam no JSON e no exit code.
+    """
+    hoje = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+    saidas: list[dict[str, Any]] = []
+    falhas: list[str] = []
+
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            try:
+                linhas = insights_mod.calcular_forecasts(conn, empresa.id, hoje)
+            except Exception as exc:  # noqa: BLE001 — uma empresa nao derruba as outras
+                conn.rollback()
+                falhas.append(f"{empresa.slug}: {type(exc).__name__}: {exc}")
+                logger.error("forecast falhou para %s: %s", empresa.slug, exc)
+                saidas.append({"empresa": empresa.slug, "ok": False, "erro": str(exc)[:200]})
+                continue
+
+            if args.dry_run:
+                saidas.append({
+                    "empresa": empresa.slug,
+                    "ok": True,
+                    "linhas": [linha.to_metrics() for linha in linhas],
+                    "gravado": False,
+                })
+                continue
+
+            competencia = hoje.strftime("%Y-%m")
+            with track(
+                conn, "forecast",
+                company_id=empresa.id,
+                run_mode=settings.run_mode,
+                correlation_id=args.correlation_id,
+            ) as run:
+                gravadas = forecast_store.persist(conn, empresa.id, competencia, linhas, run.id)
+                run.rows_in = sum(linha.dados_usados for linha in linhas)
+                run.rows_out = gravadas
+                run.metrics = {
+                    "competencia": competencia,
+                    "por_dimensao": {
+                        d: sum(1 for linha in linhas if linha.dimensao == d)
+                        for d in ("empresa", "canal", "vendedor")
+                    },
+                    # Sem meta cadastrada nao ha risco a calcular — precisa
+                    # aparecer, senao "risco nulo" parece "risco baixo".
+                    "sem_meta": sum(1 for linha in linhas if linha.meta_valor is None),
+                }
+
+            saidas.append({
+                "empresa": empresa.slug,
+                "ok": True,
+                "gravado": True,
+                "linhas": gravadas,
+                "sem_meta": sum(1 for linha in linhas if linha.meta_valor is None),
+            })
+
+    return _saida(
+        {"ok": not falhas, "comando": "forecast-mensal", "empresas": saidas, "falhas": falhas},
+        0 if not falhas else 1,
+    )
+
+
 def cmd_compare(args, settings, logger) -> int:
     """Compara baseline e shadow lado a lado — a evidência para decidir ativar."""
     with connect(settings) as conn:
@@ -327,6 +399,11 @@ def build_parser() -> argparse.ArgumentParser:
     fc.add_argument("--horizonte", type=int, default=14)
     fc.add_argument("--completo", action="store_true", help="devolve a serie inteira")
 
+    fm = sub.add_parser("forecast-mensal", help="previsao do mes por empresa/canal/vendedor — PERSISTE")
+    fm.add_argument("--company", default="all")
+    fm.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrão: hoje UTC)")
+    fm.add_argument("--dry-run", action="store_true")
+
     sub.add_parser("compare", help="baseline vs shadow lado a lado")
     return p
 
@@ -349,6 +426,7 @@ def main(argv: list[str] | None = None) -> int:
         "train": cmd_train,
         "insights": cmd_insights,
         "forecast": cmd_forecast,
+        "forecast-mensal": cmd_forecast_mensal,
         "compare": cmd_compare,
     }
     try:

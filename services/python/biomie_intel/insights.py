@@ -21,11 +21,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from math import erf, sqrt
 from typing import Any
 
 import pymysql
 
 from .db import fetch_all
+from .forecast_store import ForecastLinha
 
 #: abaixo disto, variação percentual é ruído — não vira frase
 MIN_NOTAS_PARA_TENDENCIA = 8
@@ -35,6 +37,7 @@ LIMIAR_CONCENTRACAO = 0.35
 VALIDADE_HORAS = 8
 #: por quantos dias a leitura vencida fica guardada antes do expurgo
 RETENCAO_DIAS = 30
+MIN_DIAS_FORECAST = 5
 
 # UNIVERSO COMERCIAL — espelha app/Support/CommercialNfUniverse.php.
 #
@@ -288,6 +291,233 @@ def _vendedor_destaque(
     )
 
 
+def _erro_historico(totais: list[float]) -> float:
+    """MAPE leave-one-out simples; não mede o mês usando o próprio mês."""
+    if len(totais) < 3:
+        return 0.30
+    erros: list[float] = []
+    for i, real in enumerate(totais):
+        treino = totais[:i] + totais[i + 1:]
+        esperado = sum(treino) / len(treino)
+        if real > 0:
+            erros.append(abs(real - esperado) / real)
+    return min(1.0, max(0.15, sum(erros) / len(erros) if erros else 0.30))
+
+
+def _risco_nao_bater(meta: float, projetado: float, erro: float) -> float | None:
+    if meta <= 0:
+        return None
+    sigma = max(projetado * erro / 1.645, 1.0)
+    z = (meta - projetado) / sigma
+    return min(0.99, max(0.01, 0.5 * (1.0 + erf(z / sqrt(2.0)))))
+
+
+def _forecast_rows(conn, company_id: int, dimensao: str) -> list[dict[str, Any]]:
+    """Séries mensais/dia por empresa, canal ou vendedor; dimensão é whitelist."""
+    campos = {
+        "empresa": ("'empresa'", "'Empresa'"),
+        "canal": ("COALESCE(NULLIF(business_channel,''),'sem_canal')", "COALESCE(NULLIF(business_channel,''),'Sem canal')"),
+        "vendedor": ("COALESCE(NULLIF(codigo_vendedor_omie,''),NULLIF(nome_vendedor,''),'sem_vendedor')", "COALESCE(NULLIF(nome_vendedor,''),'Sem vendedor')"),
+    }
+    codigo, nome = campos[dimensao]
+    return fetch_all(
+        conn,
+        f"""SELECT {codigo} AS codigo, {nome} AS nome, data_emissao AS dia,
+                   SUM(valor_total) AS receita, COUNT(*) AS notas
+              FROM biomie_notas_fiscais_canonicas
+             WHERE company_id = %s AND {UNIVERSO_COMERCIAL}
+               AND data_emissao >= %s
+             GROUP BY codigo, nome, data_emissao
+             ORDER BY codigo, dia""",
+        (company_id, date.today() - timedelta(days=190)),
+    )
+
+
+#: erros do MySQL que significam "o schema aqui é mais antigo", não "sem acesso"
+_ERROS_DE_SCHEMA = (
+    1146,  # tabela não existe
+    1054,  # coluna desconhecida
+)
+
+
+def _metas(conn, company_id: int, competencia: str) -> tuple[float, dict[str, float], dict[str, float]]:
+    """Metas por canal e por vendedor.
+
+    O `except` aqui é ESTREITO de propósito. Um `except Exception` genérico
+    transformava falta de GRANT (erro 1142) em lista vazia, e o forecast passava
+    a projetar sem meta — ou seja, `risco_nao_bater = None` — exatamente igual a
+    uma empresa que nunca cadastrou meta. Erro de permissão precisa SUBIR: é
+    configuração quebrada, não ausência de dado.
+    """
+    def _tolerando_schema_antigo(sql: str, params: tuple) -> list[dict[str, Any]]:
+        try:
+            return fetch_all(conn, sql, params)
+        except pymysql.err.MySQLError as exc:
+            codigo = exc.args[0] if exc.args else None
+            if codigo in _ERROS_DE_SCHEMA:
+                return []
+            raise
+
+    canais = _tolerando_schema_antigo(
+        """SELECT canal, meta_valor FROM biomie_company_targets
+            WHERE company_id = %s AND competencia = %s AND ativo = 1""",
+        (company_id, competencia),
+    )
+    vendedores = _tolerando_schema_antigo(
+        """SELECT vendor_id, target_amount FROM biomie_sales_targets_monthly
+            WHERE company_id = %s AND year_month = %s""",
+        (company_id, competencia),
+    )
+    por_canal = {str(r["canal"]): float(r["meta_valor"] or 0) for r in canais}
+    por_vendedor = {str(r["vendor_id"]): float(r["target_amount"] or 0) for r in vendedores}
+    return sum(por_canal.values()), por_canal, por_vendedor
+
+
+def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]:
+    """Os NÚMEROS do forecast mensal, por empresa, canal e vendedor.
+
+    Devolve a forma persistível. A narrativa é derivada disto em
+    `_forecasts_segmentados` — o job de forecast grava estas linhas e o job de
+    insights escreve as frases, os dois a partir da mesma conta. Duplicar o
+    cálculo faria a home e a tabela discordarem em algum momento.
+    """
+    import pandas as pd
+
+    if hoje.day < MIN_DIAS_FORECAST:
+        return []
+    competencia = hoje.strftime("%Y-%m")
+    meta_empresa, metas_canal, metas_vendedor = _metas(conn, company_id, competencia)
+    saida: list[ForecastLinha] = []
+
+    for dimensao in ("empresa", "canal", "vendedor"):
+        linhas = _forecast_rows(conn, company_id, dimensao)
+        if not linhas:
+            continue
+        df = pd.DataFrame(linhas)
+        df["dia"] = pd.to_datetime(df["dia"])
+        df["receita"] = df["receita"].astype(float)
+        df["mes"] = df["dia"].dt.strftime("%Y-%m")
+        for (codigo, nome), grupo in df.groupby(["codigo", "nome"]):
+            atual = grupo[grupo["mes"] == competencia]
+            if atual.empty:
+                continue
+            realizado = float(atual["receita"].sum())
+            historicos = [float(v) for m, v in grupo[grupo["mes"] != competencia].groupby("mes")["receita"].sum().tail(5).items()]
+            if len(historicos) < 2 or realizado <= 0:
+                continue
+            dias_mes = (hoje.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            ritmo = realizado / hoje.day * dias_mes.day
+            media_hist = sum(historicos) / len(historicos)
+            # Combina ritmo corrente e histórico; o peso do realizado cresce ao longo do mês.
+            peso = min(0.90, max(0.25, hoje.day / dias_mes.day))
+            projetado = ritmo * peso + media_hist * (1.0 - peso)
+            erro = _erro_historico(historicos)
+            minimo, maximo = max(realizado, projetado * (1 - erro)), projetado * (1 + erro)
+            meta_bruta = meta_empresa if dimensao == "empresa" else (
+                metas_canal.get(str(codigo), 0.0) if dimensao == "canal"
+                else metas_vendedor.get(str(codigo), 0.0)
+            )
+            # 0.0 aqui significa "não achei meta", não "a meta é zero".
+            meta = meta_bruta if meta_bruta > 0 else None
+            saida.append(ForecastLinha(
+                dimensao=dimensao,
+                entidade_codigo=str(codigo),
+                entidade_nome=str(nome),
+                competencia=competencia,
+                realizado=realizado,
+                projecao=projetado,
+                valor_min=minimo,
+                valor_max=maximo,
+                meta_valor=meta,
+                risco_nao_bater=_risco_nao_bater(meta or 0.0, projetado, erro),
+                erro_historico=erro,
+                meses_historicos=len(historicos),
+                dados_usados=len(grupo),
+                fatores=[
+                    f"ritmo atual de {_brl(ritmo)}",
+                    f"média de {len(historicos)} meses: {_brl(media_hist)}",
+                    f"peso do mês corrente: {peso * 100:.0f}%",
+                ],
+            ))
+
+    return saida
+
+
+def _forecasts_segmentados(conn, company_id: int, hoje: date) -> list[Insight]:
+    """A NARRATIVA do forecast — derivada de `calcular_forecasts`, nunca recalculada."""
+    saida: list[Insight] = []
+    for linha in calcular_forecasts(conn, company_id, hoje):
+        risco = linha.risco_nao_bater
+        metricas = linha.to_metrics() | {
+            "ultima_atualizacao": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        titulo = "Previsão do mês" if linha.dimensao == "empresa" else f"Previsão — {linha.entidade_nome}"
+        risco_txt = f" Risco de não bater a meta: {risco * 100:.0f}%." if risco is not None else ""
+        saida.append(Insight(
+            kind=f"forecast_{linha.dimensao}_{linha.entidade_codigo[:20]}",
+            severity="critico" if risco is not None and risco >= .70 else "atencao" if risco is not None and risco >= .45 else "neutro",
+            title=titulo,
+            body=(f"Realizado {_brl(linha.realizado)}; projeção provável {_brl(linha.projecao)}, "
+                  f"faixa {_brl(linha.valor_min)}–{_brl(linha.valor_max)}.{risco_txt}"),
+            rank_weight=95 if linha.dimensao == "empresa" else (75 if risco is not None and risco >= .45 else 25),
+            metrics=metricas,
+            link_url="plano_voo.php" if linha.dimensao != "canal" else "index.php",
+        ))
+    # Empresa sempre; segmentos mais relevantes sem inundar a home.
+    gerais = [i for i in saida if i.metrics["dimensao"] == "empresa"]
+    segmentos = sorted((i for i in saida if i.metrics["dimensao"] != "empresa"), key=lambda i: -i.rank_weight)
+    return gerais[:1] + segmentos[:3]
+
+
+def _anomalia_canal(conn, company_id: int, hoje: date) -> Insight | None:
+    """Canal muito abaixo de duas janelas equivalentes anteriores."""
+    linhas = fetch_all(conn, """SELECT COALESCE(NULLIF(business_channel,''),'sem_canal') canal,
+               SUM(CASE WHEN data_emissao >= %s THEN valor_total ELSE 0 END) atual,
+               SUM(CASE WHEN data_emissao >= %s AND data_emissao < %s THEN valor_total ELSE 0 END) anterior,
+               COUNT(CASE WHEN data_emissao >= %s THEN 1 END) notas
+          FROM biomie_notas_fiscais_canonicas
+         WHERE company_id = %s AND """ + UNIVERSO_COMERCIAL + """ AND data_emissao >= %s
+         GROUP BY canal""", (
+        hoje - timedelta(days=28), hoje - timedelta(days=56), hoje - timedelta(days=28),
+        hoje - timedelta(days=28), company_id, hoje - timedelta(days=56)))
+    piores = []
+    for r in linhas:
+        atual, anterior = float(r["atual"] or 0), float(r["anterior"] or 0)
+        if anterior >= 1000 and int(r["notas"] or 0) >= 4:
+            queda = (anterior - atual) / anterior
+            if queda >= .20:
+                piores.append((queda, r, atual, anterior))
+    if not piores:
+        return None
+    queda, r, atual, anterior = max(piores, key=lambda x: x[0])
+    return Insight(kind="anomalia_queda_canal", severity="critico" if queda >= .40 else "atencao",
+        title="Canal abaixo do comportamento normal",
+        body=(f"As vendas do canal {r['canal']} estão {queda * 100:.0f}% abaixo das 4 semanas anteriores "
+              f"({_brl(atual)} contra {_brl(anterior)})."), rank_weight=100,
+        metrics={"canal": str(r["canal"]), "atual": atual, "anterior": anterior,
+                 "queda_relativa": round(queda, 4), "notas": int(r["notas"] or 0)}, link_url="index.php")
+
+
+def _anomalia_cancelamentos(conn, company_id: int, hoje: date) -> Insight | None:
+    r = fetch_all(conn, """SELECT
+        SUM(data_emissao >= %s AND status_fiscal = 'cancelada') canc_atual,
+        SUM(data_emissao >= %s AND data_emissao < %s AND status_fiscal = 'cancelada') canc_anterior,
+        SUM(data_emissao >= %s) total_atual
+        FROM biomie_notas_fiscais_canonicas WHERE company_id = %s AND data_emissao >= %s""",
+        (hoje - timedelta(days=28), hoje - timedelta(days=56), hoje - timedelta(days=28),
+         hoje - timedelta(days=28), company_id, hoje - timedelta(days=56)))
+    if not r:
+        return None
+    x = r[0]; atual, anterior, total = int(x["canc_atual"] or 0), int(x["canc_anterior"] or 0), int(x["total_atual"] or 0)
+    if atual < 3 or atual < max(3, anterior * 1.5):
+        return None
+    return Insight(kind="anomalia_cancelamentos", severity="atencao", title="Cancelamentos acima do padrão",
+        body=f"Foram {atual} notas canceladas nas últimas 4 semanas, contra {anterior} nas 4 anteriores.",
+        rank_weight=85, metrics={"cancelamentos_atual": atual, "cancelamentos_anterior": anterior,
+                                "notas_periodo": total, "crescimento": round((atual-anterior)/max(anterior,1),4)},
+        link_url="fiscal.php")
+
+
 def compute(conn: pymysql.connections.Connection, company_id: int) -> list[Insight]:
     """Todas as leituras de uma empresa, já ordenadas por relevância."""
     hoje = datetime.now(timezone.utc).date()
@@ -296,6 +526,9 @@ def compute(conn: pymysql.connections.Connection, company_id: int) -> list[Insig
     diario = _faturamento_diario(conn, company_id, desde_90)
 
     candidatos = [
+        *_forecasts_segmentados(conn, company_id, hoje),
+        _anomalia_canal(conn, company_id, hoje),
+        _anomalia_cancelamentos(conn, company_id, hoje),
         _tendencia(diario, hoje),
         _concentracao(conn, company_id, desde_90),
         _ritmo_do_mes(diario, hoje),

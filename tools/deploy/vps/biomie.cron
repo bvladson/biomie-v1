@@ -35,6 +35,11 @@ BIOMIE_PHP_BIN=/usr/bin/php
 20 */2 * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_score.sh
 # Insights varrem 90 dias de NF: 4x/dia basta e nao concorre com o score.
 50 */6 * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_insights.sh
+# Previsao mensal PERSISTIDA. 1x/dia as 05:10 UTC (02:10 em Fortaleza): depois do
+# sync comercial da madrugada e antes do primeiro insights do dia (05:50), para a
+# frase da home e a linha da tabela sairem da mesma leitura do banco.
+# O limite de "parado" no health e 30h — cobre uma execucao perdida.
+10 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_forecast.sh
 
 # --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
 30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh

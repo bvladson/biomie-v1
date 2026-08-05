@@ -32,6 +32,25 @@ WRITABLE_TABLES = (
     "intelligence_job_runs",
     "intelligence_quote_scores",
     "intelligence_insights",
+    "intelligence_forecasts",
+)
+
+# Tabelas que este serviço LÊ. Mesma disciplina da lista acima, e pelo mesmo
+# motivo — só que a falta de leitura falha de um jeito PIOR que a de escrita.
+#
+# Escrita sem GRANT explode e o job vira `failed`. Leitura sem GRANT costuma ser
+# capturada por um `except` de tolerância a schema antigo e vira "não há dado":
+# o forecast perdia TODAS as metas e reportava "sem risco", indistinguível de
+# empresa que não cadastrou meta nenhuma. Declarar aqui permite ao `health`
+# provar leitura tabela por tabela em vez de supor.
+READABLE_TABLES = (
+    "biomie_companies",
+    "biomie_sales_quote_followup_schedule",
+    "biomie_pedidos_canonicos",
+    "biomie_notas_fiscais_canonicas",
+    "intelligence_quote_feedback",
+    "biomie_company_targets",
+    "biomie_sales_targets_monthly",
 )
 
 

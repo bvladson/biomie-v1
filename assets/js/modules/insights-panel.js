@@ -34,11 +34,15 @@
     receita_total: 'Receita total', clientes_no_periodo: 'Clientes no período',
     realizado: 'Realizado', dias_corridos: 'Dias corridos', dias_no_mes: 'Dias no mês',
     projecao: 'Projeção', vendedor: 'Vendedor', antes: 'Antes', depois: 'Depois',
-    queda_relativa: 'Queda'
+    queda_relativa: 'Queda', meta: 'Meta do mês', faixa_min: 'Faixa mínima',
+    faixa_max: 'Faixa máxima', risco_nao_bater: 'Risco de não bater a meta',
+    erro_historico: 'Erro histórico', dados_usados: 'Registros usados',
+    meses_historicos: 'Meses históricos', fatores: 'Principais fatores',
+    ultima_atualizacao: 'Última atualização', dimensao: 'Dimensão', entidade: 'Entidade'
   };
 
-  var MONETARIOS = /^(receita|realizado|projecao|antes|depois)/;
-  var PERCENTUAIS = /^(variacao|share|queda_relativa)$/;
+  var MONETARIOS = /^(receita|realizado|projecao|antes|depois|meta|faixa_)/;
+  var PERCENTUAIS = /^(variacao|share|queda_relativa|risco_nao_bater|erro_historico|crescimento)$/;
 
   function fmt(chave, valor) {
     if (valor === null || valor === undefined) return '—';
@@ -53,6 +57,7 @@
       }
       return String(Math.round(valor * 100) / 100);
     }
+    if (Array.isArray(valor)) return valor.join(' · ');
     return String(valor);
   }
 

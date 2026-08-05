@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\Admin;
 
 use BIomie\Bootstrap;
+use BIomie\Intelligence\IntelligenceJobSla;
 use PDO;
 
 final class SystemHealthService
@@ -75,13 +76,37 @@ final class SystemHealthService
             $messages[] = 'A base fiscal canônica precisa estar disponível para alimentar os diagnósticos comerciais.';
         }
 
+        // Frescor da camada Python. Fica no painel porque o modo de falha dela
+        // e silencioso: o job para e a home continua exibindo a ultima leitura
+        // ate ela vencer — durante horas, sem nada na tela dizendo que o numero
+        // parou de ser atualizado.
+        $intelligence = IntelligenceJobSla::snapshot($this->pdo);
+        $status = $missingGeo === [] && ($tables['canonical_nf']['status'] ?? '') === 'ok' ? 'ok' : 'warning';
+        if ($intelligence !== null && ($intelligence['ok'] ?? true) === false) {
+            $status = ($intelligence['severity'] ?? '') === 'critical' ? 'critical' : $status;
+            foreach ((array) ($intelligence['jobs'] ?? []) as $job => $info) {
+                if ((string) ($info['severity'] ?? 'ok') === 'ok') {
+                    continue;
+                }
+                $messages[] = $info['age_hours'] === null
+                    ? sprintf('O job Python "%s" nunca completou uma execução.', (string) $job)
+                    : sprintf(
+                        'O job Python "%s" está sem sucesso há %sh (limite %sh) — as leituras da home vão vencer.',
+                        (string) $job,
+                        (string) $info['age_hours'],
+                        (string) ($info['limit_hours'] ?? '?'),
+                    );
+            }
+        }
+
         return [
             'generated_at' => date(DATE_ATOM),
             'connection' => $this->connectionName,
-            'status' => $missingGeo === [] && ($tables['canonical_nf']['status'] ?? '') === 'ok' ? 'ok' : 'warning',
+            'status' => $status,
             'tables' => $tables,
             'migrations' => $migrations,
             'geo_ready' => $missingGeo === [],
+            'intelligence' => $intelligence,
             'messages' => $messages,
         ];
     }

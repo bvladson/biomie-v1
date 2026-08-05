@@ -6,6 +6,7 @@ namespace BIomie\Ops;
 
 use BIomie\Bootstrap;
 use BIomie\Config;
+use BIomie\Intelligence\IntelligenceJobSla;
 use BIomie\Logger;
 use PDO;
 use Throwable;
@@ -32,6 +33,7 @@ final class OpsSentinel
         'finance'    => ['warn' => 90,  'crit' => 240],
         'gold'       => ['warn' => 90,  'crit' => 240],
     ];
+
 
     public function __construct(
         private readonly PDO $pdo,
@@ -98,12 +100,21 @@ final class OpsSentinel
             $worst = 'critical';
         }
 
+        // Camada Python: o cron dela pode morrer sozinho, e o health do proprio
+        // servico so responde se alguem o chamar. Quem alerta precisa ter
+        // agendamento independente do que esta sendo vigiado.
+        $intelligence = $this->checkIntelligence();
+        if ($intelligence !== null && ($intelligence['ok'] ?? true) === false) {
+            $worst = $this->worse($worst, (string) ($intelligence['severity'] ?? 'warning'));
+        }
+
         $status = [
             'severity'      => $worst,
             'generated_at'  => date(DATE_ATOM),
             'database_now'  => $databaseNow,
             'dead_pipeline' => $deadPipeline,
             'isolation'     => $isolation,
+            'intelligence'  => $intelligence,
             'stuck_cleaned' => $cleaned,
             'domains'       => $this->domainReport($domains, $nowTs),
             'issues'        => $issues,
@@ -111,7 +122,13 @@ final class OpsSentinel
 
         $this->writeStatusFile($status);
 
-        $decision = $this->decideAlert($worst, $issues, $deadPipeline, $isolationLeak);
+        $decision = $this->decideAlert(
+            $worst,
+            $issues,
+            $deadPipeline,
+            $isolationLeak,
+            $this->intelligenceKey($intelligence),
+        );
         $status['alert'] = ['needed' => $decision['notify'], 'reason' => $decision['reason'], 'sent' => false];
 
         if ($notify && $decision['notify']) {
@@ -231,10 +248,15 @@ final class OpsSentinel
      * @param list<array<string,mixed>> $issues
      * @return array{notify:bool,reason:string,signature:string}
      */
-    private function decideAlert(string $severity, array $issues, bool $deadPipeline, bool $isolationLeak = false): array
-    {
+    private function decideAlert(
+        string $severity,
+        array $issues,
+        bool $deadPipeline,
+        bool $isolationLeak = false,
+        string $intelligenceKey = '',
+    ): array {
         $cooldownMin = max(5, (int) $this->config->get('ops.alert_cooldown_minutes', 120));
-        $signature = $this->signature($severity, $issues, $deadPipeline, $isolationLeak);
+        $signature = $this->signature($severity, $issues, $deadPipeline, $isolationLeak, $intelligenceKey);
         $state = $this->readState();
         $prevSeverity = (string) ($state['severity'] ?? 'ok');
         $prevSignature = (string) ($state['signature'] ?? '');
@@ -258,14 +280,46 @@ final class OpsSentinel
     }
 
     /** @param list<array<string,mixed>> $issues */
-    private function signature(string $severity, array $issues, bool $deadPipeline, bool $isolationLeak = false): string
-    {
+    private function signature(
+        string $severity,
+        array $issues,
+        bool $deadPipeline,
+        bool $isolationLeak = false,
+        string $intelligenceKey = '',
+    ): string {
         $parts = [$severity, $deadPipeline ? 'dead' : 'alive', $isolationLeak ? 'leak' : 'isolated'];
         foreach ($issues as $i) {
             $parts[] = $i['domain'] . ':' . $i['severity'];
         }
+        // Sem isto, um job Python que para ENQUANTO um dominio ja esta em
+        // warning nao mudaria a assinatura — a dedup engoliria o problema novo
+        // por ate duas horas de cooldown.
+        if ($intelligenceKey !== '') {
+            $parts[] = 'intel:' . $intelligenceKey;
+        }
         sort($parts);
         return substr(sha1(implode('|', $parts)), 0, 16);
+    }
+
+    /**
+     * Assinatura estavel do estado dos jobs Python: `job:severidade` ordenado.
+     *
+     * @param array<string,mixed>|null $intelligence
+     */
+    private function intelligenceKey(?array $intelligence): string
+    {
+        if ($intelligence === null) {
+            return '';
+        }
+        $parts = [];
+        foreach ((array) ($intelligence['jobs'] ?? []) as $job => $info) {
+            $severity = (string) ($info['severity'] ?? 'ok');
+            if ($severity !== 'ok') {
+                $parts[] = $job . ':' . $severity;
+            }
+        }
+        sort($parts);
+        return implode(',', $parts);
     }
 
     /** @param list<array<string,mixed>> $issues */
@@ -313,6 +367,20 @@ final class OpsSentinel
             $ageLabel = $age === null ? 'sem run recente' : $age . ' min atras';
             $lines[] = sprintf('%s: %s (ultimo OK %s)', strtoupper((string) $issue['domain']), strtoupper((string) $issue['severity']), $ageLabel);
         }
+        foreach ((array) (($status['intelligence']['jobs'] ?? [])) as $job => $info) {
+            if ((string) ($info['severity'] ?? 'ok') === 'ok') {
+                continue;
+            }
+            $lines[] = $info['age_hours'] === null
+                ? sprintf('INTELIGENCIA %s: %s', strtoupper((string) $job), (string) ($info['note'] ?? 'sem execucao'))
+                : sprintf(
+                    'INTELIGENCIA %s: %s — sem sucesso ha %sh (limite %sh)',
+                    strtoupper((string) $job),
+                    strtoupper((string) $info['severity']),
+                    (string) $info['age_hours'],
+                    (string) ($info['limit_hours'] ?? '?'),
+                );
+        }
         if ((int) ($status['stuck_cleaned'] ?? 0) > 0) {
             $lines[] = $status['stuck_cleaned'] . ' run(s) presa(s) limpa(s) automaticamente.';
         }
@@ -324,6 +392,30 @@ final class OpsSentinel
     {
         $rank = ['ok' => 0, 'warning' => 1, 'critical' => 2];
         return ($rank[$b] ?? 0) > ($rank[$a] ?? 0) ? $b : $a;
+    }
+
+    /**
+     * Dead-man switch da camada Python.
+     *
+     * O `health` do proprio servico so responde quando alguem o chama — e quem
+     * chamaria e justamente o cron que pode ter morrido. Este check roda no
+     * OpsSentinel, que tem agendamento independente, e por isso consegue dizer
+     * "o Python parou" quando o Python nao consegue mais dizer nada.
+     *
+     * Defensivo: ambiente sem a camada de inteligencia (tabela ausente) devolve
+     * null e nao vira alarme — nao ter o modulo e diferente de o modulo ter
+     * quebrado.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function checkIntelligence(): ?array
+    {
+        try {
+            return IntelligenceJobSla::snapshot($this->pdo);
+        } catch (Throwable $e) {
+            $this->logger->warning('OpsSentinel: check de inteligencia falhou.', ['message' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**

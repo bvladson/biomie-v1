@@ -53,12 +53,19 @@ GRANT SELECT ON ${DB}.biomie_sales_quote_followup_schedule    TO '${USER_NAME}'@
 GRANT SELECT ON ${DB}.biomie_pedidos_canonicos                TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_notas_fiscais_canonicas          TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.intelligence_quote_feedback             TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT ON ${DB}.biomie_company_targets                  TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT ON ${DB}.biomie_sales_targets_monthly            TO '${USER_NAME}'@'127.0.0.1';
 
--- ESCRITA: exatamente TRÊS tabelas — as mesmas de WRITABLE_TABLES em config.py.
+-- ESCRITA: exatamente as tabelas de WRITABLE_TABLES em config.py.
 -- As duas listas são declarações da mesma verdade; tests/test_permissions.py
 -- falha se separarem.
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_job_runs      TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME}'@'127.0.0.1';
+
+-- Forecast persistido. Sem DELETE: a previsão anterior é REBAIXADA
+-- (is_current = 0), nunca apagada — apagá-la destruiria a série que permite
+-- confrontar o que foi previsto com o que aconteceu.
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_forecasts     TO '${USER_NAME}'@'127.0.0.1';
 
 -- intelligence_insights ESTAVA FALTANDO AQUI.
 --

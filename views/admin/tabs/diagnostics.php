@@ -47,4 +47,52 @@
               </table>
             </div>
           </div>
+
+          <?php
+          /**
+           * Frescor da camada Python.
+           *
+           * Aparece SEMPRE, e nao so quando algo quebra: o modo de falha destes
+           * jobs e silencioso — o cron morre e a home segue exibindo a ultima
+           * leitura ate ela vencer, sem nada na tela dizendo que o numero parou
+           * de ser atualizado. Um painel que so mostra problema nao permite
+           * perceber "isso aqui esta velho" antes de virar alerta.
+           *
+           * Ausencia do bloco = camada nao instalada, que e diferente de camada
+           * quebrada; por isso nao renderiza nada em vez de mostrar zeros.
+           */
+          $intelligenceJobs = (array) (($systemHealth['intelligence']['jobs'] ?? []));
+          ?>
+          <?php if ($intelligenceJobs !== []): ?>
+          <div class="admin-panel">
+            <h2>Intelig&ecirc;ncia (Python)</h2>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>Job</th><th>Situa&ccedil;&atilde;o</th><th>&Uacute;ltimo sucesso</th><th>Idade</th><th>Limite</th><th>Falhas (7d)</th></tr></thead>
+                <tbody>
+                <?php foreach ($intelligenceJobs as $jobName => $jobInfo): ?>
+                  <?php
+                  $severity = (string) ($jobInfo['severity'] ?? 'ok');
+                  $tag = match ($severity) {
+                      'critical' => 'danger',
+                      'warning'  => 'warn',
+                      default    => 'ok',
+                  };
+                  $idade = $jobInfo['age_hours'] ?? null;
+                  ?>
+                  <tr>
+                    <td><strong><?php echo $h((string) $jobName); ?></strong></td>
+                    <td><span class="admin-tag <?php echo $h($tag); ?>"><?php echo $h($severity === 'ok' ? 'em dia' : ($severity === 'warning' ? 'atrasado' : 'parado')); ?></span></td>
+                    <td class="admin-small"><?php echo $h((string) ($jobInfo['last_ok'] ?? 'nunca completou')); ?></td>
+                    <td><?php echo $idade === null ? '-' : $h((string) $idade) . 'h'; ?></td>
+                    <td class="admin-small"><?php echo (int) ($jobInfo['limit_hours'] ?? 0); ?>h</td>
+                    <td><?php echo (int) ($jobInfo['failures_7d'] ?? 0); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+            <p class="admin-small">Horas em UTC. O mesmo limite dispara o alerta do OpsSentinel &mdash; ver <code>IntelligenceJobSla</code>.</p>
+          </div>
+          <?php endif; ?>
         </section>

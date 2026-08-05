@@ -43,7 +43,7 @@ try {
             AND is_current = 1
             AND valid_until > UTC_TIMESTAMP()
           ORDER BY rank_weight DESC, id DESC
-          LIMIT 6'
+          LIMIT 10'
     );
     $stmt->execute(['cid' => $companyId]);
 

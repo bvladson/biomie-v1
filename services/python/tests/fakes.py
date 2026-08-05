@@ -35,14 +35,14 @@ class FakeCursor:
     def execute(self, sql: str, params: Any = None) -> None:
         self._conn.executed.append((sql, params))
         if self._conn.fail_on and self._conn.fail_on in _squash(sql):
-            raise RuntimeError(self._conn.fail_message)
+            raise self._conn._build_failure()
         self._rows = self._conn._next_result(sql)
         self.rowcount = self._conn.rowcount_for(sql, self._rows)
 
     def executemany(self, sql: str, rows: Any) -> None:
         self._conn.executed.append((sql, list(rows)))
         if self._conn.fail_on and self._conn.fail_on in _squash(sql):
-            raise RuntimeError(self._conn.fail_message)
+            raise self._conn._build_failure()
         self._rows = []
         self.rowcount = len(list(rows))
 
@@ -76,6 +76,12 @@ class FakeConnection:
         #: quando definido, qualquer SQL contendo este trecho levanta erro
         self.fail_on: str | None = None
         self.fail_message = "falha simulada no banco"
+        #: código de erro do MySQL a simular (1142 = sem permissão, 1146 = tabela
+        #: ausente). Sem isto o duplo só sabia levantar RuntimeError, e código de
+        #: tratamento que DECIDE pelo código do erro não tinha como ser testado —
+        #: foi assim que "sem GRANT" e "sem dado" ficaram indistinguíveis no
+        #: forecast. Nulo mantém o comportamento antigo.
+        self.fail_code: int | None = None
 
     # -- API usada por db.py ------------------------------------------------
     def cursor(self) -> FakeCursor:
@@ -91,6 +97,21 @@ class FakeConnection:
         self.closed = True
 
     # -- apoio aos testes ---------------------------------------------------
+    def _build_failure(self) -> Exception:
+        if self.fail_code is None:
+            return RuntimeError(self.fail_message)
+        import pymysql
+
+        # A hierarquia importa: o código de produção captura MySQLError e lê
+        # exc.args[0]. Levantar uma exceção genérica passaria no teste e falharia
+        # em produção.
+        classe = (
+            pymysql.err.OperationalError
+            if self.fail_code in (1142, 1045, 2003)
+            else pymysql.err.ProgrammingError
+        )
+        return classe(self.fail_code, self.fail_message)
+
     def _next_result(self, sql: str) -> list[dict[str, Any]]:
         alvo = _squash(sql)
         for trecho, linhas in self.results.items():

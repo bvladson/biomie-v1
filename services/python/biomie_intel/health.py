@@ -16,7 +16,7 @@ from typing import Any
 
 import pymysql
 
-from .config import WRITABLE_TABLES
+from .config import READABLE_TABLES, WRITABLE_TABLES
 from .db import fetch_all, fetch_one
 
 #: acima disto sem execução bem-sucedida, o job é considerado parado
@@ -25,7 +25,8 @@ from .db import fetch_all, fetch_one
 # execução perdida sem virar alarme falso, e ainda pega o job que morreu. Ficar
 # de fora daqui foi o que deixou o insights sem dead-man switch enquanto o
 # quote_score tinha um.
-MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14}
+# forecast roda 1x/dia (`10 5 * * *`); 30h cobre uma execução perdida.
+MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30}
 
 #: tabelas sem as quais a camada não funciona — a checagem de existência
 TABELAS_OBRIGATORIAS = (
@@ -33,7 +34,46 @@ TABELAS_OBRIGATORIAS = (
     "intelligence_quote_scores",
     "intelligence_quote_feedback",
     "intelligence_insights",
+    "intelligence_forecasts",
 )
+
+#: MySQL 1142 = comando negado para o usuário — falta de GRANT, não de tabela
+ERRO_SEM_PERMISSAO = 1142
+#: MySQL 1146 = tabela não existe
+ERRO_TABELA_AUSENTE = 1146
+
+
+def _prova_de_acesso(conn: pymysql.connections.Connection) -> tuple[dict[str, str], list[str]]:
+    """Tenta LER, de fato, cada tabela declarada — não pergunta, faz.
+
+    Existe porque `SHOW GRANTS` diz o que foi concedido e não o que funciona, e
+    porque o modo de falha real aqui é silencioso: o forecast perdeu o acesso às
+    tabelas de meta e passou a projetar sem meta nenhuma, o que na tela é
+    idêntico a empresa que não cadastrou meta. Um SELECT de uma linha custa
+    milissegundos e transforma esse silêncio em problema nomeado.
+    """
+    acesso: dict[str, str] = {}
+    problemas: list[str] = []
+
+    for tabela in READABLE_TABLES:
+        try:
+            fetch_one(conn, f"SELECT 1 AS ok FROM `{tabela}` LIMIT 1")  # noqa: S608 — lista fechada no código
+            acesso[tabela] = "ok"
+        except pymysql.err.MySQLError as exc:
+            codigo = exc.args[0] if exc.args else None
+            if codigo == ERRO_SEM_PERMISSAO:
+                acesso[tabela] = "sem_permissao"
+                problemas.append(
+                    f"{tabela}: SELECT negado — rode provision_intelligence_db_user.sh"
+                )
+            elif codigo == ERRO_TABELA_AUSENTE:
+                acesso[tabela] = "tabela_ausente"
+                problemas.append(f"{tabela}: tabela não existe — rode a migration")
+            else:
+                acesso[tabela] = f"erro_{codigo}"
+                problemas.append(f"{tabela}: erro {codigo} ao ler")
+
+    return acesso, problemas
 
 
 def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
@@ -101,11 +141,42 @@ def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
             and not int(insights["vigentes"] or 0):
         problemas.append("insights: job em dia mas nenhuma leitura vigente na tela")
 
+    acesso_leitura, problemas_de_acesso = _prova_de_acesso(conn)
+    problemas.extend(problemas_de_acesso)
+
+    # Cobertura por empresa: um job "completed" que só atendeu 2 de 5 empresas
+    # passa no dead-man switch e deixa três telas vazias. O total agregado
+    # esconde exatamente isso.
+    cobertura: dict[str, Any] = {}
+    if not faltando:
+        empresas_ativas = fetch_all(
+            conn, "SELECT id, slug FROM biomie_companies WHERE ativo = 1 ORDER BY id"
+        )
+        com_leitura = {
+            int(r["company_id"]) for r in fetch_all(
+                conn,
+                """SELECT DISTINCT company_id FROM intelligence_insights
+                    WHERE is_current = 1 AND valid_until > UTC_TIMESTAMP()""",
+            )
+        }
+        sem_leitura = [str(e["slug"]) for e in empresas_ativas if int(e["id"]) not in com_leitura]
+        cobertura = {
+            "empresas_ativas": len(empresas_ativas),
+            "com_leitura_vigente": len(empresas_ativas) - len(sem_leitura),
+            "sem_leitura_vigente": sem_leitura,
+        }
+        if sem_leitura and jobs.get("insights", {}).get("situacao") == "ok":
+            problemas.append(
+                "insights: job em dia mas sem leitura vigente em " + ", ".join(sem_leitura)
+            )
+
     return {
         "ok": not problemas,
         "verificado_em": datetime.now(timezone.utc).isoformat(),
         "banco": "conectado",
         "tabelas_gravaveis": list(WRITABLE_TABLES),
+        "acesso_leitura": acesso_leitura,
+        "cobertura": cobertura,
         "jobs": jobs,
         "scores_vigentes": int(scores["vigentes"] or 0) if scores else 0,
         "ultimo_score_em": scores["ultimo"].isoformat() if scores and scores.get("ultimo") else None,
