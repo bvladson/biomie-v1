@@ -19,6 +19,9 @@ import pymysql
 
 from .config import READABLE_TABLES, WRITABLE_TABLES
 from .db import fetch_all, fetch_one
+# Mesma definição que os insights usam para decidir o que é venda. Reimplementar
+# aqui faria o health medir um universo e a home outro.
+from .insights import UNIVERSO_COMERCIAL
 
 #: acima disto sem execução bem-sucedida, o job é considerado parado
 #
@@ -220,14 +223,44 @@ def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
             )
         }
         sem_leitura = [str(e["slug"]) for e in empresas_ativas if int(e["id"]) not in com_leitura]
+
+        # Empresa SEM FATURAMENTO COMERCIAL não tem sobre o que concluir, e não
+        # ter leitura é a resposta certa — não uma falha.
+        #
+        # Isto foi apurado, não suposto: a MAG_MATRIZ aparecia aqui todo dia. O
+        # funil mostrou 1 NF em toda a história (R$ 199, remessa), fora do
+        # universo comercial por definição. A empresa sincroniza normalmente.
+        # Sem esta distinção o health apontaria um problema permanente que não
+        # tem conserto — e alerta que toca sempre é alerta que ninguém lê.
+        com_faturamento = {
+            int(r["company_id"]) for r in fetch_all(
+                conn,
+                """SELECT DISTINCT company_id
+                     FROM biomie_notas_fiscais_canonicas
+                    WHERE data_emissao >= CURDATE() - INTERVAL 90 DAY
+                      AND """ + UNIVERSO_COMERCIAL,
+            )
+        }
+        sem_dado = [
+            str(e["slug"]) for e in empresas_ativas
+            if int(e["id"]) not in com_leitura and int(e["id"]) not in com_faturamento
+        ]
+        realmente_sem_leitura = [s for s in sem_leitura if s not in sem_dado]
+
         cobertura = {
             "empresas_ativas": len(empresas_ativas),
             "com_leitura_vigente": len(empresas_ativas) - len(sem_leitura),
-            "sem_leitura_vigente": sem_leitura,
+            "sem_leitura_vigente": realmente_sem_leitura,
+            # Separado de propósito: some do alerta, mas não some do relatório.
+            # Engolir sem deixar rastro seria o outro extremo — se uma empresa
+            # que faturava parar de faturar, ela aparece AQUI antes de virar
+            # silêncio.
+            "sem_faturamento_comercial_90d": sem_dado,
         }
-        if sem_leitura and jobs.get("insights", {}).get("situacao") == "ok":
+        if realmente_sem_leitura and jobs.get("insights", {}).get("situacao") == "ok":
             problemas.append(
-                "insights: job em dia mas sem leitura vigente em " + ", ".join(sem_leitura)
+                "insights: job em dia mas sem leitura vigente em "
+                + ", ".join(realmente_sem_leitura)
             )
 
     return {
