@@ -152,7 +152,9 @@ sleep 1
 SMOKE_URL="https://${VHOST}/biomie/login.php"
 BODY="$(curl -s --resolve "${VHOST}:443:127.0.0.1" -w '\n%{http_code}' "$SMOKE_URL" || echo $'\n000')"
 CODE="$(printf '%s' "$BODY" | tail -1)"
-SERVED="$(printf '%s' "$BODY" | grep -o 'name="biomie-build" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"//')"
+# login.php intentionally has no biomie-build meta. With pipefail, grep's
+# expected exit 1 used to abort the deploy before the documented fallback.
+SERVED="$(printf '%s' "$BODY" | grep -o 'name="biomie-build" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"//' || true)"
 
 if [ "$CODE" != "200" ] && [ "$CODE" != "302" ]; then
     log "SMOKE FALHOU (HTTP $CODE) — revertendo"
