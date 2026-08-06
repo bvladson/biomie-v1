@@ -74,7 +74,7 @@
     // Normal render path
     modules.State.setPayload(payload);
     var team     = payload.team || payload.summary || {};
-    var progress = modules.Formatters.pctOf(team.realized_period, team.target_period);
+    var progress = modules.Formatters.pctOf(team.realized_period, team.active_target || team.maximum_target || team.target_period);
 
     try { modules.Kpis.updateMeta(payload, 'Plano de Voo V2'); } catch (e) { console.warn(e); }
     if (typeof window.renderDataQualityBanner !== 'undefined') {

@@ -1315,7 +1315,7 @@
         setT('drawerCarteiraClientes', '-');
         setT('drawerNovosValue', '-');
       }
-      setT('drawerTarget',   formatCurrency(v.target_period));
+      setT('drawerTarget',   formatCurrency(v.active_target != null ? v.active_target : (v.maximum_target || v.target_period)));
       setT('drawerGap',      formatCurrency(v.gap_to_target));
       setT('drawerPct',      Number(v.attainment_pct || 0).toFixed(1) + '%');
 

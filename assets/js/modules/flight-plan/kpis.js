@@ -46,7 +46,7 @@
     const formatters = window.BIomieFlightPlan.Formatters;
     if (!dom || !formatters) return;
 
-    dom.setText('[data-bind="fp-meta-total"]', formatters.fmt(t.target_period));
+    dom.setText('[data-bind="fp-meta-total"]', formatters.fmt(t.active_target || t.maximum_target || t.target_period));
     var activeTarget = Number(t.active_target || 0);
     var maximumTarget = Number(t.maximum_target || t.target_period || 0);
     var activeText = activeTarget > 0
@@ -55,7 +55,7 @@
     dom.setText('[data-bind="fp-active-target"]', activeText);
     dom.setText('[data-bind="fp-realizado"]', formatters.fmt(t.realized_period));
     dom.setText('[data-bind="fp-gap-total"]', formatters.fmt(t.gap_to_target));
-    dom.setText('[data-bind="fp-atingimento-total"]', `Atingimento-base ${formatters.fmtN(t.attainment_pct, 1)}%`);
+    dom.setText('[data-bind="fp-atingimento-total"]', `Atingimento do desafio ${formatters.fmtN(t.attainment_pct, 1)}% · base ${formatters.fmtN(t.base_attainment_pct, 1)}%`);
     dom.setText('[data-bind="fp-projecao"]', formatters.fmt(t.forecast_period));
     dom.setText('[data-bind="fp-carteira-valor"]', formatters.fmt(t.pipeline_value || 0));
     dom.setText('[data-bind="fp-pedidos-carteira"]', formatters.fmtN(t.pipeline_orders_count || 0));
@@ -69,7 +69,7 @@
     dom.setText('[data-bind="fp-notas"]', `${formatters.fmtN(t.notes_count || 0)} NFs`);
     
     // Legacy mapping support
-    dom.setText('[data-bind="fp-meta"]', formatters.fmt(t.target_period));
+    dom.setText('[data-bind="fp-meta"]', formatters.fmt(t.active_target || t.maximum_target || t.target_period));
     dom.setText('[data-bind="fp-atingimento"]', `${formatters.fmtN(t.attainment_pct, 1)}%`);
     dom.setText('[data-bind="fp-nova-meta-dia"]', formatters.fmt(t.new_daily_target));
     dom.setText('[data-bind="fp-gap-meta"]', formatters.fmt(t.gap_to_target));

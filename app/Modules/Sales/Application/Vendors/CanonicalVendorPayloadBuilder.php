@@ -274,6 +274,11 @@ final class CanonicalVendorPayloadBuilder
                 $vendorMatrix[$index]['gap_to_target'] = $active !== null
                     ? Support::money(max((float) $active - $bm, 0))
                     : 0.0;
+                $comparisonTarget = (float) ($active ?? $tierInfo['maximum_target'] ?? $target);
+                $vendorMatrix[$index]['base_attainment_pct'] = $target > 0 ? round(($bm / $target) * 100, 2) : 0.0;
+                $vendorMatrix[$index]['attainment_pct'] = $comparisonTarget > 0
+                    ? round(($bm / $comparisonTarget) * 100, 2)
+                    : 0.0;
                 $forecast = Support::toFloat($plan['forecast_period'] ?? 0);
                 $vendorMatrix[$index]['active_forecast_pct'] = $active !== null && (float) $active > 0
                     ? round(($forecast / (float) $active) * 100, 2)

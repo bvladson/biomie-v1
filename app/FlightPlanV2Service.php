@@ -337,6 +337,7 @@ final class FlightPlanV2Service
                     ? (float) $row['active_target']
                     : null);
             $row['active_target_period'] = $activeTarget;
+            $comparisonTarget = (float) ($activeTarget ?? $row['maximum_target']);
             $row['base_gap'] = Support::money(max($targetPeriod - $realized, 0));
             $row['gap_to_target'] = $activeTarget !== null
                 ? Support::money(max($activeTarget - $realized, 0))
@@ -347,15 +348,31 @@ final class FlightPlanV2Service
             $row['active_forecast_pct'] = $activeTarget !== null && $activeTarget > 0
                 ? round(($probableForecast / $activeTarget) * 100, 2)
                 : 100.0;
+            $row['base_attainment_pct'] = $targetPeriod > 0
+                ? round(($realized / $targetPeriod) * 100, 2)
+                : 0.0;
+            $row['attainment_pct'] = $comparisonTarget > 0
+                ? round(($realized / $comparisonTarget) * 100, 2)
+                : 0.0;
+            $row['forecast_pct'] = $comparisonTarget > 0
+                ? round(($probableForecast / $comparisonTarget) * 100, 2)
+                : 0.0;
+            $row['line_85_value'] = Support::money($comparisonTarget * (CommercialPlanning::RISK_ATTENTION_PCT / 100));
+            $row['line_85_gap'] = Support::money(max((float) $row['line_85_value'] - $realized, 0));
+            $row['risk_status'] = CommercialPlanning::riskStatus(
+                $probableForecast,
+                $comparisonTarget,
+                (float) $row['line_85_value']
+            );
             $row['challenge_risk'] = $activeTarget === null
                 ? 'all_levels_achieved'
                 : self::classifyRisk($activeTarget, $realized, (float) $row['active_forecast_pct']);
 
             // Phase F: risk classification (on_track / attention / critical / no_sales)
-            $riskNew            = self::classifyRisk($targetPeriod, $realized, $forecastPct);
+            $riskNew            = self::classifyRisk($comparisonTarget, $realized, (float) $row['forecast_pct']);
             $row['risk']        = $riskNew;
             $row['risk_label']  = self::riskLabel($riskNew);
-            $row['risk_reason'] = self::riskReasonText($riskNew, $forecastPct);
+            $row['risk_reason'] = self::riskReasonText($riskNew, (float) $row['forecast_pct']);
             $row['risk_severity'] = match ($riskNew) {
                 'no_target' => 'danger',
                 'critical'  => 'danger',
@@ -391,8 +408,11 @@ final class FlightPlanV2Service
             $team['cancelled_value'] += $cancelledValue;
         }
 
-        $team['ideal_for_period'] = $periodWeight > 0 && $team['target_period'] > 0
+        $team['base_ideal_for_period'] = $periodWeight > 0 && $team['target_period'] > 0
             ? Support::money(($team['target_period'] / $periodWeight) * $elapsedWeight)
+            : 0.0;
+        $team['ideal_for_period'] = $periodWeight > 0 && $team['active_target'] > 0
+            ? Support::money(($team['active_target'] / $periodWeight) * $elapsedWeight)
             : 0.0;
         $team['real_x_ideal'] = Support::money($team['realized_period'] - $team['ideal_for_period']);
 
@@ -413,11 +433,14 @@ final class FlightPlanV2Service
         $team['new_daily_target'] = $remainingWeight > 0
             ? Support::money((float) $team['active_gap'] / $remainingWeight)
             : 0.0;
-        $team['attainment_pct'] = (float) $team['target_period'] > 0
+        $team['base_attainment_pct'] = (float) $team['target_period'] > 0
             ? round(((float) $team['realized_period'] / (float) $team['target_period']) * 100, 2)
             : 0.0;
-        $team['forecast_pct'] = (float) $team['target_period'] > 0
-            ? round(($teamProbableForecast / (float) $team['target_period']) * 100, 2)
+        $team['attainment_pct'] = (float) $team['active_target'] > 0
+            ? round(((float) $team['realized_period'] / (float) $team['active_target']) * 100, 2)
+            : 0.0;
+        $team['forecast_pct'] = (float) $team['active_target'] > 0
+            ? round(($teamProbableForecast / (float) $team['active_target']) * 100, 2)
             : 0.0;
         $team['active_forecast_pct'] = (float) $team['active_target'] > 0
             ? round(($teamProbableForecast / (float) $team['active_target']) * 100, 2)
@@ -425,14 +448,14 @@ final class FlightPlanV2Service
         $team['maximum_attainment_pct'] = (float) $team['maximum_target'] > 0
             ? round(((float) $team['realized_period'] / (float) $team['maximum_target']) * 100, 2)
             : 0.0;
-        $team['line_85_value'] = Support::money((float) $team['target_period'] * (CommercialPlanning::RISK_ATTENTION_PCT / 100));
+        $team['line_85_value'] = Support::money((float) $team['active_target'] * (CommercialPlanning::RISK_ATTENTION_PCT / 100));
         $team['line_85_gap'] = Support::money(max((float) $team['line_85_value'] - (float) $team['realized_period'], 0));
-        $team['coverage_pct'] = (float) $team['target_period'] > 0
-            ? round((((float) $team['realized_period'] + (float) $team['pipeline_value']) / (float) $team['target_period']) * 100, 2)
+        $team['coverage_pct'] = (float) $team['active_target'] > 0
+            ? round((((float) $team['realized_period'] + (float) $team['pipeline_value']) / (float) $team['active_target']) * 100, 2)
             : 0.0;
         $team['risk_status'] = CommercialPlanning::riskStatus(
             $teamProbableForecast,
-            (float) $team['target_period'],
+            (float) $team['active_target'],
             (float) $team['line_85_value']
         );
         $team['workdays'] = $workdays;
