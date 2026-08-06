@@ -757,6 +757,7 @@
       .then(data => {
         if (!data.ok) throw new Error(data.message || 'Falha ao carregar apuração fiscal');
         state.settlementRows = data.rows || [];
+        renderTruthSummary(data.post_billing || {}, data.coverage || {});
         renderSettlementKpis(data.totals || {}, data.coverage || {}, data.post_billing || {});
         renderSettlementCharts(state.settlementRows);
         renderSettlementTable();
@@ -765,6 +766,40 @@
         const tbody = $('fisSettlementTbody');
         if (tbody) tbody.innerHTML = '<tr><td class="fis-loading-cell">Apuração indisponível.</td></tr>';
       });
+  }
+
+  function renderTruthSummary(summary, coverage) {
+    const el = $('fisTruthSummary');
+    if (!el) return;
+    const evidence = summary.evidence || {};
+    const missing = summary.missing_to_close || [];
+    const levelLabel = value => ({ calculado: 'Calculado', estimado: 'Estimado', potencial: 'Potencial', parcial: 'Parcial', indisponivel: 'Sem fonte' }[value] || 'Sem fonte');
+    const levelClass = value => ['calculado'].includes(value) ? 'ok' : (['estimado','potencial','parcial'].includes(value) ? 'warning' : 'critical');
+    const range = (a, b) => Number(a || 0) === Number(b || 0) ? (a || fmtR(0)) : `${a || fmtR(0)} a ${b || fmtR(0)}`;
+    const evidenceItems = [
+      ['Faturamento', evidence.revenue], ['Tributos', evidence.tax],
+      ['Créditos', evidence.credits], ['Retenções', evidence.retentions], ['Caixa', evidence.cash],
+    ];
+    el.innerHTML = `
+      <article class="fis-truth-main">
+        <div class="fis-truth-head">
+          <div><small>Empresa ativa · ${esc(summary.regime_label || 'Regime não identificado')}</small><h3>Resumo confiável do período</h3></div>
+          <span class="fis-confidence fis-confidence--${summary.confidence === 'alta' ? 'ok' : 'warning'}">Confiança ${esc(summary.confidence || 'baixa')}</span>
+        </div>
+        <div class="fis-truth-numbers">
+          <div><small>Faturamento autorizado</small><strong>${summary.faturamento_fmt || fmtR(0)}</strong><span class="fis-evidence fis-evidence--ok">Calculado pelas NF</span></div>
+          <div><small>Tributo esperado</small><strong>${range(summary.tax_min_fmt, summary.tax_max_fmt)}</strong><span class="fis-evidence fis-evidence--warning">Estimativa por regime</span></div>
+          <div><small>Receita pós-tributos</small><strong>${range(summary.net_revenue_min_fmt, summary.net_revenue_max_fmt)}</strong><span>Ainda não é lucro</span></div>
+          <div><small>Caixa líquido recebido</small><strong>${summary.caixa_recebido_pos_impostos_fmt || fmtR(0)}</strong><span>${fmtP(summary.linkage_pct)} das NF ligadas ao financeiro</span></div>
+        </div>
+        <p class="fis-truth-note"><span class="material-symbols-rounded">verified_user</span>${esc(summary.truth_note || '')}</p>
+      </article>
+      <aside class="fis-truth-evidence">
+        <h3>Nível de evidência</h3>
+        <div class="fis-evidence-list">${evidenceItems.map(([label, value]) => `<div><span>${label}</span><b class="fis-evidence fis-evidence--${levelClass(value)}">${levelLabel(value)}</b></div>`).join('')}</div>
+        <h3>Falta para fechar</h3>
+        <ul>${missing.slice(0, 6).map(item => `<li><span class="material-symbols-rounded">pending_actions</span>${esc(item)}</li>`).join('') || '<li>Nenhuma pendência mapeada.</li>'}</ul>
+      </aside>`;
   }
 
   function renderSettlementKpis(totals, coverage, postBilling) {
@@ -808,7 +843,7 @@
         datasets: [
           { label: 'Tributos brutos', data: gross, backgroundColor: '#6366f1', borderRadius: 5 },
           { label: 'Créditos + retenções', data: credits, backgroundColor: '#10b981', borderRadius: 5 },
-          { label: 'Saldo líquido', data: net, type: 'line', borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,.08)', tension: .32, pointRadius: 3, fill: false },
+          { label: 'Tributo líquido estimado', data: net, type: 'line', borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,.08)', tension: .32, pointRadius: 3, fill: false },
         ],
       },
       options: {
@@ -872,12 +907,12 @@
       return;
     }
 
-    head.innerHTML = '<tr><th>Competência</th><th class="fis-r">Faturamento</th><th class="fis-r">Tributos brutos</th><th class="fis-r">Créditos</th><th class="fis-r">Retenções</th><th class="fis-r">Saldo líquido</th><th class="fis-r">Carga bruta</th><th class="fis-r">Carga líquida</th><th>Cobertura</th></tr>';
+    head.innerHTML = '<tr><th>Competência</th><th class="fis-r">Faturamento</th><th class="fis-r">Tributos destacados</th><th class="fis-r">Créditos</th><th class="fis-r">Retenções</th><th class="fis-r">Tributo líquido estimado</th><th class="fis-r">Carga bruta</th><th class="fis-r">Carga estimada</th><th>Evidência</th></tr>';
     tbody.innerHTML = rows.length ? rows.map(row => `
       <tr><td>${esc(row.label)}</td><td class="fis-r">${row.faturamento_fmt}</td>
         <td class="fis-r fis-bold">${row.tributos_brutos_fmt}</td>
         <td class="fis-r">${row.input_coverage === 'pending' ? '<span class="fis-pending-value">Pendente</span>' : `${row.creditos_totais_fmt}<small class="fis-cell-note">potencial</small>`}</td>
-        <td class="fis-r">${row.retencoes_totais_fmt}</td><td class="fis-r fis-bold">${row.saldo_liquido_estimado_fmt}</td>
+        <td class="fis-r">${row.accounting_coverage === 'pending' ? '<span class="fis-pending-value">Sem fonte</span>' : row.retencoes_totais_fmt}</td><td class="fis-r fis-bold">${row.saldo_liquido_estimado_fmt}<small class="fis-cell-note">estimado</small></td>
         <td class="fis-r">${fmtP(row.carga_bruta_pct)}</td><td class="fis-r">${fmtP(row.carga_liquida_pct)}</td>
         <td><span class="fis-confidence fis-confidence--${row.input_coverage === 'complete' ? 'ok' : 'warning'}">${row.input_coverage === 'pending' ? 'Entradas pendentes' : (row.input_coverage === 'partial' ? 'Omie · validar' : 'Conciliada')}</span></td></tr>
     `).join('') : '<tr><td colspan="9" class="fis-loading-cell">Nenhuma competência.</td></tr>';
@@ -1030,7 +1065,18 @@
       const age = Number.isFinite(Number(mart.freshness_hours)) ? ` · ${Number(mart.freshness_hours).toLocaleString('pt-BR')}h de defasagem` : '';
       const latest = window.__fiscalCoherence && window.__fiscalCoherence.latest;
       const coverage = latest ? ` · cobertura ${Number(latest.coverage_pct || 0).toLocaleString('pt-BR')}% (${Number(latest.mart_invoices || 0).toLocaleString('pt-BR')}/${Number(latest.canonical_invoices || 0).toLocaleString('pt-BR')} NF)` : '';
-      const missing = latest && Number(latest.missing_revenue || 0) > 0 ? ` · R$ ${Number(latest.missing_revenue).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})} fora do mart` : '';
+      // Divergência tem DIREÇÃO. O campo antigo (`missing_revenue`) só sabia
+      // dizer "falta"; quando o mart ficava maior que a fonte o número era
+      // zerado e a faixa mostrava "diverge" ao lado de "R$ 0,00".
+      // Positivo = falta no mart · negativo = o mart tem a mais.
+      var deltaValor = latest ? Number(latest.revenue_delta || 0) : 0;
+      var missing = '';
+      if (Math.abs(deltaValor) >= 0.01) {
+        var deltaTexto = Math.abs(deltaValor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        missing = deltaValor > 0
+          ? ` · R$ ${deltaTexto} fora do mart`
+          : ` · R$ ${deltaTexto} a mais no mart que na fonte`;
+      }
       txt.textContent = `${label} · ${Number(mart.rows || 0).toLocaleString('pt-BR')} itens · atualizado ${mart.built_at || '-'}${age}${coverage}${missing}`;
     } else {
       txt.textContent = 'Mart fiscal não construído — seções NCM e Reforma Tributária indisponíveis.';

@@ -65,6 +65,10 @@ try {
             'em_aberto_fmt' => $fmt((float) $postBilling['em_aberto']),
             'caixa_recebido_pos_impostos_fmt' => $fmt((float) $postBilling['caixa_recebido_pos_impostos']),
             'carteira_aberta_pos_impostos_fmt' => $fmt((float) $postBilling['carteira_aberta_pos_impostos']),
+            'tax_min_fmt' => $fmt((float) $postBilling['tax_min']),
+            'tax_max_fmt' => $fmt((float) $postBilling['tax_max']),
+            'net_revenue_min_fmt' => $fmt((float) $postBilling['net_revenue_min']),
+            'net_revenue_max_fmt' => $fmt((float) $postBilling['net_revenue_max']),
         ]),
     ]);
 } catch (\Throwable $exception) {

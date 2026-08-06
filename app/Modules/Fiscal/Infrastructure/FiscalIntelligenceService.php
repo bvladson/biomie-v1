@@ -444,6 +444,35 @@ final class FiscalIntelligenceService
         $linkConfidence = $linkage >= 90 ? 'alta' : ($linkage >= 60 ? 'media' : 'baixa');
         $rank = ['baixa' => 0, 'media' => 1, 'alta' => 2];
         $confidence = $rank[$taxConfidence] <= $rank[$linkConfidence] ? $taxConfidence : $linkConfidence;
+        $context = $this->fiscalContext();
+        $regime = (string) ($context['regime']['code'] ?? TaxRegime::LUCRO_REAL);
+        $regimeLabel = (string) ($context['regime']['label'] ?? 'Regime não identificado');
+        $inputs = (string) ($settlement['coverage']['inputs'] ?? 'pending');
+        $creditsKnown = (float) ($settlement['totals']['creditos_totais'] ?? 0);
+        $grossTax = (float) ($settlement['totals']['tributos_brutos'] ?? 0);
+        $taxMin = $taxReserve;
+        $taxMax = $taxReserve;
+        $missing = [];
+
+        if ($regime === TaxRegime::LUCRO_REAL) {
+            // Sem a escrituração das entradas, o débito destacado é o teto do
+            // bloco indireto. IRPJ/CSLL ficam fora: dependem do lucro contábil.
+            $taxMin = max(0.0, $grossTax - $creditsKnown);
+            $taxMax = max($taxMin, $grossTax);
+            $missing = ['EFD-Contribuições', 'EFD ICMS/IPI', 'balancete', 'LALUR/LACS', 'DARF/DCTFWeb'];
+        } elseif ($regime === TaxRegime::LUCRO_PRESUMIDO) {
+            $taxMin = max(0.0, $taxReserve - $creditsKnown);
+            $taxMax = $taxReserve;
+            $missing = ['fechamento trimestral IRPJ/CSLL', 'MIT/DCTFWeb', 'DARFs pagos', 'EFD-Reinf'];
+        } else {
+            $missing = ['PGDAS-D', 'DAS emitido/pago', 'segregação de receitas', 'opção caixa/competência'];
+        }
+        if ($inputs === 'pending') {
+            array_unshift($missing, 'notas de entrada/escrituração de créditos');
+        }
+
+        $netMin = max(0.0, $faturamento - $taxMax);
+        $netMax = max(0.0, $faturamento - $taxMin);
 
         return [
             'faturamento' => $faturamento,
@@ -462,6 +491,21 @@ final class FiscalIntelligenceService
             'confidence' => $confidence,
             'tax_confidence' => $taxConfidence,
             'link_confidence' => $linkConfidence,
+            'regime' => $regime,
+            'regime_label' => $regimeLabel,
+            'tax_min' => $taxMin,
+            'tax_max' => $taxMax,
+            'net_revenue_min' => $netMin,
+            'net_revenue_max' => $netMax,
+            'evidence' => [
+                'revenue' => 'calculado',
+                'tax' => 'estimado',
+                'credits' => $inputs === 'pending' ? 'indisponivel' : 'potencial',
+                'retentions' => 'indisponivel',
+                'cash' => $linkConfidence === 'alta' ? 'calculado' : 'parcial',
+            ],
+            'missing_to_close' => array_values(array_unique($missing)),
+            'truth_note' => 'Prévia gerencial. Só vira apuração confirmada após conciliar declaração e pagamento.',
             'is_profit' => false,
             'missing_components' => ['cpv', 'folha', 'despesas_operacionais', 'investimentos'],
         ];

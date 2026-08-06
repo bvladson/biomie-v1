@@ -197,6 +197,32 @@ body.fiscal-page .fis-shell > * {
   margin-bottom: 18px;
 }
 
+.fis-truth-summary { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,.8fr); gap:14px; margin-bottom:16px; }
+.fis-truth-main,.fis-truth-evidence { border:1px solid var(--fis-border); border-radius:16px; background:#fff; padding:18px; }
+.fis-truth-main { background:linear-gradient(135deg,rgba(37,99,235,.055),rgba(16,185,129,.035)); }
+.fis-truth-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:15px; }
+.fis-truth-head small { color:var(--fis-muted); font-size:11px; font-weight:700; }
+.fis-truth-head h3,.fis-truth-evidence h3 { margin:3px 0 0; color:var(--fis-text); font-size:15px; }
+.fis-truth-numbers { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.fis-truth-numbers>div { padding:12px; border:1px solid rgba(148,163,184,.22); border-radius:12px; background:rgba(255,255,255,.82); }
+.fis-truth-numbers small,.fis-truth-numbers span { display:block; color:var(--fis-muted); font-size:10px; }
+.fis-truth-numbers strong { display:block; margin:6px 0; color:var(--fis-text); font-size:17px; line-height:1.2; }
+.fis-truth-note { display:flex; align-items:center; gap:7px; margin:14px 0 0; color:#475569; font-size:11px; }
+.fis-truth-note .material-symbols-rounded { color:#2563eb; font-size:18px; }
+.fis-evidence-list { display:grid; gap:7px; margin:10px 0 16px; }
+.fis-evidence-list>div { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:11px; }
+.fis-evidence { display:inline-flex!important; width:max-content; padding:3px 7px; border-radius:999px; font-size:9px!important; font-weight:800; }
+.fis-evidence--ok { color:#047857!important; background:rgba(16,185,129,.11); }
+.fis-evidence--warning { color:#b45309!important; background:rgba(245,158,11,.13); }
+.fis-evidence--critical { color:#b91c1c!important; background:rgba(239,68,68,.11); }
+.fis-truth-evidence ul { display:grid; gap:6px; padding:0; margin:10px 0 0; list-style:none; }
+.fis-truth-evidence li { display:flex; align-items:center; gap:6px; color:#64748b; font-size:10px; }
+.fis-truth-evidence li .material-symbols-rounded { font-size:15px; color:#d97706; }
+.fis-settlement-details { border-top:1px solid rgba(148,163,184,.2); margin-top:16px; padding-top:10px; }
+.fis-settlement-details>summary { display:flex; align-items:center; gap:7px; width:max-content; cursor:pointer; color:#2563eb; font-size:11px; font-weight:800; }
+.fis-settlement-details>summary .material-symbols-rounded { font-size:18px; }
+.fis-settlement-details[open]>summary { margin-bottom:14px; }
+
 .fis-settlement-kpi {
   display: flex;
   flex-direction: column;
@@ -1526,6 +1552,8 @@ body.fis-drawer-active { overflow: hidden; }
 }
 
 @media (max-width: 900px) {
+  .fis-truth-summary { grid-template-columns: 1fr; }
+  .fis-truth-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fis-kpi-row       { grid-template-columns: repeat(3, 1fr); }
   .fis-alert-grid    { grid-template-columns: 1fr; }
   .fis-purchase-head-actions { flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -1554,6 +1582,7 @@ body.fis-drawer-active { overflow: hidden; }
   .fis-reform-kpis      { grid-template-columns: 1fr; }
   .fis-purchase-kpis    { grid-template-columns: 1fr; }
   .fis-dre-grid         { grid-template-columns: 1fr; }
+  .fis-truth-numbers    { grid-template-columns: 1fr; }
 
   /* KPI cards */
   .fis-kpi-card         { padding: 12px; }

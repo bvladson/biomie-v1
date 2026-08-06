@@ -159,18 +159,23 @@
     <div class="fis-section-head">
       <div>
         <div class="fis-eyebrow"><span class="material-symbols-rounded">calculate</span>Apuração gerencial</div>
-        <h2>Custo Tributário, Créditos e Saldo Líquido</h2>
-        <p class="fis-section-desc">Débitos destacados − créditos aproveitáveis − retenções = saldo líquido gerencial. Valores sem fonte aparecem como cobertura pendente.</p>
+        <h2>Quanto sobra depois dos tributos?</h2>
+        <p class="fis-section-desc">Resumo por regime, separado por nível de evidência. Estimativa não é apresentada como imposto declarado ou pago.</p>
       </div>
       <span class="fis-coverage-badge" id="fisSettlementCoverage">Verificando créditos…</span>
+    </div>
+    <div class="fis-truth-summary" id="fisTruthSummary">
+      <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
     </div>
     <div class="fis-settlement-kpis" id="fisSettlementKpis">
       <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
       <div class="fis-kpi-skeleton"></div><div class="fis-kpi-skeleton"></div>
     </div>
+    <details class="fis-settlement-details">
+      <summary><span class="material-symbols-rounded">table_chart</span>Ver memória de cálculo mensal</summary>
     <div class="fis-charts-row fis-charts-row--settlement">
       <div class="fis-chart-card">
-        <div class="fis-card-head"><h3>Bruto × Créditos × Saldo Líquido por mês</h3></div>
+        <div class="fis-card-head"><h3>Tributo destacado × créditos conhecidos × estimativa</h3></div>
         <div class="fis-chart-stage" style="height:300px;"><canvas id="fisSettlementCanvas"></canvas></div>
       </div>
       <div class="fis-chart-card fis-chart-card--narrow">
@@ -193,6 +198,7 @@
         <tbody id="fisSettlementTbody"><tr><td class="fis-loading-cell">Carregando apuração…</td></tr></tbody>
       </table>
     </div>
+    </details>
   </section>
 
   <!-- ══ 5 — Esferas Tributárias ══════════════════════════════════════ -->
