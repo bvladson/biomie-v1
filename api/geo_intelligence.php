@@ -62,6 +62,10 @@ try {
         $key = (string) ($row['confidence'] ?? 'baixa');
         $confidence[$key] = ($confidence[$key] ?? 0) + 1;
     }
+    $actionableRows = array_values(array_filter(
+        $rows,
+        static fn (array $row): bool => in_array((string) ($row['confidence'] ?? ''), ['alta', 'media'], true),
+    ));
 
     Http::json([
         'ok' => true,
@@ -70,8 +74,9 @@ try {
         'summary' => [
             'territories' => count($rows),
             'confidence' => $confidence,
-            'potential_revenue' => array_sum(array_column($rows, 'potential_revenue')),
-            'top' => $rows[0] ?? null,
+            'actionable_territories' => count($actionableRows),
+            'potential_revenue' => array_sum(array_column($actionableRows, 'potential_revenue')),
+            'top' => $actionableRows[0] ?? null,
         ],
         'meta' => ['request_id' => RequestContext::id(), 'source' => 'python_persisted'],
     ]);
