@@ -40,6 +40,8 @@ def compute(conn, company_id: int) -> tuple[list[dict[str, Any]], list[dict[str,
         reasons = []
         if coverage < 95: reasons.append("cobertura_abaixo_95")
         if freshness is None or freshness > 30: reasons.append("mart_desatualizado")
+        revenue_gap_pct = 0 if canonical_revenue <= 0 else abs(canonical_revenue-mart_revenue) * 100 / canonical_revenue
+        if revenue_gap_pct > 1: reasons.append("valor_mart_diverge_da_fonte")
         status = "critical" if coverage < 80 or freshness is None or freshness > 72 else ("warning" if reasons else "ok")
         rows.append({"competencia": comp, "canonical_invoices": canonical_n, "mart_invoices": mart_n,
             "mart_items": int(m.get("items") or 0), "canonical_revenue": canonical_revenue,

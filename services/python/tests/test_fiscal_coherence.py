@@ -29,6 +29,17 @@ class TestFiscalCoherence(unittest.TestCase):
         self.assertEqual(anomalies[0]["type"], "ncm_icms_divergent")
         self.assertIn("revise", anomalies[0]["detail"].lower())
 
+    def test_mesmas_notas_mas_valor_divergente_nao_e_ok(self):
+        conn = FakeConnection({
+            "FROM biomie_notas_fiscais_canonicas": [{"competencia":"2026-02", "invoices":10, "revenue":1000}],
+            "COUNT(DISTINCT nota_key) invoices, COUNT(*) items": [{"competencia":"2026-02", "invoices":10,
+              "items":20, "revenue":800, "built_at":datetime.now(timezone.utc).replace(tzinfo=None)}],
+        })
+        rows, _ = fiscal_coherence.compute(conn, 1)
+        self.assertEqual(rows[0]["coverage_pct"], 100)
+        self.assertEqual(rows[0]["status"], "warning")
+        self.assertIn("valor_mart_diverge_da_fonte", rows[0]["reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()
