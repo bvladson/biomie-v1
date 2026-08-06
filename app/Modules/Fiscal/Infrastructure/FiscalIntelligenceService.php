@@ -401,6 +401,21 @@ final class FiscalIntelligenceService
             }
         }
 
+        // O histórico persistido pode ainda não cobrir todo o filtro escolhido
+        // (foi exatamente o caso da EXPERT: janeiro-julho com receita e apenas
+        // agosto, zerado, persistido). A projeção sob demanda usa o período
+        // inteiro e impede que ausência de snapshot seja exibida como imposto 0.
+        $periodProjection = (new FiscalRegimeProjectionService($this->pdo()))->forCompany(
+            $this->cid(),
+            \BIomie\Support\TenantContext::slug(),
+            $start,
+            $end,
+        );
+        $taxReserve = max(
+            $taxReserve,
+            (float) ($periodProjection['projecao']['tributo_total'] ?? 0),
+        );
+
         $finance = ['titles' => 0, 'received' => 0.0, 'open' => 0.0];
         $invoiceCount = 0;
         $linkedInvoices = 0;
