@@ -49,6 +49,8 @@ $jobParaScript = [
     'quote_score' => 'intelligence_score.sh',
     'insights' => 'intelligence_insights.sh',
     'forecast' => 'intelligence_forecast.sh',
+    'geo_intelligence' => 'intelligence_geo.sh',
+    'fiscal_mart' => 'fiscal_mart.sh',
 ];
 
 // ─────────────────────────────────────── 1. os dois idiomas concordam?

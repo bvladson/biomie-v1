@@ -130,6 +130,11 @@ final class FiscalIntelligenceService
         ];
     }
 
+    /**
+     * Evidencia da coerencia fiscal — a leitura vigente e suas anomalias.
+     *
+     * @return array{available:bool,latest:array<string,mixed>|null,anomalies:list<array<string,mixed>>}
+     */
     public function fiscalCoherence(): array
     {
         if (!$this->tableExists('intelligence_fiscal_coherence')) {
@@ -137,7 +142,7 @@ final class FiscalIntelligenceService
         }
         $latest = $this->pdo()->query(
             "SELECT competencia, canonical_invoices, mart_invoices, mart_items,
-                    canonical_revenue, mart_revenue, missing_revenue, coverage_pct,
+                    canonical_revenue, mart_revenue, revenue_delta, coverage_pct,
                     freshness_hours, status, reasons_json, computed_at
                FROM intelligence_fiscal_coherence
               WHERE {$this->tenant} AND is_current=1
@@ -371,7 +376,11 @@ final class FiscalIntelligenceService
         ];
     }
 
-    /** Ponte auditavel entre faturamento, imposto e caixa; nao representa lucro. */
+    /**
+     * Ponte auditavel entre faturamento, imposto e caixa; nao representa lucro.
+     *
+     * @return array<string,mixed>
+     */
     public function postBillingBalance(string $start, string $end): array
     {
         $settlement = $this->monthlySettlement($start, $end);

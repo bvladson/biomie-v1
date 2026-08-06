@@ -39,9 +39,16 @@ final class IntelligenceJobSla
      * @var array<string,int>
      */
     public const MAX_IDLE_HOURS = [
-        'quote_score' => 26,
-        'insights'    => 14,
-        'forecast'    => 30,
+        'quote_score'      => 26,
+        'insights'         => 14,
+        'forecast'         => 30,
+        // Acrescentados depois que o guard denunciou a divergencia: os dois
+        // tinham SLA declarado no Python e NENHUM aqui. Na pratica isso
+        // significa que, se um deles parasse, o `health` do servico acusaria e o
+        // OpsSentinel e o painel administrativo ficariam mudos — que e o modo de
+        // falha que este arquivo existe para impedir.
+        'geo_intelligence' => 30,  // cron `30 5 * * *`, 1x/dia
+        'fiscal_mart'      => 30,  // cron `45 1 * * *`, 1x/dia
     ];
 
     /** @return list<string> */
