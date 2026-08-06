@@ -43,6 +43,9 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # Score e forecast territorial persistidos; roda depois do forecast mensal e
 # antes dos insights, sem competir com a materializacao da madrugada.
 30 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_geo.sh
+# Reconstrói o mart fiscal por empresa e, somente após sucesso, persiste a prova
+# fonte x mart. O dead-man switch fiscal_mart admite uma execução perdida (30h).
+45 1 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/fiscal_mart.sh
 
 # --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
 30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh

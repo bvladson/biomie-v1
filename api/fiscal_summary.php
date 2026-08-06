@@ -21,7 +21,7 @@ try {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end))   $end   = date('Y-m-t');
 
     $cache    = new Cache(__DIR__ . '/../storage/cache');
-    $cacheKey = 'fiscal_summary_v3_' . $start . '_' . $end;
+    $cacheKey = 'fiscal_summary_v4_' . $start . '_' . $end;
 
     if (!$force) {
         $cached = $cache->get($cacheKey, 1800); // 30 min
@@ -42,6 +42,7 @@ try {
     $trend   = $svc->monthlyTrend($start, $end);
     $vendors = $svc->vendorRanking($start, $end);
     $mart    = $svc->martStats();
+    $coherence = $svc->fiscalCoherence();
 
     $fat   = (float) ($raw['faturamento'] ?? 0);
     $trib  = (float) ($raw['trib_total']  ?? 0);
@@ -89,6 +90,7 @@ try {
         'ok'     => true,
         'period' => ['start' => $start, 'end' => $end],
         'mart'   => $mart,
+        'coherence' => $coherence,
         'kpis'   => [
             'faturamento'  => $fmt($fat),
             'trib_total'   => $fmt($trib),

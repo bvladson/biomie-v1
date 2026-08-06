@@ -109,19 +109,53 @@ final class FiscalIntelligenceService
     public function martStats(): array
     {
         if (!$this->martExists()) {
-            return ['exists' => false, 'rows' => 0, 'built_at' => null];
+            return ['exists' => false, 'rows' => 0, 'built_at' => null, 'freshness_hours' => null, 'health' => 'missing'];
         }
         $r = $this->pdo()->query(
-            "SELECT COUNT(*) AS c, MAX(built_at) AS last
+            "SELECT COUNT(*) AS c, MAX(built_at) AS last,
+                    TIMESTAMPDIFF(MINUTE, MAX(built_at), UTC_TIMESTAMP()) / 60 AS freshness_hours
              FROM mart_fiscal_items
              WHERE {$this->tenant}"
         )->fetch(PDO::FETCH_ASSOC);
 
+        $builtAt = $r['last'] ?? null;
+        $freshness = $builtAt ? max(0.0, (float) ($r['freshness_hours'] ?? 0)) : null;
+        $health = $freshness === null ? 'missing' : ($freshness <= 30 ? 'fresh' : ($freshness <= 72 ? 'stale' : 'critical'));
         return [
             'exists'   => true,
             'rows'     => (int) ($r['c'] ?? 0),
-            'built_at' => $r['last'] ?? null,
+            'built_at' => $builtAt,
+            'freshness_hours' => $freshness !== null ? round($freshness, 1) : null,
+            'health' => $health,
         ];
+    }
+
+    public function fiscalCoherence(): array
+    {
+        if (!$this->tableExists('intelligence_fiscal_coherence')) {
+            return ['available' => false, 'latest' => null, 'anomalies' => []];
+        }
+        $latest = $this->pdo()->query(
+            "SELECT competencia, canonical_invoices, mart_invoices, mart_items,
+                    canonical_revenue, mart_revenue, missing_revenue, coverage_pct,
+                    freshness_hours, status, reasons_json, computed_at
+               FROM intelligence_fiscal_coherence
+              WHERE {$this->tenant} AND is_current=1
+              ORDER BY competencia DESC LIMIT 1"
+        )->fetch(PDO::FETCH_ASSOC) ?: null;
+        $anomalies = [];
+        if ($latest && $this->tableExists('intelligence_fiscal_anomalies')) {
+            $stmt = $this->pdo()->prepare(
+                "SELECT anomaly_type, severity, entity_key, title, detail,
+                        affected_rows, affected_value, evidence_json
+                   FROM intelligence_fiscal_anomalies
+                  WHERE {$this->tenant} AND competencia=:competencia AND is_current=1
+                  ORDER BY FIELD(severity,'critical','warning','info'), affected_value DESC LIMIT 20"
+            );
+            $stmt->execute(['competencia' => $latest['competencia']]);
+            $anomalies = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+        return ['available' => $latest !== null, 'latest' => $latest, 'anomalies' => $anomalies];
     }
 
     public function fiscalContext(): array

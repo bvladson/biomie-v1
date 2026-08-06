@@ -25,6 +25,7 @@ from . import health as health_mod
 from . import forecast as forecast_mod
 from . import insights as insights_mod
 from . import geo_intelligence as geo_intelligence_mod
+from . import fiscal_coherence as fiscal_coherence_mod
 from . import model as model_mod
 from . import quotes as quotes_mod
 from .config import ConfigError, load_settings
@@ -394,6 +395,30 @@ def cmd_geo_intelligence(args, settings, logger) -> int:
     return _saida({"ok": True, "comando": "geo-intelligence", "as_of": as_of.isoformat(), "empresas": saidas})
 
 
+def cmd_fiscal_coherence(args, settings, logger) -> int:
+    saidas = []
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            with track(conn, "fiscal_mart", company_id=empresa.id,
+                       run_mode=settings.run_mode, correlation_id=args.correlation_id,
+                       model_version=fiscal_coherence_mod.MODEL_VERSION) as run:
+                rows, anomalies = fiscal_coherence_mod.compute(conn, empresa.id)
+                if rows and not any(r["freshness_hours"] is not None and r["freshness_hours"] <= 30 for r in rows):
+                    raise RuntimeError("mart fiscal sem build recente; a trilha nao pode registrar falso sucesso")
+                if not args.dry_run:
+                    gravados = fiscal_coherence_mod.persist(conn, empresa.id, rows, anomalies)
+                else:
+                    gravados = 0
+                run.rows_in = sum(r["canonical_invoices"] for r in rows)
+                run.rows_out = gravados
+                run.metrics = {"competencias": len(rows), "anomalias": len(anomalies),
+                    "criticas": sum(1 for r in rows if r["status"] == "critical"),
+                    "dry_run": bool(args.dry_run)}
+            saidas.append({"empresa": empresa.slug, "competencias": len(rows),
+                           "anomalias": len(anomalies), "gravado": not args.dry_run})
+    return _saida({"ok": True, "comando": "fiscal-coherence", "empresas": saidas})
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="biomie_intel", description="Camada de inteligência do BIomie")
     p.add_argument("--verbose", action="store_true")
@@ -436,6 +461,10 @@ def build_parser() -> argparse.ArgumentParser:
     geo.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
     geo.add_argument("--dry-run", action="store_true")
 
+    fiscal = sub.add_parser("fiscal-coherence", help="prova cobertura, frescor e anomalias do mart fiscal")
+    fiscal.add_argument("--company", default="all")
+    fiscal.add_argument("--dry-run", action="store_true")
+
     sub.add_parser("compare", help="baseline vs shadow lado a lado")
     return p
 
@@ -460,6 +489,7 @@ def main(argv: list[str] | None = None) -> int:
         "forecast": cmd_forecast,
         "forecast-mensal": cmd_forecast_mensal,
         "geo-intelligence": cmd_geo_intelligence,
+        "fiscal-coherence": cmd_fiscal_coherence,
         "compare": cmd_compare,
     }
     try:

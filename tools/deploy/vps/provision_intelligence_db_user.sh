@@ -57,6 +57,7 @@ GRANT SELECT ON ${DB}.biomie_company_targets                  TO '${USER_NAME}'@
 GRANT SELECT ON ${DB}.biomie_sales_targets_monthly            TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.biomie_sales_target_levels              TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.mart_compradores_por_geo                TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT ON ${DB}.mart_fiscal_items                       TO '${USER_NAME}'@'127.0.0.1';
 
 -- ESCRITA: exatamente as tabelas de WRITABLE_TABLES em config.py.
 -- As duas listas são declarações da mesma verdade; tests/test_permissions.py
@@ -69,6 +70,8 @@ GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME
 -- confrontar o que foi previsto com o que aconteceu.
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_forecasts     TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_geo_scores    TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_coherence TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_anomalies TO '${USER_NAME}'@'127.0.0.1';
 
 -- intelligence_insights ESTAVA FALTANDO AQUI.
 --

@@ -30,7 +30,7 @@ from .insights import UNIVERSO_COMERCIAL
 # de fora daqui foi o que deixou o insights sem dead-man switch enquanto o
 # quote_score tinha um.
 # forecast roda 1x/dia (`10 5 * * *`); 30h cobre uma execução perdida.
-MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30, "geo_intelligence": 30}
+MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30, "geo_intelligence": 30, "fiscal_mart": 30}
 
 #: tabelas sem as quais a camada não funciona — a checagem de existência
 TABELAS_OBRIGATORIAS = (
@@ -40,6 +40,8 @@ TABELAS_OBRIGATORIAS = (
     "intelligence_insights",
     "intelligence_forecasts",
     "intelligence_geo_scores",
+    "intelligence_fiscal_coherence",
+    "intelligence_fiscal_anomalies",
 )
 
 #: MySQL 1142 = comando negado para o usuário — falta de GRANT, não de tabela

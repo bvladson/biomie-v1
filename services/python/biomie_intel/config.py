@@ -34,6 +34,8 @@ WRITABLE_TABLES = (
     "intelligence_insights",
     "intelligence_forecasts",
     "intelligence_geo_scores",
+    "intelligence_fiscal_coherence",
+    "intelligence_fiscal_anomalies",
 )
 
 # Tabelas que este serviço LÊ. Mesma disciplina da lista acima, e pelo mesmo
@@ -54,6 +56,7 @@ READABLE_TABLES = (
     "biomie_sales_targets_monthly",
     "biomie_sales_target_levels",
     "mart_compradores_por_geo",
+    "mart_fiscal_items",
 )
 
 

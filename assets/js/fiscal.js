@@ -1004,6 +1004,7 @@
       .then(r => r.json())
       .then(d => {
         const mart = d.mart || {};
+        window.__fiscalCoherence = d.coherence || null;
         state.martOk = !!mart.exists;
         updateMartBanner(mart);
         if (state.martOk) { loadNcm(false); loadReform(); }
@@ -1017,10 +1018,17 @@
     if (!banner || !txt) return;
 
     if (mart.exists) {
-      banner.style.borderColor = 'rgba(16,185,129,0.28)';
-      banner.style.background  = 'rgba(16,185,129,0.07)';
-      banner.style.color       = '#047857';
-      txt.textContent = `Mart fiscal ativo · ${Number(mart.rows || 0).toLocaleString('pt-BR')} itens · atualizado ${mart.built_at || '-'}`;
+      const health = mart.health || 'missing';
+      const healthy = health === 'fresh';
+      banner.style.borderColor = healthy ? 'rgba(16,185,129,0.28)' : 'rgba(245,158,11,0.38)';
+      banner.style.background  = healthy ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.09)';
+      banner.style.color       = healthy ? '#047857' : '#92400e';
+      const label = health === 'fresh' ? 'Mart fiscal atualizado' : health === 'stale' ? 'Mart fiscal atrasado' : health === 'critical' ? 'Mart fiscal parado' : 'Mart fiscal indisponível';
+      const age = Number.isFinite(Number(mart.freshness_hours)) ? ` · ${Number(mart.freshness_hours).toLocaleString('pt-BR')}h de defasagem` : '';
+      const latest = window.__fiscalCoherence && window.__fiscalCoherence.latest;
+      const coverage = latest ? ` · cobertura ${Number(latest.coverage_pct || 0).toLocaleString('pt-BR')}% (${Number(latest.mart_invoices || 0).toLocaleString('pt-BR')}/${Number(latest.canonical_invoices || 0).toLocaleString('pt-BR')} NF)` : '';
+      const missing = latest && Number(latest.missing_revenue || 0) > 0 ? ` · R$ ${Number(latest.missing_revenue).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})} fora do mart` : '';
+      txt.textContent = `${label} · ${Number(mart.rows || 0).toLocaleString('pt-BR')} itens · atualizado ${mart.built_at || '-'}${age}${coverage}${missing}`;
     } else {
       txt.textContent = 'Mart fiscal não construído — seções NCM e Reforma Tributária indisponíveis.';
     }
