@@ -22,6 +22,7 @@ try {
     $pdo = Database::connect($config, $connection);
     $service = new FiscalIntelligenceService(static fn () => $pdo);
     $data = $service->monthlySettlement($start, $end);
+    $postBilling = $service->postBillingBalance($start, $end);
     $fmt = static fn (float $value): string => 'R$ ' . number_format($value, 2, ',', '.');
 
     $months = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -56,6 +57,15 @@ try {
             'saldo_liquido_estimado_fmt' => $fmt((float) ($totals['saldo_liquido_estimado'] ?? 0)),
         ]),
         'rows' => $rows,
+        'post_billing' => array_merge($postBilling, [
+            'faturamento_fmt' => $fmt((float) $postBilling['faturamento']),
+            'reserva_tributaria_fmt' => $fmt((float) $postBilling['reserva_tributaria']),
+            'receita_pos_impostos_fmt' => $fmt((float) $postBilling['receita_pos_impostos']),
+            'recebido_fmt' => $fmt((float) $postBilling['recebido']),
+            'em_aberto_fmt' => $fmt((float) $postBilling['em_aberto']),
+            'caixa_recebido_pos_impostos_fmt' => $fmt((float) $postBilling['caixa_recebido_pos_impostos']),
+            'carteira_aberta_pos_impostos_fmt' => $fmt((float) $postBilling['carteira_aberta_pos_impostos']),
+        ]),
     ]);
 } catch (\Throwable $exception) {
     Http::json(['ok' => false, 'message' => 'Erro ao carregar apuração fiscal mensal.'], 500);

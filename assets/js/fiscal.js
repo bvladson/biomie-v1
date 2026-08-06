@@ -757,7 +757,7 @@
       .then(data => {
         if (!data.ok) throw new Error(data.message || 'Falha ao carregar apuração fiscal');
         state.settlementRows = data.rows || [];
-        renderSettlementKpis(data.totals || {}, data.coverage || {});
+        renderSettlementKpis(data.totals || {}, data.coverage || {}, data.post_billing || {});
         renderSettlementCharts(state.settlementRows);
         renderSettlementTable();
       })
@@ -767,7 +767,7 @@
       });
   }
 
-  function renderSettlementKpis(totals, coverage) {
+  function renderSettlementKpis(totals, coverage, postBilling) {
     const el = $('fisSettlementKpis');
     if (!el) return;
     const creditsConfirmed = coverage.credits_are_confirmed === true;
@@ -776,13 +776,16 @@
       <article class="fis-settlement-kpi"><small>Tributos brutos<button class="fis-help-btn fis-help-btn--inline" data-help="tributos_brutos" aria-label="Ajuda: Tributos brutos" title="Entender este indicador"><span class="material-symbols-rounded">help</span></button></small><strong>${totals.tributos_brutos_fmt || fmtR(0)}</strong><span>Carga ${fmtP(totals.carga_bruta_pct)}</span></article>
       <article class="fis-settlement-kpi fis-settlement-kpi--credit"><small>Créditos de entrada<button class="fis-help-btn fis-help-btn--inline" data-help="creditos_entrada" aria-label="Ajuda: Créditos de entrada" title="Entender este indicador"><span class="material-symbols-rounded">help</span></button></small><strong>${creditsMapped ? (totals.creditos_totais_fmt || fmtR(0)) : 'Pendente'}</strong><span>${creditsConfirmed ? 'Créditos conciliados' : (creditsMapped ? 'Potencial mapeado no Omie; validar aproveitamento' : 'Aguardando notas de entrada do Omie')}</span></article>
       <article class="fis-settlement-kpi fis-settlement-kpi--retention"><small>Retenções identificadas<button class="fis-help-btn fis-help-btn--inline" data-help="retencoes" aria-label="Ajuda: Retenções" title="Entender este indicador"><span class="material-symbols-rounded">help</span></button></small><strong>${totals.retencoes_totais_fmt || fmtR(0)}</strong><span>PIS, COFINS, CSLL e IRRF disponíveis no Omie</span></article>
-      <article class="fis-settlement-kpi fis-settlement-kpi--net"><small>Saldo líquido gerencial<button class="fis-help-btn fis-help-btn--inline" data-help="saldo_liquido" aria-label="Ajuda: Saldo líquido" title="Entender este indicador"><span class="material-symbols-rounded">help</span></button></small><strong>${totals.saldo_liquido_estimado_fmt || fmtR(0)}</strong><span>Carga líquida ${fmtP(totals.carga_liquida_pct)}</span></article>
+      <article class="fis-settlement-kpi fis-settlement-kpi--net"><small>Tributo líquido estimado<button class="fis-help-btn fis-help-btn--inline" data-help="saldo_liquido" aria-label="Ajuda: Tributo líquido" title="Entender este indicador"><span class="material-symbols-rounded">help</span></button></small><strong>${postBilling.reserva_tributaria_fmt || totals.saldo_liquido_estimado_fmt || fmtR(0)}</strong><span>Reserva tributária ${fmtP(postBilling.tax_rate_pct || totals.carga_liquida_pct)}</span></article>
+      <article class="fis-settlement-kpi fis-settlement-kpi--credit"><small>Receita pós-impostos</small><strong>${postBilling.receita_pos_impostos_fmt || fmtR(0)}</strong><span>Visão por competência · ainda não é lucro</span></article>
+      <article class="fis-settlement-kpi fis-settlement-kpi--net"><small>Caixa recebido pós-impostos</small><strong>${postBilling.caixa_recebido_pos_impostos_fmt || fmtR(0)}</strong><span>Recebido ${postBilling.recebido_fmt || fmtR(0)} · confiança ${esc(postBilling.confidence || 'baixa')}</span></article>
+      <article class="fis-settlement-kpi"><small>Carteira líquida em aberto</small><strong>${postBilling.carteira_aberta_pos_impostos_fmt || fmtR(0)}</strong><span>${fmtP(postBilling.linkage_pct)} das NF vinculadas ao financeiro</span></article>
     `;
     const badge = $('fisSettlementCoverage');
     if (badge) {
-      badge.textContent = creditsConfirmed
-        ? 'Créditos conciliados'
-        : (creditsMapped ? 'Créditos potenciais — validar com a contabilidade' : 'Saldo parcial — entradas pendentes');
+      badge.textContent = postBilling.confidence === 'baixa'
+        ? 'Saldo pós-faturamento com baixa confiança'
+        : (creditsConfirmed ? 'Créditos conciliados' : (creditsMapped ? 'Créditos potenciais — validar com a contabilidade' : 'Saldo parcial — entradas pendentes'));
       badge.classList.toggle('fis-coverage-badge--warning', !creditsConfirmed);
     }
   }

@@ -371,6 +371,81 @@ final class FiscalIntelligenceService
         ];
     }
 
+    /** Ponte auditavel entre faturamento, imposto e caixa; nao representa lucro. */
+    public function postBillingBalance(string $start, string $end): array
+    {
+        $settlement = $this->monthlySettlement($start, $end);
+        $faturamento = (float) ($settlement['totals']['faturamento'] ?? 0);
+        $taxReserve = (float) ($settlement['totals']['saldo_liquido_estimado'] ?? 0);
+
+        if ($this->tableExists('intelligence_fiscal_projections')) {
+            $stmt = $this->pdo()->prepare(
+                "SELECT COALESCE(SUM(p.projected_tax),0)
+                   FROM intelligence_fiscal_projections p
+                   JOIN (SELECT company_id, competencia, MAX(id) id
+                           FROM intelligence_fiscal_projections
+                          WHERE {$this->tenant} AND competencia BETWEEN :s AND :e
+                          GROUP BY company_id, competencia) latest ON latest.id=p.id"
+            );
+            $stmt->execute(['s' => substr($start, 0, 7), 'e' => substr($end, 0, 7)]);
+            $taxReserve = max($taxReserve, (float) $stmt->fetchColumn());
+        }
+
+        $finance = ['titles' => 0, 'received' => 0.0, 'open' => 0.0];
+        $invoiceCount = 0;
+        $linkedInvoices = 0;
+        if ($this->tableExists('biomie_titulos_financeiros_canonicos')) {
+            $stmt = $this->pdo()->prepare(
+                "SELECT COUNT(*) titles, COALESCE(SUM(valor_pago),0) received,
+                        COALESCE(SUM(valor_aberto),0) open
+                   FROM biomie_titulos_financeiros_canonicos
+                  WHERE {$this->tenant} AND data_competencia BETWEEN :s AND :e"
+            );
+            $stmt->execute(['s' => $start, 'e' => $end]);
+            $finance = array_merge($finance, $stmt->fetch(PDO::FETCH_ASSOC) ?: []);
+
+            $stmt = $this->pdo()->prepare(
+                "SELECT COUNT(*) invoices,
+                        SUM(EXISTS(SELECT 1 FROM biomie_titulos_financeiros_canonicos t
+                                    WHERE t.company_id=n.company_id
+                                      AND (t.nota_key=n.nota_key OR
+                                           (t.pedido_id_omie IS NOT NULL AND t.pedido_id_omie=n.pedido_id_omie)))) linked
+                   FROM biomie_notas_fiscais_canonicas n
+                  WHERE {$this->tenantN} AND n.status_fiscal='autorizada'
+                    AND n.data_competencia BETWEEN :s AND :e"
+            );
+            $stmt->execute(['s' => $start, 'e' => $end]);
+            $coverage = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $invoiceCount = (int) ($coverage['invoices'] ?? 0);
+            $linkedInvoices = (int) ($coverage['linked'] ?? 0);
+        }
+
+        $received = (float) ($finance['received'] ?? 0);
+        $open = (float) ($finance['open'] ?? 0);
+        $taxRate = $faturamento > 0 ? min(1.0, max(0.0, $taxReserve / $faturamento)) : 0.0;
+        $linkage = $invoiceCount > 0 ? $linkedInvoices * 100 / $invoiceCount : 0.0;
+        $confidence = $linkage >= 90 ? 'alta' : ($linkage >= 60 ? 'media' : 'baixa');
+
+        return [
+            'faturamento' => $faturamento,
+            'reserva_tributaria' => $taxReserve,
+            'receita_pos_impostos' => max(0.0, $faturamento - $taxReserve),
+            'recebido' => $received,
+            'em_aberto' => $open,
+            'reserva_sobre_recebido' => $received * $taxRate,
+            'caixa_recebido_pos_impostos' => max(0.0, $received * (1 - $taxRate)),
+            'carteira_aberta_pos_impostos' => max(0.0, $open * (1 - $taxRate)),
+            'tax_rate_pct' => $taxRate * 100,
+            'titles' => (int) ($finance['titles'] ?? 0),
+            'invoice_count' => $invoiceCount,
+            'linked_invoices' => $linkedInvoices,
+            'linkage_pct' => $linkage,
+            'confidence' => $confidence,
+            'is_profit' => false,
+            'missing_components' => ['cpv', 'folha', 'despesas_operacionais', 'investimentos'],
+        ];
+    }
+
     public function purchaseEntries(
         string $start,
         string $end,
