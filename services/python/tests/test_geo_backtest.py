@@ -119,7 +119,7 @@ class TestVereditoNaoInventa(unittest.TestCase):
         ]
         veredito, motivo = gb._consolidar(janelas)
         self.assertEqual(veredito, "nao_ordena")
-        self.assertIn("lift medio", motivo)
+        self.assertIn("lift mediano", motivo)
 
     def test_lift_consistente_e_alto_declara_que_ordena(self) -> None:
         janelas = [

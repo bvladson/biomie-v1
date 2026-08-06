@@ -199,10 +199,31 @@ def _avaliar_janela(
 
         cresc_topo = sum(a["crescimento"] for a in topo) / len(topo)
         cresc_resto = sum(a["crescimento"] for a in resto) / len(resto)
-        # Deslocamento comum evita divisão por zero e o absurdo de lift negativo
-        # quando os dois grupos encolhem: o que interessa é topo MELHOR que resto.
-        base_comum = 1.0
-        lift = (cresc_topo + base_comum) / (cresc_resto + base_comum) if (cresc_resto + base_comum) > 0 else None
+
+        # LIFT PONDERADO POR RECEITA, não média de razões.
+        #
+        # A primeira versão fazia `(media_topo + 1) / (media_resto + 1)` e
+        # produziu lift 74,5 na primeira execução contra produção. Não era
+        # vitória: só 20% a 36% dos territórios crescem no mês, e os que vão a
+        # zero têm crescimento −100%. A média do resto encosta em −1, o
+        # denominador quase some e a razão explode. Um número gigante saindo de
+        # um denominador que desaparece é ruído com aparência de resultado.
+        #
+        # Aqui o lift compara DINHEIRO: quanto o grupo priorizado cresceu em
+        # receita agregada contra quanto o resto cresceu. É limitado, é o que o
+        # gestor sente, e um território que zera pesa proporcionalmente ao que
+        # ele representava — não como se fosse um voto igual ao dos outros.
+        base_topo = sum(a["base"] for a in topo)
+        base_resto = sum(a["base"] for a in resto)
+        obs_topo = sum(a["observado"] for a in topo)
+        obs_resto = sum(a["observado"] for a in resto)
+        lift = None
+        if base_topo > 0 and base_resto > 0:
+            fator_topo = obs_topo / base_topo
+            fator_resto = obs_resto / base_resto
+            # Resto encolhendo a quase nada tornaria a razão instável de novo.
+            if fator_resto >= 0.05:
+                lift = fator_topo / fator_resto
 
         erros = [a["erro"] for a in avaliados if a["erro"] is not None]
         com_faixa = [a for a in avaliados if a["previsto"] is not None]
@@ -236,13 +257,30 @@ def _consolidar(janelas: list[BacktestResult]) -> tuple[str, str]:
     if not lifts:
         return "amostra_insuficiente", "nenhuma janela produziu lift calculavel"
 
-    medio = sum(lifts) / len(lifts)
+    # MEDIANA, não média: uma janela atípica não pode carregar o veredito.
+    ordenados = sorted(lifts)
+    meio = len(ordenados) // 2
+    mediano = ordenados[meio] if len(ordenados) % 2 else (ordenados[meio - 1] + ordenados[meio]) / 2
     venceram = sum(1 for x in lifts if x > 1.0)
-    if medio >= LIFT_MINIMO and venceram > len(lifts) / 2:
+
+    # Corroboração independente: o lift olha dois grupos, o Spearman olha a
+    # ordem inteira. Um sem o outro já enganou aqui — lift alto com correlação
+    # nula significa que o acerto veio de um ou dois territórios, não da
+    # ordenação.
+    spearmans = [j.spearman for j in janelas if j.spearman is not None]
+    spearman_mediano = 0.0
+    if spearmans:
+        s = sorted(spearmans)
+        m = len(s) // 2
+        spearman_mediano = s[m] if len(s) % 2 else (s[m - 1] + s[m]) / 2
+
+    if mediano >= LIFT_MINIMO and venceram > len(lifts) / 2 and spearman_mediano > 0.1:
         return ("ordena",
-                f"lift medio {medio:.2f} em {len(lifts)} janelas; o topo cresceu mais em {venceram} delas")
+                f"lift mediano {mediano:.2f} em {len(lifts)} janelas, spearman {spearman_mediano:.2f}; "
+                f"o topo cresceu mais em {venceram} delas")
     return ("nao_ordena",
-            f"lift medio {medio:.2f} (minimo {LIFT_MINIMO}); o topo venceu em {venceram} de {len(lifts)} janelas")
+            f"lift mediano {mediano:.2f} (minimo {LIFT_MINIMO}), spearman {spearman_mediano:.2f}; "
+            f"o topo venceu em {venceram} de {len(lifts)} janelas")
 
 
 def run(
