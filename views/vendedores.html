@@ -179,8 +179,8 @@
           <tr>
             <th id="th-vendor-vendedor" data-filter-header="vendedor">Vendedor</th>
             <th id="th-vendor-bc" class="nf-th-sortable" data-sort-field="base_comercial">Merc. Orç-PD <span class="nf-sort-icon">↓</span></th>
-            <th title="Meta proporcional ao período (dias corridos)">Meta prop.</th>
-            <th title="Percentual da meta já alcançado">% da meta</th>
+            <th title="Próximo patamar da escada, proporcional ao período">Desafio ativo</th>
+            <th title="Percentual alcançado do patamar atualmente perseguido">% do desafio</th>
             <th>Risco</th>
             <th>Carteira</th>
             <th>Canceladas</th>
@@ -374,14 +374,18 @@
     var band = document.getElementById('vendedoresMetaBand');
     if (!band) return;
 
-    var teamTarget = vendors.reduce(function (s, v) {
+    var teamBase = vendors.reduce(function (s, v) {
       return s + Number(v.target_amount || v.target_month || 0);
+    }, 0);
+    var teamMaximum = vendors.reduce(function (s, v) {
+      var levels = [Number(v.target_amount || v.target_month || 0)].concat(Array.isArray(v.tiers) ? v.tiers.map(Number) : []);
+      return s + Math.max.apply(Math, levels.filter(function (value) { return value > 0; }).concat([0]));
     }, 0);
     var withTarget = vendors.filter(function (v) {
       return Number(v.target_amount || v.target_month || 0) > 0;
     }).length;
 
-    if (!vendors.length || teamTarget <= 0) {
+    if (!vendors.length || teamBase <= 0) {
       band.innerHTML = '<div style="display:flex;align-items:center;gap:10px;font-size:0.82rem;color:var(--text-2);">'
         + '<span class="material-symbols-rounded" style="font-size:16px;color:var(--warning,#c58c00)">warning</span>'
         + '<span>Metas nao configuradas para <strong>' + ym + '</strong>.</span>'
@@ -401,9 +405,10 @@
     band.innerHTML = '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
       + '<span class="material-symbols-rounded" style="font-size:18px;color:var(--page-accent);flex-shrink:0">target</span>'
       + '<div style="display:flex;flex-direction:column;gap:1px;">'
-      + '<span style="font-size:0.82rem;color:var(--text-2);">Meta do time &mdash; ' + monthLabel + '</span>'
-      + '<strong style="font-size:1rem;color:var(--text-1);">' + fmt.format(teamTarget) + '</strong>'
+      + '<span style="font-size:0.82rem;color:var(--text-2);">Escada do time &mdash; ' + monthLabel + '</span>'
+      + '<strong style="font-size:1rem;color:var(--text-1);">Base ' + fmt.format(teamBase) + '</strong>'
       + '</div>'
+      + (teamMaximum > teamBase ? '<span style="font-size:0.78rem;color:var(--page-accent);padding:3px 8px;background:var(--page-accent-soft);border-radius:4px;">Potencial máximo ' + fmt.format(teamMaximum) + '</span>' : '')
       + '<span style="font-size:0.78rem;color:var(--text-3);padding:3px 8px;background:var(--surface-muted);border-radius:4px;">'
       + withTarget + ' de ' + vendors.length + ' vendedor(es) com meta'
       + '</span>'

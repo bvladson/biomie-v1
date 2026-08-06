@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/TestSupport.php';
 
 use BIomie\Commercial\TargetLadder;
+use BIomie\CommercialPlanning;
 
 $assert = static function (bool $condition, string $message): void {
     if (!$condition) {
@@ -22,6 +23,25 @@ $assert($promoted['active_level'] === 2, 'Deveria promover para Meta 2.');
 $assert($promoted['active_gap'] === 13000.0, 'Gap da Meta 2 incorreto.');
 $assert($promoted['step_progress_pct'] === 35.0, 'Progresso entre Meta 1 e Meta 2 incorreto.');
 $assert($promoted['base_attainment_pct'] === 117.5, 'Atingimento-base deve preservar a conquista.');
+
+// Integracao: a tela comercial precisa consumir o degrau promovido, nao apenas
+// calcular a escada corretamente em isolamento.
+$planning = CommercialPlanning::build(
+    [[
+        'codigo_vendedor_omie' => 'V1', 'nome_vendedor' => 'Vendedor Teste',
+        'status_comercial' => 'faturado', 'total' => 47000, 'pedidos' => 1,
+    ]],
+    ['V1|2026-08' => [
+        'vendor_id' => 'V1', 'vendor_name' => 'Vendedor Teste',
+        'year_month' => '2026-08', 'target_amount' => 40000,
+        'tiers' => [60000, 80000], 'currency' => 'BRL', 'updated_at' => null,
+    ]],
+    '2026-08-01', '2026-08-31'
+);
+$seller = $planning['vendors'][0];
+$assert($seller['active_target'] === 60000.0, 'Planejamento comercial nao promoveu para Meta 2.');
+$assert($seller['attainment_pct'] === 78.33, 'Atingimento operacional ainda usa a primeira meta.');
+$assert($seller['base_attainment_pct'] === 117.5, 'Planejamento perdeu a conquista da meta-base.');
 
 $complete = TargetLadder::evaluate([40000, 60000, 80000], 86000);
 $assert($complete['all_levels_achieved'] === true, 'Todos os níveis deveriam estar conquistados.');

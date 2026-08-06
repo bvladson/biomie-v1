@@ -114,6 +114,10 @@ final class CommercialPlanning
                 ? ($targetPeriod > 0 ? $targetPeriod : null)
                 : $ladder['active_target'];
             $maximumTarget = (float) ($ladder['maximum_target'] ?? $targetPeriod);
+            // Depois de conquistar um degrau, toda decisao operacional passa a
+            // olhar o proximo. Se a escada terminou, o maximo permanece como
+            // referencia para nao transformar uma conquista em "sem meta".
+            $comparisonTarget = (float) ($activeTarget ?? $maximumTarget);
 
             if ($targetPeriod <= 0.0 && ($realized > 0.0 || $backlog > 0.0)) {
                 $missingTargets++;
@@ -136,9 +140,10 @@ final class CommercialPlanning
                 'maximum_target' => $maximumTarget,
                 'base_gap' => Support::money(max($targetPeriod - $realized, 0.0)),
                 'gap_to_target' => $activeTarget !== null ? Support::money(max((float) $activeTarget - $realized, 0.0)) : 0.0,
-                'attainment_pct' => $targetPeriod > 0 ? round(($realized / $targetPeriod) * 100, 2) : 0.0,
+                'attainment_pct' => $comparisonTarget > 0 ? round(($realized / $comparisonTarget) * 100, 2) : 0.0,
+                'base_attainment_pct' => $targetPeriod > 0 ? round(($realized / $targetPeriod) * 100, 2) : 0.0,
                 'new_daily_target' => self::calculateNewDailyTarget($realized, (float) ($activeTarget ?? 0), $workdays),
-                'risk_status' => self::riskStatus($forecast, $targetPeriod, Support::money($targetPeriod * (self::RISK_ATTENTION_PCT / 100))),
+                'risk_status' => self::riskStatus($forecast, $comparisonTarget, Support::money($comparisonTarget * (self::RISK_ATTENTION_PCT / 100))),
                 'ticket_avg' => $orders > 0 ? Support::money($realized / $orders) : 0.0,
             ];
             if ($ladder !== null) {
