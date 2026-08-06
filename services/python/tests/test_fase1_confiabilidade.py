@@ -317,7 +317,7 @@ class TestJanelaDeInatividade(unittest.TestCase):
     def test_todo_job_agendado_tem_limite_declarado(self) -> None:
         """Job sem limite não tem dead-man switch — foi o caso do insights."""
         self.assertEqual(
-            set(health.MAX_IDLE_HORAS), {"quote_score", "insights", "forecast"},
+            set(health.MAX_IDLE_HORAS), {"quote_score", "insights", "forecast", "geo_intelligence"},
         )
 
     def test_limite_cobre_ao_menos_uma_execucao_perdida(self) -> None:

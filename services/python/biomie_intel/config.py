@@ -33,6 +33,7 @@ WRITABLE_TABLES = (
     "intelligence_quote_scores",
     "intelligence_insights",
     "intelligence_forecasts",
+    "intelligence_geo_scores",
 )
 
 # Tabelas que este serviço LÊ. Mesma disciplina da lista acima, e pelo mesmo
@@ -52,6 +53,7 @@ READABLE_TABLES = (
     "biomie_company_targets",
     "biomie_sales_targets_monthly",
     "biomie_sales_target_levels",
+    "mart_compradores_por_geo",
 )
 
 

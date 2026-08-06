@@ -40,6 +40,9 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # frase da home e a linha da tabela sairem da mesma leitura do banco.
 # O limite de "parado" no health e 30h — cobre uma execucao perdida.
 10 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_forecast.sh
+# Score e forecast territorial persistidos; roda depois do forecast mensal e
+# antes dos insights, sem competir com a materializacao da madrugada.
+30 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_geo.sh
 
 # --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
 30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh

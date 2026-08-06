@@ -250,6 +250,8 @@
 
   const state = {
     map: null,
+    baseTileLayer: null,
+    tileErrors: 0,
     geoLayer: null,
     geoJson: null,
     rows: [],
@@ -278,6 +280,9 @@
     selectedVendor: '',
     alertsCache: new Map(),     // territory_key → alerts payload
     totalMetaEstimada: 0,       // meta total do período (flight plan)
+    geoIntelligence: new Map(),
+    geoIntelligenceSummary: null,
+    geoIntelligenceLayer: '',
   };
 
   const formatters = {
@@ -1281,7 +1286,7 @@
       zoomControl: true,
     }).setView(center, zoom);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    state.baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       referrerPolicy: 'strict-origin-when-cross-origin',
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -1290,6 +1295,15 @@
       updateWhenIdle: true,
       updateWhenZooming: false,
       keepBuffer: 2,
+    }).on('tileerror', () => {
+      state.tileErrors += 1;
+      if (state.tileErrors < 4 || !state.baseTileLayer) return;
+      // Os polígonos e resultados pertencem ao BIomie e continuam válidos sem
+      // a cartografia externa. Remover os placeholders preserva a leitura.
+      state.map.removeLayer(state.baseTileLayer);
+      state.baseTileLayer = null;
+      showFeedback('Mapa de ruas indisponível. Os territórios e resultados comerciais continuam disponíveis.', 'info');
+      updateDiagnostics({ mapState: 'territorios sem mapa de ruas', error: 'base_tiles_unavailable' });
     }).addTo(state.map);
   }
 
@@ -1850,6 +1864,12 @@
     const semBairro = summaryPayload?.no_neighborhood || {};
     const semBairroRev = Number(semBairro.faturamento || 0);
     const pct = rev > 0 ? Math.round((semBairroRev / rev) * 100) : 0;
+    const totalCustomers = Number(summary.customers || 0);
+    const totalInvoices = Number(summary.invoices || 0);
+    const missingCustomers = Number(semBairro.clientes || 0);
+    const missingInvoices = Number(semBairro.notas || 0);
+    const customerCoverage = totalCustomers > 0 ? Math.round((1 - missingCustomers / totalCustomers) * 100) : 100;
+    const invoiceCoverage = totalInvoices > 0 ? Math.round((1 - missingInvoices / totalInvoices) * 100) : 100;
 
     if (rev <= 0) {
       node.className = 'module-alert d-none';
@@ -1859,7 +1879,8 @@
       node.className = 'module-alert module-alert--warning geo-commercial-coverage';
       node.innerHTML = `<span class="material-symbols-rounded" style="vertical-align:middle;font-size:16px;margin-right:6px;">bar_chart</span>`
         + `<strong>Confiança territorial: ${100 - pct}%.</strong> `
-        + `${formatters.money(semBairroRev)} aguardam confirmação de endereço e não são atribuídos a uma região conhecida.`;
+        + `${formatters.money(semBairroRev)} aguardam confirmação de endereço. `
+        + `<span class="geo-intelligence-summary__meta">Cobertura: receita ${100 - pct}% · clientes ${customerCoverage}% · notas ${invoiceCoverage}%.</span>`;
     } else {
       node.className = 'module-alert module-alert--success geo-commercial-coverage';
       node.innerHTML = `<span class="material-symbols-rounded" style="vertical-align:middle;font-size:16px;margin-right:6px;">check_circle</span>`
@@ -1878,6 +1899,7 @@
     activateDrawerTab('resumo');
     showComparisonDrawerBtn(row);
     applyDrawerGeoInfo(row); // GEO.R2.3 — área, densidade, região, população
+    renderTerritoryIntelligence(row);
     window.BIomieMapPanel?.renderNeighborhood(row, formatters);
     window.BIomieMapPanel?.renderBuyersLoading();
 
@@ -2394,6 +2416,9 @@
 
       // GEO.R2.2 — fetch geo_sales_layer trends (runs in background, doesn't block render)
       fetchAndApplyTrends();
+      // Inteligencia Python persistida tambem e progressiva: o mapa principal
+      // nao espera por ela, mas o drawer e o modo Oportunidades a reutilizam.
+      loadGeoIntelligence();
 
       // Populate side panel with global top buyers and CNAEs (no neighborhood selected)
       const globalBuyers = summaryPayload.top_buyers || [];
@@ -4349,13 +4374,84 @@
     renderMapModeLegend();
   }
 
+  function intelligenceKey(row) {
+    return normalizeNeighborhoodKey(row?.territory_key || row?.join_key || row?.bairro_key
+      || row?.neighborhood_key || row?.cidade_key || row?.city_key || '');
+  }
+
+  async function loadGeoIntelligence() {
+    if (state.geoIntelligenceLayer === _activeLayer && state.geoIntelligence.size) return true;
+    const params = currentFilters({ layer: _activeLayer });
+    try {
+      const payload = await apiFetch('api/geo_intelligence.php', params, 'data');
+      const rows = Array.isArray(payload.data) ? payload.data : [];
+      state.geoIntelligence = new Map();
+      rows.forEach((row) => {
+        const key = normalizeNeighborhoodKey(row.territory_key || '');
+        if (key) state.geoIntelligence.set(key, row);
+      });
+      state.geoIntelligenceSummary = payload.summary || null;
+      state.geoIntelligenceLayer = _activeLayer;
+      renderGeoIntelligenceSummary(payload);
+      return rows.length > 0;
+    } catch (error) {
+      state.geoIntelligence = new Map();
+      state.geoIntelligenceSummary = null;
+      renderGeoIntelligenceSummary(null);
+      debugLog('Inteligencia territorial indisponivel', error?.message || error);
+      return false;
+    }
+  }
+
+  function renderGeoIntelligenceSummary(payload) {
+    const node = $('geoIntelligenceSummary');
+    if (!node) return;
+    const top = payload?.summary?.top;
+    if (!top) {
+      node.className = 'module-alert module-alert--info d-none geo-intelligence-summary';
+      node.textContent = '';
+      return;
+    }
+    const counts = payload.summary.confidence || {};
+    node.className = 'module-alert module-alert--info geo-intelligence-summary';
+    node.innerHTML = `<strong>Prioridade territorial: ${escapeHtml(top.territory_label || top.territory_key)}.</strong>`
+      + `<span>Score ${Number(top.opportunity_score || 0).toFixed(0)}/100 · potencial ${escapeHtml(formatters.money(top.potential_revenue || 0))}.</span>`
+      + `<span class="geo-intelligence-summary__meta">Python persistido · confiança alta ${Number(counts.alta || 0)}, média ${Number(counts.media || 0)}, baixa ${Number(counts.baixa || 0)}.</span>`;
+  }
+
+  function renderTerritoryIntelligence(row) {
+    const card = $('geoDrawerIntelligence');
+    if (!card) return;
+    const intel = state.geoIntelligence.get(intelligenceKey(row));
+    card.hidden = !intel;
+    if (!intel) return;
+    setText('geoIntelConfidence', `Confiança ${intel.confidence || 'baixa'}`);
+    setText('geoIntelScore', `${Number(intel.opportunity_score || 0).toFixed(0)}/100`);
+    setText('geoIntelPotential', formatters.money(intel.potential_revenue || 0));
+    const forecast = intel.forecast_revenue == null ? 'Sem projeção' : formatters.money(intel.forecast_revenue);
+    const range = intel.forecast_low == null || intel.forecast_high == null ? ''
+      : ` (${formatters.compactMoney(intel.forecast_low)}–${formatters.compactMoney(intel.forecast_high)})`;
+    setText('geoIntelForecast', forecast + range);
+    setText('geoIntelReason', intel.main_reason || 'Sem leitura suficiente.');
+    setText('geoIntelAction', intel.recommended_action || 'Acompanhar o território.');
+  }
+
   // GEO.R2.0 — Carrega e aplica camada de oportunidades comerciais
   async function loadOpportunityLayer() {
+    const hasPythonScores = await loadGeoIntelligence();
     const rows = currentTerritoryRows();
     const maxRevenue = Math.max(...rows.map((row) => getRowRevenue(row)), 1);
     const maxCustomers = Math.max(...rows.map((row) => Number(row.customers || row.clientes || 0)), 1);
     const scores = new Map();
     rows.forEach((row) => {
+      const persisted = state.geoIntelligence.get(intelligenceKey(row));
+      if (persisted) {
+        const actionable = persisted.confidence !== 'baixa';
+        const key = intelligenceKey(row);
+        if (key) scores.set(key, actionable ? Number(persisted.opportunity_score || 0) / 100 : 0);
+        return;
+      }
+      if (hasPythonScores) return;
       const customers = Number(row.customers || row.clientes || 0);
       const revenue = getRowRevenue(row);
       if (customers <= 0) return;

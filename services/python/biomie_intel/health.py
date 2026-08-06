@@ -30,7 +30,7 @@ from .insights import UNIVERSO_COMERCIAL
 # de fora daqui foi o que deixou o insights sem dead-man switch enquanto o
 # quote_score tinha um.
 # forecast roda 1x/dia (`10 5 * * *`); 30h cobre uma execução perdida.
-MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30}
+MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30, "geo_intelligence": 30}
 
 #: tabelas sem as quais a camada não funciona — a checagem de existência
 TABELAS_OBRIGATORIAS = (
@@ -39,6 +39,7 @@ TABELAS_OBRIGATORIAS = (
     "intelligence_quote_feedback",
     "intelligence_insights",
     "intelligence_forecasts",
+    "intelligence_geo_scores",
 )
 
 #: MySQL 1142 = comando negado para o usuário — falta de GRANT, não de tabela
@@ -185,6 +186,13 @@ def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
             WHERE is_current = 1 AND valid_until > UTC_TIMESTAMP()""",
     ) if not faltando else {"vigentes": 0, "empresas": 0, "ultimo": None}
 
+    geo_scores = fetch_one(
+        conn,
+        """SELECT COUNT(*) AS vigentes, COUNT(DISTINCT company_id) AS empresas,
+                  MAX(computed_at) AS ultimo
+             FROM intelligence_geo_scores WHERE is_current = 1""",
+    ) if not faltando else {"vigentes": 0, "empresas": 0, "ultimo": None}
+
     # Job "completed" com zero leitura vigente é falha silenciosa: a execução
     # gravou e as linhas venceram sem ninguém substituir. O status do job sozinho
     # não distingue isso de "rodou agora".
@@ -278,6 +286,11 @@ def check(conn: pymysql.connections.Connection) -> dict[str, Any]:
         "insights_empresas": int(insights["empresas"] or 0) if insights else 0,
         "ultimo_insight_em": (
             insights["ultimo"].isoformat() if insights and insights.get("ultimo") else None
+        ),
+        "geo_scores_vigentes": int(geo_scores["vigentes"] or 0) if geo_scores else 0,
+        "geo_scores_empresas": int(geo_scores["empresas"] or 0) if geo_scores else 0,
+        "ultimo_geo_score_em": (
+            geo_scores["ultimo"].isoformat() if geo_scores and geo_scores.get("ultimo") else None
         ),
         "problemas": problemas,
     }

@@ -24,6 +24,7 @@ from . import forecast_store
 from . import health as health_mod
 from . import forecast as forecast_mod
 from . import insights as insights_mod
+from . import geo_intelligence as geo_intelligence_mod
 from . import model as model_mod
 from . import quotes as quotes_mod
 from .config import ConfigError, load_settings
@@ -367,6 +368,32 @@ def cmd_compare(args, settings, logger) -> int:
     return _saida({"ok": True, "comando": "compare", "series": linhas})
 
 
+def cmd_geo_intelligence(args, settings, logger) -> int:
+    """Calcula, explica e persiste oportunidade/forecast por territorio."""
+    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+    saidas = []
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            scores = geo_intelligence_mod.compute(conn, empresa.id, as_of)
+            if args.dry_run:
+                saidas.append({"empresa": empresa.slug, "territorios": len(scores), "gravado": False})
+                continue
+            with track(conn, "geo_intelligence", company_id=empresa.id,
+                       run_mode=settings.run_mode, correlation_id=args.correlation_id,
+                       model_version=geo_intelligence_mod.MODEL_VERSION) as run:
+                gravados = geo_intelligence_mod.persist(conn, empresa.id, scores)
+                run.rows_in = sum(s.months_used for s in scores)
+                run.rows_out = gravados
+                run.metrics = {
+                    "territorios": len(scores),
+                    "confianca": {level: sum(1 for s in scores if s.confidence == level)
+                                   for level in ("alta", "media", "baixa")},
+                    "competencia": as_of.strftime("%Y-%m"),
+                }
+            saidas.append({"empresa": empresa.slug, "territorios": len(scores), "gravado": True})
+    return _saida({"ok": True, "comando": "geo-intelligence", "as_of": as_of.isoformat(), "empresas": saidas})
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="biomie_intel", description="Camada de inteligência do BIomie")
     p.add_argument("--verbose", action="store_true")
@@ -404,6 +431,11 @@ def build_parser() -> argparse.ArgumentParser:
     fm.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrão: hoje UTC)")
     fm.add_argument("--dry-run", action="store_true")
 
+    geo = sub.add_parser("geo-intelligence", help="score, forecast e recomendacao por territorio")
+    geo.add_argument("--company", default="all")
+    geo.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
+    geo.add_argument("--dry-run", action="store_true")
+
     sub.add_parser("compare", help="baseline vs shadow lado a lado")
     return p
 
@@ -427,6 +459,7 @@ def main(argv: list[str] | None = None) -> int:
         "insights": cmd_insights,
         "forecast": cmd_forecast,
         "forecast-mensal": cmd_forecast_mensal,
+        "geo-intelligence": cmd_geo_intelligence,
         "compare": cmd_compare,
     }
     try:
