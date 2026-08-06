@@ -377,10 +377,11 @@ final class FiscalIntelligenceService
         $settlement = $this->monthlySettlement($start, $end);
         $faturamento = (float) ($settlement['totals']['faturamento'] ?? 0);
         $taxReserve = (float) ($settlement['totals']['saldo_liquido_estimado'] ?? 0);
+        $taxConfidence = (($settlement['coverage']['credits_are_confirmed'] ?? false) === true) ? 'media' : 'baixa';
 
         if ($this->tableExists('intelligence_fiscal_projections')) {
             $stmt = $this->pdo()->prepare(
-                "SELECT COALESCE(SUM(p.projected_tax),0)
+                "SELECT p.projected_tax, p.confidence
                    FROM intelligence_fiscal_projections p
                    JOIN (SELECT company_id, competencia, MAX(id) id
                            FROM intelligence_fiscal_projections
@@ -388,7 +389,16 @@ final class FiscalIntelligenceService
                           GROUP BY company_id, competencia) latest ON latest.id=p.id"
             );
             $stmt->execute(['s' => substr($start, 0, 7), 'e' => substr($end, 0, 7)]);
-            $taxReserve = max($taxReserve, (float) $stmt->fetchColumn());
+            $projections = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $taxReserve = max($taxReserve, array_sum(array_map(
+                static fn (array $row): float => (float) ($row['projected_tax'] ?? 0),
+                $projections
+            )));
+            if ($projections !== []) {
+                $levels = array_column($projections, 'confidence');
+                $taxConfidence = in_array('baixa', $levels, true) ? 'baixa'
+                    : (in_array('media', $levels, true) ? 'media' : 'alta');
+            }
         }
 
         $finance = ['titles' => 0, 'received' => 0.0, 'open' => 0.0];
@@ -431,7 +441,9 @@ final class FiscalIntelligenceService
         $open = (float) ($finance['open'] ?? 0);
         $taxRate = $faturamento > 0 ? min(1.0, max(0.0, $taxReserve / $faturamento)) : 0.0;
         $linkage = $invoiceCount > 0 ? $linkedInvoices * 100 / $invoiceCount : 0.0;
-        $confidence = $linkage >= 90 ? 'alta' : ($linkage >= 60 ? 'media' : 'baixa');
+        $linkConfidence = $linkage >= 90 ? 'alta' : ($linkage >= 60 ? 'media' : 'baixa');
+        $rank = ['baixa' => 0, 'media' => 1, 'alta' => 2];
+        $confidence = $rank[$taxConfidence] <= $rank[$linkConfidence] ? $taxConfidence : $linkConfidence;
 
         return [
             'faturamento' => $faturamento,
@@ -448,6 +460,8 @@ final class FiscalIntelligenceService
             'linked_invoices' => $linkedInvoices,
             'linkage_pct' => $linkage,
             'confidence' => $confidence,
+            'tax_confidence' => $taxConfidence,
+            'link_confidence' => $linkConfidence,
             'is_profit' => false,
             'missing_components' => ['cpv', 'folha', 'despesas_operacionais', 'investimentos'],
         ];
