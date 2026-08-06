@@ -51,6 +51,7 @@ $jobParaScript = [
     'forecast' => 'intelligence_forecast.sh',
     'geo_intelligence' => 'intelligence_geo.sh',
     'fiscal_mart' => 'fiscal_mart.sh',
+    'geo_backtest' => 'geo_backtest.sh',
 ];
 
 // ─────────────────────────────────────── 1. os dois idiomas concordam?
@@ -165,9 +166,29 @@ foreach ($jobParaScript as $job => $script) {
 }
 $check('os scripts de cron existem', $faltando === [], implode(' | ', $faltando));
 $check('🔴 nenhum script de cron tem CRLF', $comCrlf === [], implode(' | ', $comCrlf));
+// O que protege produção é o que o DEPLOY entrega, não o que está na árvore.
+//
+// O deploy sai de `git archive`, que aplica o `.gitattributes`. Checar a árvore
+// de trabalho dá falso positivo em qualquer máquina Windows cujo editor grave
+// CRLF — inclusive foi o que aconteceu ao escrever este guard: a árvore tinha
+// CRLF, o `git archive` entregava LF puro, e o guard bloqueou uma build
+// legítima. Alarme falso treina a ignorar o alarme.
+$declaracoes = (string) @file_get_contents($root . '/.gitattributes');
 $check(
-    'a própria fonte do cron.d é LF puro',
-    !str_contains($cron, "\r"),
+    '🔴 .gitattributes força LF em .cron e .sh (é o que protege o deploy)',
+    preg_match('/^\*\.cron\s+text\s+eol=lf/m', $declaracoes) === 1
+        && preg_match('/^\*\.sh\s+text\s+eol=lf/m', $declaracoes) === 1,
+    $declaracoes === '' ? '.gitattributes ausente' : 'declaração ausente ou alterada',
+);
+
+$saidaArchive = [];
+$rc = 0;
+exec('git -C ' . escapeshellarg($root) . ' archive HEAD tools/deploy/vps/biomie.cron 2>&1 | tar -xO', $saidaArchive, $rc);
+$conteudoEntregue = implode("\n", $saidaArchive);
+$check(
+    '🔴 o cron.d que o git archive entrega é LF puro',
+    $rc === 0 && !str_contains($conteudoEntregue, "\r"),
+    $rc !== 0 ? 'não consegui inspecionar o archive' : 'CR encontrado no artefato de deploy',
 );
 
 // ─────────────────── 5. o forecast persistido tem tabela e destino declarado

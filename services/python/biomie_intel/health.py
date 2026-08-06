@@ -30,7 +30,11 @@ from .insights import UNIVERSO_COMERCIAL
 # de fora daqui foi o que deixou o insights sem dead-man switch enquanto o
 # quote_score tinha um.
 # forecast roda 1x/dia (`10 5 * * *`); 30h cobre uma execução perdida.
-MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30, "geo_intelligence": 30, "fiscal_mart": 30}
+# geo_backtest roda 1x/semana (`20 4 * * 1`): 54h nao serve de limite semanal,
+# entao o dead-man switch dele usa 8 dias — cadencia semanal exige folga de
+# uma execucao perdida, como todos os outros.
+MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30,
+                  "geo_intelligence": 30, "fiscal_mart": 30, "geo_backtest": 192}
 
 #: tabelas sem as quais a camada não funciona — a checagem de existência
 TABELAS_OBRIGATORIAS = (
@@ -40,6 +44,7 @@ TABELAS_OBRIGATORIAS = (
     "intelligence_insights",
     "intelligence_forecasts",
     "intelligence_geo_scores",
+    "intelligence_geo_backtests",
     "intelligence_fiscal_coherence",
     "intelligence_fiscal_anomalies",
 )

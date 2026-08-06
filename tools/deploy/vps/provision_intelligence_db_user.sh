@@ -69,6 +69,9 @@ GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME
 -- (is_current = 0), nunca apagada — apagá-la destruiria a série que permite
 -- confrontar o que foi previsto com o que aconteceu.
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_forecasts     TO '${USER_NAME}'@'127.0.0.1';
+-- Backtest do score territorial. Sem DELETE: a serie historica e o que
+-- permite ver se o modelo esta melhorando ou piorando ao longo dos meses.
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_geo_backtests   TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_geo_scores    TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_coherence TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_anomalies TO '${USER_NAME}'@'127.0.0.1';

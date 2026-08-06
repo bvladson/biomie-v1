@@ -140,7 +140,14 @@ def compute_from_rows(rows: list[dict[str, Any]], company_id: int, as_of: date) 
 
     max_raw = 1.0
     for item in prelim:
-        benchmark = median([x for x in tickets[item["layer"]] if x > 0]) if tickets[item["layer"]] else 0.0
+        # O guard precisa testar a lista FILTRADA, nao a crua: uma camada em que
+        # todos os tickets sao zero (nenhum territorio com cliente identificado
+        # no mes) passava pelo `if tickets[...]` e estourava
+        # `StatisticsError: no median for empty data`, derrubando o job inteiro
+        # daquela empresa. Sem ticket comparavel nao ha benchmark — e zero, e o
+        # potencial daquele territorio fica sendo so a recuperacao de queda.
+        positivos = [x for x in tickets[item["layer"]] if x > 0]
+        benchmark = median(positivos) if positivos else 0.0
         gap = max(0.0, benchmark - item["ticket"]) * int(item["current"]["customers"])
         recovery = max(0.0, item["previous"] - item["values"][-1]) * 0.5
         item["potential"] = gap + recovery

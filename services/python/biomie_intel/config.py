@@ -34,6 +34,7 @@ WRITABLE_TABLES = (
     "intelligence_insights",
     "intelligence_forecasts",
     "intelligence_geo_scores",
+    "intelligence_geo_backtests",
     "intelligence_fiscal_coherence",
     "intelligence_fiscal_anomalies",
 )

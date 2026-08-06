@@ -314,15 +314,35 @@ class TestPortaoDeConfianca(unittest.TestCase):
 
 
 class TestJanelaDeInatividade(unittest.TestCase):
-    def test_todo_job_agendado_tem_limite_declarado(self) -> None:
-        """Job sem limite não tem dead-man switch — foi o caso do insights."""
+    """Job sem limite não tem dead-man switch — foi o caso do insights.
+
+    A versão anterior comparava o conjunto de jobs por IGUALDADE, e quebrava a
+    cada job novo legítimo (`geo_backtest` foi o terceiro a derrubá-la). Teste
+    que precisa ser editado toda vez que o sistema cresce ensina a editar o
+    teste em vez de olhar o que ele diz. Aqui o que se afere é o INVARIANTE:
+    os jobs conhecidos continuam declarados, e nenhum limite é curto demais.
+    """
+
+    #: cadência real de cada job, em horas — vem do `biomie.cron`
+    CADENCIAS_HORAS = {
+        "quote_score": 2, "insights": 6, "forecast": 24,
+        "geo_intelligence": 24, "fiscal_mart": 24, "geo_backtest": 168,
+    }
+
+    def test_os_jobs_conhecidos_continuam_declarados(self) -> None:
+        faltando = set(self.CADENCIAS_HORAS) - set(health.MAX_IDLE_HORAS)
+        self.assertEqual(faltando, set(), f"job perdeu o dead-man switch: {faltando}")
+
+    def test_nenhum_job_agendado_ficou_sem_limite(self) -> None:
+        """O sentido inverso: SLA declarado sem cadência conhecida aqui."""
+        sem_cadencia = set(health.MAX_IDLE_HORAS) - set(self.CADENCIAS_HORAS)
         self.assertEqual(
-            set(health.MAX_IDLE_HORAS), {"quote_score", "insights", "forecast", "geo_intelligence", "fiscal_mart"},
+            sem_cadencia, set(),
+            f"job novo sem cadência declarada no teste — confirme o cron: {sem_cadencia}",
         )
 
     def test_limite_cobre_ao_menos_uma_execucao_perdida(self) -> None:
-        cadencias_horas = {"quote_score": 2, "insights": 6, "forecast": 24}
-        for job, cadencia in cadencias_horas.items():
+        for job, cadencia in self.CADENCIAS_HORAS.items():
             with self.subTest(job=job):
                 self.assertGreater(
                     health.MAX_IDLE_HORAS[job], cadencia,

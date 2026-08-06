@@ -43,6 +43,10 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # Score e forecast territorial persistidos; roda depois do forecast mensal e
 # antes dos insights, sem competir com a materializacao da madrugada.
 30 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_geo.sh
+# Backtest territorial: SEMANAL. Ele observa o mes seguinte a cada competencia
+# de referencia — rodar diariamente reprocessaria as mesmas janelas fechadas.
+# Segunda 04:20 UTC, antes do geo do dia. Dead-man switch de 8 dias.
+20 4 * * 1     www-data /bin/sh /var/www/biomie/live/cron/hostinger/geo_backtest.sh
 # Reconstrói o mart fiscal por empresa e, somente após sucesso, persiste a prova
 # fonte x mart. O dead-man switch fiscal_mart admite uma execução perdida (30h).
 45 1 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/fiscal_mart.sh

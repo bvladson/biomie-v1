@@ -24,6 +24,7 @@ from . import forecast_store
 from . import health as health_mod
 from . import forecast as forecast_mod
 from . import insights as insights_mod
+from . import geo_backtest as geo_backtest_mod
 from . import geo_intelligence as geo_intelligence_mod
 from . import fiscal_coherence as fiscal_coherence_mod
 from . import model as model_mod
@@ -395,6 +396,74 @@ def cmd_geo_intelligence(args, settings, logger) -> int:
     return _saida({"ok": True, "comando": "geo-intelligence", "as_of": as_of.isoformat(), "empresas": saidas})
 
 
+def cmd_geo_backtest(args, settings, logger) -> int:
+    """Mede se o score territorial ORDENA — nao se ele existe.
+
+    A saida traz o lift ao lado da taxa base de proposito: "acertei 70% do topo"
+    nao vale nada se 70% de todos os territorios cresceram no mes.
+    """
+    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+    saidas: list[dict[str, Any]] = []
+    algum_nao_ordena = False
+
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            resultados = geo_backtest_mod.run(
+                conn, empresa.id, as_of,
+                horizonte=args.horizonte, janelas=args.janelas, top_n=args.top,
+            )
+            veredito_por_camada = {r.layer_id: r.veredito for r in resultados}
+            if "nao_ordena" in veredito_por_camada.values():
+                algum_nao_ordena = True
+
+            resumo = {
+                "empresa": empresa.slug,
+                "janelas_avaliadas": len(resultados),
+                "veredito": veredito_por_camada,
+                "lift_medio": {
+                    layer: round(
+                        sum(r.lift_top_n for r in resultados
+                            if r.layer_id == layer and r.lift_top_n is not None)
+                        / max(1, sum(1 for r in resultados
+                                     if r.layer_id == layer and r.lift_top_n is not None)), 3)
+                    for layer in veredito_por_camada
+                },
+            }
+
+            if args.dry_run:
+                resumo["gravado"] = False
+                resumo["detalhe"] = [
+                    {"camada": r.layer_id, "referencia": r.competencia_referencia,
+                     "territorios": r.territorios_avaliados, "lift": r.lift_top_n,
+                     "precisao_topo": r.precisao_top_n, "precisao_base": r.precisao_base,
+                     "spearman": r.spearman, "mape": r.mape,
+                     "cobertura_faixa": r.cobertura_faixa_pct}
+                    for r in resultados
+                ]
+                saidas.append(resumo)
+                continue
+
+            with track(conn, "geo_backtest", company_id=empresa.id,
+                       run_mode=settings.run_mode, correlation_id=args.correlation_id,
+                       model_version=geo_backtest_mod.MODEL_VERSION) as run:
+                gravados = geo_backtest_mod.persist(conn, empresa.id, resultados, run.id)
+                run.rows_in = sum(r.territorios_avaliados for r in resultados)
+                run.rows_out = gravados
+                run.metrics = {"veredito": veredito_por_camada,
+                               "janelas": len(resultados),
+                               "horizonte_meses": args.horizonte}
+            resumo["gravado"] = True
+            saidas.append(resumo)
+
+    # Exit 0 mesmo com "nao_ordena": o score NAO ordenar e um resultado valido do
+    # experimento, nao uma falha do job. Quem precisa reagir e a tela, que deixa
+    # de apresentar o score como recomendacao — nao o dead-man switch.
+    return _saida({
+        "ok": True, "comando": "geo-backtest", "as_of": as_of.isoformat(),
+        "algum_layer_nao_ordena": algum_nao_ordena, "empresas": saidas,
+    })
+
+
 def cmd_fiscal_coherence(args, settings, logger) -> int:
     saidas = []
     with connect(settings) as conn:
@@ -461,6 +530,14 @@ def build_parser() -> argparse.ArgumentParser:
     geo.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
     geo.add_argument("--dry-run", action="store_true")
 
+    gb = sub.add_parser("geo-backtest", help="mede se o score territorial ORDENA (lift x taxa base)")
+    gb.add_argument("--company", default="all")
+    gb.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
+    gb.add_argument("--horizonte", type=int, default=1, help="meses observados apos a referencia")
+    gb.add_argument("--janelas", type=int, default=6, help="quantas competencias de referencia avaliar")
+    gb.add_argument("--top", type=int, default=10, help="tamanho do grupo priorizado")
+    gb.add_argument("--dry-run", action="store_true")
+
     fiscal = sub.add_parser("fiscal-coherence", help="prova cobertura, frescor e anomalias do mart fiscal")
     fiscal.add_argument("--company", default="all")
     fiscal.add_argument("--dry-run", action="store_true")
@@ -489,6 +566,7 @@ def main(argv: list[str] | None = None) -> int:
         "forecast": cmd_forecast,
         "forecast-mensal": cmd_forecast_mensal,
         "geo-intelligence": cmd_geo_intelligence,
+        "geo-backtest": cmd_geo_backtest,
         "fiscal-coherence": cmd_fiscal_coherence,
         "compare": cmd_compare,
     }

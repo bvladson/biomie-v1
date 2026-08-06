@@ -49,6 +49,10 @@ final class IntelligenceJobSla
         // falha que este arquivo existe para impedir.
         'geo_intelligence' => 30,  // cron `30 5 * * *`, 1x/dia
         'fiscal_mart'      => 30,  // cron `45 1 * * *`, 1x/dia
+        // SEMANAL (`20 4 * * 1`): o backtest observa o mes seguinte a cada
+        // referencia, entao a resposta so muda quando um mes novo termina.
+        // 192h = 8 dias, a mesma folga de uma execucao perdida dos demais.
+        'geo_backtest'     => 192,
     ];
 
     /** @return list<string> */
