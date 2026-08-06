@@ -398,10 +398,17 @@ final class FiscalIntelligenceService
             $stmt = $this->pdo()->prepare(
                 "SELECT COUNT(*) titles, COALESCE(SUM(valor_pago),0) received,
                         COALESCE(SUM(valor_aberto),0) open
-                   FROM biomie_titulos_financeiros_canonicos
-                  WHERE {$this->tenant} AND data_competencia BETWEEN :s AND :e"
+                   FROM biomie_titulos_financeiros_canonicos t
+                  WHERE t.company_id=:company_id
+                    AND EXISTS (
+                      SELECT 1 FROM biomie_notas_fiscais_canonicas n
+                       WHERE n.company_id=t.company_id AND n.status_fiscal='autorizada'
+                         AND n.data_competencia BETWEEN :s AND :e
+                         AND (t.nota_key=n.nota_key OR
+                              (t.pedido_id_omie IS NOT NULL AND t.pedido_id_omie=n.pedido_id_omie))
+                    )"
             );
-            $stmt->execute(['s' => $start, 'e' => $end]);
+            $stmt->execute(['company_id' => $this->cid(), 's' => $start, 'e' => $end]);
             $finance = array_merge($finance, $stmt->fetch(PDO::FETCH_ASSOC) ?: []);
 
             $stmt = $this->pdo()->prepare(
