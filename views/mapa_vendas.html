@@ -442,12 +442,20 @@
                 <strong>Leitura Python</strong>
                 <span id="geoIntelConfidence" class="topbar-badge">-</span>
               </div>
+              <!--
+                Selo do BACKTEST. Diferente da confiança ao lado: aquela diz se a
+                série é estável, esta diz se a ordenação já provou valer. Um
+                território pode ter série estável dentro de um modelo que não
+                ordena nada — foi o caso da EXPERT, com correlação negativa.
+              -->
+              <p data-geo-intel-validation class="geo-intel-validation geo-intel-validation--nao_avaliado"></p>
               <div class="geo-intelligence-card__metrics">
                 <span>Oportunidade <strong id="geoIntelScore">-</strong></span>
                 <span>Potencial <strong id="geoIntelPotential">-</strong></span>
                 <span>Projeção <strong id="geoIntelForecast">-</strong></span>
               </div>
               <p id="geoIntelReason"></p>
+              <p class="geo-intelligence-card__action-label" data-geo-intel-action-label>Ação recomendada</p>
               <p id="geoIntelAction" class="geo-intelligence-card__action"></p>
             </div>
             <div class="geo-drawer-actions">

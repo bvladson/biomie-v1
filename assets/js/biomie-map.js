@@ -282,6 +282,11 @@
     totalMetaEstimada: 0,       // meta total do período (flight plan)
     geoIntelligence: new Map(),
     geoIntelligenceSummary: null,
+    // Veredito do backtest da CAMADA ativa. Fica no estado porque o drawer de
+    // cada território precisa dele para decidir se escreve "Ação recomendada"
+    // ou "Hipótese a investigar" — e essa é uma propriedade do modelo, não do
+    // território que o usuário clicou.
+    geoIntelligenceValidation: null,
     geoIntelligenceLayer: '',
   };
 
@@ -4391,32 +4396,100 @@
         if (key) state.geoIntelligence.set(key, row);
       });
       state.geoIntelligenceSummary = payload.summary || null;
+      state.geoIntelligenceValidation = payload.validation || null;
       state.geoIntelligenceLayer = _activeLayer;
       renderGeoIntelligenceSummary(payload);
       return rows.length > 0;
     } catch (error) {
       state.geoIntelligence = new Map();
       state.geoIntelligenceSummary = null;
+      state.geoIntelligenceValidation = null;
       renderGeoIntelligenceSummary(null);
       debugLog('Inteligencia territorial indisponivel', error?.message || error);
       return false;
     }
   }
 
+  /**
+   * Como o backtest muda o que a tela tem o direito de afirmar.
+   *
+   * Antes esta faixa dizia "Prioridade territorial: X" para as cinco empresas,
+   * sem distinção. O backtest mediu e a realidade é outra: na MAG_FILIAL o topo
+   * do score acerta 3 a 5 vezes mais que a taxa base; na EXPERT o score é
+   * ANTI-preditivo (spearman −0,18), ou seja, priorizar por ele é pior que
+   * sortear. Usar a mesma palavra e o mesmo destaque nos dois casos transforma
+   * medição em decoração.
+   */
+  const GEO_VALIDATION_UI = {
+    ordena: {
+      cls: 'module-alert--success',
+      titulo: 'Prioridade territorial',
+      rotuloAcao: 'Ação recomendada',
+      badge: 'validado por backtest',
+    },
+    nao_ordena: {
+      cls: 'module-alert--warning',
+      titulo: 'Leitura exploratória',
+      rotuloAcao: 'Hipótese a investigar',
+      badge: 'o score não se mostrou preditivo aqui',
+    },
+    amostra_insuficiente: {
+      cls: 'module-alert--info',
+      titulo: 'Ainda sem validação',
+      rotuloAcao: 'Hipótese a investigar',
+      badge: 'histórico curto demais para validar',
+    },
+    nao_avaliado: {
+      cls: 'module-alert--info',
+      titulo: 'Ainda sem validação',
+      rotuloAcao: 'Hipótese a investigar',
+      badge: 'backtest ainda não executado',
+    },
+  };
+
+  function geoValidationUi(validation) {
+    const verdict = String(validation?.verdict || 'nao_avaliado');
+    return GEO_VALIDATION_UI[verdict] || GEO_VALIDATION_UI.nao_avaliado;
+  }
+
+  /** A evidência em uma linha — sem ela o rótulo vira outra afirmação sem lastro. */
+  function geoValidationEvidence(validation) {
+    if (!validation || !validation.checked) return '';
+    const partes = [];
+    if (validation.top_hit_rate != null && validation.base_hit_rate != null) {
+      partes.push(`topo acerta ${(validation.top_hit_rate * 100).toFixed(0)}% contra ${(validation.base_hit_rate * 100).toFixed(0)}% da base`);
+    }
+    if (validation.spearman != null) partes.push(`correlação ${Number(validation.spearman).toFixed(2)}`);
+    if (validation.band_coverage_pct != null) partes.push(`faixa cobre ${Number(validation.band_coverage_pct).toFixed(0)}%`);
+    if (validation.windows) partes.push(`${validation.windows} janela(s)`);
+    return partes.join(' · ');
+  }
+
   function renderGeoIntelligenceSummary(payload) {
     const node = $('geoIntelligenceSummary');
     if (!node) return;
-    const top = payload?.summary?.top;
+    const summary = payload?.summary;
+    const validation = payload?.validation;
+    // `top` só vem preenchido quando o score foi validado; `top_unvalidated` é o
+    // mais bem pontuado de qualquer forma. A tela mostra o segundo como
+    // EXPLORAÇÃO — esconder o dado seria o outro extremo.
+    const top = summary?.top || summary?.top_unvalidated;
     if (!top) {
       node.className = 'module-alert module-alert--info d-none geo-intelligence-summary';
       node.textContent = '';
       return;
     }
-    const counts = payload.summary.confidence || {};
-    node.className = 'module-alert module-alert--info geo-intelligence-summary';
-    node.innerHTML = `<strong>Prioridade territorial: ${escapeHtml(top.territory_label || top.territory_key)}.</strong>`
+
+    const ui = geoValidationUi(validation);
+    const counts = summary.confidence || {};
+    const evidencia = geoValidationEvidence(validation);
+
+    node.className = `module-alert ${ui.cls} geo-intelligence-summary`;
+    node.innerHTML = `<strong>${escapeHtml(ui.titulo)}: ${escapeHtml(top.territory_label || top.territory_key)}.</strong>`
       + `<span>Score ${Number(top.opportunity_score || 0).toFixed(0)}/100 · potencial ${escapeHtml(formatters.money(top.potential_revenue || 0))}.</span>`
-      + `<span class="geo-intelligence-summary__meta">Python persistido · confiança alta ${Number(counts.alta || 0)}, média ${Number(counts.media || 0)}, baixa ${Number(counts.baixa || 0)}.</span>`;
+      + `<span class="geo-intelligence-summary__badge">${escapeHtml(ui.badge)}</span>`
+      + (evidencia ? `<span class="geo-intelligence-summary__meta">${escapeHtml(evidencia)}.</span>` : '')
+      + `<span class="geo-intelligence-summary__meta">Confiança da série: alta ${Number(counts.alta || 0)}, média ${Number(counts.media || 0)}, baixa ${Number(counts.baixa || 0)}.</span>`;
   }
 
   function renderTerritoryIntelligence(row) {
@@ -4434,6 +4507,18 @@
     setText('geoIntelForecast', forecast + range);
     setText('geoIntelReason', intel.main_reason || 'Sem leitura suficiente.');
     setText('geoIntelAction', intel.recommended_action || 'Acompanhar o território.');
+
+    // O rótulo da ação depende do veredito da CAMADA, não da confiança da série:
+    // "Ação recomendada" só se a ordenação já provou valer; caso contrário é
+    // hipótese, e a tela precisa dizer isso com todas as letras.
+    const ui = geoValidationUi(state.geoIntelligenceValidation);
+    const rotulo = card.querySelector('[data-geo-intel-action-label]');
+    if (rotulo) rotulo.textContent = ui.rotuloAcao;
+    const selo = card.querySelector('[data-geo-intel-validation]');
+    if (selo) {
+      selo.textContent = ui.badge;
+      selo.className = `geo-intel-validation geo-intel-validation--${String(state.geoIntelligenceValidation?.verdict || 'nao_avaliado')}`;
+    }
   }
 
   // GEO.R2.0 — Carrega e aplica camada de oportunidades comerciais
