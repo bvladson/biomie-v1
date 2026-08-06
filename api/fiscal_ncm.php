@@ -7,6 +7,7 @@ use BIomie\Cache;
 use BIomie\Database;
 use BIomie\Http;
 use BIomie\Modules\Fiscal\Infrastructure\FiscalIntelligenceService;
+use BIomie\Support\TenantContext;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -70,7 +71,9 @@ try {
 
     // Ranking mode
     $cache    = new Cache(__DIR__ . '/../storage/cache');
-    $cacheKey = 'fiscal_ncm_v2_' . $start . '_' . $end;
+    // Cache fiscal nunca pode atravessar empresa. A chave antiga misturava
+    // MAG_FILIAL e ERGOOFFICE para o mesmo periodo.
+    $cacheKey = 'fiscal_ncm_v3_company_' . TenantContext::companyId() . '_' . $start . '_' . $end;
     if (!$force) {
         $cached = $cache->get($cacheKey, 3600); // 1h
         if ($cached !== null) Http::json($cached);
@@ -129,5 +132,11 @@ try {
     $cache->put($cacheKey, $payload);
     Http::json($payload);
 } catch (\Throwable $e) {
+    global $logger;
+    $logger?->error('fiscal_ncm error', [
+        'exception' => $e->getMessage(),
+        'request_id' => \BIomie\RequestContext::id(),
+        'company_id' => TenantContext::companyId(),
+    ]);
     Http::json(['ok' => false, 'message' => 'Erro ao carregar NCM fiscal.'], 500);
 }
