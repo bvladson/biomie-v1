@@ -28,7 +28,7 @@ import pymysql
 
 from .db import fetch_all
 from .forecast_store import ForecastLinha
-from .target_ladder import evaluate as evaluate_target_ladder
+from .target_ladder import evaluate as evaluate_target_ladder, recommend as recommend_target_ladder
 
 #: abaixo disto, variação percentual é ruído — não vira frase
 MIN_NOTAS_PARA_TENDENCIA = 8
@@ -484,6 +484,10 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
                 meta_bruta = ladder["active_target"] or 0.0
             # 0.0 aqui significa "não achei meta", não "a meta é zero".
             meta = meta_bruta if meta_bruta > 0 else None
+            ladder_advice = recommend_target_ladder(
+                escadas_vendedor.get(str(codigo), []), realizado, projetado,
+                max(dias_mes.day - hoje.day, 0), erro,
+            ) if dimensao == "vendedor" else {}
             saida.append(ForecastLinha(
                 dimensao=dimensao,
                 entidade_codigo=str(codigo),
@@ -503,6 +507,8 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
                     f"média de {len(historicos)} meses: {_brl(media_hist)}",
                     f"peso do mês corrente: {peso * 100:.0f}%",
                     *([f"escada: nível {ladder['achieved_level']} conquistado; próximo {ladder['active_level']}"] if ladder else []),
+                    *([f"ritmo necessário: {_brl(ladder_advice['required_daily'])}/dia"] if ladder_advice.get("required_daily") else []),
+                    *([f"próximo patamar sugerido: {_brl(ladder_advice['recommended_next_target'])} (requer aprovação)"] if ladder_advice.get("recommended_next_target") else []),
                 ],
                 base_target=ladder["base_target"] if ladder else meta,
                 active_target=ladder["active_target"] if ladder else meta,
@@ -511,6 +517,10 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
                 active_level=ladder["active_level"] if ladder else (1 if meta else None),
                 levels_total=len(ladder["levels"]) if ladder else (1 if meta else 0),
                 level_probabilities=level_probabilities,
+                required_daily=ladder_advice.get("required_daily"),
+                projected_level=int(ladder_advice.get("projected_level", 0)),
+                recommended_next_target=ladder_advice.get("recommended_next_target"),
+                ladder_confidence=str(ladder_advice.get("confidence", "sem_dados")),
             ))
 
     return saida
@@ -565,6 +575,8 @@ def _forecasts_segmentados(conn, company_id: int, hoje: date) -> list[Insight]:
             if linha.active_target is None:
                 superacao = max(linha.realizado - (linha.maximum_target or linha.realizado), 0)
                 ladder_txt = f" Todos os {linha.levels_total} níveis conquistados; superação de {_brl(superacao)}."
+                if linha.recommended_next_target is not None:
+                    ladder_txt += f" Próximo patamar sugerido pelo Python: {_brl(linha.recommended_next_target)}, sujeito a aprovação."
             else:
                 chance = next((
                     p.get("probability") for p in linha.level_probabilities

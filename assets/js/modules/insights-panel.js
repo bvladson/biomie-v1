@@ -45,10 +45,12 @@
     base_target: 'Compromisso-base', active_target: 'Desafio ativo',
     maximum_target: 'Meta máxima', achieved_level: 'Níveis conquistados',
     active_level: 'Nível ativo', levels_total: 'Total de níveis',
-    level_probabilities: 'Chance por nível', confianca: 'Confiança'
+    level_probabilities: 'Chance por nível', confianca: 'Confiança',
+    required_daily: 'Ritmo diário necessário', projected_level: 'Nível provável no fechamento',
+    recommended_next_target: 'Próximo patamar sugerido', ladder_confidence: 'Confiança da escada'
   });
 
-  var MONETARIOS = /^(receita|realizado|projecao|antes|depois|meta|faixa_|base_target|active_target|maximum_target)/;
+  var MONETARIOS = /^(receita|realizado|projecao|antes|depois|meta|faixa_|base_target|active_target|maximum_target|required_daily|recommended_next_target)/;
   var PERCENTUAIS = /^(variacao|share|queda_relativa|risco_nao_bater|erro_historico|crescimento|.*_pct)$/;
 
   function fmt(chave, valor) {

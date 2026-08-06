@@ -19,6 +19,7 @@ Duas coisas que este arquivo aprendeu a fazer depois de divergirem do PHP:
 from __future__ import annotations
 
 from typing import Any, Iterable
+from statistics import median
 
 
 def _niveis_validos(levels: Iterable[Any]) -> list[float]:
@@ -98,4 +99,52 @@ def evaluate(levels: Iterable[Any], realized: float) -> dict[str, Any]:
         "step_progress_pct": round(step, 2),
         "all_levels_achieved": active is None,
         "over_maximum_amount": round(max(realizado - clean[-1], 0.0), 2),
+    }
+
+
+def recommend(
+    levels: Iterable[Any],
+    realized: float,
+    projected: float,
+    remaining_days: int,
+    historical_error: float,
+) -> dict[str, Any]:
+    """Camada prescritiva da escada, sem alterar a meta oficial.
+
+    A recomendacao depois do ultimo nivel e deliberadamente uma PROPOSTA. Metas
+    podem afetar comissao e gestao de pessoas; o modelo informa um proximo
+    patamar defensavel, mas a aprovacao continua humana.
+    """
+    ladder = evaluate(levels, realized)
+    clean = ladder["levels"]
+    if not clean:
+        return {
+            "required_daily": None, "projected_level": 0,
+            "recommended_next_target": None, "confidence": "sem_dados",
+        }
+
+    try:
+        proj = max(float(projected), float(realized))
+    except (TypeError, ValueError):
+        proj = max(float(realized), 0.0)
+    days = max(int(remaining_days), 0)
+    active = ladder["active_target"]
+    required_daily = round(max(active - float(realized), 0.0) / days, 2) if active and days > 0 else 0.0
+    projected_level = sum(1 for value in clean if proj >= value)
+
+    suggested = None
+    if ladder["all_levels_achieved"]:
+        steps = [clean[i] - clean[i - 1] for i in range(1, len(clean))]
+        typical_step = median(steps) if steps else clean[-1] * 0.25
+        raw = max(clean[-1] + typical_step, proj * 1.05, float(realized) * 1.10)
+        # Valores de gestao legiveis: arredonda para mil sem reduzir o desafio.
+        suggested = float(int((raw + 999.99) // 1000) * 1000)
+
+    error = max(0.0, float(historical_error))
+    confidence = "alta" if error < 0.25 else "media" if error < 0.50 else "baixa"
+    return {
+        "required_daily": required_daily,
+        "projected_level": projected_level,
+        "recommended_next_target": suggested,
+        "confidence": confidence,
     }

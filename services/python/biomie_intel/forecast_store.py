@@ -49,6 +49,10 @@ class ForecastLinha:
     active_level: int | None = None
     levels_total: int = 0
     level_probabilities: list[dict[str, Any]] = field(default_factory=list)
+    required_daily: float | None = None
+    projected_level: int = 0
+    recommended_next_target: float | None = None
+    ladder_confidence: str = "sem_dados"
 
     def to_metrics(self) -> dict[str, Any]:
         """Espelho para o `metric_json` do insight — mesma verdade, um formato."""
@@ -63,6 +67,10 @@ class ForecastLinha:
             "active_level": self.active_level,
             "levels_total": self.levels_total,
             "level_probabilities": self.level_probabilities,
+            "required_daily": round(self.required_daily, 2) if self.required_daily is not None else None,
+            "projected_level": self.projected_level,
+            "recommended_next_target": round(self.recommended_next_target, 2) if self.recommended_next_target is not None else None,
+            "ladder_confidence": self.ladder_confidence,
             "realizado": round(self.realizado, 2),
             "projecao": round(self.projecao, 2),
             "faixa_min": round(self.valor_min, 2),
