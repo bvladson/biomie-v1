@@ -6,3 +6,8 @@
 # como "" e responde "bad minute", IGNORANDO O ARQUIVO INTEIRO -- calado.
 # Foi assim que os 14 jobs da VPS ficaram 14h parados em 2026-08-04.
 *.cron text eol=lf
+
+# Config do logrotate: SEM extensao, entao nenhuma regra acima o alcanca.
+# Foi ao ar com CRLF e o install_logrotate.sh recusou -- CRLF aqui faz o
+# logrotate ignorar o arquivo inteiro, o mesmo modo de falha do cron.d.
+tools/deploy/vps/logrotate/* text eol=lf

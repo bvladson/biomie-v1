@@ -5,8 +5,12 @@
 #
 # Menor privilégio de verdade:
 #   · SELECT apenas nas tabelas que ele precisa LER — não no banco inteiro.
-#   · INSERT/UPDATE só nas DUAS tabelas que ele escreve.
-#   · Sem DDL, sem DELETE, sem DROP, sem acesso a biomie_users.
+#   · INSERT/UPDATE só nas tabelas de WRITABLE_TABLES.
+#   · DELETE em DUAS tabelas, e só nelas: `intelligence_insights` (expurgo por
+#     validade) e `intelligence_quote_scores` (expurgo por retenção — medido em
+#     1,1 GB/ano sem ele). `tests/test_permissions.py` deriva essa lista do
+#     próprio código e falha se um GRANT sobrar ou faltar.
+#   · Sem DDL, sem DROP, sem acesso a biomie_users.
 #   · Só conecta de 127.0.0.1.
 #
 # Se o processo for comprometido ou tiver um bug, o estrago fica contido no que
