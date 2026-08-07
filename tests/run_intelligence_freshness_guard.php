@@ -166,6 +166,44 @@ foreach ($jobParaScript as $job => $script) {
 }
 $check('os scripts de cron existem', $faltando === [], implode(' | ', $faltando));
 $check('🔴 nenhum script de cron tem CRLF', $comCrlf === [], implode(' | ', $comCrlf));
+
+// ─────────────────────── 4b. os seis seguem o mesmo contrato estrutural
+//
+// `intelligence_geo.sh` era o unico sem lock e com log em outro diretorio. As
+// duas ausencias falham calado:
+//
+//   · sem lock, duas execucoes sobrepostas intercalam o `UPDATE is_current = 0`
+//     de uma com o INSERT da outra, e a tela fica sem linha vigente;
+//   · com o log fora de `storage/logs/cron`, quem for investigar ve cinco jobs
+//     no diretorio e conclui que o sexto nao roda.
+//
+// Verificado aqui porque a divergencia so aparece comparando os seis lado a
+// lado — lendo um script isolado, nada parece errado.
+$semLock = [];
+$logForaDoPadrao = [];
+foreach ($jobParaScript as $job => $script) {
+    $caminho = $root . '/cron/hostinger/' . $script;
+    if (!is_file($caminho)) {
+        continue; // ja reportado acima
+    }
+    $fonte = (string) file_get_contents($caminho);
+    if (!str_contains($fonte, 'flock')) {
+        $semLock[] = $script;
+    }
+    if (!str_contains($fonte, 'storage/logs/cron')) {
+        $logForaDoPadrao[] = $script;
+    }
+}
+$check(
+    '🔴 todo cron de inteligência toma lock (execuções sobrepostas corrompem o vigente)',
+    $semLock === [],
+    implode(' | ', $semLock),
+);
+$check(
+    '🔴 todo cron de inteligência loga em storage/logs/cron',
+    $logForaDoPadrao === [],
+    implode(' | ', $logForaDoPadrao),
+);
 // O que protege produção é o que o DEPLOY entrega, não o que está na árvore.
 //
 // O deploy sai de `git archive`, que aplica o `.gitattributes`. Checar a árvore

@@ -42,6 +42,39 @@ step "verificando o repositório"
 COMMIT="$(git rev-parse --short "$REF")"
 echo "    deployando $COMMIT ($(git log -1 --format=%s "$REF"))"
 
+# ------------------------------------ 1b. contratos PHP × Python conferem?
+# Estes dois guards existiam e NÃO eram executados por nada — nem por este
+# script, nem pelo remote_deploy, nem pelo biomie_release_guard. Ficavam
+# esperando alguém lembrar de digitá-los, que é o mesmo que não existir: a
+# divergência que eles pegam é justamente a que ninguém percebe.
+#
+# Rodam AQUI, e não na VPS, por dois motivos:
+#   · o freshness guard inspeciona o artefato via `git archive`, e a release
+#     extraída na VPS não é um repositório git — lá o check falharia sempre;
+#   · falhando aqui, nada é empacotado nem enviado. É mais barato que subir e
+#     reverter.
+#
+# O par Python destes contratos (tests/test_target_ladder.py e o restante da
+# suíte) continua rodando na VPS antes da troca do symlink: os dois lados do
+# contrato precisam ser exercitados, e cada um roda onde faz sentido.
+step "guards de contrato PHP × Python"
+command -v php >/dev/null 2>&1 || fail "php não está no PATH — os guards de contrato não rodariam, e deploy sem eles já deixou PHP e Python divergirem em silêncio."
+GUARD_OUT="$(mktemp -t biomie-guard-XXXXXX.out)"
+for guard in tests/run_intelligence_freshness_guard.php tests/run_target_ladder_contract.php; do
+    php "$guard" > "$GUARD_OUT" 2>&1 || {
+        # O freshness guard responde JSON com dezenas de checks. Despejar o FIM
+        # do arquivo mostraria uma parede de aprovados e esconderia os
+        # reprovados, que ficam no meio — o operador leria "erro" sem saber
+        # qual. Quando não há linha `"ok": false` (o contrato da escada falha
+        # por exceção, em texto), o grep não casa e cai no despejo normal.
+        grep -B2 -A2 '"ok": false' "$GUARD_OUT" || tail -40 "$GUARD_OUT"
+        rm -f "$GUARD_OUT"
+        fail "$guard reprovou — nada foi enviado."
+    }
+    echo "    $(basename "$guard") OK"
+done
+rm -f "$GUARD_OUT"
+
 # -------------------------------- 2. assets minificados estão atualizados?
 # Asset::preferMinified serve o .min quando ele é >= ao fonte. Como o git archive
 # dá o MESMO mtime a todos os arquivos, um .min desatualizado no git seria servido

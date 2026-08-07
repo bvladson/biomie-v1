@@ -47,20 +47,25 @@ class TestDetectorDeVendedor(unittest.TestCase):
     suíte inteira passava com o detector morto.
     """
 
-    @staticmethod
-    def _conexao_com_queda() -> FakeConnection:
-        hoje = date.today()
+    #: data fixa: o detector recebe `hoje` de quem chama, então o teste não
+    #: precisa (nem deve) depender do relógio da máquina que roda a suíte.
+    HOJE = date(2026, 8, 7)
+
+    @classmethod
+    def _conexao_com_queda(cls) -> FakeConnection:
         linhas = []
         # Janela antiga (> 28 dias): Ana faturava forte.
         for i in range(3):
-            linhas.append({"vendedor": "Ana", "dia": hoje - timedelta(days=40 + i), "receita": 2000.0})
+            linhas.append({"vendedor": "Ana", "dia": cls.HOJE - timedelta(days=40 + i), "receita": 2000.0})
         # Janela recente: praticamente parou.
         for i in range(3):
-            linhas.append({"vendedor": "Ana", "dia": hoje - timedelta(days=5 + i), "receita": 200.0})
+            linhas.append({"vendedor": "Ana", "dia": cls.HOJE - timedelta(days=5 + i), "receita": 200.0})
         return FakeConnection({"GROUP BY vendedor, data_emissao": linhas})
 
     def test_queda_forte_de_vendedor_vira_insight(self) -> None:
-        achado = _vendedor_destaque(self._conexao_com_queda(), 1, date.today() - timedelta(days=90))
+        achado = _vendedor_destaque(
+            self._conexao_com_queda(), 1, self.HOJE - timedelta(days=90), self.HOJE
+        )
 
         self.assertIsNotNone(achado, "detector de vendedor não disparou com queda de 90%")
         assert achado is not None
@@ -70,9 +75,89 @@ class TestDetectorDeVendedor(unittest.TestCase):
 
     def test_amostra_pequena_nao_vira_alarme(self) -> None:
         conn = FakeConnection({"GROUP BY vendedor, data_emissao": [
-            {"vendedor": "Ana", "dia": date.today(), "receita": 10.0},
+            {"vendedor": "Ana", "dia": self.HOJE, "receita": 10.0},
         ]})
-        self.assertIsNone(_vendedor_destaque(conn, 1, date.today() - timedelta(days=90)))
+        self.assertIsNone(
+            _vendedor_destaque(conn, 1, self.HOJE - timedelta(days=90), self.HOJE)
+        )
+
+    def test_o_corte_segue_o_hoje_recebido_e_nao_o_relogio_local(self) -> None:
+        """A janela de 28 dias é medida a partir do `hoje` do chamador.
+
+        `date.today()` aqui dentro deslocava o corte em um dia entre 21h e 00h
+        (servidor em -03, resto do módulo em UTC) e tornava o detector refém do
+        relógio. Deslocando `hoje` 60 dias para frente, a "janela recente" fica
+        vazia e não há queda a reportar — o que só acontece se o parâmetro for
+        de fato quem manda.
+        """
+        futuro = self.HOJE + timedelta(days=60)
+        self.assertIsNone(
+            _vendedor_destaque(self._conexao_com_queda(), 1, futuro - timedelta(days=90), futuro),
+            "o corte ignorou o `hoje` recebido",
+        )
+
+
+class TestJanelaDoForecastNaoOlhaOFuturo(unittest.TestCase):
+    """`--as-of` precisa governar a janela de dados, com piso E teto.
+
+    ISTO ERA UM VAZAMENTO REAL: `_forecast_rows` ancorava o piso em
+    `date.today()` e não tinha teto nenhum. Rodar
+    `forecast-mensal --as-of=<data passada>` lia notas emitidas DEPOIS da
+    referência; como `historicos` junta todos os meses diferentes da
+    competência corrente, os meses posteriores ao `as_of` entravam como
+    "passado" e a média histórica passava a conter o futuro.
+
+    O estrago não é a previsão de um dia: `intelligence_forecasts` existe para o
+    erro ser COBRADO depois. Uma linha gravada por replay que enxergou o futuro
+    seria conferida contra o realizado e aprovada — exatamente o formato do
+    viés de sobrevivência que já inflou um AUC para 0,94 neste projeto.
+    """
+
+    AS_OF = date(2026, 3, 15)
+
+    def _janela(self, dimensao: str = "empresa") -> tuple[date, date]:
+        conn = FakeConnection()
+        insights._forecast_rows(conn, 1, dimensao, self.AS_OF)
+        _, params = conn.executed[0]
+        return params[1], params[2]
+
+    def test_a_janela_termina_na_data_de_referencia(self) -> None:
+        _, teto = self._janela()
+        self.assertEqual(teto, self.AS_OF, "a consulta lê notas posteriores ao as-of")
+
+    def test_a_janela_comeca_a_partir_da_data_de_referencia(self) -> None:
+        piso, _ = self._janela()
+        self.assertEqual(piso, self.AS_OF - timedelta(days=insights.JANELA_FORECAST_DIAS))
+
+    def test_o_sql_declara_os_dois_limites(self) -> None:
+        """Sem o teto no SQL os parâmetros certos não adiantam."""
+        conn = FakeConnection()
+        insights._forecast_rows(conn, 1, "vendedor", self.AS_OF)
+        sql = conn.sql_executado()[0]
+        self.assertIn("data_emissao >= %s", sql)
+        self.assertIn("data_emissao <= %s", sql)
+
+    def test_todas_as_dimensoes_respeitam_a_mesma_janela(self) -> None:
+        for dimensao in ("empresa", "canal", "vendedor"):
+            with self.subTest(dimensao=dimensao):
+                self.assertEqual(self._janela(dimensao)[1], self.AS_OF)
+
+    def test_calcular_forecasts_propaga_o_as_of_ate_a_consulta(self) -> None:
+        """O elo que faltava: quem chama tem que PASSAR o `hoje` adiante.
+
+        Corrigir só `_forecast_rows` e esquecer o argumento no chamador
+        devolveria o defeito inteiro, com a função nova parecendo correta.
+        """
+        conn = FakeConnection()
+        insights.calcular_forecasts(conn, 1, self.AS_OF)
+        janelas = [
+            params[1:3] for sql, params in conn.executed
+            if "GROUP BY codigo, nome, data_emissao" in " ".join(sql.split())
+        ]
+        self.assertTrue(janelas, "calcular_forecasts não consultou a série")
+        for piso, teto in janelas:
+            self.assertEqual(teto, self.AS_OF)
+            self.assertEqual(piso, self.AS_OF - timedelta(days=insights.JANELA_FORECAST_DIAS))
 
 
 class TestIntegridadeDosDetectores(unittest.TestCase):

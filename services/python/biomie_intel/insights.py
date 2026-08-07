@@ -241,9 +241,15 @@ def _ritmo_do_mes(linhas: list[dict[str, Any]], hoje: date) -> Insight | None:
 
 
 def _vendedor_destaque(
-    conn: pymysql.connections.Connection, company_id: int, desde: date
+    conn: pymysql.connections.Connection, company_id: int, desde: date, hoje: date
 ) -> Insight | None:
-    """Quem carrega e quem sumiu, comparando duas janelas iguais."""
+    """Quem carrega e quem sumiu, comparando duas janelas iguais.
+
+    `hoje` vem de quem chama, nunca de `date.today()`: o resto do módulo
+    trabalha na data UTC que `compute` fixou, e o servidor roda em -03. Ler o
+    relógio local aqui deslocava o corte de 28 dias em um dia entre 21h e 00h,
+    e tornava a função impossível de testar contra uma data escolhida.
+    """
     import pandas as pd
 
     linhas = fetch_all(
@@ -264,8 +270,7 @@ def _vendedor_destaque(
     df["dia"] = pd.to_datetime(df["dia"])
     df["receita"] = df["receita"].astype(float)
 
-    hoje = pd.Timestamp(date.today())
-    corte = hoje - pd.Timedelta(days=28)
+    corte = pd.Timestamp(hoje) - pd.Timedelta(days=28)
     recente = df[df["dia"] >= corte].groupby("vendedor")["receita"].sum()
     anterior = df[df["dia"] < corte].groupby("vendedor")["receita"].sum()
     if recente.empty or anterior.empty:
@@ -321,8 +326,27 @@ def _risco_nao_bater(meta: float, projetado: float, erro: float) -> float | None
     return min(0.99, max(0.01, 0.5 * (1.0 + erf(z / sqrt(2.0)))))
 
 
-def _forecast_rows(conn, company_id: int, dimensao: str) -> list[dict[str, Any]]:
-    """Séries mensais/dia por empresa, canal ou vendedor; dimensão é whitelist."""
+#: quanto histórico o forecast enxerga para trás a partir da data de referência
+JANELA_FORECAST_DIAS = 190
+
+
+def _forecast_rows(conn, company_id: int, dimensao: str, hoje: date) -> list[dict[str, Any]]:
+    """Séries mensais/dia por empresa, canal ou vendedor; dimensão é whitelist.
+
+    A JANELA É ANCORADA EM `hoje`, COM TETO — e as duas coisas importam.
+
+    Antes, o piso saía de `date.today()` e não havia teto nenhum. Com isso,
+    `calcular_forecasts(conn, id, hoje=<data passada>)` — que é o que
+    `forecast-mensal --as-of` faz — lia notas emitidas DEPOIS da data de
+    referência. Como `historicos` é montado com os meses diferentes da
+    competência corrente, meses posteriores ao `as_of` entravam como se fossem
+    passado, e a "média histórica" passava a conter o futuro.
+
+    Isso não aparece na rodada diária do cron (lá `as_of` é hoje), só no
+    replay. E o replay é justamente quando o número mais precisa ser honesto:
+    `intelligence_forecasts` existe para o erro da previsão ser COBRADO depois,
+    e uma previsão que viu o futuro seria cobrada e aprovada com louvor.
+    """
     campos = {
         "empresa": ("'empresa'", "'Empresa'"),
         "canal": ("COALESCE(NULLIF(business_channel,''),'sem_canal')", "COALESCE(NULLIF(business_channel,''),'Sem canal')"),
@@ -336,9 +360,10 @@ def _forecast_rows(conn, company_id: int, dimensao: str) -> list[dict[str, Any]]
               FROM biomie_notas_fiscais_canonicas
              WHERE company_id = %s AND {UNIVERSO_COMERCIAL}
                AND data_emissao >= %s
+               AND data_emissao <= %s
              GROUP BY codigo, nome, data_emissao
              ORDER BY codigo, dia""",
-        (company_id, date.today() - timedelta(days=190)),
+        (company_id, hoje - timedelta(days=JANELA_FORECAST_DIAS), hoje),
     )
 
 
@@ -435,7 +460,7 @@ def calcular_forecasts(conn, company_id: int, hoje: date) -> list[ForecastLinha]
     saida: list[ForecastLinha] = []
 
     for dimensao in ("empresa", "canal", "vendedor"):
-        linhas = _forecast_rows(conn, company_id, dimensao)
+        linhas = _forecast_rows(conn, company_id, dimensao, hoje)
         if not linhas:
             continue
         df = pd.DataFrame(linhas)
@@ -666,7 +691,7 @@ def compute(conn: pymysql.connections.Connection, company_id: int) -> list[Insig
         _tendencia(diario, hoje),
         _concentracao(conn, company_id, desde_90),
         _ritmo_do_mes(diario, hoje),
-        _vendedor_destaque(conn, company_id, desde_90),
+        _vendedor_destaque(conn, company_id, desde_90, hoje),
     ]
     achados = [i for i in candidatos if i is not None]
     achados.sort(key=lambda i: -i.rank_weight)
