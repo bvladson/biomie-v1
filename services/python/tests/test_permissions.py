@@ -44,6 +44,27 @@ SOMENTE_LEITURA = (
 )
 
 
+def _tabelas_que_o_codigo_expurga() -> set[str]:
+    """Tabelas com `DELETE FROM` no pacote — lidas do CÓDIGO, não de uma lista.
+
+    Antes isto era um literal (`{"intelligence_insights"}`), o que trava a
+    permissão numa direção só: pegaria um DELETE concedido a mais, mas não um
+    expurgo escrito em Python sem o GRANT correspondente — que é exatamente o
+    acidente de 2026-08-04, quando o DELETE do insights foi ao ar antes da
+    concessão e o job passou a falhar por causa da faxina.
+
+    Derivando do código, as duas direções ficam cobertas e a lista não precisa
+    ser mantida à mão.
+    """
+    raiz = Path(__file__).resolve().parents[1] / "biomie_intel"
+    alvo: set[str] = set()
+    for arquivo in sorted(raiz.glob("*.py")):
+        alvo.update(
+            re.findall(r"DELETE\s+FROM\s+(\w+)", arquivo.read_text(encoding="utf-8"), re.IGNORECASE)
+        )
+    return alvo
+
+
 def _grants() -> dict[str, set[str]]:
     """Privilégios por tabela, lidos do script de provisionamento."""
     texto = SCRIPT.read_text(encoding="utf-8")
@@ -109,14 +130,28 @@ class TestDeclaracoesConcordam(unittest.TestCase):
                     f"{tabela} deveria ser somente leitura, mas tem {sorted(privs)}",
                 )
 
-    def test_delete_e_excecao_e_so_para_insights(self) -> None:
-        """DELETE existe só onde há expurgo por validade — não é permissão ampla."""
+    def test_delete_existe_exatamente_onde_o_codigo_expurga(self) -> None:
+        """DELETE não é permissão ampla: só onde existe expurgo escrito.
+
+        As duas direções importam. GRANT a mais amplia o estrago possível de um
+        bug num usuário que existe justamente para não poder causá-lo; GRANT a
+        menos faz o job cair na faxina depois de ter cumprido a missão, e o
+        dead-man switch dispara com a tela correta.
+        """
         com_delete = {t for t, p in self.grants.items() if "DELETE" in p}
+        com_purge = _tabelas_que_o_codigo_expurga()
         self.assertEqual(
-            com_delete, {"intelligence_insights"},
-            f"DELETE deveria existir só em intelligence_insights (expurgo por "
-            f"validade), mas está em {sorted(com_delete)}",
+            com_delete, com_purge,
+            f"GRANT de DELETE: {sorted(com_delete)} · expurgo no código: {sorted(com_purge)}. "
+            f"Sobrando no GRANT: {sorted(com_delete - com_purge)}. "
+            f"Faltando no GRANT: {sorted(com_purge - com_delete)}.",
         )
+
+    def test_o_detector_de_expurgo_nao_esvaziou(self) -> None:
+        """Sem isto, o teste acima passaria com os dois lados vazios."""
+        com_purge = _tabelas_que_o_codigo_expurga()
+        self.assertIn("intelligence_insights", com_purge)
+        self.assertIn("intelligence_quote_scores", com_purge)
 
     def test_credenciais_da_empresa_nao_sao_legiveis(self) -> None:
         """biomie_companies é concedida por COLUNA — nunca a tabela inteira."""
@@ -151,9 +186,11 @@ class TestPermissoesReais(unittest.TestCase):
         )
         self.addCleanup(self._drop_user)
 
-        # Espelha EXATAMENTE a intenção do script de provisionamento.
+        # Espelha EXATAMENTE a intenção do script de provisionamento — inclusive
+        # quais tabelas ganham DELETE, derivado do código como no teste estático.
+        com_purge = _tabelas_que_o_codigo_expurga()
         for tabela in WRITABLE_TABLES:
-            extra = ", DELETE" if tabela == "intelligence_insights" else ""
+            extra = ", DELETE" if tabela in com_purge else ""
             self.schema.exec_admin(
                 f"GRANT SELECT, INSERT, UPDATE{extra} ON `{db}`.`{tabela}` TO '{self.user}'@'{self.host}'"
             )

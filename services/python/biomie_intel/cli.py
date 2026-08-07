@@ -123,6 +123,23 @@ def cmd_score(args, settings, logger) -> int:
                 run.metrics = {"bandas": bandas, "dispersao": dispersao,
                                "movimento": movimentos, "as_of": as_of.isoformat()}
 
+                # Expurgo junto da gravação, pela mesma razão do insights: é o
+                # único momento em que já se sabe o que virou histórico, e um
+                # job separado só para faxina seria mais um agendamento para
+                # parar calado.
+                #
+                # E, como lá, a limpeza NÃO derruba a missão. Os scores já estão
+                # gravados e já estão na Agenda; deixar uma tarefa de manutenção
+                # marcar a execução como `failed` faria o dead-man switch
+                # disparar com a tela perfeitamente correta. O erro fica nas
+                # métricas — engolir sem rastro seria o outro extremo.
+                try:
+                    run.metrics["expurgados"] = quotes_mod.purge_superseded(conn, empresa.id)
+                except Exception as exc:  # noqa: BLE001 — faxina não derruba a missão
+                    conn.rollback()
+                    run.metrics["expurgo_falhou"] = f"{type(exc).__name__}: {exc}"
+                    logger.warning("expurgo de scores falhou (empresa %s): %s", empresa.id, exc)
+
             logger.info(
                 "scores gravados",
                 extra={"context": {"empresa": empresa.slug, "n": gravados, "bandas": bandas}},

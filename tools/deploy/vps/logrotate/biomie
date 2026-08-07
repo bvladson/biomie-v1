@@ -1,0 +1,32 @@
+# Rotacao dos logs de cron do BIomie.
+#
+# Instale com: bash tools/deploy/vps/install_logrotate.sh
+#
+# POR QUE EXISTE: os scripts de cron fazem `>> "$LOG_FILE"` e nada nunca sai.
+# Medido na VPS em 2026-08-07: 11 MB em storage/logs/cron, com
+# intelligence_score.log sozinho ganhando ~130 KB por dia. Nao e uma bomba, e um
+# vazamento lento — o tipo que enche o disco as 3 da manha e derruba os 19 jobs
+# de uma vez, sem nada no log dizendo o porque (porque nao cabe mais log).
+#
+# CAMINHO REAL, NAO O SYMLINK: `live/storage` aponta para `shared/storage`, e
+# `live` troca de alvo a cada release. Apontar para `live/` faria o logrotate
+# seguir um symlink que muda debaixo dele.
+#
+# NAO cobre `shared/storage/logs/intelligence/`: la os arquivos ja nascem com a
+# data no nome (`intelligence-2026-08-07.log`), entao rotacionar produziria
+# `intelligence-2026-08-04.log.1`, que nao significa nada. O que aqueles
+# precisam e delecao, e quem faz e `logging_setup.expurgar_logs_antigos`.
+/var/www/biomie/shared/storage/logs/cron/*.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    # copytruncate porque os scripts seguram o fd aberto com `>>` durante toda a
+    # execucao. Sem ele, um job que comeca antes da rotacao continua escrevendo
+    # no arquivo ja renomeado e o log "novo" fica vazio ate a proxima rodada.
+    copytruncate
+    su www-data www-data
+    create 0664 www-data www-data
+}

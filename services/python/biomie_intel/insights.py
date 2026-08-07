@@ -57,12 +57,22 @@ ERRO_CONFIANCA_MINIMA = 0.50
 #
 # Regra: autorizada + escopo comercial + (licitação SEMPRE preservada OU
 # varejo visível). Se o PHP mudar a regra, esta constante tem que acompanhar.
-UNIVERSO_COMERCIAL = (
-    "status_fiscal = 'autorizada' "
-    "AND operation_scope = 'commercial' "
+#: O ESCOPO, sem o filtro de status — o que faz de uma nota uma VENDA.
+#
+# Separado porque nem toda leitura comercial olha nota autorizada: o alerta de
+# cancelamentos precisa contar justamente as CANCELADAS, e `UNIVERSO_COMERCIAL`
+# exige `autorizada`. Antes disso existir, `_anomalia_cancelamentos` era o único
+# leitor de NF sem escopo nenhum: contava cancelamento de remessa, uso interno e
+# transferência como se fosse venda perdida, e o `total_atual` da métrica somava
+# o mesmo lixo. "Cancelamentos acima do padrão" podia disparar por uma operação
+# que nem venda é.
+ESCOPO_COMERCIAL = (
+    "operation_scope = 'commercial' "
     "AND (business_channel = 'licitacao' "
     "     OR COALESCE(is_biomie_commercial_visible, 1) = 1)"
 )
+
+UNIVERSO_COMERCIAL = "status_fiscal = 'autorizada' AND " + ESCOPO_COMERCIAL
 
 
 @dataclass
@@ -658,11 +668,20 @@ def _anomalia_canal(conn, company_id: int, hoje: date) -> Insight | None:
 
 
 def _anomalia_cancelamentos(conn, company_id: int, hoje: date) -> Insight | None:
+    """Cancelamentos acima do padrão — dentro do escopo COMERCIAL.
+
+    Usa `ESCOPO_COMERCIAL` e não `UNIVERSO_COMERCIAL` porque este é o único
+    detector que precisa das notas CANCELADAS, e o universo exige `autorizada`.
+    O que não podia continuar é o escopo ficar de fora inteiro: sem ele, o
+    cancelamento de uma remessa ou de uma transferência entre filiais contava
+    como venda perdida e podia disparar o alerta sozinho.
+    """
     r = fetch_all(conn, """SELECT
         SUM(data_emissao >= %s AND status_fiscal = 'cancelada') canc_atual,
         SUM(data_emissao >= %s AND data_emissao < %s AND status_fiscal = 'cancelada') canc_anterior,
         SUM(data_emissao >= %s) total_atual
-        FROM biomie_notas_fiscais_canonicas WHERE company_id = %s AND data_emissao >= %s""",
+        FROM biomie_notas_fiscais_canonicas
+       WHERE company_id = %s AND """ + ESCOPO_COMERCIAL + """ AND data_emissao >= %s""",
         (hoje - timedelta(days=28), hoje - timedelta(days=56), hoje - timedelta(days=28),
          hoje - timedelta(days=28), company_id, hoje - timedelta(days=56)))
     if not r:

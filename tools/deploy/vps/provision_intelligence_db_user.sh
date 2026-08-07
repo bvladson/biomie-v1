@@ -62,8 +62,24 @@ GRANT SELECT ON ${DB}.mart_fiscal_items                       TO '${USER_NAME}'@
 -- ESCRITA: exatamente as tabelas de WRITABLE_TABLES em config.py.
 -- As duas listas são declarações da mesma verdade; tests/test_permissions.py
 -- falha se separarem.
+-- Trilha de execucao. Sem DELETE de proposito: `intelligence_quote_scores`,
+-- `intelligence_insights` e `intelligence_forecasts` apontam para ela com
+-- `ON DELETE SET NULL` — apagar uma linha daqui nao daria erro, apenas cortaria
+-- em silencio o elo entre o dado e a execucao que o produziu. Medido em
+-- producao: 127 linhas/dia, ~46 mil/ano, 0,1 MB. Nao e um problema de espaco.
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_job_runs      TO '${USER_NAME}'@'127.0.0.1';
-GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME}'@'127.0.0.1';
+
+-- DELETE aqui e o segundo (e ultimo) do script, e foi medido antes de ser
+-- concedido: esta tabela cresce 3.426 linhas/dia a ~880 bytes cada — 1,1 GB por
+-- ano numa VPS, contra 8,6 MB hoje. Era a unica das oito que exigia expurgo; as
+-- demais somam 1,4 MB e continuam sem DELETE, porque ampliar o poder deste
+-- usuario sem necessidade contraria a razao de ele existir.
+--
+-- `quotes.purge_superseded` so alcanca linha ja substituida (is_current = 0),
+-- fora da janela de 90 dias e NAO referenciada por
+-- `intelligence_quote_feedback` — `fk_iqf_score` e ON DELETE SET NULL e
+-- anularia o elo do rotulo sem reclamar.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ${DB}.intelligence_quote_scores  TO '${USER_NAME}'@'127.0.0.1';
 
 -- Forecast persistido. Sem DELETE: a previsão anterior é REBAIXADA
 -- (is_current = 0), nunca apagada — apagá-la destruiria a série que permite

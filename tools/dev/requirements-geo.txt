@@ -1,0 +1,35 @@
+# Dependencias dos geradores de GeoJSON — NAO sao do servico de inteligencia.
+#
+# POR QUE ESTE ARQUIVO EXISTE
+#
+# Cinco scripts Python geraram os GeoJSON que hoje estao commitados em
+# assets/geo/ e nenhum deles declarava dependencia em lugar nenhum. Nao sao
+# chamados por nenhum .php, .sh, .ps1 ou cron — sao geradores de UMA VEZ, e o
+# resultado deles esta versionado. Isso e legitimo. O que nao era legitimo e que
+# ninguem conseguia re-executa-los sem adivinhar o ambiente:
+#
+#   scripts/enrich_geojson.py                    (pyproj, shapely)
+#   tools/dev/geo_generate_ceara_municipios.py   (geopandas)
+#   tools/dev/geo_generate_ceara_regioes_ipece.py(geopandas)
+#   tools/dev/geo_generate_metropolitan_regions.py
+#   tools/dev/geo_generate_rmf_bairros.py        (geopandas)
+#
+# SEPARADO de services/python/requirements.txt de proposito: aquele arquivo e
+# instalado no venv de PRODUCAO pelo deploy. geopandas puxa GDAL, GEOS e PROJ —
+# centenas de MB de dependencia binaria — para codigo que nunca roda em
+# producao. Misturar os dois engordaria o venv da VPS por nada e tornaria o
+# `pip install` do deploy muito mais lento e muito mais quebradico.
+#
+# USO (num venv separado, na maquina de quem for regerar os mapas):
+#
+#     python -m venv .venv-geo
+#     .venv-geo/bin/pip install -r tools/dev/requirements-geo.txt
+#     .venv-geo/bin/python tools/dev/geo_generate_ceara_municipios.py --dry-run
+#
+# Sem versao fixada: sao ferramentas de bancada, rodadas a mao e conferidas por
+# quem roda (todas tem --dry-run). Fixar aqui daria a impressao de que existe um
+# ambiente reproduzivel garantido, e nao existe — o que existe e o GeoJSON
+# resultante, que esta no git e e a fonte de verdade da aplicacao.
+geopandas
+pyproj
+shapely

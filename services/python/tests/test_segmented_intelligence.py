@@ -194,6 +194,59 @@ class TestIntegridadeDosDetectores(unittest.TestCase):
         ]
         self.assertEqual(mortos, [], f"código inalcançável após return: {mortos}")
 
+    @staticmethod
+    def _sql_da_funcao(fn: ast.FunctionDef) -> str:
+        """Só as strings que viram SQL — o docstring fica de fora.
+
+        A primeira versão deste guard usava `ast.unparse(fn)` inteiro e por isso
+        NÃO pegou a mutação: o docstring que explica a regra cita
+        `ESCOPO_COMERCIAL` e `UNIVERSO_COMERCIAL` por extenso, então o teste
+        casava com a prosa mesmo depois de o código perder a referência. Um
+        guard que lê comentário aprova exatamente o que deveria reprovar.
+        """
+        doc = ast.get_docstring(fn, clean=False)
+        partes = [
+            n.value for n in ast.walk(fn)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value != doc
+        ]
+        return " ".join(partes)
+
+    @staticmethod
+    def _nomes_usados(fn: ast.FunctionDef) -> set[str]:
+        """Identificadores REFERENCIADOS — não citados em texto."""
+        return {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)}
+
+    def test_todo_leitor_de_nf_declara_escopo_comercial(self) -> None:
+        """Sem escopo, a leitura soma remessa, uso interno e transferência.
+
+        `_anomalia_cancelamentos` era o único de fora: contava cancelamento de
+        operação que nem venda é. Ele não pode usar `UNIVERSO_COMERCIAL` (que
+        exige `autorizada` e excluiria justamente as canceladas), então a regra
+        aceita qualquer um dos dois — o que NÃO se aceita é nenhum.
+        """
+        sem_escopo = [
+            fn.name for fn in self._funcoes()
+            if "biomie_notas_fiscais_canonicas" in self._sql_da_funcao(fn)
+            and not (self._nomes_usados(fn) & {"UNIVERSO_COMERCIAL", "ESCOPO_COMERCIAL"})
+        ]
+        self.assertEqual(sem_escopo, [], f"leem NF sem escopo comercial: {sem_escopo}")
+
+    def test_o_detector_de_leitores_de_nf_nao_esvaziou(self) -> None:
+        """Sem isto, o teste acima passaria se `_sql_da_funcao` parasse de achar SQL."""
+        leitores = [
+            fn.name for fn in self._funcoes()
+            if "biomie_notas_fiscais_canonicas" in self._sql_da_funcao(fn)
+        ]
+        self.assertIn("_anomalia_cancelamentos", leitores)
+        self.assertIn("_forecast_rows", leitores)
+        self.assertGreaterEqual(len(leitores), 5, f"achou só {leitores}")
+
+    def test_o_universo_continua_derivando_do_escopo(self) -> None:
+        """Se os dois virarem literais separados, voltam a divergir em silêncio."""
+        self.assertIn(insights.ESCOPO_COMERCIAL, insights.UNIVERSO_COMERCIAL)
+        self.assertIn("status_fiscal = 'autorizada'", insights.UNIVERSO_COMERCIAL)
+        self.assertNotIn("status_fiscal", insights.ESCOPO_COMERCIAL)
+
     def test_todo_detector_declarado_entra_no_compute(self) -> None:
         """Detector que ninguém chama é o mesmo problema com outra roupa."""
         fonte_compute = ""

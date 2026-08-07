@@ -24,7 +24,7 @@ cd "$PROJECT_ROOT/services/python" || exit 1
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] intelligence_insights start" >> "$LOG_FILE"
 
 if command -v flock >/dev/null 2>&1; then
-    flock -n "$LOCK_FILE" "$VENV_PYTHON" -m biomie_intel insights --company=all >> "$LOG_FILE" 2>&1
+    flock -n -E 75 "$LOCK_FILE" "$VENV_PYTHON" -m biomie_intel insights --company=all >> "$LOG_FILE" 2>&1
     code=$?
 else
     "$VENV_PYTHON" -m biomie_intel insights --company=all >> "$LOG_FILE" 2>&1
@@ -58,6 +58,14 @@ if [ "$code" -eq 0 ]; then
     elif [ "$publish_code" -ne 0 ]; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] intelligence_insights PUBLICACAO_FALHOU exit=$publish_code (leituras OK, job segue)" >> "$LOG_FILE"
     fi
+fi
+
+# 75 = lock ocupado, nao falha. Sem distinguir, `flock -n` devolve 1 e
+# contencao vira erro no log — indistinguivel de job quebrado. O
+# dead-man switch nao se confunde (ele le intelligence_job_runs, e
+# nenhuma linha foi aberta), mas quem le o log se confunde.
+if [ "$code" -eq 75 ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] intelligence_insights IGNORADO: outra execucao em andamento" >> "$LOG_FILE"
 fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] intelligence_insights finish exit=$code publish=$publish_code" >> "$LOG_FILE"

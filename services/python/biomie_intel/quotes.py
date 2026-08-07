@@ -158,3 +158,71 @@ def persist_scores(
     )
     conn.commit()
     return inserted
+
+
+#: dias de score já substituído que ficam guardados antes do expurgo.
+#
+# 90 dias = um trimestre das DUAS séries (determinístico e modelo), que é o que
+# a comparação baseline × shadow precisa para decidir promoção. Medido em
+# produção: 3.426 linhas/dia, ~880 bytes cada. Sem expurgo isso é 1,1 GB por ano
+# numa VPS; com 90 dias a tabela estabiliza em torno de 270 MB.
+RETENCAO_DIAS = 90
+#: quantas linhas por DELETE. Apagar centenas de milhares numa transação só
+#: travaria a tabela e estouraria o redo log — o job de score roda de 2 em 2
+#: horas e não pode prender a Agenda enquanto faz faxina.
+LOTE_EXPURGO = 5_000
+#: teto por rodada: se houver um passivo enorme, ele sai em várias execuções em
+#: vez de uma que demora demais e vira `failed` por timeout.
+MAX_EXPURGO_POR_RODADA = 100_000
+
+
+def purge_superseded(
+    conn: pymysql.connections.Connection,
+    company_id: int,
+    retencao_dias: int = RETENCAO_DIAS,
+) -> int:
+    """Apaga scores JÁ SUBSTITUÍDOS e fora da janela de retenção, de UMA empresa.
+
+    Sem isto a tabela não para de crescer: cada rodada marca as linhas vigentes
+    como `is_current = 0` e insere novas, e nada nunca sai. São 12 execuções por
+    dia × 5 empresas × ~250 orçamentos.
+
+    QUATRO TRAVAS, e a terceira é a que não pode ser esquecida:
+
+    1. `is_current = 0` — nunca apaga o que está na tela.
+    2. `scored_at` fora da retenção — a comparação baseline × modelo exige as
+       duas séries ao longo do tempo, não a foto de agora. Expurgo agressivo
+       destruiria a evidência que decide a promoção do modelo.
+    3. `NOT EXISTS` no feedback — `fk_iqf_score` é `ON DELETE SET NULL`, ou
+       seja, o banco NÃO recusa: ele anula o `score_id` do feedback em silêncio.
+       Esse campo existe justamente para saber qual score estava na tela quando
+       o vendedor respondeu; comparar a resposta com o score vigente meses
+       depois compararia com outro número. Perder o elo aqui não daria erro
+       nenhum — só tornaria o rótulo inútil no dia em que houver volume para
+       treinar.
+    4. `company_id` explícito — não existe escrita "para todas as empresas"
+       escondida num WHERE nesta camada.
+
+    Em lotes, com commit entre eles, para não segurar lock da tabela que a
+    Agenda lê.
+    """
+    total = 0
+    while total < MAX_EXPURGO_POR_RODADA:
+        apagadas = execute(
+            conn,
+            """DELETE FROM intelligence_quote_scores
+                WHERE company_id = %s
+                  AND is_current = 0
+                  AND scored_at < (UTC_TIMESTAMP() - INTERVAL %s DAY)
+                  AND NOT EXISTS (
+                          SELECT 1 FROM intelligence_quote_feedback f
+                           WHERE f.score_id = intelligence_quote_scores.id
+                      )
+                LIMIT %s""",
+            (company_id, int(retencao_dias), int(LOTE_EXPURGO)),
+        )
+        conn.commit()
+        total += apagadas
+        if apagadas < LOTE_EXPURGO:
+            break
+    return total
