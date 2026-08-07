@@ -211,22 +211,60 @@ $check(
 // CRLF — inclusive foi o que aconteceu ao escrever este guard: a árvore tinha
 // CRLF, o `git archive` entregava LF puro, e o guard bloqueou uma build
 // legítima. Alarme falso treina a ignorar o alarme.
+// ATENÇÃO ao que este check protege de verdade. Numa máquina Windows `core.eol`
+// vale `native`, então o `git archive` converte para CRLF TODO arquivo marcado
+// como texto que não tenha `eol=lf` explícito. O arquivo pode estar em LF no
+// disco E no blob e ainda assim chegar em CRLF na VPS.
+//
+// Foi o que aconteceu com a config do logrotate: por não ter extensão, nem
+// `*.sh` nem `*.cron` a alcançavam, e ela subiu com CRLF — que faz o logrotate
+// ignorar o arquivo inteiro, o mesmo modo de falha silencioso do cron.d.
+//
+// Ou seja, a lista abaixo não é decoração: todo arquivo que vá para a VPS e
+// seja lido por um parser que quebra com CR precisa de uma linha aqui.
 $declaracoes = (string) @file_get_contents($root . '/.gitattributes');
+$padroesObrigatorios = [
+    '*.cron'                       => '/^\*\.cron\s+text\s+eol=lf/m',
+    '*.sh'                         => '/^\*\.sh\s+text\s+eol=lf/m',
+    'tools/deploy/vps/logrotate/*' => '#^tools/deploy/vps/logrotate/\*\s+text\s+eol=lf#m',
+];
+$semDeclaracao = [];
+foreach ($padroesObrigatorios as $rotulo => $regex) {
+    if (preg_match($regex, $declaracoes) !== 1) {
+        $semDeclaracao[] = $rotulo;
+    }
+}
 $check(
-    '🔴 .gitattributes força LF em .cron e .sh (é o que protege o deploy)',
-    preg_match('/^\*\.cron\s+text\s+eol=lf/m', $declaracoes) === 1
-        && preg_match('/^\*\.sh\s+text\s+eol=lf/m', $declaracoes) === 1,
-    $declaracoes === '' ? '.gitattributes ausente' : 'declaração ausente ou alterada',
+    '🔴 .gitattributes força LF em tudo que a VPS lê linha a linha',
+    $declaracoes !== '' && $semDeclaracao === [],
+    $declaracoes === '' ? '.gitattributes ausente' : 'sem eol=lf: ' . implode(', ', $semDeclaracao),
 );
 
-$saidaArchive = [];
-$rc = 0;
-exec('git -C ' . escapeshellarg($root) . ' archive HEAD tools/deploy/vps/biomie.cron 2>&1 | tar -xO', $saidaArchive, $rc);
-$conteudoEntregue = implode("\n", $saidaArchive);
+// E o que o artefato ENTREGA, não o que a árvore tem: é o archive que vai para
+// produção. Conferir a árvore dá falso positivo em qualquer editor Windows —
+// aconteceu ao escrever este guard e bloqueou uma build legítima.
+$comCrNoArtefato = [];
+$naoInspecionados = [];
+foreach (['tools/deploy/vps/biomie.cron', 'tools/deploy/vps/logrotate/biomie'] as $caminho) {
+    $saidaArchive = [];
+    $rc = 0;
+    // Sem `2>/dev/null`: este guard roda na máquina de deploy, onde o `exec()`
+    // do PHP passa pelo cmd.exe, que trata `/dev/null` como caminho e falha com
+    // "O sistema não pode encontrar o caminho especificado" — o check reprovaria
+    // pelo redirecionamento, não pelo conteúdo.
+    exec('git -C ' . escapeshellarg($root) . ' archive HEAD ' . escapeshellarg($caminho) . ' | tar -xO', $saidaArchive, $rc);
+    if ($rc !== 0) {
+        $naoInspecionados[] = $caminho;
+    } elseif (str_contains(implode("\n", $saidaArchive), "\r")) {
+        $comCrNoArtefato[] = $caminho;
+    }
+}
 $check(
-    '🔴 o cron.d que o git archive entrega é LF puro',
-    $rc === 0 && !str_contains($conteudoEntregue, "\r"),
-    $rc !== 0 ? 'não consegui inspecionar o archive' : 'CR encontrado no artefato de deploy',
+    '🔴 os arquivos de config que o git archive entrega são LF puro',
+    $comCrNoArtefato === [] && $naoInspecionados === [],
+    $naoInspecionados !== []
+        ? 'não consegui inspecionar: ' . implode(', ', $naoInspecionados)
+        : 'CR no artefato de deploy: ' . implode(', ', $comCrNoArtefato),
 );
 
 // ─────────────────── 5. o forecast persistido tem tabela e destino declarado
