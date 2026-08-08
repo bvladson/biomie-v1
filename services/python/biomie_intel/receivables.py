@@ -96,6 +96,32 @@ ANTECIPACAO_IMPLAUSIVEL_DIAS = -30
 #: Abaixo disto o histórico do cliente não sustenta afirmação nenhuma.
 MIN_TITULOS_HISTORICO = 3
 
+#: Prazo (vencimento − emissão) até o qual um título SEM forma declarada é
+#: tratado como cobrança a prazo.
+#
+# ─── POR QUE ESTE PROXY PRECISA EXISTIR ─────────────────────────────────────
+# `forma_pagamento` é preenchida na BAIXA, não na emissão: está vazia em 96% dos
+# títulos ABERTOS contra 26% dos liquidados. Aplicar só a regra por forma aos
+# abertos deixava 532 de 554 como `indefinido` — o score cobriria R$ 187 mil de
+# uma exposição de R$ 6,29 milhões, e ERGOOFFICE e EXPERT sumiriam inteiras da
+# fila de cobrança.
+#
+# ─── POR QUE 45 DIAS, E O QUE ISSO CUSTA ────────────────────────────────────
+# Medido contra o subconjunto ONDE a forma é conhecida (4.747 títulos):
+#
+#     corte   acerto   captura do crédito real   cartão vazando
+#      30d    86,1%           76,5%                  12,0%
+#      45d    81,5%           85,2%                  19,2%
+#      60d    78,7%           93,1%                  24,2%
+#
+# 45 dias não maximiza o acerto — maximiza o erro CERTO. Perder dívida real a
+# faz sumir da fila em silêncio (dinheiro não cobrado); incluir um cartão a mais
+# custa alguém perder tempo com quem já pagou. O segundo é visível e barato.
+#
+# A inferência NUNCA se disfarça de fato: `base_classificacao` registra se veio
+# da forma ou do prazo, e o motivo na tela diz qual foi.
+PRAZO_CREDITO_REAL_DIAS = 45
+
 BANDA_ALTA = 65.0
 BANDA_MEDIA = 35.0
 
@@ -117,6 +143,32 @@ def classificar_universo(forma_pagamento: str | None) -> str:
     if chave in FORMAS_CREDITO_REAL:
         return "credito_real"
     return "indefinido"
+
+
+def classificar_titulo_aberto(
+    forma_pagamento: str | None, prazo_dias: int | None
+) -> tuple[str, str]:
+    """Universo de um título EM ABERTO, e em que base foi decidido.
+
+    Devolve `(universo, base)` com base em {"forma", "prazo", "desconhecido"}.
+
+    Separada de `classificar_universo` de propósito. Aquela vale para o
+    HISTÓRICO, onde só o fato serve: deixar inferência entrar no rótulo
+    contaminaria a taxa de atraso que o score usa como verdade. Aqui, no aberto,
+    a forma quase sempre falta e recusar tudo esconderia R$ 5 milhões — então a
+    inferência entra, mas identificada.
+    """
+    universo = classificar_universo(forma_pagamento)
+    if universo != "indefinido":
+        return universo, "forma"
+    if prazo_dias is None:
+        return "indefinido", "desconhecido"
+    if prazo_dias <= PRAZO_CREDITO_REAL_DIAS:
+        return "credito_real", "prazo"
+    # Prazo longo sem forma tem o mesmo perfil do cartão (131 dias de média),
+    # mas "parece cartão" não é "é cartão": fica indefinido e sai do score, com
+    # o tamanho aparecendo no resumo.
+    return "indefinido", "prazo"
 
 
 @dataclass
@@ -299,15 +351,21 @@ def avaliar(
     # quase todo boleto pareceria "exposição alta" — a comparação tem que ser
     # contra o que de fato disputa a fila de cobrança, não contra o que nem
     # entra nela.
-    cobraveis = [float(r["valor_aberto"]) for r in abertos
-                 if classificar_universo(r.get("forma_pagamento")) == "credito_real"]
+    def _prazo(linha: dict[str, Any]) -> int | None:
+        venc, emis = linha.get("data_vencimento"), linha.get("data_emissao")
+        return (venc - emis).days if venc and emis else None
+
+    classificado = [(linha, *classificar_titulo_aberto(linha.get("forma_pagamento"), _prazo(linha)))
+                    for linha in abertos]
+
+    cobraveis = [float(linha["valor_aberto"]) for linha, universo, _ in classificado
+                 if universo == "credito_real"]
     ordenados = sorted(cobraveis)
     mediana = ordenados[len(ordenados) // 2] if ordenados else 0.0
 
     saida: list[RiscoTitulo] = []
-    for r in abertos:
+    for r, universo, base in classificado:
         forma = str(r.get("forma_pagamento") or "")
-        universo = classificar_universo(forma)
         venc = r.get("data_vencimento")
         dias = (venc - as_of).days if venc else None
         valor = float(r["valor_aberto"])
@@ -330,12 +388,17 @@ def avaliar(
         # praticamente uma mentira: ele não está na fila de cobrança porque não
         # há o que cobrar, não porque o cliente é bom pagador.
         if universo != "credito_real":
-            motivo = ("Cartão/adquirente: o vencimento é repasse, não obrigação do cliente"
-                      if universo == "imediato"
-                      else "Forma de pagamento não informada — não dá para afirmar risco")
+            if universo == "imediato":
+                motivo = "Cartão/adquirente: o vencimento é repasse, não obrigação do cliente"
+            elif base == "prazo":
+                motivo = (f"Sem forma de pagamento e prazo de {_prazo(r)} dias — "
+                          f"perfil de cartão; não dá para afirmar cobrança")
+            else:
+                motivo = "Sem forma de pagamento e sem prazo calculável — não dá para afirmar risco"
             saida.append(RiscoTitulo(
                 **comum, score=None, band=None, reasons=[motivo],
-                features={"universo": universo, "motivo_sem_score": universo},
+                features={"universo": universo, "base_classificacao": base,
+                          "motivo_sem_score": universo},
             ))
             continue
 
@@ -354,6 +417,13 @@ def avaliar(
                 f"Cliente sem histórico suficiente ({h.titulos if h else 0} título(s) a prazo)"
             )
 
+        # A inferência nunca se disfarça de fato: quem olha a fila precisa saber
+        # que este título entrou por perfil de prazo, não por forma declarada.
+        if base == "prazo":
+            motivos.append(
+                f"Cobrança presumida pelo prazo de {_prazo(r)} dias (forma de pagamento não informada)"
+            )
+
         saida.append(RiscoTitulo(
             **comum,
             score=total,
@@ -361,6 +431,7 @@ def avaliar(
             reasons=motivos,
             features={
                 "universo": universo,
+                "base_classificacao": base,
                 "dias_para_vencer": dias,
                 "valor_aberto": valor,
                 "mediana_empresa": round(mediana, 2),
@@ -388,8 +459,11 @@ def resumo(scores: list[RiscoTitulo]) -> dict[str, Any]:
     """
     pontuados = [s for s in scores if s.score is not None]
     por_universo: dict[str, int] = {}
+    por_base: dict[str, int] = {}
     for s in scores:
         por_universo[s.universo] = por_universo.get(s.universo, 0) + 1
+        base = str(s.features.get("base_classificacao", "desconhecido"))
+        por_base[base] = por_base.get(base, 0) + 1
     bandas: dict[str, int] = {}
     for s in pontuados:
         bandas[str(s.band)] = bandas.get(str(s.band), 0) + 1
@@ -397,6 +471,9 @@ def resumo(scores: list[RiscoTitulo]) -> dict[str, Any]:
         "titulos": len(scores),
         "pontuados": len(pontuados),
         "por_universo": por_universo,
+        # Quanto da fila é FATO e quanto é inferência pelo prazo. Sem este
+        # número, 300 títulos presumidos parecem 300 títulos conhecidos.
+        "por_base_classificacao": por_base,
         "bandas": bandas,
         "exposicao_total": round(sum(s.valor_aberto for s in scores), 2),
         "exposicao_pontuada": round(sum(s.valor_aberto for s in pontuados), 2),

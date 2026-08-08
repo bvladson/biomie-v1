@@ -79,6 +79,50 @@ class TestClassificacaoDeUniverso(unittest.TestCase):
         self.assertIn("boleto", r.FORMAS_CREDITO_REAL)
 
 
+class TestClassificacaoDeTituloAberto(unittest.TestCase):
+    """`forma_pagamento` é preenchida na BAIXA — 96% dos abertos não têm.
+
+    Aplicar só a regra por forma aos abertos deixava 532 de 554 indefinidos: o
+    score cobriria R$ 187 mil de R$ 6,29 milhões, e ERGOOFFICE e EXPERT sumiriam
+    inteiras da fila. Por isso o prazo entra como proxy — identificado.
+    """
+
+    def test_forma_declarada_VENCE_o_prazo(self) -> None:
+        """Fato ganha de inferência, sempre — inclusive quando discordam."""
+        self.assertEqual(
+            r.classificar_titulo_aberto("Cartao Visa", prazo_dias=5), ("imediato", "forma"))
+        self.assertEqual(
+            r.classificar_titulo_aberto("Boleto", prazo_dias=300), ("credito_real", "forma"))
+
+    def test_sem_forma_e_prazo_curto_vira_credito_real_INFERIDO(self) -> None:
+        universo, base = r.classificar_titulo_aberto("", prazo_dias=20)
+        self.assertEqual(universo, "credito_real")
+        self.assertEqual(base, "prazo", "a inferência se passou por fato")
+
+    def test_sem_forma_e_prazo_longo_fica_indefinido(self) -> None:
+        """"Parece cartão" não é "é cartão" — sai do score, mas aparece no resumo."""
+        self.assertEqual(r.classificar_titulo_aberto("", prazo_dias=140), ("indefinido", "prazo"))
+
+    def test_sem_forma_e_sem_prazo_e_desconhecido(self) -> None:
+        self.assertEqual(r.classificar_titulo_aberto("", prazo_dias=None),
+                         ("indefinido", "desconhecido"))
+
+    def test_o_corte_esta_no_limite_declarado(self) -> None:
+        no_limite, _ = r.classificar_titulo_aberto("", r.PRAZO_CREDITO_REAL_DIAS)
+        passou, _ = r.classificar_titulo_aberto("", r.PRAZO_CREDITO_REAL_DIAS + 1)
+        self.assertEqual(no_limite, "credito_real")
+        self.assertEqual(passou, "indefinido")
+
+    def test_o_historico_NAO_usa_o_proxy(self) -> None:
+        """Inferência no rótulo contaminaria a taxa de atraso que o score
+        trata como verdade. `classificar_universo` só conhece fato."""
+        import inspect
+        fonte = inspect.getsource(r.carregar_historico)
+        self.assertIn("classificar_universo(", fonte)
+        self.assertNotIn("classificar_titulo_aberto", fonte)
+        self.assertNotIn("PRAZO_CREDITO_REAL_DIAS", fonte)
+
+
 class TestHistoricoSoContaCreditoReal(unittest.TestCase):
     """Cartão no histórico envenenaria a taxa de atraso do cliente."""
 
