@@ -273,18 +273,48 @@ final class OverviewDetailBuilder
             $params[':date_filter'] = $dateFilter;
         }
 
-        $sql = 'SELECT n.nota_key,
-                       n.chave_nfe,
-                       n.numero_nf,
-                       n.numero_nf AS code,
-                       n.data_competencia AS date,
-                       ' . $commercialBase . ' AS revenue,
-                       n.valor_total AS gross_revenue,
-                       COALESCE(n.nome_vendedor, \'Nao identificado\') AS vendor_name,
-                       COALESCE(n.nome_cliente, \'Cliente nao informado\') AS client
+        // UMA LINHA POR DIA, não por nota.
+        //
+        // Antes isto devolvia uma linha por NF, e a tela repetia a mesma data
+        // quatro vezes num painel chamado "Evolução" — que é uma série no
+        // tempo. Pior: a coluna "Pedidos" lia `orders`, que esta consulta nunca
+        // devolveu, então mostrava 0 em todas as linhas.
+        //
+        // Tudo abaixo sai da MESMA agregação, então o detalhe do dia não custa
+        // consulta nenhuma — mesma disciplina dos drawers de Produtos/Clientes.
+        //
+        // GROUP_CONCAT trunca em `group_concat_max_len` (1024 bytes por
+        // padrão), e o truncamento é silencioso. Aqui ele é inofensivo de
+        // propósito: em `top_invoice_*` a ordenação é por receita DESC e só o
+        // PRIMEIRO elemento é lido; nas listas de nomes, só os 6 primeiros. O
+        // que seria cortado está sempre depois do que se lê.
+        $clientKey  = "COALESCE(NULLIF(CAST(n.codigo_cliente_omie AS CHAR), ''), NULLIF(n.documento_cliente, ''), NULLIF(n.nome_cliente, ''))";
+        $vendorKey  = "COALESCE(NULLIF(n.codigo_vendedor_omie, ''), NULLIF(n.nome_vendedor, ''))";
+
+        $sql = 'SELECT n.data_competencia AS date,
+                       COUNT(*)                                   AS invoices_count,
+                       COUNT(DISTINCT ' . $clientKey . ')         AS customers_count,
+                       COUNT(DISTINCT ' . $vendorKey . ')         AS vendors_count,
+                       SUM(' . $commercialBase . ')               AS revenue,
+                       SUM(n.valor_total)                         AS gross_revenue,
+                       AVG(' . $commercialBase . ')               AS average_ticket,
+                       MAX(' . $commercialBase . ')               AS top_invoice_value,
+                       SUBSTRING_INDEX(GROUP_CONCAT(
+                           COALESCE(n.numero_nf, \'\') ORDER BY ' . $commercialBase . ' DESC SEPARATOR \'|\'
+                       ), \'|\', 1)                                 AS top_invoice_code,
+                       SUBSTRING_INDEX(GROUP_CONCAT(
+                           COALESCE(n.nome_cliente, \'Cliente nao informado\') ORDER BY ' . $commercialBase . ' DESC SEPARATOR \'|\'
+                       ), \'|\', 1)                                 AS top_invoice_client,
+                       SUBSTRING_INDEX(GROUP_CONCAT(
+                           DISTINCT COALESCE(NULLIF(n.nome_vendedor, \'\'), \'Nao identificado\') ORDER BY 1 SEPARATOR \'|\'
+                       ), \'|\', 6)                                 AS vendor_names,
+                       SUBSTRING_INDEX(GROUP_CONCAT(
+                           DISTINCT COALESCE(NULLIF(n.nome_cliente, \'\'), \'Cliente nao informado\') ORDER BY 1 SEPARATOR \'|\'
+                       ), \'|\', 6)                                 AS client_names
                 FROM biomie_notas_fiscais_canonicas n
                 WHERE ' . implode(' AND ', $where) . '
-                ORDER BY revenue DESC
+                GROUP BY n.data_competencia
+                ORDER BY n.data_competencia DESC
                 LIMIT :lim OFFSET :off';
 
         $stmt = $this->pdo->prepare($sql);

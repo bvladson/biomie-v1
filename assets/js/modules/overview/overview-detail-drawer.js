@@ -327,6 +327,16 @@
       return;
     }
 
+    // `pipeline_period` e `monthly_comparison` delegam ao MESMO handler de
+    // receita no PHP, entao tem a mesma forma de linha e usam o mesmo
+    // renderizador. Sem isto, os dois cairiam na tabela generica e exibiriam as
+    // chaves cruas da agregacao.
+    if (chartId === 'revenue_evolution' || chartId === 'pipeline_period' ||
+        chartId === 'monthly_comparison') {
+      renderRevenueEvolutionDetail(chartId, rows, data.summary);
+      return;
+    }
+
     renderGenericDetail(chartId, rows, data.summary);
   }
 
@@ -569,6 +579,66 @@
       detailItem('NF mais recente', row.latest_nf ? String(row.latest_nf) : 'Não informado') +
       detailItem('Vendedores que venderam', formatNumber(row.vendors_count, 0)) +
       detailItem('Quem vendeu', sellerList(row));
+  }
+
+  /** Lista separada por "|" vinda do GROUP_CONCAT, ja limitada no SQL. */
+  function pipeList(value) {
+    return String(value == null ? '' : value)
+      .split('|')
+      .map(function (item) { return decodeEntityText(item).trim(); })
+      .filter(function (item) { return item !== ''; });
+  }
+
+  function namesLabel(value, total) {
+    var names = pipeList(value);
+    if (!names.length) return null;
+    var restante = numberValue(total) - names.length;
+    return names.join(', ') + (restante > 0 ? ' e mais ' + formatNumber(restante, 0) : '');
+  }
+
+  /**
+   * Detalhes do DIA. Tudo vem da mesma agregacao da API, entao exibir aqui nao
+   * custa consulta nenhuma — mesma disciplina dos paineis de produto/cliente.
+   *
+   * `mediaDiaria` entra para o numero do dia ter contra o que ser lido: R$ 9 mil
+   * nao diz nada sozinho; "R$ 9 mil, 40% acima da media do periodo" diz.
+   */
+  function revenueEvolutionDetailPanel(row, mediaDiaria) {
+    var revenue = numberValue(row.revenue);
+    var invoices = numberValue(row.invoices_count);
+    var topValue = numberValue(row.top_invoice_value);
+    var topCode = decodeEntityText(row.top_invoice_code || '').trim();
+    var topClient = decodeEntityText(row.top_invoice_client || '').trim();
+
+    var maiorNf = topValue > 0
+      ? formatCurrency(topValue) +
+        (topCode ? ' — NF ' + topCode : '') +
+        (topClient ? ' — ' + topClient : '')
+      : null;
+
+    // Concentracao: uma unica NF respondendo pelo dia inteiro nao e "um bom
+    // dia", e um evento isolado — a mesma leitura que a coluna "Clientes" dos
+    // produtos permite fazer.
+    var concentracao = revenue > 0 && topValue > 0
+      ? formatNumber(topValue * 100 / revenue, 1) + '% do dia numa NF só'
+      : null;
+
+    var comparativo = null;
+    if (mediaDiaria > 0) {
+      var variacao = (revenue - mediaDiaria) * 100 / mediaDiaria;
+      comparativo = (variacao >= 0 ? '+' : '') + formatNumber(variacao, 1) + '% vs. média diária (' +
+        formatCurrency(mediaDiaria) + ')';
+    }
+
+    return detailItem('Ticket médio da NF', formatCurrency(
+        row.average_ticket != null ? row.average_ticket : (invoices > 0 ? revenue / invoices : 0))) +
+      detailItem('Maior NF do dia', maiorNf) +
+      detailItem('Concentração', concentracao) +
+      detailItem('Receita bruta', formatCurrency(row.gross_revenue)) +
+      detailItem('Desconto concedido', discountLabel(revenue, numberValue(row.gross_revenue) - revenue)) +
+      detailItem('Comparação', comparativo) +
+      detailItem('Vendedores do dia', namesLabel(row.vendor_names, row.vendors_count)) +
+      detailItem('Clientes atendidos', namesLabel(row.client_names, row.customers_count));
   }
 
   /** Ultima movimentacao como timestamp ordenavel; sem data vai para o fim. */
@@ -1115,14 +1185,96 @@
     return html + '</tbody></table></div>';
   }
 
+  /**
+   * Serie diaria com painel expansivel por dia.
+   *
+   * Substitui a tabela generica de 4 colunas, que repetia a mesma data uma vez
+   * por NF num painel chamado "Evolucao" e mostrava "Pedidos: 0" em todas as
+   * linhas — a coluna lia `orders`, que a API nunca devolveu para este grafico.
+   */
+  function renderRevenueEvolutionDetail(chartId, rows, summary) {
+    var totalRevenue = rows.reduce(function (sum, row) {
+      return sum + numberValue(row.revenue);
+    }, 0);
+    var totalInvoices = rows.reduce(function (sum, row) {
+      return sum + numberValue(row.invoices_count);
+    }, 0);
+    var mediaDiaria = rows.length > 0 ? totalRevenue / rows.length : 0;
+    var melhor = rows.reduce(function (melhorAteAgora, row) {
+      return numberValue(row.revenue) > numberValue(melhorAteAgora.revenue) ? row : melhorAteAgora;
+    }, rows[0]);
+
+    var kpis = [
+      ['Dias com faturamento', formatNumber(rows.length, 0)],
+      ['Receita no período', formatCurrency(totalRevenue)],
+      ['NFs', formatNumber(totalInvoices, 0)],
+      ['Média por dia', formatCurrency(mediaDiaria)],
+      ['Melhor dia', formatDate(melhor && melhor.date) + ' — ' + formatCurrency(melhor && melhor.revenue)]
+    ];
+
+    var html = '<div class="overview-ranking__kpis">';
+    kpis.forEach(function (kpi) {
+      html += '<div class="overview-ranking__kpi"><span>' + escapeHtml(kpi[0]) +
+        '</span><strong>' + escapeHtml(kpi[1]) + '</strong></div>';
+    });
+    html += '</div>';
+
+    html += '<div class="overview-ranking__table-wrap"><table class="mag-table"><thead><tr>' +
+      '<th class="overview-ranking__rank">#</th><th>Data</th>' +
+      '<th class="is-numeric">NFs</th><th class="is-numeric">Clientes</th>' +
+      '<th class="is-numeric">Vendedores</th><th class="is-numeric">Ticket médio</th>' +
+      '<th class="is-numeric">Receita</th><th class="is-numeric">Part.</th>' +
+      '</tr></thead><tbody>';
+
+    rows.forEach(function (row, index) {
+      var revenue = numberValue(row.revenue);
+      var invoices = numberValue(row.invoices_count);
+      var share = totalRevenue > 0 ? revenue * 100 / totalRevenue : 0;
+      html += '<tr>' + detailToggleCell('revenue', index) +
+        '<td>' + escapeHtml(formatDate(row.date)) + '</td>' +
+        '<td class="is-numeric">' + formatNumber(invoices, 0) + '</td>' +
+        '<td class="is-numeric">' + formatNumber(row.customers_count, 0) + '</td>' +
+        '<td class="is-numeric">' + formatNumber(row.vendors_count, 0) + '</td>' +
+        '<td class="is-numeric">' + formatCurrency(
+            row.average_ticket != null ? row.average_ticket : (invoices > 0 ? revenue / invoices : 0)) + '</td>' +
+        '<td class="is-numeric"><strong>' + formatCurrency(revenue) + '</strong></td>' +
+        '<td class="is-numeric"><span class="overview-ranking__share">' +
+          formatNumber(share, 1) + '%</span></td></tr>' +
+        detailRow('revenue', index, 8, revenueEvolutionDetailPanel(row, mediaDiaria));
+    });
+
+    html += '</tbody></table></div>';
+
+    // Este grafico nao devolve `summary` hoje; se passar a devolver, aparece no
+    // mesmo formato do restante do drawer em vez de ser silenciosamente
+    // descartado.
+    if (summary) {
+      var resumo = '<div class="module-tiny-kpis overview-detail-summary">';
+      Object.keys(summary).forEach(function (name) {
+        resumo += '<div class="mini"><span>' + escapeHtml(name.replace(/_/g, ' ')) +
+          '</span><strong>' + escapeHtml(summary[name]) + '</strong></div>';
+      });
+      html = resumo + '</div>' + html;
+    }
+
+    bodyEl.innerHTML = html;
+    bindDetailToggles(bodyEl);
+
+    // Um dia só na tela quase sempre é clique num ponto do gráfico: o usuário
+    // já disse qual dia quer, então fazê-lo clicar de novo para ver o detalhe
+    // seria pedir duas vezes a mesma coisa.
+    if (rows.length === 1) {
+      var toggle = bodyEl.querySelector('.overview-ranking__toggle');
+      if (toggle) toggle.click();
+    }
+  }
+
   function detectColumns(chartId, sample) {
+    // `revenue_evolution` saiu daqui: tem renderizador proprio
+    // (`renderRevenueEvolutionDetail`). O mapa antigo declarava uma coluna
+    // "Pedidos" lendo `orders`, campo que a API nunca devolveu para este
+    // grafico — deixar o mapa morto aqui manteria o contrato errado escrito.
     var maps = {
-      revenue_evolution: [
-        { key: 'date', label: 'Data', format: 'date' },
-        { key: 'orders', label: 'Pedidos', format: 'number' },
-        { key: 'revenue', label: 'Receita', format: 'currency' },
-        { key: 'vendor_name', label: 'Vendedor' }
-      ],
       vendor_ranking: [
         { key: 'vendor_name', label: 'Vendedor' },
         { key: 'orders', label: 'Pedidos', format: 'number' },

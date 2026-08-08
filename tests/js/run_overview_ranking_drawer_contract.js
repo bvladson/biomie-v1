@@ -30,6 +30,14 @@ const root = path.resolve(__dirname, '..', '..');
 const sourcePath = path.join(root, 'assets/js/modules/overview/overview-detail-drawer.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 
+// O contrato da serie diaria tem dois lados: a API agrega por dia e o drawer
+// sabe desenhar isso. Verificar so o JS deixaria passar o caso em que o PHP
+// volta a devolver uma linha por nota.
+const phpSource = fs.readFileSync(
+  path.join(root, 'app/Modules/Sales/Application/Overview/OverviewDetailBuilder.php'),
+  'utf8',
+);
+
 /** Extrai `function nome(...) { ... }` do fonte contando chaves. */
 function extract(name) {
   const marker = `function ${name}(`;
@@ -54,6 +62,8 @@ const names = [
   'decodeEntityText', 'normalizeText', 'parseLocaleNumber', 'numberValue',
   'sellerName', 'sellerNames', 'rowHasSeller', 'uniqueSellers',
   'recencyValue', 'serverTotal', 'csvCell', 'csvNumber',
+  // Serie diaria da "Evolucao da Receita".
+  'pipeList', 'namesLabel', 'formatNumber',
 ];
 
 // B (window.BIomie) nao existe aqui: as funcoes caem nos fallbacks nativos.
@@ -130,5 +140,45 @@ ok('CSV usa separador ; e BOM', source.includes("join(';')") && source.includes(
 // ── 6. Entidades HTML nao vazam para a tela ─────────────────────────────────
 ok('&amp;amp; volta a &', fn.decodeEntityText('F. A. S. MARTINS &amp;amp; CIA') === 'F. A. S. MARTINS & CIA');
 ok('&amp; volta a &', fn.decodeEntityText('MELO &amp; CONTADORES') === 'MELO & CONTADORES');
+
+// ── 7. Evolucao da Receita: serie DIARIA com detalhe do dia ─────────────────
+//
+// O drawer repetia a mesma data uma vez por NF num painel chamado "Evolucao", e
+// a coluna "Pedidos" lia `orders` — campo que a API nunca devolveu para este
+// grafico, entao mostrava 0 em todas as linhas.
+ok('a API agrega por dia, nao por nota',
+  phpSource.includes('GROUP BY n.data_competencia'));
+ok('a consulta devolve as contagens do dia',
+  ['invoices_count', 'customers_count', 'vendors_count'].every((c) => phpSource.includes(c + '')));
+ok('a consulta devolve a maior NF do dia',
+  phpSource.includes('top_invoice_value') && phpSource.includes('top_invoice_code'));
+ok('o drawer usa o renderizador proprio, nao a tabela generica',
+  source.includes("chartId === 'revenue_evolution'") &&
+  source.includes('renderRevenueEvolutionDetail(chartId, rows, data.summary)'));
+ok('pipeline_period e monthly_comparison compartilham o renderizador',
+  source.includes("chartId === 'pipeline_period'") &&
+  source.includes("chartId === 'monthly_comparison'"));
+ok('a coluna "Pedidos" (sempre 0) saiu do cabecalho da serie diaria',
+  !/<th class="is-numeric">Pedidos<\/th>/.test(source));
+ok('o mapa morto de revenue_evolution saiu do detectColumns',
+  !/revenue_evolution:\s*\[/.test(source));
+ok('vendor_ranking, que TEM orders, continua no mapa',
+  /vendor_ranking:\s*\[/.test(source));
+
+// GROUP_CONCAT chega como "A|B|C" e nao pode vazar separador para a tela.
+ok('lista separada por | vira array', JSON.stringify(fn.pipeList('ANA|BRUNO')) === '["ANA","BRUNO"]');
+ok('item vazio some da lista', JSON.stringify(fn.pipeList('ANA||BRUNO')) === '["ANA","BRUNO"]');
+ok('valor nulo vira lista vazia', fn.pipeList(null).length === 0);
+ok('entidade HTML e decodificada na lista',
+  fn.pipeList('MELO &amp;amp; CIA')[0] === 'MELO & CIA');
+
+// O SQL corta em 6 nomes; o rotulo tem que dizer que ha mais, senao 6 de 30
+// parece a lista inteira — o mesmo erro do LIMIT sem aviso do item 3.
+ok('rotulo declara quantos ficaram de fora',
+  fn.namesLabel('A|B', 5) === 'A, B e mais 3');
+ok('sem sobra nao inventa sufixo', fn.namesLabel('A|B', 2) === 'A, B');
+ok('total menor que a lista nao gera texto negativo',
+  fn.namesLabel('A|B', 1) === 'A, B');
+ok('lista vazia devolve nulo (detailItem some)', fn.namesLabel('', 0) === null);
 
 console.log(JSON.stringify({ ok: true, checks }, null, 2));
