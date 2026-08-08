@@ -4,7 +4,13 @@ set -u
 # Digest de notificações (webhooks + sync) a cada 6h → Telegram + sininho.
 # Cron (hPanel, Custom): 0 */6 * * * /bin/sh /home/.../biomie/cron/hostinger/notifications_digest.sh
 
-PROJECT_ROOT="${BIOMIE_PROJECT_ROOT:-/home/u106688109/domains/magmoveiscorporativos.com.br/public_html/biomie}"
+# Raiz DERIVADA da propria localizacao do script, nao chumbada.
+#
+# O default aqui era o caminho do HOST ANTIGO. Funcionava so porque
+# /etc/cron.d/biomie define BIOMIE_PROJECT_ROOT -- tire a variavel, ou rode o
+# script a mao, e ele passa a apontar para um diretorio de OUTRA maquina, em
+# silencio. Derivar de $0 esta certo nas duas maquinas e em qualquer release.
+PROJECT_ROOT="${BIOMIE_PROJECT_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 PHP_BIN="${BIOMIE_PHP_BIN:-/usr/bin/php}"
 LOG_DIR="$PROJECT_ROOT/storage/logs/cron"
 LOCK_DIR="$PROJECT_ROOT/storage/locks"
