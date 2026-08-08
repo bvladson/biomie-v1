@@ -41,6 +41,66 @@ chmod 700 "$DEST"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] db_backup $*" >> "$LOG_FILE"; }
 
+# ---------------------------------------------------------------- COPIA EXTERNA
+#
+# O dump local protege do risco mais provavel (DROP errado, UPDATE sem WHERE,
+# migration que corrompeu dado). NAO protege de perda do disco nem de
+# comprometimento da maquina, porque mora no mesmo disco do banco. Esta etapa
+# fecha esse buraco levando o dump para OUTRA maquina.
+#
+# Destino: o host antigo da Hostinger, que ja e do usuario e ja contem os mesmos
+# dados (o legado). Nao e um terceiro novo, e um segundo lugar.
+#
+# LIMITE HONESTO: quem controla a VPS controla a chave, entao um comprometimento
+# total da VPS alcanca as copias. Mitigado (chave dedicada, restrita por IP de
+# origem, sem tty e sem encaminhamento), nao eliminado. Imutabilidade de verdade
+# exigiria object-lock no destino, que hospedagem compartilhada nao oferece.
+OFFSITE_HOST="${BIOMIE_OFFSITE_HOST:-82.112.247.199}"
+OFFSITE_PORT="${BIOMIE_OFFSITE_PORT:-65002}"
+OFFSITE_USER="${BIOMIE_OFFSITE_USER:-u106688109}"
+OFFSITE_KEY="${BIOMIE_OFFSITE_KEY:-/root/.ssh/id_ed25519_offsite}"
+OFFSITE_DIR="${BIOMIE_OFFSITE_DIR:-backups/biomie-db}"
+OFFSITE_RETENCAO="${BIOMIE_OFFSITE_RETENCAO:-7}"
+
+offsite_ssh() {
+    ssh -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new \
+        -i "$OFFSITE_KEY" -p "$OFFSITE_PORT" "$OFFSITE_USER@$OFFSITE_HOST" "$@"
+}
+
+enviar_offsite() {
+    ARQUIVO="$1"
+    NOME=$(basename "$ARQUIVO")
+
+    if [ ! -r "$OFFSITE_KEY" ]; then
+        log "OFFSITE IGNORADO: chave ausente em $OFFSITE_KEY"
+        return 1
+    fi
+
+    if ! scp -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new \
+            -i "$OFFSITE_KEY" -P "$OFFSITE_PORT" -q \
+            "$ARQUIVO" "$OFFSITE_USER@$OFFSITE_HOST:$OFFSITE_DIR/" 2>>"$LOG_FILE"; then
+        log "OFFSITE FALHOU: erro no envio de $NOME"
+        return 1
+    fi
+
+    # HASH DOS DOIS LADOS. Transferencia interrompida deixa um arquivo com
+    # tamanho plausivel que abre no gzip e restaura pela metade — exatamente o
+    # modo de falha que o marcador "Dump completed" pega no dump local. Comparar
+    # o sha256 e o equivalente para a copia.
+    LOCAL_HASH=$(sha256sum "$ARQUIVO" | cut -d' ' -f1)
+    REMOTO_HASH=$(offsite_ssh "sha256sum '$OFFSITE_DIR/$NOME' 2>/dev/null | cut -d' ' -f1")
+    if [ "$LOCAL_HASH" != "$REMOTO_HASH" ]; then
+        log "OFFSITE FALHOU: hash diverge (local=$(echo "$LOCAL_HASH" | cut -c1-12) remoto=$(echo "${REMOTO_HASH:-vazio}" | cut -c1-12)) — copia removida"
+        offsite_ssh "rm -f '$OFFSITE_DIR/$NOME'" >/dev/null 2>&1
+        return 1
+    fi
+
+    REMOTOS=$(offsite_ssh "find '$OFFSITE_DIR' -maxdepth 1 -name 'biomie-*.sql.gz' -mtime +$OFFSITE_RETENCAO -delete 2>/dev/null; find '$OFFSITE_DIR' -maxdepth 1 -name 'biomie-*.sql.gz' | wc -l")
+    log "OFFSITE OK $NOME verificado por sha256 · $REMOTOS copia(s) em $OFFSITE_HOST"
+    date -u '+%Y-%m-%dT%H:%M:%SZ' > "$DEST/.offsite-last-ok" 2>/dev/null
+    return 0
+}
+
 DUMP_BIN=""
 for c in mariadb-dump mysqldump; do
     command -v "$c" >/dev/null 2>&1 && DUMP_BIN="$c" && break
@@ -91,6 +151,16 @@ executar() {
 
     RESTANTES=$(find "$DEST" -maxdepth 1 -name 'biomie-*.sql.gz' | wc -l)
     log "retidos $RESTANTES backup(s) · $(du -sh "$DEST" | cut -f1) no total"
+
+    # A copia externa vem DEPOIS do dump validado e do expurgo: so faz sentido
+    # levar para fora um arquivo que ja se provou integro.
+    #
+    # Falha aqui NAO invalida o backup local — ele existe e protege do risco mais
+    # provavel. Mas tambem nao pode virar sucesso silencioso: sai no codigo 10,
+    # que o log do cron registra e que se distingue de "o dump falhou" (1).
+    if ! enviar_offsite "$ALVO"; then
+        return 10
+    fi
     return 0
 }
 
@@ -102,5 +172,6 @@ else
     executar; code=$?
 fi
 [ "$code" -eq 75 ] && log "IGNORADO: outra execucao em andamento"
+[ "$code" -eq 10 ] && log "ATENCAO: backup local OK, copia externa FALHOU"
 log "finish exit=$code"
 exit "$code"
