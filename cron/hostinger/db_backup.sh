@@ -19,6 +19,13 @@
 # mais forte do que e verdade.
 set -u
 
+# 0077 ANTES de qualquer criacao. Sem isto o dump nascia 0644 — 130 MB com o
+# negocio inteiro das cinco empresas legivel por qualquer conta do sistema. A
+# permissao 0700 do diretorio mascarava o problema, entao ele so apareceria no
+# dia em que alguem copiasse o arquivo para outro lugar. Descoberto testando o
+# proprio backup.
+umask 0077
+
 DB="${BIOMIE_DB_NAME:-biomie}"
 DEST="${BIOMIE_BACKUP_DIR:-/var/backups/biomie}"
 RETENCAO_DIAS="${BIOMIE_BACKUP_RETENCAO:-14}"
@@ -27,6 +34,9 @@ LOG_FILE="$LOG_DIR/db_backup.log"
 LOCK_FILE="${BIOMIE_PROJECT_ROOT:-/var/www/biomie/live}/storage/locks/db_backup.lock"
 
 mkdir -p "$DEST" "$LOG_DIR" "$(dirname "$LOCK_FILE")" || exit 1
+# Dono root, nao a conta da aplicacao: se o processo do app for comprometido, ele
+# nao pode apagar nem adulterar os backups — que e metade do valor de ter backup.
+chown root:root "$DEST" 2>/dev/null || true
 chmod 700 "$DEST"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] db_backup $*" >> "$LOG_FILE"; }
@@ -69,6 +79,7 @@ executar() {
         return 1
     fi
 
+    chmod 600 "$ALVO"
     TAMANHO=$(du -h "$ALVO" | cut -f1)
     TABELAS=$(gzip -dc "$ALVO" | grep -c "^CREATE TABLE")
     log "OK $(basename "$ALVO") $TAMANHO $TABELAS tabelas"
