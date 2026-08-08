@@ -51,6 +51,17 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # fonte x mart. O dead-man switch fiscal_mart admite uma execução perdida (30h).
 45 1 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/fiscal_mart.sh
 
+# --- backup do banco ---------------------------------------------------------
+# Ate 2026-08-07 a VPS nao tinha backup automatizado NENHUM: so tres dumps
+# soltos em /root, todos do dia do corte da migracao. Este projeto ja perdeu
+# producao uma vez (2026-07-10, aplicacao apagada do servidor).
+#
+# 03:00: depois do fiscal_mart (01:45) e antes do geo_backtest (04:20) — a
+# janela mais quieta da madrugada. Roda como ROOT, nao www-data: o dump usa o
+# socket unix com autenticacao por unix_socket, entao nao precisa de senha em
+# arquivo nenhum. Retencao de 14 dias em /var/backups/biomie (0700).
+0 3 * * *      root     /bin/sh /var/www/biomie/live/cron/hostinger/db_backup.sh
+
 # --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
 30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh
 0  23 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/compute_forecasts.sh
