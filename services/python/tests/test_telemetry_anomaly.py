@@ -137,6 +137,40 @@ class TestVolume(unittest.TestCase):
                              _janela("sync", "s", "recente", 700)])
         self.assertEqual([a for a in achados if a.anomaly_type == "volume_sumiu"], [])
 
+    def test_endpoint_HTTP_sem_trafego_NAO_e_incidente(self) -> None:
+        """Ninguém abriu o painel ≠ o painel quebrou.
+
+        A primeira versão apontou `http.commercial_dashboard`,
+        `http.global_search` e `http.set_context` como CRÍTICOS por zero
+        execuções. Nenhum estava quebrado. Três falsos críticos ao lado de um
+        `sync.backfill` real ensinam a ignorar a lista.
+        """
+        self.assertEqual(_detectar([_janela("http", "http.commercial_dashboard", "baseline", 55)]), [])
+        self.assertEqual(
+            [a for a in _detectar([_janela("http", "http.x", "baseline", 2800),
+                                   _janela("http", "http.x", "recente", 70)])
+             if a.anomaly_type == "volume_sumiu"],
+            [],
+        )
+
+    def test_webhook_que_parou_CONTINUA_sendo_incidente(self) -> None:
+        """Ele não depende do nosso agendador, mas depende de a Omie chamar —
+        e parar de receber webhook é o silêncio que já custou caro aqui."""
+        achados = _detectar([_janela("webhook", "http.omie_webhook", "baseline", 2800)])
+        self.assertTrue(achados, "webhook parado deixou de ser reportado")
+        self.assertEqual(achados[0].severity, "critico")
+
+    def test_o_erro_e_a_latencia_CONTINUAM_valendo_para_http(self) -> None:
+        """A exceção é só de VOLUME. Endpoint HTTP que passa a falhar ou a
+        ficar lento continua sendo problema nosso."""
+        achados = _detectar([
+            _janela("http", "http.overview", "baseline", 400, falhas=0, ms_medio=100, ms_desvio=20),
+            _janela("http", "http.overview", "recente", 100, falhas=40, ms_medio=5000, ms_desvio=800),
+        ])
+        tipos = {a.anomaly_type for a in achados}
+        self.assertIn("taxa_erro", tipos)
+        self.assertIn("latencia", tipos)
+
 
 class TestAmostraPequena(unittest.TestCase):
     def test_baseline_curto_nao_produz_veredito(self) -> None:

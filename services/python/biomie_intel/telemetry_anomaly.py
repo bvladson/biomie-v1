@@ -62,6 +62,24 @@ FATOR_LATENCIA_MINIMO = 1.5
 #: Queda de volume a partir da qual se suspeita que algo parou de rodar.
 QUEDA_VOLUME_MINIMA = 0.70
 
+#: Domínios em que o trabalho é AGENDADO ou disparado de fora — os únicos onde
+#: "parou de acontecer" é falha.
+#
+# ─── POR QUE ESTA LISTA EXISTE ──────────────────────────────────────────────
+# A primeira versão aplicava `volume_sumiu` a tudo e apontou três "críticos":
+# `http.commercial_dashboard`, `http.global_search` e `http.set_context` com ZERO
+# execuções em 7 dias. Nenhum estava quebrado — ninguém clicou. Volume de
+# endpoint HTTP é comportamento de USUÁRIO: um painel que passou a semana sem ser
+# aberto é sinal de produto, não incidente.
+#
+# E o custo de errar aqui não é cosmético: três falsos críticos ao lado de um
+# `sync.backfill` que passou de 1% para 27% de falha ensinam a ignorar a lista.
+#
+# `webhook` fica DENTRO de propósito: ele não depende do nosso agendador, mas
+# depende da Omie continuar chamando — e parar de receber webhook é exatamente o
+# tipo de silêncio que já custou caro aqui.
+DOMINIOS_COM_VOLUME_ESPERADO = frozenset({"sync", "omie", "webhook", "job", "cron"})
+
 
 @dataclass
 class OpsAnomalia:
@@ -194,12 +212,18 @@ def _regressao_latencia(dom: str, span: str, r: dict, b: dict) -> OpsAnomalia | 
 
 
 def _volume_sumiu(dom: str, span: str, r: dict, b: dict) -> OpsAnomalia | None:
-    """Span que quase parou de acontecer.
+    """Span AGENDADO que quase parou de acontecer.
 
     É o modo de falha mais silencioso de todos: nada dá erro, o alerta de
     latência não dispara, e o trabalho simplesmente deixou de ser feito. Foi
     assim que o mart fiscal ficou 43 dias parado sem ninguém notar.
+
+    Só vale onde o volume é ESPERADO (ver `DOMINIOS_COM_VOLUME_ESPERADO`): em
+    endpoint HTTP, volume é comportamento de usuário, e "ninguém abriu o painel"
+    não é incidente.
     """
+    if dom not in DOMINIOS_COM_VOLUME_ESPERADO:
+        return None
     esperado_por_dia = b["execucoes"] / JANELA_BASELINE_DIAS
     observado_por_dia = r["execucoes"] / JANELA_RECENTE_DIAS
     if esperado_por_dia <= 0:
@@ -239,6 +263,11 @@ def detectar(
         # recente, senão o span que parou completamente é justamente o que
         # escapa por não ter execuções suficientes para ser avaliado.
         if not r or r["execucoes"] == 0:
+            # Endpoint HTTP sem tráfego é usuário que não clicou, não sistema
+            # parado. Reportar isso como crítico ao lado de um sync quebrado
+            # ensina a ignorar a lista.
+            if dom not in DOMINIOS_COM_VOLUME_ESPERADO:
+                continue
             achados.append(OpsAnomalia(
                 anomaly_type="volume_sumiu", domain_name=dom, span_name=span,
                 severity="critico",
