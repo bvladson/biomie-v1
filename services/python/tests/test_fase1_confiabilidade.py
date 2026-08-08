@@ -327,6 +327,8 @@ class TestJanelaDeInatividade(unittest.TestCase):
     CADENCIAS_HORAS = {
         "quote_score": 2, "insights": 6, "forecast": 24,
         "geo_intelligence": 24, "fiscal_mart": 24, "geo_backtest": 168,
+        # `40 5 * * *` e `15 6 * * *` — os dois 1x/dia.
+        "receivable_risk": 24, "ops_anomaly": 24,
     }
 
     def test_os_jobs_conhecidos_continuam_declarados(self) -> None:

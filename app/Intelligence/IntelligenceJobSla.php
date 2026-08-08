@@ -53,6 +53,12 @@ final class IntelligenceJobSla
         // referencia, entao a resposta so muda quando um mes novo termina.
         // 192h = 8 dias, a mesma folga de uma execucao perdida dos demais.
         'geo_backtest'     => 192,
+        // Risco de atraso em recebiveis: cron `40 5 * * *`, 1x/dia. O que ele
+        // vigia sao R$ 6,29 mi em aberto — parar sem ninguem ver e caro.
+        'receivable_risk'  => 30,
+        // Anomalias operacionais: cron `15 6 * * *`, 1x/dia. Compara 7 dias
+        // contra 28, entao um dia perdido nao muda a resposta.
+        'ops_anomaly'      => 30,
     ];
 
     /** @return list<string> */

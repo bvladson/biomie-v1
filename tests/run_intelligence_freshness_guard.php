@@ -52,6 +52,8 @@ $jobParaScript = [
     'geo_intelligence' => 'intelligence_geo.sh',
     'fiscal_mart' => 'fiscal_mart.sh',
     'geo_backtest' => 'geo_backtest.sh',
+    'receivable_risk' => 'intelligence_receivables.sh',
+    'ops_anomaly' => 'intelligence_ops_anomaly.sh',
 ];
 
 // ─────────────────────────────────────── 1. os dois idiomas concordam?

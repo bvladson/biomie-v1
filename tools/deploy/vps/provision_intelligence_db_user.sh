@@ -62,6 +62,13 @@ GRANT SELECT ON ${DB}.biomie_sales_targets_monthly            TO '${USER_NAME}'@
 GRANT SELECT ON ${DB}.biomie_sales_target_levels              TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.mart_compradores_por_geo                TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT ON ${DB}.mart_fiscal_items                       TO '${USER_NAME}'@'127.0.0.1';
+-- Recebiveis: o historico de pagamento E o rotulo. Sem esta leitura o score de
+-- risco nao teria como distinguir bom de mau pagador -- e, pior, o `except` de
+-- alguem transformaria "sem acesso" em "cliente sem historico", que e o mesmo
+-- acidente que o forecast ja teve com as metas.
+GRANT SELECT ON ${DB}.biomie_titulos_financeiros_canonicos    TO '${USER_NAME}'@'127.0.0.1';
+-- Telemetria operacional: 463 mil spans, o maior conjunto do sistema.
+GRANT SELECT ON ${DB}.biomie_operational_spans                TO '${USER_NAME}'@'127.0.0.1';
 
 -- ESCRITA: exatamente as tabelas de WRITABLE_TABLES em config.py.
 -- As duas listas são declarações da mesma verdade; tests/test_permissions.py
@@ -95,6 +102,8 @@ GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_geo_backtests   TO '${USER_NA
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_geo_scores    TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_coherence TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_anomalies TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_receivable_risk  TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_ops_anomalies    TO '${USER_NAME}'@'127.0.0.1';
 
 -- intelligence_insights ESTAVA FALTANDO AQUI.
 --

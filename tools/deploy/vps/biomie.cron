@@ -50,6 +50,12 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # Reconstrói o mart fiscal por empresa e, somente após sucesso, persiste a prova
 # fonte x mart. O dead-man switch fiscal_mart admite uma execução perdida (30h).
 45 1 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/fiscal_mart.sh
+# Risco de atraso dos títulos em aberto (R$ 6,29 mi de exposição). Depois do
+# forecast mensal (05:10) e sem concorrer com a materialização da madrugada.
+40 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_receivables.sh
+# Anomalias na telemetria operacional. 06:15: com a madrugada inteira já
+# fechada, para a janela de 7 dias não terminar no meio de um lote.
+15 6 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_ops_anomaly.sh
 
 # --- backup do banco ---------------------------------------------------------
 # Ate 2026-08-07 a VPS nao tinha backup automatizado NENHUM: so tres dumps

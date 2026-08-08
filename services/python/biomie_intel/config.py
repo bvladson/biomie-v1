@@ -37,6 +37,8 @@ WRITABLE_TABLES = (
     "intelligence_geo_backtests",
     "intelligence_fiscal_coherence",
     "intelligence_fiscal_anomalies",
+    "intelligence_receivable_risk",
+    "intelligence_ops_anomalies",
 )
 
 # Tabelas que este serviço LÊ. Mesma disciplina da lista acima, e pelo mesmo
@@ -58,6 +60,12 @@ READABLE_TABLES = (
     "biomie_sales_target_levels",
     "mart_compradores_por_geo",
     "mart_fiscal_items",
+    # Recebiveis: o historico de pagamento e o rotulo, e a leitura precisa ser
+    # provada tabela a tabela — sem GRANT, o forecast ja transformou "sem acesso"
+    # em "sem meta" uma vez.
+    "biomie_titulos_financeiros_canonicos",
+    # Telemetria: 463 mil spans, o maior conjunto do sistema.
+    "biomie_operational_spans",
 )
 
 

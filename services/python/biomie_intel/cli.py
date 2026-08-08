@@ -29,6 +29,8 @@ from . import geo_intelligence as geo_intelligence_mod
 from . import fiscal_coherence as fiscal_coherence_mod
 from . import model as model_mod
 from . import quotes as quotes_mod
+from . import receivables as receivables_mod
+from . import telemetry_anomaly as telemetry_mod
 from .config import ConfigError, load_settings
 from .db import connect, fetch_all
 from .jobs import track
@@ -370,6 +372,82 @@ def cmd_forecast_mensal(args, settings, logger) -> int:
     )
 
 
+def cmd_receivables(args, settings, logger) -> int:
+    """Risco de atraso dos titulos em aberto.
+
+    O resumo devolve `por_universo` de proposito: sem ele, "12 titulos de alto
+    risco" parece cobertura completa quando pode ser 12 de 40 pontuaveis num
+    universo de 554 — o resto sendo cartao, onde o vencimento nem e obrigacao do
+    cliente.
+    """
+    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+    saidas: list[dict[str, Any]] = []
+
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            scores = receivables_mod.avaliar(conn, empresa.id, as_of)
+            info = receivables_mod.resumo(scores)
+
+            if args.dry_run:
+                saidas.append({"empresa": empresa.slug, **info, "gravado": False})
+                continue
+
+            with track(conn, "receivable_risk", company_id=empresa.id,
+                       run_mode=settings.run_mode, correlation_id=args.correlation_id,
+                       model_version=receivables_mod.MODEL_VERSION) as run:
+                gravados = receivables_mod.persist(conn, empresa.id, scores, run.id)
+                run.rows_in = len(scores)
+                run.rows_out = gravados
+                run.metrics = info
+
+            saidas.append({"empresa": empresa.slug, **info, "gravado": True})
+
+    return _saida({"ok": True, "comando": "receivables",
+                   "as_of": as_of.isoformat(), "empresas": saidas})
+
+
+def cmd_ops_anomaly(args, settings, logger) -> int:
+    """Anomalias operacionais na telemetria.
+
+    Sem `--company`: span de sync e de HTTP e infraestrutura, nao dado de
+    tenant. Forcar um recorte por empresa inventaria uma dimensao que o dado nao
+    tem — e faria o mesmo achado aparecer cinco vezes.
+    """
+    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+
+    with connect(settings) as conn:
+        achados = telemetry_mod.detectar(conn, as_of)
+        por_tipo: dict[str, int] = {}
+        por_severidade: dict[str, int] = {}
+        for a in achados:
+            por_tipo[a.anomaly_type] = por_tipo.get(a.anomaly_type, 0) + 1
+            por_severidade[a.severity] = por_severidade.get(a.severity, 0) + 1
+
+        if args.dry_run:
+            return _saida({
+                "ok": True, "comando": "ops-anomaly", "as_of": as_of.isoformat(),
+                "achados": [{"tipo": a.anomaly_type, "span": a.span_name,
+                             "severidade": a.severity, "titulo": a.title,
+                             "corpo": a.body} for a in achados],
+                "gravado": False,
+            })
+
+        with track(conn, "ops_anomaly", company_id=None,
+                   run_mode=settings.run_mode, correlation_id=args.correlation_id,
+                   model_version=telemetry_mod.MODEL_VERSION) as run:
+            gravados = telemetry_mod.persist(conn, achados, run.id)
+            run.rows_in = sum(a.amostra_recente for a in achados)
+            run.rows_out = gravados
+            run.metrics = {"por_tipo": por_tipo, "por_severidade": por_severidade}
+
+    return _saida({
+        "ok": True, "comando": "ops-anomaly", "as_of": as_of.isoformat(),
+        "achados": len(achados), "por_tipo": por_tipo, "por_severidade": por_severidade,
+        "detalhe": [{"tipo": a.anomaly_type, "span": a.span_name,
+                     "severidade": a.severity, "titulo": a.title} for a in achados[:10]],
+    })
+
+
 def cmd_compare(args, settings, logger) -> int:
     """Compara baseline e shadow lado a lado — a evidência para decidir ativar."""
     with connect(settings) as conn:
@@ -559,6 +637,15 @@ def build_parser() -> argparse.ArgumentParser:
     fiscal.add_argument("--company", default="all")
     fiscal.add_argument("--dry-run", action="store_true")
 
+    rec = sub.add_parser("receivables", help="risco de atraso dos titulos em aberto")
+    rec.add_argument("--company", default="all")
+    rec.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
+    rec.add_argument("--dry-run", action="store_true")
+
+    ops = sub.add_parser("ops-anomaly", help="anomalias operacionais na telemetria (sem recorte por empresa)")
+    ops.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
+    ops.add_argument("--dry-run", action="store_true")
+
     sub.add_parser("compare", help="baseline vs shadow lado a lado")
     return p
 
@@ -585,6 +672,8 @@ def main(argv: list[str] | None = None) -> int:
         "geo-intelligence": cmd_geo_intelligence,
         "geo-backtest": cmd_geo_backtest,
         "fiscal-coherence": cmd_fiscal_coherence,
+        "receivables": cmd_receivables,
+        "ops-anomaly": cmd_ops_anomaly,
         "compare": cmd_compare,
     }
     try:

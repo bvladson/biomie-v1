@@ -33,8 +33,12 @@ from .insights import UNIVERSO_COMERCIAL
 # geo_backtest roda 1x/semana (`20 4 * * 1`): 54h nao serve de limite semanal,
 # entao o dead-man switch dele usa 8 dias — cadencia semanal exige folga de
 # uma execucao perdida, como todos os outros.
+# receivable_risk: cron `40 5 * * *` (1x/dia) — 30h cobre uma execucao perdida.
+# ops_anomaly: cron `15 6 * * *` (1x/dia). Compara 7 dias contra 28, entao um dia
+# a mais ou a menos nao muda a resposta; 30h e folga, nao tolerancia.
 MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30,
-                  "geo_intelligence": 30, "fiscal_mart": 30, "geo_backtest": 192}
+                  "geo_intelligence": 30, "fiscal_mart": 30, "geo_backtest": 192,
+                  "receivable_risk": 30, "ops_anomaly": 30}
 
 #: tabelas sem as quais a camada não funciona — a checagem de existência
 TABELAS_OBRIGATORIAS = (
@@ -47,6 +51,8 @@ TABELAS_OBRIGATORIAS = (
     "intelligence_geo_backtests",
     "intelligence_fiscal_coherence",
     "intelligence_fiscal_anomalies",
+    "intelligence_receivable_risk",
+    "intelligence_ops_anomalies",
 )
 
 #: MySQL 1142 = comando negado para o usuário — falta de GRANT, não de tabela
