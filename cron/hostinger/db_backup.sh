@@ -62,6 +62,38 @@ OFFSITE_KEY="${BIOMIE_OFFSITE_KEY:-/root/.ssh/id_ed25519_offsite}"
 OFFSITE_DIR="${BIOMIE_OFFSITE_DIR:-backups/biomie-db}"
 OFFSITE_RETENCAO="${BIOMIE_OFFSITE_RETENCAO:-7}"
 
+# ------------------------------------------------------- STATUS PARA O SENTINEL
+#
+# Um backup que para de rodar em silencio nao e melhor que backup nenhum — e
+# pior, porque produz confianca. Mas o OpsSentinel roda como www-data e
+# /var/backups/biomie e 0700 root: ele NAO consegue olhar o diretorio, e afrouxar
+# essa permissao para ganhar monitoramento seria trocar a protecao pelo alarme.
+#
+# Entao o script PUBLICA um resumo — so metadados, nenhum dado do negocio — num
+# arquivo que o www-data le. O sentinel julga o frescor a partir dele.
+STATUS_DIR="${BIOMIE_PROJECT_ROOT:-/var/www/biomie/live}/storage/ops"
+STATUS_FILE="$STATUS_DIR/backup-status.json"
+
+publicar_status() {
+    RETIDOS="$1"
+    OFF_OK=$(cat "$DEST/.offsite-last-ok" 2>/dev/null || echo "")
+    mkdir -p "$STATUS_DIR" 2>/dev/null
+    # 0644 de proposito: sao metadados (datas, contagens, tamanho), e o sentinel
+    # precisa ler. Os dumps continuam 0600 root.
+    cat > "$STATUS_FILE" <<JSON
+{
+  "last_ok": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+  "arquivo": "$(basename "${ALVO:-}")",
+  "bytes": $(stat -c%s "${ALVO:-/dev/null}" 2>/dev/null || echo 0),
+  "retidos_local": ${RETIDOS:-0},
+  "retencao_dias": ${RETENCAO_DIAS:-0},
+  "offsite_host": "$OFFSITE_HOST",
+  "offsite_last_ok": "$OFF_OK"
+}
+JSON
+    chmod 644 "$STATUS_FILE" 2>/dev/null
+}
+
 offsite_ssh() {
     ssh -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new \
         -i "$OFFSITE_KEY" -p "$OFFSITE_PORT" "$OFFSITE_USER@$OFFSITE_HOST" "$@"
@@ -151,6 +183,7 @@ executar() {
 
     RESTANTES=$(find "$DEST" -maxdepth 1 -name 'biomie-*.sql.gz' | wc -l)
     log "retidos $RESTANTES backup(s) · $(du -sh "$DEST" | cut -f1) no total"
+    publicar_status "$RESTANTES"
 
     # A copia externa vem DEPOIS do dump validado e do expurgo: so faz sentido
     # levar para fora um arquivo que ja se provou integro.
@@ -159,8 +192,10 @@ executar() {
     # provavel. Mas tambem nao pode virar sucesso silencioso: sai no codigo 10,
     # que o log do cron registra e que se distingue de "o dump falhou" (1).
     if ! enviar_offsite "$ALVO"; then
+        publicar_status "$RESTANTES"
         return 10
     fi
+    publicar_status "$RESTANTES"
     return 0
 }
 

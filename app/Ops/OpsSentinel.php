@@ -108,6 +108,15 @@ final class OpsSentinel
             $worst = $this->worse($worst, (string) ($intelligence['severity'] ?? 'warning'));
         }
 
+        // Backup: precisa de vigia independente pelo mesmo motivo do Python — o
+        // sinal de que ele parou e a AUSENCIA de execucao, e ausencia nao dispara
+        // nada sozinha. Backup silenciosamente parado produz confianca, que e
+        // pior que nao ter backup nenhum.
+        $backup = $this->checkBackup();
+        if ($backup !== null && ($backup['ok'] ?? true) === false) {
+            $worst = $this->worse($worst, (string) ($backup['severity'] ?? 'warning'));
+        }
+
         $status = [
             'severity'      => $worst,
             'generated_at'  => date(DATE_ATOM),
@@ -115,6 +124,7 @@ final class OpsSentinel
             'dead_pipeline' => $deadPipeline,
             'isolation'     => $isolation,
             'intelligence'  => $intelligence,
+            'backup'        => $backup,
             'stuck_cleaned' => $cleaned,
             'domains'       => $this->domainReport($domains, $nowTs),
             'issues'        => $issues,
@@ -362,6 +372,11 @@ final class OpsSentinel
         if (($status['dead_pipeline'] ?? false) === true) {
             $lines[] = "Nenhum sync_run completou nas ultimas {$deadHours}h.";
         }
+        // O alerta precisa dizer O QUE fazer. "BACKUP: warning" nao muda
+        // comportamento; "backup local ha 34h" manda alguem olhar o cron.
+        if (($status['backup'] ?? null) !== null && ($status['backup']['ok'] ?? true) === false) {
+            $lines[] = 'BACKUP: ' . implode(' · ', (array) ($status['backup']['motivos'] ?? ['sem detalhe']));
+        }
         foreach ((array) ($status['issues'] ?? []) as $issue) {
             $age = $issue['age_min'];
             $ageLabel = $age === null ? 'sem run recente' : $age . ' min atras';
@@ -424,6 +439,96 @@ final class OpsSentinel
      *
      * @return array<string,mixed>|null
      */
+    /**
+     * Frescor do backup do banco, local e da copia externa.
+     *
+     * ─── POR QUE ISTO PRECISA DE UM VIGIA INDEPENDENTE ──────────────────────
+     * Backup que para de rodar em silencio nao e igual a nao ter backup: e PIOR,
+     * porque produz confianca. E o modo de falha e sempre o mesmo — ninguem olha
+     * o diretorio ate o dia em que precisa restaurar. Ate 2026-08-07 esta VPS
+     * nao tinha backup algum e ninguem percebeu.
+     *
+     * ─── POR QUE LE UM JSON E NAO O DIRETORIO ───────────────────────────────
+     * `/var/backups/biomie` e 0700 root, e o sentinel roda como www-data. Ele
+     * NAO consegue (nem deve) olhar la dentro — afrouxar aquela permissao para
+     * ganhar monitoramento seria trocar a protecao pelo alarme. O script de
+     * backup publica um resumo com metadados apenas, e este check julga o
+     * frescor a partir dele.
+     *
+     * Ausencia do arquivo devolve null: ambiente sem backup configurado (dev,
+     * host antigo) nao e o mesmo que backup quebrado.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function checkBackup(): ?array
+    {
+        try {
+            $arquivo = Bootstrap::rootPath('storage/ops/backup-status.json');
+            if (!is_file($arquivo)) {
+                return null;
+            }
+            $dados = json_decode((string) file_get_contents($arquivo), true);
+            if (!is_array($dados) || !isset($dados['last_ok'])) {
+                return null;
+            }
+
+            // Roda 1x/dia (03:00). 30h cobre uma execucao perdida; passar do
+            // dobro nao e atraso, e parada — a mesma regra do SLA dos jobs
+            // Python, para nao existirem duas escolas de limiar no projeto.
+            $idade = static function (?string $quando): ?float {
+                if ($quando === null || $quando === '') {
+                    return null;
+                }
+                $ts = strtotime($quando);
+
+                return $ts === false ? null : max(0.0, (time() - $ts) / 3600);
+            };
+
+            $idadeLocal   = $idade((string) $dados['last_ok']);
+            $idadeOffsite = $idade(isset($dados['offsite_last_ok']) ? (string) $dados['offsite_last_ok'] : null);
+
+            $severidade = 'ok';
+            $motivos = [];
+            if ($idadeLocal === null || $idadeLocal > 60) {
+                $severidade = 'critical';
+                $motivos[] = 'backup local sem sucesso ha mais de 60h';
+            } elseif ($idadeLocal > 30) {
+                $severidade = 'warning';
+                $motivos[] = sprintf('backup local ha %.0fh', $idadeLocal);
+            }
+
+            // Copia externa quebrada NAO e tao grave quanto o backup local
+            // falhar: o local ainda protege do risco mais provavel. Mas dias sem
+            // copia externa precisam aparecer antes do incidente, nao depois.
+            if ($idadeOffsite === null) {
+                $severidade = $this->worse($severidade, 'warning');
+                $motivos[] = 'copia externa nunca confirmada';
+            } elseif ($idadeOffsite > 78) {
+                $severidade = $this->worse($severidade, 'critical');
+                $motivos[] = sprintf('copia externa parada ha %.0fh', $idadeOffsite);
+            } elseif ($idadeOffsite > 30) {
+                $severidade = $this->worse($severidade, 'warning');
+                $motivos[] = sprintf('copia externa ha %.0fh', $idadeOffsite);
+            }
+
+            return [
+                'ok'            => $severidade === 'ok',
+                'severity'      => $severidade,
+                'last_ok'       => (string) $dados['last_ok'],
+                'age_hours'     => $idadeLocal !== null ? round($idadeLocal, 1) : null,
+                'offsite_host'  => (string) ($dados['offsite_host'] ?? ''),
+                'offsite_age_hours' => $idadeOffsite !== null ? round($idadeOffsite, 1) : null,
+                'retidos_local' => (int) ($dados['retidos_local'] ?? 0),
+                'bytes'         => (int) ($dados['bytes'] ?? 0),
+                'motivos'       => $motivos,
+            ];
+        } catch (Throwable $e) {
+            $this->logger->warning('OpsSentinel: check de backup falhou.', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
     private function checkIsolation(): ?array
     {
         if ((int) $this->config->get('ops.isolation_guard_enabled', 1) !== 1) {

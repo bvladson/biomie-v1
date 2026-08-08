@@ -137,7 +137,18 @@ def _value_weight(
         # 78 dos 218 orçamentos não casam com pedido canônico e ficam sem valor.
         # Zerar o componente os empurraria todos para "baixa" por FALTA DE DADO,
         # não por mérito — um viés silencioso contra orçamentos mal ligados.
-        # Trata como mediano e marca a lacuna nas features, que ficam auditáveis.
+        #
+        # O peso é 0.35: ACIMA das faixas de baixo (0.08 no último quartil, 0.22
+        # no seguinte) e ABAIXO da faixa mediana (0.50). Ou seja, "provavelmente
+        # mediano, com desconto por não saber" — e não "mediano", como este
+        # comentário afirmava antes, o que não descrevia o código.
+        #
+        # A escolha é deliberada e revisável: subir para 0.50 trataria a lacuna
+        # como equivalente a um valor mediano conhecido; manter em 0.35 cobra um
+        # pequeno preço pela incerteza. Mexer aqui move a banda de orçamentos
+        # reais na tela do vendedor, então é decisão de calibração, não de
+        # limpeza. `valor_desconhecido` fica nas features para a conta ser
+        # auditável depois.
         return W_VALUE * 0.35, None
     reais = f"R$ {valor:,.0f}".replace(",", ".") if valor is not None else "valor não ligado"
     confiavel = amostra >= MIN_AMOSTRA_PERCENTIL
