@@ -300,20 +300,258 @@
     return '<div class="identity-cell' + (missing ? ' identity-cell--attention' : '') + '">' + nameHtml + '<span>' + B.escapeHtml(docLine) + '</span></div>';
   };
 
+  /**
+   * Estado do vendedor na ESCADA de metas.
+   *
+   * ─── O DEFEITO QUE ISTO CORRIGE ───────────────────────────────────────────
+   * A versão anterior era `pct >= 100 || realized >= target`, e o segundo termo
+   * comparava o realizado com `target_month`/`target_period` — o COMPROMISSO-BASE.
+   * Como `pct` já era consciente da escada, o `||` passava por cima dele:
+   *
+   *   SAMANTHA · realizado R$ 49.306 · compromisso R$ 40.000 · desafio R$ 80.000
+   *   pct = 61,6% (correto, primeira condição falsa)
+   *   realized >= 40.000 -> TRUE -> troféu "Meta batida"
+   *
+   * A mesma linha exibia "🏆 Meta batida" ao lado de "Meta 2/4 · 61,6% do
+   * desafio", com R$ 150.694 ainda a percorrer até o topo (40k + 80/130/200k).
+   * Duas afirmações opostas a três centímetros uma da outra.
+   *
+   * ─── OS QUATRO ESTADOS ────────────────────────────────────────────────────
+   *   sem_meta  — não há meta cadastrada; não se afirma nada
+   *   abaixo    — nenhum nível conquistado ainda
+   *   parcial   — conquistou N de M; AINDA HÁ ESCADA (é o caso da queixa)
+   *   completa  — todos os níveis; só aqui existe troféu
+   *
+   * Funciona com escada de um nível só (o compromisso vira o topo) e com o
+   * payload legado, que não traz `tiers_total`.
+   */
+  B.goalLadderState = function (vendor) {
+    var vazio = { state: 'sem_meta', achieved: 0, total: 0, isTop: false };
+    if (!vendor) return vazio;
+
+    var realized = Number(
+      vendor.realized_period != null ? vendor.realized_period
+        : (vendor.realized != null ? vendor.realized
+          : (vendor.revenue != null ? vendor.revenue : (vendor.billed_value || 0)))
+    );
+
+    var total = Number(vendor.tiers_total != null ? vendor.tiers_total : (vendor.levels_total || 0));
+    var achieved = Number(vendor.achieved_level != null ? vendor.achieved_level : (vendor.current_tier || 0));
+
+    // Payload sem escada (legado): o compromisso é o único nível existente.
+    if (!(total > 0)) {
+      var base = Number(
+        vendor.base_target != null ? vendor.base_target
+          : (vendor.target_month != null ? vendor.target_month
+            : (vendor.target_period != null ? vendor.target_period : (vendor.target || 0)))
+      );
+      if (!(base > 0)) return vazio;
+      total = 1;
+      achieved = realized >= base ? 1 : 0;
+    }
+
+    var completa = vendor.all_levels_achieved === true || achieved >= total;
+    return {
+      state: completa ? 'completa' : (achieved > 0 ? 'parcial' : 'abaixo'),
+      achieved: achieved,
+      total: total,
+      isTop: completa,
+      remaining: Math.max(total - achieved, 0),
+      overMaximum: Number(vendor.over_maximum_amount || 0),
+    };
+  };
+
+  /**
+   * `true` SÓ quando a escada inteira foi vencida.
+   *
+   * Mantém o nome porque é consumido pela tabela de vendedores e pelo drawer de
+   * Overview; o que muda é a pergunta que ele responde — de "passou do
+   * compromisso?" para "acabou a escada?".
+   */
   B.isGoalAchieved = function (vendor) {
-    if (!vendor) return false;
-    var target = Number(vendor.target_month != null ? vendor.target_month : (vendor.target_period != null ? vendor.target_period : (vendor.target || 0)));
-    if (target <= 0) return false;
-    var realized = Number(vendor.realized_period != null ? vendor.realized_period : (vendor.realized != null ? vendor.realized : (vendor.revenue != null ? vendor.revenue : (vendor.billed_value || 0))));
-    var pct = Number(vendor.attainment_pct != null ? vendor.attainment_pct : (vendor.achievement_percent != null ? vendor.achievement_percent : 0));
-    return pct >= 100 || realized >= target;
+    return B.goalLadderState(vendor).isTop;
   };
 
   B.renderGoalBadge = function (vendor) {
-    if (B.isGoalAchieved(vendor)) {
-      return '<span class="mag-goal-badge mag-goal-badge--achieved" title="Vendedor atingiu 100% ou mais da meta no periodo"><span aria-hidden="true">🏆</span><span>Meta batida</span></span>';
+    var ladder = B.goalLadderState(vendor);
+
+    if (ladder.state === 'completa') {
+      var extra = ladder.overMaximum > 0
+        ? ' · superação ' + B.formatCurrency(ladder.overMaximum)
+        : '';
+      return '<span class="mag-goal-badge mag-goal-badge--achieved" title="Todos os ' +
+        ladder.total + ' níveis conquistados' + B.escapeHtml(extra) + '">' +
+        '<span aria-hidden="true">🏆</span><span>Meta máxima</span></span>';
     }
+
+    // O caso que gerava a contradição: compromisso vencido, escada em aberto.
+    // Diz o que foi conquistado E o que falta, na mesma etiqueta.
+    if (ladder.state === 'parcial') {
+      return '<span class="mag-goal-badge mag-goal-badge--partial" title="' +
+        ladder.achieved + ' de ' + ladder.total + ' níveis conquistados — faltam ' +
+        ladder.remaining + '">' +
+        '<span aria-hidden="true">✓</span><span>Meta ' + ladder.achieved + '/' + ladder.total +
+        '</span></span>';
+    }
+
     return '';
+  };
+
+  /**
+   * A CÉLULA DE META — uma implementação para as duas telas.
+   *
+   * Antes existiam duas cópias quase idênticas: uma em
+   * `modules/flight-plan/vendor-table.js` e outra aqui, na tabela de
+   * vendedores. Duas cópias do mesmo conceito divergem, e estas já haviam
+   * divergido — o plano de voo nunca mostrou troféu, a de vendedores mostrava.
+   *
+   * `opts.showNextStep` liga a linha prescritiva ("faltam X · Y/dia"): ela
+   * depende de `active_gap` e `new_daily_target`, que só a tabela de vendedores
+   * recebe hoje.
+   */
+  B.renderTargetLadderCell = function (row, opts) {
+    opts = opts || {};
+    var fmt = B.formatCurrency;
+    var realized = Number(
+      row.billed_merchandise != null ? row.billed_merchandise
+        : (row.realized_period != null ? row.realized_period : (row.billed_value || 0))
+    );
+    var baseTarget = Number(row.base_target || row.target_period || 0);
+    var target_ = Number(row.active_target != null ? row.active_target : (row.maximum_target || baseTarget));
+    var tiersTotal = Number(row.tiers_total || 0);
+
+    if (!(tiersTotal > 1 && target_ > 0)) {
+      return target_ > 0
+        ? fmt(target_)
+        : '<span class="fp-status-badge fp-status-risk">Definir meta</span>';
+    }
+
+    var curTier = Number(row.current_tier || 0);
+    var nextVal = row.next_tier_value != null ? Number(row.next_tier_value) : null;
+    var levels = Array.isArray(row.tier_levels)
+      ? row.tier_levels.map(Number).filter(function (v) { return v > 0; })
+      : [];
+    var topLevel = levels.length ? levels[levels.length - 1] : target_;
+
+    var html = '<span class="fp-target-base"><small>Compromisso</small> ' +
+      B.escapeHtml(fmt(baseTarget)) + '</span>';
+
+    html += row.all_levels_achieved
+      ? '<br><span class="fp-target-active fp-target-active--done"><small>Meta máxima conquistada</small> ' +
+        B.escapeHtml(fmt(Number(row.maximum_target || topLevel))) + '</span>'
+      : (nextVal != null
+        ? '<br><span class="fp-target-active"><small>Desafio ativo</small> ' +
+          B.escapeHtml(fmt(nextVal)) + '</span>'
+        : '');
+
+    var tierTitle = curTier >= tiersTotal
+      ? 'Todos os ' + tiersTotal + ' níveis conquistados'
+      : (nextVal != null
+        ? 'Próximo nível: ' + fmt(nextVal) + ' (falta ' + fmt(Number(row.next_tier_gap || 0)) + ')'
+        : '');
+
+    html += '<br><span class="fp-tier-badge" title="' + B.escapeHtml(tierTitle) + '">' +
+      '<span class="material-symbols-rounded">' + (curTier >= tiersTotal ? 'military_tech' : 'stairs') +
+      '</span>Meta ' + Math.min(curTier + (curTier < tiersTotal ? 1 : 0), tiersTotal) + '/' + tiersTotal +
+      (curTier >= tiersTotal ? ' ✓' : '') + '</span>';
+
+    if (levels.length) {
+      var fillPct = Math.min(100, topLevel > 0 ? (realized / topLevel) * 100 : 0);
+      var marks = levels.map(function (lvl) {
+        var pos = Math.min(100, topLevel > 0 ? (lvl / topLevel) * 100 : 0);
+        return '<span class="tier-progress__mark' + (realized >= lvl ? ' tier-progress__mark--done' : '') +
+          '" style="left:' + pos.toFixed(1) + '%" title="' + B.escapeHtml(fmt(lvl)) + '"></span>';
+      }).join('');
+      html += '<span class="tier-progress"><span class="tier-progress__fill" style="width:' +
+        fillPct.toFixed(1) + '%"></span>' + marks + '</span>';
+    }
+
+    if (row.all_levels_achieved) {
+      if (Number(row.over_maximum_amount || 0) > 0) {
+        html += '<small class="fp-tier-step">Superação: ' +
+          B.escapeHtml(fmt(Number(row.over_maximum_amount))) + '</small>';
+      }
+    } else if (row.step_progress_pct != null) {
+      html += '<small class="fp-tier-step">' +
+        Number(row.step_progress_pct).toFixed(1) + '% do caminho neste nível</small>';
+    }
+
+    if (opts.showNextStep) html += B.renderLadderNextStep(row);
+    return html;
+  };
+
+  /**
+   * A LINHA PRESCRITIVA: quanto falta e quanto por dia.
+   *
+   * "61,6% do desafio" diz onde a pessoa está; não diz o que fazer hoje.
+   * `new_daily_target` já vinha calculado pela API e não era exibido em lugar
+   * nenhum.
+   *
+   * Quando a escada acabou, o passo seguinte deixa de ser "corra mais" e passa
+   * a ser a PROPOSTA de próximo patamar — que o Python calcula e que é
+   * deliberadamente uma sugestão, porque meta mexe em comissão.
+   */
+  B.renderLadderNextStep = function (row) {
+    if (row.all_levels_achieved) {
+      var sugestao = row.recommended_next_target != null ? Number(row.recommended_next_target) : null;
+      return sugestao > 0
+        ? '<small class="fp-tier-next fp-tier-next--proposal" title="Sugestão do modelo; a meta oficial só muda com aprovação">' +
+          '<span class="material-symbols-rounded" aria-hidden="true">trending_up</span>' +
+          'Próximo patamar sugerido: ' + B.escapeHtml(B.formatCurrency(sugestao)) + '</small>'
+        : '';
+    }
+
+    var falta = Number(row.active_gap != null ? row.active_gap : (row.next_tier_gap || 0));
+    if (!(falta > 0)) return '';
+
+    var porDia = Number(row.new_daily_target || 0);
+    return '<small class="fp-tier-next">' +
+      '<span class="material-symbols-rounded" aria-hidden="true">flag</span>' +
+      'Faltam ' + B.escapeHtml(B.formatCurrency(falta)) +
+      (porDia > 0 ? ' · ' + B.escapeHtml(B.formatCurrency(porDia)) + '/dia útil' : '') +
+      '</small>' + B.renderLadderOdds(row);
+  };
+
+  /**
+   * CHANCE DE CADA NÍVEL, calculada pelo serviço Python.
+   *
+   * É o que responde "vale a pena correr atrás da Meta 3?" — sem isso, a escada
+   * mostra os degraus mas não diz quais estão ao alcance. Exemplo real:
+   * SAMANTHA em 100% / 63,8% / 32,4% / 5,6% nos quatro níveis.
+   *
+   * ─── O PORTÃO DE CONFIANÇA ─────────────────────────────────────────────────
+   * `ladder_confidence` vem do erro histórico do vendedor. Com 2 a 5 meses de
+   * base, quase todos caem em `baixa` — e nesse caso a chance É EXIBIDA, mas
+   * marcada, porque número sem lastro apresentado como conclusão é pior que
+   * ausência de número. É a mesma trava que o forecast já aplica na home.
+   */
+  B.renderLadderOdds = function (row) {
+    var niveis = Array.isArray(row.level_probabilities) ? row.level_probabilities : [];
+    if (!niveis.length) return '';
+
+    var pendentes = niveis.filter(function (n) {
+      return n && n.achieved !== true && n.probability != null;
+    });
+    if (!pendentes.length) return '';
+
+    var confianca = String(row.ladder_confidence || 'sem_dados');
+    var fraca = confianca === 'baixa' || confianca === 'sem_dados';
+
+    var chips = pendentes.map(function (n) {
+      var pct = Math.round(Number(n.probability) * 100);
+      var forca = pct >= 60 ? 'alta' : (pct >= 25 ? 'media' : 'baixa');
+      return '<span class="fp-odds__item fp-odds__item--' + forca + '" title="' +
+        B.escapeHtml('Meta ' + n.level + ' — ' + B.formatCurrency(Number(n.target || 0))) + '">' +
+        'M' + n.level + ' ' + pct + '%</span>';
+    }).join('');
+
+    return '<span class="fp-odds' + (fraca ? ' fp-odds--weak' : '') + '" title="' +
+      (fraca
+        ? 'Histórico curto demais para levar estas chances a sério — registradas para conferência depois'
+        : 'Chance estimada de alcançar cada nível ainda em aberto') + '">' +
+      '<small class="fp-odds__label">Chance</small>' + chips +
+      (fraca ? '<small class="fp-odds__warn">baixa confiança</small>' : '') +
+      '</span>';
   };
 
   B.renderSellerIdentityCell = function (row, fromPage) {
@@ -660,6 +898,7 @@
       var baseTarget = Number(row.base_target || row.target_period || 0);
       var target_    = Number(row.active_target != null ? row.active_target : (row.maximum_target || baseTarget));
       var attPct     = Number(row.active_attainment_pct != null ? row.active_attainment_pct : row.attainment_pct || 0);
+      var tiersTotalRow = Number(row.tiers_total || 0);
       var badgeHtml  = B.renderGoalBadge(row);
       var achieved   = B.isGoalAchieved(row);
       var rowClass   = (achieved ? 'mag-goal-row--achieved ' : '') + (vRef ? 'commercial-row--interactive' : '');
@@ -680,36 +919,12 @@
         : '';
       var rowStyle = !isActive ? ' style="opacity:0.6;"' : '';
       var vendorEntity = '<div class="commercial-entity">' + B.commercialIcon('person') + '<div class="commercial-entity__body"><div class="commercial-entity__title">' + B.escapeHtml(row.vendor_name) + channelBadge + inactiveBadge + badgeHtml + '</div><div class="commercial-signals">' + B.commercialSignal('receipt_long', B.formatNumber(row.billed_orders) + ' NFs', 'success') + B.commercialSignal('request_quote', B.formatNumber(row.authorized_orders) + ' carteira', 'warning') + B.commercialSignal('cancel', B.formatNumber(row.cancelled_orders) + ' canceladas', Number(row.cancelled_orders) > 0 ? 'danger' : 'neutral') + '</div></div></div>';
-      // Metas múltiplas — badge de nível + mini barra com marcos na célula da meta
-      var metaCellExtra = '';
-      var tiersTotal = Number(row.tiers_total || 0);
-      if (tiersTotal > 1 && target_ > 0 && Array.isArray(row.tier_levels) && row.tier_levels.length) {
-        var curTier   = Number(row.current_tier || 0);
-        var levels    = row.tier_levels.map(Number).filter(function (v) { return v > 0; });
-        var topLevel  = levels[levels.length - 1] || target_;
-        var realized  = Number(merc) || 0;
-        var fillPct   = Math.min(100, topLevel > 0 ? (realized / topLevel) * 100 : 0);
-        var marks     = levels.map(function (lvl) {
-          var pos  = Math.min(100, topLevel > 0 ? (lvl / topLevel) * 100 : 0);
-          var done = realized >= lvl;
-          return '<span class="tier-progress__mark' + (done ? ' tier-progress__mark--done' : '') + '" style="left:' + pos.toFixed(1) + '%" title="' + B.escapeHtml(B.formatCurrency(lvl)) + '"></span>';
-        }).join('');
-        var nextVal   = row.next_tier_value != null ? Number(row.next_tier_value) : null;
-        var targetSummary = '<span class="fp-target-base"><small>Compromisso</small> ' + B.escapeHtml(B.formatCurrency(baseTarget)) + '</span>';
-        targetSummary += row.all_levels_achieved
-          ? '<br><span class="fp-target-active fp-target-active--done"><small>Meta máxima conquistada</small> ' + B.escapeHtml(B.formatCurrency(Number(row.maximum_target || topLevel))) + '</span>'
-          : (nextVal != null ? '<br><span class="fp-target-active"><small>Desafio ativo</small> ' + B.escapeHtml(B.formatCurrency(nextVal)) + '</span>' : '');
-        var tierTitle = curTier >= tiersTotal
-          ? 'Todos os níveis atingidos!'
-          : (nextVal != null ? ('Próximo nível: ' + B.formatCurrency(nextVal) + ' (falta ' + B.formatCurrency(Number(row.next_tier_gap || 0)) + ')') : '');
-        metaCellExtra = targetSummary + '<br><span class="fp-tier-badge" title="' + B.escapeHtml(tierTitle) + '">' +
-          '<span class="material-symbols-rounded">' + (curTier >= tiersTotal ? 'military_tech' : 'stairs') + '</span>' +
-          'Meta ' + Math.min(curTier + (curTier < tiersTotal ? 1 : 0), tiersTotal) + '/' + tiersTotal + (curTier >= tiersTotal ? ' ✓' : '') + '</span>' +
-          '<span class="tier-progress"><span class="tier-progress__fill" style="width:' + fillPct.toFixed(1) + '%"></span>' + marks + '</span>' +
-          (row.all_levels_achieved
-            ? (Number(row.over_maximum_amount || 0) > 0 ? '<small class="fp-tier-step">Superação: ' + B.escapeHtml(B.formatCurrency(Number(row.over_maximum_amount))) + '</small>' : '')
-            : '<small class="fp-tier-step">' + Number(row.step_progress_pct || 0).toFixed(1) + '% do caminho neste nível</small>');
-      }
+      // Fase 2: célula de meta vinda do helper compartilhado com o plano de
+      // voo. Antes eram duas cópias quase idênticas do mesmo bloco, e elas já
+      // haviam divergido — o plano nunca mostrou troféu, esta tela mostrava.
+      var metaCellExtra = tiersTotalRow > 1 && target_ > 0
+        ? B.renderTargetLadderCell(row, { showNextStep: true })
+        : B.renderLadderNextStep(row);
       return '<tr class="' + rowClass.trim() + '"' + rowStyle + rowAttrs + '><td>' + vendorEntity + '</td><td>' + B.commercialMetric('Base comercial', B.formatCurrency(merc), 'accent') + '</td><td>' + B.commercialMetric('Desafio ativo', target_ > 0 ? B.formatCurrency(target_) : '-') + metaCellExtra + '</td><td>' + B.commercialMetric('% do desafio', target_ > 0 ? attPct.toFixed(1) + '%' : '-', achieved ? 'accent' : '') + '</td><td><span class="' + B.vendorRiskClass(row.risk_status) + '">' + B.vendorRiskLabel(row.risk_status) + '</span></td><td>' + B.commercialMetric('Carteira', B.formatCurrency(row.authorized_value), 'warning') + '</td><td>' + B.commercialMetric('Canceladas', B.formatCurrency(row.cancelled_value), Number(row.cancelled_value) > 0 ? 'danger' : '') + '</td><td><span class="badge-status ' + conversionClass + '">' + row.conversion_rate + '%</span></td><td>' + B.commercialMetric('Ticket medio', B.formatCurrency(row.avg_ticket_billed)) + '</td><td>' + conflictBadge + '</td></tr>';
     }).join('');
     target.querySelectorAll('tr[data-vendor-open-ref]').forEach(function (row) {

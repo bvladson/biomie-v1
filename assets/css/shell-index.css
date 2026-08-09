@@ -3493,3 +3493,81 @@ body.dashboard--seller-scope .dashboard-panel--month-comparison {
     color: var(--mag-muted, #667085);
     font-size: 12px;
 }
+
+/* Escada de metas — badge parcial, passo seguinte e chance por nivel.
+   Uma regra por classe: duas declaracoes da mesma classe fazem a de baixo
+   vencer em silencio (foi assim que o filtro de Clientes quebrou). */
+.mag-goal-badge--partial {
+    background: rgba(217, 119, 6, .12);
+    color: #b45309;
+    border-color: rgba(217, 119, 6, .25);
+}
+
+.fp-tier-next {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 3px;
+    color: var(--mag-muted, #667085);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.fp-tier-next .material-symbols-rounded {
+    font-size: 12px;
+}
+
+.fp-tier-next--proposal {
+    color: #0f766e;
+}
+
+.fp-odds {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+    margin-top: 3px;
+}
+
+.fp-odds__label {
+    color: var(--mag-muted, #667085);
+    font-size: 9.5px;
+    font-weight: 650;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+
+.fp-odds__item {
+    padding: 0 4px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.fp-odds__item--alta {
+    background: rgba(22, 163, 74, .12);
+    color: #15803d;
+}
+
+.fp-odds__item--media {
+    background: rgba(217, 119, 6, .12);
+    color: #b45309;
+}
+
+.fp-odds__item--baixa {
+    background: rgba(107, 114, 128, .12);
+    color: #4b5563;
+}
+
+/* Confianca baixa: a chance aparece, mas nao com a mesma voz de um numero
+   sustentado. Esconder seria perder informacao; mostrar igual seria mentir. */
+.fp-odds--weak .fp-odds__item {
+    opacity: .65;
+}
+
+.fp-odds__warn {
+    color: var(--mag-muted, #667085);
+    font-size: 9px;
+    font-style: italic;
+}

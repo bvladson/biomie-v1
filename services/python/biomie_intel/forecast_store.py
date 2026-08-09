@@ -115,14 +115,23 @@ def persist(
     for linha in linhas:
         execute(
             conn,
+            # As quatro ultimas colunas sao a camada PRESCRITIVA. Elas ja eram
+            # calculadas por `target_ladder.recommend()` e chegavam ate o
+            # `to_metrics()`, mas ficavam de fora deste INSERT — a tabela nao
+            # tinha coluna. Na pratica o numero era calculado e perdido a cada
+            # execucao, e nenhuma tela conseguia dizer "faltam R$ X, R$ Y por
+            # dia util" nem propor patamar para quem zerou a escada.
             """INSERT INTO intelligence_forecasts
                    (company_id, job_run_id, dimensao, entidade_codigo, entidade_nome,
                     competencia, realizado, projecao, valor_min, valor_max,
                     meta_valor, base_target, active_target, maximum_target,
                     achieved_level, active_level, levels_total, level_probabilities_json,
                     risco_nao_bater, erro_historico, meses_historicos,
-                    dados_usados, fatores_json, is_current, computed_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1,
+                    dados_usados, fatores_json,
+                    required_daily, projected_level, recommended_next_target, ladder_confidence,
+                    is_current, computed_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                       %s, %s, %s, %s, 1,
                        UTC_TIMESTAMP())""",
             (
                 company_id,
@@ -148,6 +157,12 @@ def persist(
                 linha.meses_historicos,
                 linha.dados_usados,
                 json.dumps(linha.fatores, ensure_ascii=False) if linha.fatores else None,
+                # NULL, nunca 0: "nao calculado" e diferente de "nao precisa de
+                # nada por dia" — o segundo e uma afirmacao.
+                round(linha.required_daily, 2) if linha.required_daily is not None else None,
+                linha.projected_level,
+                round(linha.recommended_next_target, 2) if linha.recommended_next_target is not None else None,
+                linha.ladder_confidence,
             ),
         )
 

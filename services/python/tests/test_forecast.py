@@ -13,7 +13,8 @@ from __future__ import annotations
 import unittest
 from datetime import date, timedelta
 
-from biomie_intel import forecast
+from biomie_intel import forecast, forecast_store
+from biomie_intel.forecast_store import ForecastLinha
 from biomie_intel.forecast import MIN_DIAS_HISTORICO, build
 from fakes import FakeConnection
 
@@ -231,3 +232,64 @@ class TestEscopoDeEmpresa(unittest.TestCase):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class TestCamadaPrescritivaPersistida(unittest.TestCase):
+    """As quatro colunas prescritivas precisam CHEGAR na tabela.
+
+    `target_ladder.recommend()` sempre calculou `required_daily`,
+    `projected_level`, `recommended_next_target` e `ladder_confidence`; os
+    quatro entravam no `to_metrics()` e ficavam de FORA do INSERT, porque a
+    tabela nao tinha coluna. O numero era calculado e perdido a cada execucao —
+    nenhuma tela conseguia dizer "faltam R$ X, R$ Y por dia util".
+    """
+
+    @staticmethod
+    def _linha(**extra):
+        base = dict(
+            dimensao="vendedor", entidade_codigo="V1", entidade_nome="Vendedor",
+            competencia="2026-08", realizado=49306.17, projecao=80000.0,
+            valor_min=60000.0, valor_max=100000.0, meta_valor=80000.0,
+            risco_nao_bater=0.36, erro_historico=0.2, meses_historicos=5,
+            dados_usados=33,
+        )
+        base.update(extra)
+        return ForecastLinha(**base)
+
+    def test_as_quatro_colunas_estao_no_INSERT(self) -> None:
+        conn = FakeConnection()
+        forecast_store.persist(conn, 1, "2026-08", [self._linha()])
+        sql = next(q for q in conn.sql_executado() if "INSERT INTO intelligence_forecasts" in q)
+        for coluna in ("required_daily", "projected_level",
+                       "recommended_next_target", "ladder_confidence"):
+            self.assertIn(coluna, sql, f"{coluna} nao chega na tabela")
+
+    def test_colunas_e_placeholders_batem(self) -> None:
+        """Desalinhamento de INSERT so aparece em producao, e como erro de tipo."""
+        conn = FakeConnection()
+        forecast_store.persist(conn, 1, "2026-08", [self._linha()])
+        sql = next(q for q in conn.sql_executado() if "INSERT INTO intelligence_forecasts" in q)
+        colunas = sql[sql.index("(") + 1:sql.index(")")].split(",")
+        placeholders = sql[sql.index("VALUES ("):].count("%s")
+        # is_current = 1 e UTC_TIMESTAMP() sao literais, nao parametros.
+        self.assertEqual(len(colunas) - 2, placeholders)
+
+    def test_os_valores_prescritivos_chegam_nos_parametros(self) -> None:
+        conn = FakeConnection()
+        forecast_store.persist(conn, 1, "2026-08", [self._linha(
+            required_daily=3000.0, projected_level=2,
+            recommended_next_target=250000.0, ladder_confidence="alta",
+        )])
+        params = conn.params_de("INSERT INTO intelligence_forecasts")
+        self.assertIn(3000.0, params)
+        self.assertIn(250000.0, params)
+        self.assertIn("alta", params)
+
+    def test_ausente_vira_NULL_e_nao_zero(self) -> None:
+        """"Nao calculado" e "nao precisa de nada por dia" sao coisas opostas."""
+        conn = FakeConnection()
+        forecast_store.persist(conn, 1, "2026-08", [self._linha()])
+        params = list(conn.params_de("INSERT INTO intelligence_forecasts"))
+        # `required_daily` e `recommended_next_target` nao foram informados.
+        self.assertIsNone(params[-4], "required_daily virou 0 em vez de NULL")
+        self.assertIsNone(params[-2], "recommended_next_target virou 0 em vez de NULL")

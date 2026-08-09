@@ -283,6 +283,40 @@ final class CanonicalVendorPayloadBuilder
                 $vendorMatrix[$index]['active_forecast_pct'] = $active !== null && (float) $active > 0
                     ? round(($forecast / (float) $active) * 100, 2)
                     : 100.0;
+
+                // QUANTO POR DIA UTIL para alcancar o desafio ativo.
+                //
+                // Recalculado aqui, e nao herdado de `$plan['new_daily_target']`,
+                // porque o planning usa `realized_period` e esta matriz usa
+                // `billed_value` (receita fiscal). Herdar o numero faria a tela
+                // mostrar "faltam X" e "Y/dia" que nao dividem — dois numeros
+                // que se contradizem na mesma celula.
+                $remainingWeight = (float) ($planning['workdays']['remaining_weight'] ?? 0.0);
+                $activeGap = (float) $vendorMatrix[$index]['gap_to_target'];
+                $vendorMatrix[$index]['new_daily_target'] = $remainingWeight > 0.0 && $activeGap > 0.0
+                    ? Support::money($activeGap / $remainingWeight)
+                    : 0.0;
+            }
+        }
+
+        // ── Camada PRESCRITIVA vinda do servico Python ───────────────────────
+        //
+        // O PHP sabe onde o vendedor esta; o Python sabe a chance de cada nivel
+        // e o proximo patamar defensavel para quem ja zerou a escada. Ate agora
+        // esse calculo era feito e descartado — nao havia coluna para ele.
+        //
+        // Enriquecimento pode faltar sem quebrar a tela: sem tabela, sem cron ou
+        // com erro de consulta, o servico devolve vazio e a matriz segue igual.
+        if ($pdo !== null) {
+            try {
+                $competenciaAtual = substr($end, 0, 7);
+                $companyId = (int) \BIomie\Support\TenantContext::companyId();
+                if ($companyId > 0) {
+                    $vendorMatrix = (new \BIomie\Intelligence\ForecastLadderReadService($pdo))
+                        ->mergeInto($vendorMatrix, $companyId, $competenciaAtual);
+                }
+            } catch (\Throwable) {
+                // Silencio deliberado: a prescricao e opcional, a tela nao e.
             }
         }
 

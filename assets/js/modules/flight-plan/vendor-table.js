@@ -84,41 +84,16 @@
       }[channel] || 'mag-badge--source-empty';
       var targetCell = target > 0 ? fmt(target) : '<span class="fp-status-badge fp-status-risk">Definir meta</span>';
 
-      // Metas múltiplas: badge "Meta X/N" + mini barra de progresso com marcos
-      var tiersTotal = Number(v.tiers_total || 0);
-      if (tiersTotal > 1 && target > 0) {
-        var curTier  = Number(v.current_tier || 0);
-        var nextVal  = v.next_tier_value != null ? Number(v.next_tier_value) : null;
-        targetCell = '<span class="fp-target-base"><small>Compromisso</small> ' + fmt(Number(v.base_target || target)) + '</span>';
-        if (v.all_levels_achieved) {
-          targetCell += '<br><span class="fp-target-active fp-target-active--done"><small>Meta máxima conquistada</small> ' + fmt(Number(v.maximum_target || target)) + '</span>';
-        } else if (nextVal != null) {
-          targetCell += '<br><span class="fp-target-active"><small>Desafio ativo</small> ' + fmt(nextVal) + '</span>';
-        }
-        var tierText = 'Meta ' + Math.min(curTier + (curTier < tiersTotal ? 1 : 0), tiersTotal) + '/' + tiersTotal;
-        var tierTitle = curTier >= tiersTotal
-          ? 'Todos os níveis de meta atingidos!'
-          : (nextVal != null ? ('Próximo nível: ' + fmt(nextVal) + ' (falta ' + fmt(Number(v.next_tier_gap || 0)) + ')') : '');
-        targetCell += '<br /><span class="fp-tier-badge" title="' + escH(tierTitle) + '">' +
-          '<span class="material-symbols-rounded">' + (curTier >= tiersTotal ? 'military_tech' : 'stairs') + '</span>' +
-          escH(curTier >= tiersTotal ? ('Meta ' + tiersTotal + '/' + tiersTotal + ' ✓') : tierText) + '</span>';
-
-        // Mini barra: preenchimento = realizado; marcos = níveis (verde quando batido)
-        var levels = Array.isArray(v.tier_levels) ? v.tier_levels.map(Number).filter(function (x) { return x > 0; }) : [];
-        if (levels.length) {
-          var topLevel = levels[levels.length - 1];
-          var fillPct  = Math.min(100, topLevel > 0 ? (realized / topLevel) * 100 : 0);
-          var marks    = levels.map(function (lvl) {
-            var pos = Math.min(100, topLevel > 0 ? (lvl / topLevel) * 100 : 0);
-            return '<span class="tier-progress__mark' + (realized >= lvl ? ' tier-progress__mark--done' : '') + '" style="left:' + pos.toFixed(1) + '%" title="' + escH(fmt(lvl)) + '"></span>';
-          }).join('');
-          targetCell += '<span class="tier-progress"><span class="tier-progress__fill" style="width:' + fillPct.toFixed(1) + '%"></span>' + marks + '</span>';
-        }
-        if (!v.all_levels_achieved && v.step_progress_pct != null) {
-          targetCell += '<small class="fp-tier-step">' + fmtN(Number(v.step_progress_pct), 1) + '% do caminho neste nível</small>';
-        } else if (v.all_levels_achieved && Number(v.over_maximum_amount || 0) > 0) {
-          targetCell += '<small class="fp-tier-step">Superação: ' + fmt(Number(v.over_maximum_amount)) + '</small>';
-        }
+      // Fase 2: a mesma celula da tabela de vendedores, vinda do helper
+      // compartilhado. Manter duas copias foi o que deixou as duas telas
+      // discordarem sobre o que e "meta batida".
+      //
+      // `showNextStep` fica DESLIGADO aqui: `active_gap` e `new_daily_target`
+      // nao vem no payload do plano de voo, e inventar a linha prescritiva com
+      // campo ausente mostraria "faltam R$ 0".
+      var B = window.BIomie;
+      if (B && typeof B.renderTargetLadderCell === 'function') {
+        targetCell = B.renderTargetLadderCell(v, { showNextStep: false });
       }
 
       return '<tr class="clickable-row" data-biomie-action="open-vendor" data-vendor-id="' + vid + '">' +
