@@ -291,7 +291,10 @@ final class CanonicalVendorPayloadBuilder
                 // `billed_value` (receita fiscal). Herdar o numero faria a tela
                 // mostrar "faltam X" e "Y/dia" que nao dividem — dois numeros
                 // que se contradizem na mesma celula.
-                $remainingWeight = (float) ($planning['workdays']['remaining_weight'] ?? 0.0);
+                // `workdays` mora sob `team`, nao na raiz do planning — ler da
+                // raiz devolvia 0,0 em silencio e a celula mostrava "faltam
+                // R$ 30.694 · R$ 0/dia", que se contradiz.
+                $remainingWeight = (float) ($planning['team']['workdays']['remaining_weight'] ?? 0.0);
                 $activeGap = (float) $vendorMatrix[$index]['gap_to_target'];
                 $vendorMatrix[$index]['new_daily_target'] = $remainingWeight > 0.0 && $activeGap > 0.0
                     ? Support::money($activeGap / $remainingWeight)
