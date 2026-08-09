@@ -229,4 +229,31 @@ ok('o join casa empresa E dia da semana',
 ok('as colunas da faixa sobrevivem a ONLY_FULL_GROUP_BY',
   phpSource.includes('MAX(b.p10_revenue)') && phpSource.includes('MAX(b.confianca)'));
 
+// ── 9. DETALHE e a lista de notas, nao um resumo do dia ─────────────────────
+//
+// A primeira versao do painel mostrava so agregados (maior NF, lista de nomes).
+// Isso DESCREVE o dia sem mostrar o que aconteceu nele. "Produtos em destaque"
+// lista os 58 produtos, um por linha; o equivalente aqui e listar as notas.
+ok('a API traz as notas aninhadas em cada dia',
+  phpSource.includes("\$dias[\$i]['invoices']") && phpSource.includes('anexarNotasDoDia'));
+ok('as notas vem de UMA consulta para todos os dias, nao N+1',
+  phpSource.includes('n.data_competencia IN ('));
+ok('a nota traz cliente, vendedor e canal — nao so o valor',
+  ['AS client', 'AS vendor_name', 'AS channel', 'AS invoice_code']
+    .every((c) => phpSource.includes(c)));
+ok('o drawer renderiza a TABELA de notas do dia',
+  source.includes('function invoiceTable(') &&
+  source.includes('revenueEvolutionDetailPanel') &&
+  /invoiceTable\(row\)/.test(source));
+ok('a tabela de notas tem coluna de cliente e de vendedor',
+  /<th>Cliente<\/th><th>Vendedor<\/th>/.test(source));
+ok('dia fora do teto avisa em vez de parecer dia sem movimento',
+  source.includes('invoices_loaded === false') &&
+  /não carregadas/.test(source));
+ok('o CSV exporta uma linha por NOTA, nao por dia',
+  source.includes('function exportRevenueCsv(') &&
+  /'Data', 'Dia da semana', 'NF', 'Cliente'/.test(source));
+ok('existe expandir todos, como em Produtos',
+  source.includes('data-revenue-expand'));
+
 console.log(JSON.stringify({ ok: true, checks }, null, 2));

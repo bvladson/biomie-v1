@@ -346,7 +346,83 @@ final class OverviewDetailBuilder
         $stmt->execute();
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
+        // AS NOTAS DE CADA DIA, aninhadas na linha do dia.
+        //
+        // O agregado sozinho e resumo, nao detalhe: quem abre um dia quer ver as
+        // notas daquele dia, do mesmo jeito que "Produtos em destaque" mostra os
+        // 58 produtos e nao uma media deles.
+        //
+        // UMA consulta para todos os dias da pagina (IN nas datas ja carregadas),
+        // nao uma por dia: com 30 dias na tela, N+1 seriam 31 idas ao banco para
+        // um dado que cabe numa.
+        $rows = $this->anexarNotasDoDia($rows, $where, $params, $commercialBase);
+
         return ['ok' => true, 'chart_id' => 'revenue_evolution', 'rows' => DataMasker::applyToRows($rows)];
+    }
+
+    /**
+     * @param list<array<string,mixed>> $dias
+     * @param list<string>              $where
+     * @param array<string,mixed>       $params
+     * @return list<array<string,mixed>>
+     */
+    private function anexarNotasDoDia(array $dias, array $where, array $params, string $commercialBase): array
+    {
+        if ($dias === []) {
+            return $dias;
+        }
+
+        $datas = [];
+        foreach ($dias as $dia) {
+            $datas[] = (string) $dia['date'];
+        }
+        // Teto de seguranca: com periodo longo isto poderia trazer milhares de
+        // notas de uma vez. 60 dias cobre o uso real do drawer (mes corrente,
+        // ultimos 30/45 dias) e mantem o payload previsivel.
+        $datas = array_slice($datas, 0, 60);
+
+        $placeholders = [];
+        $notaParams = $params;
+        foreach ($datas as $i => $data) {
+            $chave = ':d' . $i;
+            $placeholders[] = $chave;
+            $notaParams[$chave] = $data;
+        }
+
+        $sql = 'SELECT n.data_competencia AS date,
+                       n.numero_nf        AS invoice_code,
+                       n.chave_nfe        AS invoice_key,
+                       COALESCE(NULLIF(n.nome_cliente, \'\'), \'Cliente nao informado\')  AS client,
+                       COALESCE(NULLIF(n.nome_vendedor, \'\'), \'Nao identificado\')      AS vendor_name,
+                       COALESCE(NULLIF(n.business_channel, \'\'), \'sem canal\')          AS channel,
+                       ' . $commercialBase . ' AS revenue,
+                       n.valor_total      AS gross_revenue
+                  FROM biomie_notas_fiscais_canonicas n
+                 WHERE ' . implode(' AND ', $where) . '
+                   AND n.data_competencia IN (' . implode(', ', $placeholders) . ')
+                 ORDER BY n.data_competencia DESC, revenue DESC';
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($notaParams as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->execute();
+
+        $porDia = [];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [] as $nota) {
+            $porDia[(string) $nota['date']][] = $nota;
+        }
+
+        foreach ($dias as $i => $dia) {
+            $data = (string) $dia['date'];
+            $dias[$i]['invoices'] = $porDia[$data] ?? [];
+            // Diz se a lista veio COMPLETA. Sem isso, um dia fora do teto
+            // apareceria com zero notas e pareceria dia sem movimento — o mesmo
+            // erro do LIMIT sem aviso que os outros drawers ja corrigiram.
+            $dias[$i]['invoices_loaded'] = array_key_exists($data, $porDia) || in_array($data, $datas, true);
+        }
+
+        return $dias;
     }
 
     // ── Vendor Ranking ────────────────────────────────────────────────────────

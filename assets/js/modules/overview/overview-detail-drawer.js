@@ -678,16 +678,60 @@
       faixa = 'Histórico insuficiente para esta ' + (weekdayLabel(row) || 'data');
     }
 
-    return detailItem('Ticket médio da NF', formatCurrency(
+    // Faixa de agregados COMPACTA — contexto, não o conteúdo. O que o usuário
+    // pediu ao abrir o dia são as NOTAS, e elas vêm logo abaixo.
+    var contexto = detailItem('Ticket médio da NF', formatCurrency(
         row.average_ticket != null ? row.average_ticket : (invoices > 0 ? revenue / invoices : 0))) +
       detailItem('Faixa normal da ' + (weekdayLabel(row) || 'data'), faixa) +
-      detailItem('Maior NF do dia', maiorNf) +
       detailItem('Concentração', concentracao) +
       detailItem('Receita bruta', formatCurrency(row.gross_revenue)) +
       detailItem('Desconto concedido', discountLabel(revenue, numberValue(row.gross_revenue) - revenue)) +
-      detailItem('Comparação', comparativo) +
-      detailItem('Vendedores do dia', namesLabel(row.vendor_names, row.vendors_count)) +
-      detailItem('Clientes atendidos', namesLabel(row.client_names, row.customers_count));
+      detailItem('Comparação', comparativo);
+
+    return '<div class="overview-ranking__detail-context">' + contexto + '</div>' +
+      invoiceTable(row);
+  }
+
+  /**
+   * AS NOTAS DO DIA — o detalhe de verdade.
+   *
+   * A primeira versão deste painel mostrava só agregados (maior NF, lista de
+   * clientes, lista de vendedores). Isso é RESUMO: descreve o dia sem mostrar o
+   * que aconteceu nele. "Produtos em destaque" lista os 58 produtos, um por
+   * linha — o equivalente aqui é listar as notas.
+   */
+  function invoiceTable(row) {
+    var notas = Array.isArray(row.invoices) ? row.invoices : [];
+    var revenue = numberValue(row.revenue);
+
+    if (!notas.length) {
+      // Dia fora do teto de carregamento não é dia sem movimento — dizer isso
+      // é o mesmo erro do LIMIT sem aviso que os outros drawers já corrigiram.
+      var motivo = row.invoices_loaded === false
+        ? 'Notas deste dia não carregadas (período longo demais). Reduza o período para vê-las.'
+        : 'Nenhuma nota detalhada para este dia.';
+      return '<p class="text-muted overview-ranking__detail-empty">' + escapeHtml(motivo) + '</p>';
+    }
+
+    var html = '<div class="overview-ranking__nested"><table class="mag-table mag-table--compact">' +
+      '<thead><tr><th>NF</th><th>Cliente</th><th>Vendedor</th><th>Canal</th>' +
+      '<th class="is-numeric">Valor</th><th class="is-numeric">% do dia</th></tr></thead><tbody>';
+
+    notas.forEach(function (nota) {
+      var valor = numberValue(nota.revenue);
+      var parte = revenue > 0 ? valor * 100 / revenue : 0;
+      html += '<tr>' +
+        '<td><span class="overview-ranking__code">' +
+          escapeHtml(String(nota.invoice_code || '—')) + '</span></td>' +
+        '<td>' + escapeHtml(decodeEntityText(nota.client)) + '</td>' +
+        '<td>' + escapeHtml(decodeEntityText(nota.vendor_name)) + '</td>' +
+        '<td>' + escapeHtml(String(nota.channel || '—')) + '</td>' +
+        '<td class="is-numeric"><strong>' + formatCurrency(valor) + '</strong></td>' +
+        '<td class="is-numeric"><span class="overview-ranking__share">' +
+          formatNumber(parte, 1) + '%</span></td></tr>';
+    });
+
+    return html + '</tbody></table></div>';
   }
 
   /** Ultima movimentacao como timestamp ordenavel; sem data vai para o fim. */
@@ -788,6 +832,64 @@
     setTimeout(function () {
       URL.revokeObjectURL(url);
     }, 1000);
+  }
+
+  var lastRevenueRows = [];
+
+  /**
+   * CSV com uma linha por NOTA, nao por dia.
+   *
+   * Exportar o agregado seria levar para o Excel o mesmo resumo que a tela ja
+   * mostra. Quem exporta quer cruzar nota a nota.
+   */
+  function exportRevenueCsv() {
+    var linhas = [[
+      'Data', 'Dia da semana', 'NF', 'Cliente', 'Vendedor', 'Canal',
+      'Valor', 'Valor bruto', 'Pct do dia', 'Receita do dia', 'Contra o normal'
+    ].map(csvCell).join(';')];
+
+    lastRevenueRows.forEach(function (dia) {
+      var receitaDia = numberValue(dia.revenue);
+      var veredito = baselineVerdict(dia);
+      var notas = Array.isArray(dia.invoices) ? dia.invoices : [];
+      if (!notas.length) return;
+      notas.forEach(function (nota) {
+        var valor = numberValue(nota.revenue);
+        linhas.push([
+          csvCell(String(dia.date || '').slice(0, 10)),
+          csvCell(weekdayLabel(dia)),
+          csvCell(nota.invoice_code || ''),
+          csvCell(decodeEntityText(nota.client)),
+          csvCell(decodeEntityText(nota.vendor_name)),
+          csvCell(nota.channel || ''),
+          csvNumber(valor),
+          csvNumber(nota.gross_revenue),
+          csvNumber(receitaDia > 0 ? valor * 100 / receitaDia : 0),
+          csvNumber(receitaDia),
+          csvCell(veredito ? veredito.rotulo : 'sem referencia')
+        ].join(';'));
+      });
+    });
+
+    if (linhas.length === 1) return;
+
+    var period = periodValues();
+    var nome = 'evolucao-receita' + (period.start ? '_' + period.start : '') +
+      (period.end ? '_a_' + period.end : '') + '.csv';
+    // BOM: sem ele o Excel abre UTF-8 como Latin-1 e quebra os acentos.
+    // CRLF montado por código: escrever a sequência literal aqui já foi
+    // reescrita por camada de ferramenta e quebrou o arquivo.
+    var quebra = String.fromCharCode(13, 10);
+    var bom = String.fromCharCode(0xFEFF);
+    var blob = new Blob([bom + linhas.join(quebra)], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = nome;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   function detailToggleCell(kind, index) {
@@ -1271,7 +1373,19 @@
       kpis.push(['Fora do normal', formatNumber(fora, 0) + ' de ' + formatNumber(comFaixa.length, 0) + ' dias']);
     }
 
-    var html = '<div class="overview-ranking__kpis">';
+    // As mesmas afordâncias de "Produtos em destaque": sem elas o drawer de
+    // receita vira uma tela de leitura, enquanto o outro é de trabalho.
+    var html = '<div class="overview-ranking__toolbar">' +
+      '<span class="text-muted">' + formatNumber(totalInvoices, 0) + ' notas em ' +
+        formatNumber(rows.length, 0) + ' dia(s)</span>' +
+      '<div class="overview-ranking__actions">' +
+        '<button type="button" class="btn btn-sm btn-outline-secondary" data-revenue-expand>' +
+          '<span class="material-symbols-rounded" aria-hidden="true">unfold_more</span> Expandir todos</button>' +
+        '<button type="button" class="btn btn-sm btn-outline-secondary" data-revenue-csv>' +
+          '<span class="material-symbols-rounded" aria-hidden="true">download</span> Exportar CSV</button>' +
+      '</div></div>';
+
+    html += '<div class="overview-ranking__kpis">';
     kpis.forEach(function (kpi) {
       html += '<div class="overview-ranking__kpi"><span>' + escapeHtml(kpi[0]) +
         '</span><strong>' + escapeHtml(kpi[1]) + '</strong></div>';
@@ -1322,6 +1436,20 @@
 
     bodyEl.innerHTML = html;
     bindDetailToggles(bodyEl);
+    lastRevenueRows = rows;
+
+    var expandir = bodyEl.querySelector('[data-revenue-expand]');
+    if (expandir) {
+      expandir.addEventListener('click', function () {
+        var abrir = expandir.getAttribute('data-open') !== 'true';
+        expandir.setAttribute('data-open', abrir ? 'true' : 'false');
+        bodyEl.querySelectorAll('.overview-ranking__toggle').forEach(function (botao) {
+          if ((botao.getAttribute('aria-expanded') === 'true') !== abrir) botao.click();
+        });
+      });
+    }
+    var exportar = bodyEl.querySelector('[data-revenue-csv]');
+    if (exportar) exportar.addEventListener('click', exportRevenueCsv);
 
     // Um dia só na tela quase sempre é clique num ponto do gráfico: o usuário
     // já disse qual dia quer, então fazê-lo clicar de novo para ver o detalhe
