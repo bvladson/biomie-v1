@@ -63,12 +63,28 @@ const names = [
   'sellerName', 'sellerNames', 'rowHasSeller', 'uniqueSellers',
   'recencyValue', 'serverTotal', 'csvCell', 'csvNumber',
   // Serie diaria da "Evolucao da Receita".
-  'pipeList', 'namesLabel', 'formatNumber',
+  'pipeList', 'namesLabel', 'formatNumber', 'baselineVerdict', 'weekdayLabel',
 ];
+
+/**
+ * Constantes de modulo que as funcoes extraidas referenciam.
+ *
+ * `extract()` so pega `function nome(...)`. `weekdayLabel` depende de
+ * `DIAS_DA_SEMANA`, e sem trazer a declaracao junto o teste explodiria com
+ * ReferenceError — falha por montagem do harness, nao por defeito no codigo.
+ * Extraida do FONTE (nao redeclarada aqui) para o teste conferir os nomes reais.
+ */
+function extractConst(name) {
+  const re = new RegExp(`var ${name}\\s*=\\s*\\[[^\\]]*\\];`);
+  const found = source.match(re);
+  assert.ok(found, `constante ${name} nao encontrada no fonte`);
+  return found[0];
+}
 
 // B (window.BIomie) nao existe aqui: as funcoes caem nos fallbacks nativos.
 const sandbox = { B: {} };
-const factory = new Function('B', `${names.map(extract).join('\n')}\nreturn { ${names.join(', ')} };`);
+const preamble = [extractConst('DIAS_DA_SEMANA'), ...names.map(extract)].join('\n');
+const factory = new Function('B', `${preamble}\nreturn { ${names.join(', ')} };`);
 const fn = factory(sandbox.B);
 
 let checks = 0;
@@ -180,5 +196,37 @@ ok('sem sobra nao inventa sufixo', fn.namesLabel('A|B', 2) === 'A, B');
 ok('total menor que a lista nao gera texto negativo',
   fn.namesLabel('A|B', 1) === 'A, B');
 ok('lista vazia devolve nulo (detailItem some)', fn.namesLabel('', 0) === null);
+
+// ── 8. Faixa normal por dia da semana (Python `daily_baseline`) ─────────────
+//
+// O veredito so pode existir onde HA amostra. Tres das quatro empresas nao tem:
+// a EXPERT tem 2 sextas-feiras no historico inteiro. Dizer "dentro do normal"
+// para elas seria afirmar o que ninguem mediu.
+const faixa = { baseline_confidence: 'alta', baseline_p10: 100, baseline_p90: 900 };
+ok('acima do p90 vira "acima"',
+  fn.baselineVerdict(Object.assign({ revenue: 1000 }, faixa)).estado === 'acima');
+ok('abaixo do p10 vira "abaixo"',
+  fn.baselineVerdict(Object.assign({ revenue: 50 }, faixa)).estado === 'abaixo');
+ok('entre os dois vira "dentro"',
+  fn.baselineVerdict(Object.assign({ revenue: 500 }, faixa)).estado === 'dentro');
+ok('🔴 sem amostra NAO vira "dentro do normal"',
+  fn.baselineVerdict({ revenue: 500, baseline_confidence: 'sem_amostra',
+                       baseline_p10: 100, baseline_p90: 900 }) === null);
+ok('sem faixa nenhuma devolve nulo', fn.baselineVerdict({ revenue: 500 }) === null);
+ok('faixa incompleta nao inventa veredito',
+  fn.baselineVerdict({ revenue: 500, baseline_confidence: 'alta', baseline_p10: 100 }) === null);
+
+ok('dia da semana e traduzido', fn.weekdayLabel({ weekday: 7 }) === 'sábado');
+ok('domingo e 1 (convencao do DAYOFWEEK)', fn.weekdayLabel({ weekday: 1 }) === 'domingo');
+ok('weekday ausente nao quebra', fn.weekdayLabel({}) === '');
+ok('weekday invalido nao quebra', fn.weekdayLabel({ weekday: 99 }) === '');
+
+// O PHP precisa trazer a faixa, senao o veredito nunca aparece.
+ok('a API faz LEFT JOIN na faixa do Python',
+  phpSource.includes('LEFT JOIN intelligence_daily_baseline'));
+ok('o join casa empresa E dia da semana',
+  phpSource.includes('b.weekday    = DAYOFWEEK(n.data_competencia)'));
+ok('as colunas da faixa sobrevivem a ONLY_FULL_GROUP_BY',
+  phpSource.includes('MAX(b.p10_revenue)') && phpSource.includes('MAX(b.confianca)'));
 
 console.log(JSON.stringify({ ok: true, checks }, null, 2));

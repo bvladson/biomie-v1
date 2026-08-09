@@ -603,6 +603,42 @@
    * `mediaDiaria` entra para o numero do dia ter contra o que ser lido: R$ 9 mil
    * nao diz nada sozinho; "R$ 9 mil, 40% acima da media do periodo" diz.
    */
+  var DIAS_DA_SEMANA = ['', 'domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+  function weekdayLabel(row) {
+    var dia = Number(row.weekday);
+    return Number.isFinite(dia) && DIAS_DA_SEMANA[dia] ? DIAS_DA_SEMANA[dia] : '';
+  }
+
+  /**
+   * Veredito do dia contra a faixa normal daquele dia da semana, calculada pelo
+   * `daily_baseline` do servico Python.
+   *
+   * `sem_referencia` NAO e o mesmo que "dentro do normal": tres das quatro
+   * empresas nao tem amostra para faixa nenhuma (a EXPERT tem 2 sextas-feiras
+   * no historico inteiro), e dizer "normal" para elas seria afirmar o que
+   * ninguem mediu.
+   */
+  function baselineVerdict(row) {
+    var confianca = String(row.baseline_confidence || '');
+    if (!confianca || confianca === 'sem_amostra') return null;
+    var revenue = numberValue(row.revenue);
+    var p10 = row.baseline_p10 == null ? null : numberValue(row.baseline_p10);
+    var p90 = row.baseline_p90 == null ? null : numberValue(row.baseline_p90);
+    if (p10 == null || p90 == null) return null;
+
+    if (revenue > p90) return { estado: 'acima', rotulo: 'Acima do normal' };
+    if (revenue < p10) return { estado: 'abaixo', rotulo: 'Abaixo do normal' };
+    return { estado: 'dentro', rotulo: 'Dentro do normal' };
+  }
+
+  function baselineChip(row) {
+    var veredito = baselineVerdict(row);
+    if (!veredito) return '<span class="text-muted">—</span>';
+    return '<span class="overview-ranking__verdict overview-ranking__verdict--' +
+      veredito.estado + '">' + escapeHtml(veredito.rotulo) + '</span>';
+  }
+
   function revenueEvolutionDetailPanel(row, mediaDiaria) {
     var revenue = numberValue(row.revenue);
     var invoices = numberValue(row.invoices_count);
@@ -630,8 +666,21 @@
         formatCurrency(mediaDiaria) + ')';
     }
 
+    // Faixa normal daquele dia da semana. Sem ela, "R$ 12.575 num sábado" nao
+    // se compara com nada; com ela, o gestor sabe se precisa olhar.
+    var faixa = null;
+    var amostra = numberValue(row.baseline_samples);
+    if (row.baseline_p25 != null && row.baseline_p75 != null && amostra > 0) {
+      faixa = formatCurrency(row.baseline_p25) + ' a ' + formatCurrency(row.baseline_p75) +
+        ' (mediana ' + formatCurrency(row.baseline_median) + ', ' +
+        formatNumber(amostra, 0) + ' ' + weekdayLabel(row) + 's)';
+    } else if (String(row.baseline_confidence || '') === 'sem_amostra') {
+      faixa = 'Histórico insuficiente para esta ' + (weekdayLabel(row) || 'data');
+    }
+
     return detailItem('Ticket médio da NF', formatCurrency(
         row.average_ticket != null ? row.average_ticket : (invoices > 0 ? revenue / invoices : 0))) +
+      detailItem('Faixa normal da ' + (weekdayLabel(row) || 'data'), faixa) +
       detailItem('Maior NF do dia', maiorNf) +
       detailItem('Concentração', concentracao) +
       detailItem('Receita bruta', formatCurrency(row.gross_revenue)) +
@@ -1212,6 +1261,16 @@
       ['Melhor dia', formatDate(melhor && melhor.date) + ' — ' + formatCurrency(melhor && melhor.revenue)]
     ];
 
+    // Só entra quando ALGUM dia tem faixa. Mostrar "0 fora do normal" para uma
+    // empresa sem baseline afirmaria normalidade que ninguém mediu.
+    var comFaixa = rows.filter(function (row) { return baselineVerdict(row) !== null; });
+    if (comFaixa.length) {
+      var fora = comFaixa.filter(function (row) {
+        return baselineVerdict(row).estado !== 'dentro';
+      }).length;
+      kpis.push(['Fora do normal', formatNumber(fora, 0) + ' de ' + formatNumber(comFaixa.length, 0) + ' dias']);
+    }
+
     var html = '<div class="overview-ranking__kpis">';
     kpis.forEach(function (kpi) {
       html += '<div class="overview-ranking__kpi"><span>' + escapeHtml(kpi[0]) +
@@ -1224,6 +1283,7 @@
       '<th class="is-numeric">NFs</th><th class="is-numeric">Clientes</th>' +
       '<th class="is-numeric">Vendedores</th><th class="is-numeric">Ticket médio</th>' +
       '<th class="is-numeric">Receita</th><th class="is-numeric">Part.</th>' +
+      '<th>Contra o normal</th>' +
       '</tr></thead><tbody>';
 
     rows.forEach(function (row, index) {
@@ -1231,7 +1291,9 @@
       var invoices = numberValue(row.invoices_count);
       var share = totalRevenue > 0 ? revenue * 100 / totalRevenue : 0;
       html += '<tr>' + detailToggleCell('revenue', index) +
-        '<td>' + escapeHtml(formatDate(row.date)) + '</td>' +
+        '<td>' + escapeHtml(formatDate(row.date)) +
+          (weekdayLabel(row) ? ' <span class="overview-ranking__weekday">' +
+            escapeHtml(weekdayLabel(row)) + '</span>' : '') + '</td>' +
         '<td class="is-numeric">' + formatNumber(invoices, 0) + '</td>' +
         '<td class="is-numeric">' + formatNumber(row.customers_count, 0) + '</td>' +
         '<td class="is-numeric">' + formatNumber(row.vendors_count, 0) + '</td>' +
@@ -1239,8 +1301,9 @@
             row.average_ticket != null ? row.average_ticket : (invoices > 0 ? revenue / invoices : 0)) + '</td>' +
         '<td class="is-numeric"><strong>' + formatCurrency(revenue) + '</strong></td>' +
         '<td class="is-numeric"><span class="overview-ranking__share">' +
-          formatNumber(share, 1) + '%</span></td></tr>' +
-        detailRow('revenue', index, 8, revenueEvolutionDetailPanel(row, mediaDiaria));
+          formatNumber(share, 1) + '%</span></td>' +
+        '<td>' + baselineChip(row) + '</td></tr>' +
+        detailRow('revenue', index, 9, revenueEvolutionDetailPanel(row, mediaDiaria));
     });
 
     html += '</tbody></table></div>';

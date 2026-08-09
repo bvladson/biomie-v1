@@ -59,6 +59,8 @@ final class IntelligenceJobSla
         // Anomalias operacionais: cron `15 6 * * *`, 1x/dia. Compara 7 dias
         // contra 28, entao um dia perdido nao muda a resposta.
         'ops_anomaly'      => 30,
+        // Faixa normal por dia da semana: cron `50 5 * * *`, 1x/dia.
+        'daily_baseline'   => 30,
     ];
 
     /** @return list<string> */

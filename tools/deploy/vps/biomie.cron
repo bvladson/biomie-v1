@@ -53,6 +53,8 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # Risco de atraso dos títulos em aberto (R$ 6,29 mi de exposição). Depois do
 # forecast mensal (05:10) e sem concorrer com a materialização da madrugada.
 40 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_receivables.sh
+# Faixa normal por dia da semana — o que torna a evolução diária legível.
+50 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_baseline.sh
 # Anomalias na telemetria operacional. 06:15: com a madrugada inteira já
 # fechada, para a janela de 7 dias não terminar no meio de um lote.
 15 6 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_ops_anomaly.sh

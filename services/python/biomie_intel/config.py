@@ -39,6 +39,7 @@ WRITABLE_TABLES = (
     "intelligence_fiscal_anomalies",
     "intelligence_receivable_risk",
     "intelligence_ops_anomalies",
+    "intelligence_daily_baseline",
 )
 
 # Tabelas que este serviço LÊ. Mesma disciplina da lista acima, e pelo mesmo

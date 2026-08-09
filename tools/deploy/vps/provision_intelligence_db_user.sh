@@ -104,6 +104,7 @@ GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_coherence TO '${USER_N
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_fiscal_anomalies TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_receivable_risk  TO '${USER_NAME}'@'127.0.0.1';
 GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_ops_anomalies    TO '${USER_NAME}'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE ON ${DB}.intelligence_daily_baseline   TO '${USER_NAME}'@'127.0.0.1';
 
 -- intelligence_insights ESTAVA FALTANDO AQUI.
 --

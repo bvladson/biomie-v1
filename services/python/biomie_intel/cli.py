@@ -29,6 +29,7 @@ from . import geo_intelligence as geo_intelligence_mod
 from . import fiscal_coherence as fiscal_coherence_mod
 from . import model as model_mod
 from . import quotes as quotes_mod
+from . import daily_baseline as baseline_mod
 from . import receivables as receivables_mod
 from . import telemetry_anomaly as telemetry_mod
 from .config import ConfigError, load_settings
@@ -448,6 +449,34 @@ def cmd_ops_anomaly(args, settings, logger) -> int:
     })
 
 
+def cmd_daily_baseline(args, settings, logger) -> int:
+    """Faixa normal de faturamento por empresa e dia da semana."""
+    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+    saidas: list[dict[str, Any]] = []
+
+    with connect(settings) as conn:
+        for empresa in resolve(conn, args.company):
+            faixas = baseline_mod.calcular(conn, empresa.id, as_of)
+            info = baseline_mod.resumo(faixas)
+
+            if args.dry_run:
+                saidas.append({"empresa": empresa.slug, **info, "gravado": False})
+                continue
+
+            with track(conn, "daily_baseline", company_id=empresa.id,
+                       run_mode=settings.run_mode, correlation_id=args.correlation_id,
+                       model_version=baseline_mod.MODEL_VERSION) as run:
+                gravadas = baseline_mod.persist(conn, faixas, run.id)
+                run.rows_in = sum(b.amostra for b in faixas)
+                run.rows_out = gravadas
+                run.metrics = info
+
+            saidas.append({"empresa": empresa.slug, **info, "gravado": True})
+
+    return _saida({"ok": True, "comando": "daily-baseline",
+                   "as_of": as_of.isoformat(), "empresas": saidas})
+
+
 def cmd_compare(args, settings, logger) -> int:
     """Compara baseline e shadow lado a lado — a evidência para decidir ativar."""
     with connect(settings) as conn:
@@ -642,6 +671,11 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
     rec.add_argument("--dry-run", action="store_true")
 
+    bl = sub.add_parser("daily-baseline", help="faixa normal de faturamento por dia da semana")
+    bl.add_argument("--company", default="all")
+    bl.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
+    bl.add_argument("--dry-run", action="store_true")
+
     ops = sub.add_parser("ops-anomaly", help="anomalias operacionais na telemetria (sem recorte por empresa)")
     ops.add_argument("--as-of", dest="as_of", default=None, help="YYYY-MM-DD (padrao: hoje UTC)")
     ops.add_argument("--dry-run", action="store_true")
@@ -674,6 +708,7 @@ def main(argv: list[str] | None = None) -> int:
         "fiscal-coherence": cmd_fiscal_coherence,
         "receivables": cmd_receivables,
         "ops-anomaly": cmd_ops_anomaly,
+        "daily-baseline": cmd_daily_baseline,
         "compare": cmd_compare,
     }
     try:

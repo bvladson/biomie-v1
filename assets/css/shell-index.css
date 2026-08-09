@@ -3421,3 +3421,36 @@ body.dashboard--seller-scope .dashboard-panel--month-comparison {
     margin-left: 0;
   }
 }
+
+/* Evolução da Receita — dia da semana e veredito contra a faixa normal.
+   As três cores seguem os tokens de estado já usados no restante do shell; o
+   app é light-only, então nada de @media (prefers-color-scheme: dark) aqui. */
+.overview-ranking__weekday {
+    font-size: .78em;
+    color: var(--text-muted, #6b7280);
+    text-transform: lowercase;
+}
+
+.overview-ranking__verdict {
+    display: inline-block;
+    padding: .12rem .5rem;
+    border-radius: 999px;
+    font-size: .78em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.overview-ranking__verdict--acima {
+    background: rgba(22, 163, 74, .12);
+    color: #15803d;
+}
+
+.overview-ranking__verdict--abaixo {
+    background: rgba(220, 38, 38, .12);
+    color: #b91c1c;
+}
+
+.overview-ranking__verdict--dentro {
+    background: rgba(107, 114, 128, .12);
+    color: #4b5563;
+}

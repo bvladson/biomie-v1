@@ -38,7 +38,10 @@ from .insights import UNIVERSO_COMERCIAL
 # a mais ou a menos nao muda a resposta; 30h e folga, nao tolerancia.
 MAX_IDLE_HORAS = {"quote_score": 26, "insights": 14, "forecast": 30,
                   "geo_intelligence": 30, "fiscal_mart": 30, "geo_backtest": 192,
-                  "receivable_risk": 30, "ops_anomaly": 30}
+                  "receivable_risk": 30, "ops_anomaly": 30,
+                  # `50 5 * * *`, 1x/dia: janela movel de 180 dias, um dia a
+                  # mais ou a menos nao move a faixa.
+                  "daily_baseline": 30}
 
 #: tabelas sem as quais a camada não funciona — a checagem de existência
 TABELAS_OBRIGATORIAS = (
@@ -53,6 +56,7 @@ TABELAS_OBRIGATORIAS = (
     "intelligence_fiscal_anomalies",
     "intelligence_receivable_risk",
     "intelligence_ops_anomalies",
+    "intelligence_daily_baseline",
 )
 
 #: MySQL 1142 = comando negado para o usuário — falta de GRANT, não de tabela

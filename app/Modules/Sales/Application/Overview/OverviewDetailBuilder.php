@@ -310,8 +310,30 @@ final class OverviewDetailBuilder
                        ), \'|\', 6)                                 AS vendor_names,
                        SUBSTRING_INDEX(GROUP_CONCAT(
                            DISTINCT COALESCE(NULLIF(n.nome_cliente, \'\'), \'Cliente nao informado\') ORDER BY 1 SEPARATOR \'|\'
-                       ), \'|\', 6)                                 AS client_names
+                       ), \'|\', 6)                                 AS client_names,
+                       DAYOFWEEK(n.data_competencia)              AS weekday,
+                       -- A FAIXA NORMAL daquele dia da semana, calculada pelo
+                       -- Python (`daily_baseline`). LEFT JOIN de proposito:
+                       -- empresa sem amostra suficiente simplesmente nao tem
+                       -- faixa, e a tela precisa distinguir "sem referencia" de
+                       -- "dentro do normal" — as duas levam a acoes opostas.
+                       -- MAX() nas colunas da faixa nao e agregacao de verdade:
+                       -- o join e 1:1 dentro de cada grupo (o dia da semana e
+                       -- constante para uma data). Serve para a consulta
+                       -- continuar valida se ONLY_FULL_GROUP_BY for ligado --
+                       -- hoje ele esta fora do sql_mode desta VPS, e depender
+                       -- disso seria deixar uma bomba de relogio no SQL.
+                       MAX(b.mediana_revenue)                     AS baseline_median,
+                       MAX(b.p10_revenue)                         AS baseline_p10,
+                       MAX(b.p25_revenue)                         AS baseline_p25,
+                       MAX(b.p75_revenue)                         AS baseline_p75,
+                       MAX(b.p90_revenue)                         AS baseline_p90,
+                       MAX(b.amostra)                             AS baseline_samples,
+                       MAX(b.confianca)                           AS baseline_confidence
                 FROM biomie_notas_fiscais_canonicas n
+                LEFT JOIN intelligence_daily_baseline b
+                       ON b.company_id = n.company_id
+                      AND b.weekday    = DAYOFWEEK(n.data_competencia)
                 WHERE ' . implode(' AND ', $where) . '
                 GROUP BY n.data_competencia
                 ORDER BY n.data_competencia DESC
