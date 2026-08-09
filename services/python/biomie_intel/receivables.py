@@ -250,6 +250,37 @@ def carregar_historico(
     return historico
 
 
+class ReplayNaoSuportado(RuntimeError):
+    """`--as-of` no passado nao produz uma foto honesta da fila de cobranca."""
+
+
+def exigir_as_of_atual(as_of: date, hoje: date) -> None:
+    """Recusa replay em data passada — e diz por que.
+
+    O historico de pagamento RESPEITA o `as_of` (`data_liquidacao <= as_of`),
+    mas os titulos EM ABERTO nao sao reconstrutiveis: `status_titulo` e
+    `valor_aberto` guardam o estado de AGORA e sao sobrescritos a cada baixa.
+    Um titulo quitado em julho hoje aparece como `liquidado` com
+    `valor_aberto = 0`; nao ha como saber que em 1o de julho ele estava aberto
+    por R$ 12 mil.
+
+    Rodar assim misturaria historico de uma data com foto de outra e produziria
+    uma fila que nunca existiu — o mesmo formato do vazamento que
+    `insights._forecast_rows` ja teve, e que so aparece no replay, que e
+    justamente quando o numero precisa ser honesto.
+
+    Recusar e a resposta certa enquanto o dado nao permitir a reconstrucao.
+    """
+    if as_of < hoje:
+        raise ReplayNaoSuportado(
+            f"as-of={as_of.isoformat()} e passado. Os titulos em aberto so existem "
+            f"no estado de hoje ({hoje.isoformat()}): `status_titulo` e `valor_aberto` "
+            f"sao sobrescritos na baixa, entao a fila daquele dia nao e reconstrutivel. "
+            f"O historico de pagamento respeitaria o corte, a fila nao — e misturar os "
+            f"dois produziria uma fila que nunca existiu."
+        )
+
+
 def carregar_abertos(
     conn: pymysql.connections.Connection, company_id: int
 ) -> list[dict[str, Any]]:

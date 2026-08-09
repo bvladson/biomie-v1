@@ -310,13 +310,21 @@ final class CanonicalVendorPayloadBuilder
         //
         // Enriquecimento pode faltar sem quebrar a tela: sem tabela, sem cron ou
         // com erro de consulta, o servico devolve vazio e a matriz segue igual.
-        if ($pdo !== null) {
+        //
+        // SÓ QUANDO O PERÍODO É DE UM MÊS SÓ. A previsão é calculada por
+        // COMPETÊNCIA; num recorte de janeiro a agosto, colar a prescrição de
+        // agosto ao lado de um acumulado de oito meses diria "faltam R$ X"
+        // sobre uma meta que não é a do período exibido. Fora do mês, a tela
+        // mostra a escada (que o PHP calcula para o recorte) sem a camada
+        // prescritiva — é menos informação, não informação errada.
+        $mesInicio = substr($start, 0, 7);
+        $mesFim = substr($end, 0, 7);
+        if ($pdo !== null && $mesInicio === $mesFim) {
             try {
-                $competenciaAtual = substr($end, 0, 7);
                 $companyId = (int) \BIomie\Support\TenantContext::companyId();
                 if ($companyId > 0) {
                     $vendorMatrix = (new \BIomie\Intelligence\ForecastLadderReadService($pdo))
-                        ->mergeInto($vendorMatrix, $companyId, $competenciaAtual);
+                        ->mergeInto($vendorMatrix, $companyId, $mesFim);
                 }
             } catch (\Throwable) {
                 // Silencio deliberado: a prescricao e opcional, a tela nao e.

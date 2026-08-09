@@ -40,6 +40,17 @@ Dias com faturamento por dia da semana, medido:
 
 p10 e p90 sobre 2 sextas-feiras não são percentis, são os dois valores. O portão
 de amostra devolve `sem_amostra`, que é resposta — não falha.
+
+─── ONDE FICA O VEREDITO ───────────────────────────────────────────────────
+
+Este módulo publica a FAIXA (p10/p25/mediana/p75/p90) e para por aí. Decidir se
+um dia ficou "acima", "dentro" ou "abaixo" é feito onde a faixa é desenhada, em
+`B.baselineVerdict` (assets/js/core/... no drawer de receita).
+
+Havia aqui um `classificar_dia()` que fazia a mesma comparação e que NINGUÉM
+chamava — com um comentário afirmando que a regra vivia neste arquivo "para não
+duplicar". A regra vivia no JS; o que estava aqui era uma segunda cópia morta.
+Duas implementações do mesmo limiar divergem, e uma delas nem era executada.
 """
 
 from __future__ import annotations
@@ -172,21 +183,6 @@ def calcular(
             confianca="alta" if n >= AMOSTRA_CONFIANCA_ALTA else "media",
         ))
     return saida
-
-
-def classificar_dia(receita: float, baseline: BaselineDia | None) -> str:
-    """Veredito de um dia contra a faixa. `sem_referencia` é resposta legítima.
-
-    Existe aqui, e não no PHP, para que a regra viva ao lado dos números que a
-    sustentam — se o limiar mudar, muda num lugar só.
-    """
-    if baseline is None or baseline.confianca == "sem_amostra":
-        return "sem_referencia"
-    if baseline.p90_revenue is not None and receita > baseline.p90_revenue:
-        return "acima"
-    if baseline.p10_revenue is not None and receita < baseline.p10_revenue:
-        return "abaixo"
-    return "dentro"
 
 
 def resumo(baselines: list[BaselineDia]) -> dict[str, Any]:

@@ -99,31 +99,6 @@ class TestPortaoDeAmostra(unittest.TestCase):
         self.assertEqual(conn.params_de(SQL)[0], 7)
 
 
-class TestVeredito(unittest.TestCase):
-    def _faixa(self, confianca="alta", p10=100.0, p90=900.0):
-        return bl.BaselineDia(company_id=1, weekday=3, amostra=25, janela_dias=180,
-                              mediana_revenue=500.0, p10_revenue=p10, p25_revenue=300.0,
-                              p75_revenue=700.0, p90_revenue=p90, mediana_invoices=5.0,
-                              confianca=confianca)
-
-    def test_acima_do_p90(self) -> None:
-        self.assertEqual(bl.classificar_dia(1000.0, self._faixa()), "acima")
-
-    def test_abaixo_do_p10(self) -> None:
-        self.assertEqual(bl.classificar_dia(50.0, self._faixa()), "abaixo")
-
-    def test_dentro_da_faixa(self) -> None:
-        self.assertEqual(bl.classificar_dia(500.0, self._faixa()), "dentro")
-
-    def test_sem_faixa_NAO_vira_dentro(self) -> None:
-        """"Não tenho referência" e "está normal" levam a ações opostas."""
-        self.assertEqual(bl.classificar_dia(500.0, None), "sem_referencia")
-        self.assertEqual(
-            bl.classificar_dia(500.0, self._faixa(confianca="sem_amostra")),
-            "sem_referencia",
-        )
-
-
 class TestResumoEGravacao(unittest.TestCase):
     def test_o_resumo_declara_quantos_dias_ficaram_sem_faixa(self) -> None:
         conn = FakeConnection({SQL: _dias(2, [1.0] * 25) + _dias(6, [1.0, 2.0])})

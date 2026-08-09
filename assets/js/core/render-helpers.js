@@ -529,8 +529,12 @@
     var niveis = Array.isArray(row.level_probabilities) ? row.level_probabilities : [];
     if (!niveis.length) return '';
 
+    // `probability >= 1` também conta como conquistado. O Python sempre manda
+    // `achieved`, mas se o campo faltar num payload antigo o nível apareceria
+    // como "M1 100%" — uma chance de 100% para algo que já aconteceu não é
+    // previsão, é ruído ocupando espaço na célula.
     var pendentes = niveis.filter(function (n) {
-      return n && n.achieved !== true && n.probability != null;
+      return n && n.achieved !== true && n.probability != null && Number(n.probability) < 1;
     });
     if (!pendentes.length) return '';
 

@@ -259,6 +259,31 @@ class TestScoreDosAbertos(unittest.TestCase):
         self.assertEqual(conn.params_de(SQL_ABERTOS), (4,))
 
 
+class TestReplayRecusado(unittest.TestCase):
+    """`--as-of` no passado nao produz foto honesta da fila.
+
+    O historico RESPEITA o corte (`data_liquidacao <= as_of`), mas os titulos em
+    aberto guardam o estado de AGORA: `status_titulo` e `valor_aberto` sao
+    sobrescritos na baixa. Um titulo quitado em julho hoje aparece `liquidado`
+    com `valor_aberto = 0` -- nao ha como saber que em 1o de julho estava aberto
+    por R$ 12 mil. Rodar assim misturaria historico de uma data com foto de
+    outra: a mesma classe do vazamento que `_forecast_rows` ja teve.
+    """
+
+    def test_data_passada_e_RECUSADA(self) -> None:
+        with self.assertRaises(r.ReplayNaoSuportado) as ctx:
+            r.exigir_as_of_atual(date(2026, 7, 1), HOJE)
+        # A mensagem tem que dizer POR QUE, senao nao ajuda a decidir o que fazer.
+        self.assertIn("nao e reconstrutivel", str(ctx.exception).replace("ã", "a"))
+
+    def test_hoje_passa(self) -> None:
+        r.exigir_as_of_atual(HOJE, HOJE)
+
+    def test_data_futura_passa(self) -> None:
+        """Nao ha nada a reconstruir no futuro; a foto de hoje e a unica que existe."""
+        r.exigir_as_of_atual(date(2026, 12, 1), HOJE)
+
+
 class TestResumoMostraOBuraco(unittest.TestCase):
     def test_o_resumo_declara_quantos_ficaram_SEM_score(self) -> None:
         """"12 de alto risco" parece cobertura total se ninguém disser de quantos."""

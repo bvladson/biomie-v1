@@ -54,7 +54,9 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # forecast mensal (05:10) e sem concorrer com a materialização da madrugada.
 40 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_receivables.sh
 # Faixa normal por dia da semana — o que torna a evolução diária legível.
-50 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_baseline.sh
+# 05:55 e não 05:50: o insights roda `50 */6`, ou seja TAMBÉM às 05:50. Os dois
+# no mesmo minuto disputam banco sem necessidade (nada aqui depende do outro).
+55 5 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_baseline.sh
 # Anomalias na telemetria operacional. 06:15: com a madrugada inteira já
 # fechada, para a janela de 7 dias não terminar no meio de um lote.
 15 6 * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/intelligence_ops_anomaly.sh

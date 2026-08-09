@@ -4,8 +4,9 @@
 # E o que permite responder "R$ 12.575 num sabado e bom ou ruim?" -- um numero
 # sozinho nao se compara com nada.
 #
-# 05:50: depois do receivables (05:40) e antes do primeiro insights do dia,
-# para a faixa e a narrativa sairem da mesma leitura.
+# 05:55: depois do receivables (05:40). NAO as 05:50 -- o insights roda `50 */6`
+# e cairia no mesmo minuto, disputando banco sem necessidade. Nada aqui depende
+# do insights, entao nao ha ordem a preservar, so colisao a evitar.
 #
 # O venv NAO vive dentro da release (senao cada deploy reinstalaria 200 MB e o
 # rollback ficaria sem ambiente) -- ele fica em shared/ e e resolvido aqui.

@@ -131,6 +131,13 @@ const fraco = B.renderLadderOdds({ level_probabilities: odds, ladder_confidence:
 ok('confianca baixa EXIBE mas marca',
   fraco.includes('baixa confian') && fraco.includes('M2'));
 ok('sem probabilidade nenhuma nao renderiza', B.renderLadderOdds({}) === '');
+// Payload antigo pode nao trazer `achieved`. Uma chance de 100% para algo que ja
+// aconteceu nao e previsao, e ruido ocupando espaco na celula.
+ok('nivel com prob 1.0 e sem flag `achieved` nao entra',
+  B.renderLadderOdds({
+    level_probabilities: [{ level: 1, target: 40000, probability: 1.0 }],
+    ladder_confidence: 'alta',
+  }) === '');
 ok('escada toda conquistada nao mostra chance',
   B.renderLadderOdds({ level_probabilities: [{ level: 1, achieved: true, probability: 1 }] }) === '');
 
@@ -164,6 +171,14 @@ ok('o PHP calcula quanto por dia util',
   builderPhp.includes('new_daily_target') && builderPhp.includes('remaining_weight'));
 ok('a leitura prescritiva nao pode derrubar a tela',
   /ForecastLadderReadService[\s\S]{0,700}catch \(\\Throwable\)/.test(builderPhp));
+// A previsao e por COMPETENCIA. Num recorte de janeiro a agosto, colar a
+// prescricao de agosto ao lado de um acumulado de oito meses diria "faltam R$ X"
+// sobre uma meta que nao e a do periodo exibido.
+ok('a prescricao so entra quando o periodo e de um mes so',
+  /\$mesInicio === \$mesFim/.test(builderPhp));
+ok('e a competencia usada e a do periodo, nao uma fixa',
+  builderPhp.includes('$mesInicio = substr($start, 0, 7)')
+  && builderPhp.includes('$mesFim = substr($end, 0, 7)'));
 
 // ── 8. CSS: classe duplicada vence em silencio ──────────────────────────────
 const linhas = cssSource.split(String.fromCharCode(10));

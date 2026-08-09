@@ -381,7 +381,17 @@ def cmd_receivables(args, settings, logger) -> int:
     universo de 554 — o resto sendo cartao, onde o vencimento nem e obrigacao do
     cliente.
     """
-    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
+    hoje = datetime.now(timezone.utc).date()
+    as_of = date.fromisoformat(args.as_of) if args.as_of else hoje
+
+    # Recusa cedo, antes de tocar o banco: replay em data passada mistura
+    # historico de uma data com a foto de hoje e produz uma fila que nunca
+    # existiu. Ver `receivables.exigir_as_of_atual`.
+    try:
+        receivables_mod.exigir_as_of_atual(as_of, hoje)
+    except receivables_mod.ReplayNaoSuportado as exc:
+        return _saida({"ok": False, "comando": "receivables", "erro": str(exc)}, 2)
+
     saidas: list[dict[str, Any]] = []
 
     with connect(settings) as conn:
