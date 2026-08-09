@@ -245,8 +245,13 @@ ok('o drawer renderiza a TABELA de notas do dia',
   source.includes('function invoiceTable(') &&
   source.includes('revenueEvolutionDetailPanel') &&
   /invoiceTable\(row\)/.test(source));
+// Casa os RÓTULOS, não o HTML literal: a versão anterior desta asserção
+// quebrou só porque o `<th>` ganhou `scope="col"` — teste que depende de
+// formatação denuncia mudança cosmética como se fosse regressão.
+const cabecalhoNotas = source.slice(source.indexOf('function invoiceTable('));
 ok('a tabela de notas tem coluna de cliente e de vendedor',
-  /<th>Cliente<\/th><th>Vendedor<\/th>/.test(source));
+  ['>NF<', '>Cliente<', '>Vendedor<', '>Valor<', '>% do dia<']
+    .every((rotulo) => cabecalhoNotas.includes(rotulo)));
 ok('dia fora do teto avisa em vez de parecer dia sem movimento',
   source.includes('invoices_loaded === false') &&
   /não carregadas/.test(source));
@@ -255,5 +260,64 @@ ok('o CSV exporta uma linha por NOTA, nao por dia',
   /'Data', 'Dia da semana', 'NF', 'Cliente'/.test(source));
 ok('existe expandir todos, como em Produtos',
   source.includes('data-revenue-expand'));
+
+// ── 10. HARMONIA VISUAL: as tres telas usam o MESMO vocabulario ─────────────
+//
+// O drawer de receita foi escrito com classes do Bootstrap
+// (`btn btn-sm btn-outline-secondary`) e ficou visualmente estranho ao lado dos
+// irmaos: outro peso de botao, outro espacamento, sem o selo de escopo.
+// SEM COMENTÁRIOS: este mesmo guard reprovou o código já corrigido porque o
+// comentário que EXPLICA a correção cita a classe antiga por extenso. É a
+// segunda vez na mesma frente que uma verificação lê prosa em vez de código —
+// guard que casa comentário aprova (ou reprova) exatamente o que não devia.
+const codigoSemComentarios = source
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
+ok('a barra de acoes usa as classes da casa, nao do Bootstrap',
+  codigoSemComentarios.includes('overview-ranking__action" data-revenue-expand') &&
+  !/btn btn-sm btn-outline-secondary/.test(codigoSemComentarios));
+ok('o selo de escopo aparece tambem na receita',
+  (source.match(/overview-ranking__scope/g) || []).length >= 2);
+ok('a linha de nota usa entity/seller/document como o drawer de clientes',
+  /overview-ranking__document[\s\S]{0,400}overview-ranking__entity[\s\S]{0,400}overview-ranking__seller/
+    .test(source.slice(source.indexOf('function invoiceTable('))));
+
+// ── 11. CSS: classe duplicada sobrescreve a original em SILENCIO ────────────
+//
+// ISTO ACONTECEU: uma regra `.overview-ranking__toolbar { display:flex }` foi
+// acrescentada no FIM do shell-index.css e passou a vencer a original
+// (`display:grid` com 6 colunas), quebrando o filtro de "Clientes em destaque"
+// -- que passou a quebrar linha em vez de caber numa faixa so. Nenhum erro,
+// nenhum aviso: so a tela pior.
+const cssSource = fs.readFileSync(path.join(root, 'assets/css/shell-index.css'), 'utf8');
+// Linha que CONTINUA um seletor agrupado (a anterior termina em vírgula) não é
+// uma regra nova — contá-la como tal acusaria duplicata onde não há.
+const linhasCss = cssSource.split(String.fromCharCode(10));
+const seletores = linhasCss.reduce((acc, linha, i) => {
+  const casou = linha.match(/^\.overview-ranking[\w-]*\s*\{/);
+  if (!casou) return acc;
+  const anterior = (linhasCss[i - 1] || '').trim();
+  if (anterior.endsWith(',')) return acc;
+  acc.push(casou[0].replace(/\s*\{$/, '').trim());
+  return acc;
+}, []);
+const duplicados = seletores.filter((sel, i) => seletores.indexOf(sel) !== i);
+ok(
+  '🔴 nenhuma classe .overview-ranking duplicada no CSS (a de baixo vence calada)',
+  duplicados.length === 0,
+);
+ok('o detector de duplicata nao esvaziou', seletores.length > 10);
+
+// Os dois blocos do painel do dia precisam ocupar a largura inteira: o pai e um
+// grid `auto-fill minmax(190px)`, e sem isto cada um vira uma coluna de 190px --
+// os agregados empilham a esquerda e a tabela de notas fica cortada.
+// Verifica cada classe na SUA regra: agrupá-las num seletor só voltaria a
+// disparar o detector de duplicata acima.
+const ocupaLarguraToda = (classe) => new RegExp(
+  '\\.' + classe + '\\s*\\{[^}]*grid-column:\\s*1\\s*/\\s*-1'
+).test(cssSource);
+ok('🔴 o painel do dia ocupa a largura toda do grid',
+  ocupaLarguraToda('overview-ranking__detail-context') &&
+  ocupaLarguraToda('overview-ranking__nested'));
 
 console.log(JSON.stringify({ ok: true, checks }, null, 2));

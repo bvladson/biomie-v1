@@ -3455,41 +3455,41 @@ body.dashboard--seller-scope .dashboard-panel--month-comparison {
     color: #4b5563;
 }
 
-/* Painel do dia: contexto compacto em cima, TABELA de notas embaixo.
-   O detalhe é a lista; os agregados são só a moldura. */
+/* Painel do dia: contexto em cima, TABELA de notas embaixo.
+
+   O BUG QUE ISTO CORRIGE: `.overview-ranking__detail` e um
+   `grid auto-fill minmax(190px, 1fr)`, feito para os itens soltos dos paineis
+   de produto/cliente. Ao colocar dois BLOCOS ali dentro, cada um virou uma
+   coluna de 190px: os agregados empilharam a esquerda e a tabela de notas ficou
+   espremida a direita, com Vendedor, Valor e % cortados fora da tela.
+
+   `grid-column: 1 / -1` devolve a largura inteira aos dois. */
+/* Uma regra so por classe: duas declaracoes da mesma classe fazem a de baixo
+   vencer em silencio, que foi exatamente como o filtro de "Clientes em
+   destaque" quebrou. O contexto repete a grade dos outros paineis para os
+   rotulos ficarem com o mesmo ritmo visual. */
 .overview-ranking__detail-context {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem 1.5rem;
-    padding-bottom: .75rem;
-    margin-bottom: .75rem;
-    border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px 14px;
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--mag-border, #eaecf0);
 }
 
 .overview-ranking__nested {
+    grid-column: 1 / -1;
     overflow-x: auto;
 }
 
 .overview-ranking__nested .mag-table {
     margin: 0;
-    font-size: .9em;
 }
 
 .overview-ranking__detail-empty {
+    grid-column: 1 / -1;
     margin: 0;
-    font-size: .9em;
-}
-
-.overview-ranking__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: .75rem;
-    margin-bottom: .75rem;
-}
-
-.overview-ranking__actions {
-    display: flex;
-    gap: .5rem;
+    color: var(--mag-muted, #667085);
+    font-size: 12px;
 }

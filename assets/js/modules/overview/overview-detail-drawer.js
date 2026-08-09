@@ -713,20 +713,35 @@
       return '<p class="text-muted overview-ranking__detail-empty">' + escapeHtml(motivo) + '</p>';
     }
 
-    var html = '<div class="overview-ranking__nested"><table class="mag-table mag-table--compact">' +
-      '<thead><tr><th>NF</th><th>Cliente</th><th>Vendedor</th><th>Canal</th>' +
-      '<th class="is-numeric">Valor</th><th class="is-numeric">% do dia</th></tr></thead><tbody>';
+    // Mesma anatomia de linha do drawer de Clientes: nome em `__entity`,
+    // documento/código em `__document` (monoespaçado), vendedor em `__seller`
+    // (chip) e a linha secundária em `<small>`. É o que faz as duas telas
+    // parecerem a mesma tela.
+    var html = '<div class="overview-ranking__nested">' +
+      '<table class="mag-table"><thead><tr>' +
+        '<th scope="col">NF</th><th scope="col">Cliente</th>' +
+        '<th scope="col">Vendedor</th>' +
+        '<th scope="col" class="is-numeric">Valor</th>' +
+        '<th scope="col" class="is-numeric">% do dia</th>' +
+      '</tr></thead><tbody>';
 
     notas.forEach(function (nota) {
       var valor = numberValue(nota.revenue);
       var parte = revenue > 0 ? valor * 100 / revenue : 0;
+      var bruto = numberValue(nota.gross_revenue);
+      var desconto = bruto - valor;
+      var canal = String(nota.channel || '').trim();
+
       html += '<tr>' +
-        '<td><span class="overview-ranking__code">' +
-          escapeHtml(String(nota.invoice_code || '—')) + '</span></td>' +
-        '<td>' + escapeHtml(decodeEntityText(nota.client)) + '</td>' +
-        '<td>' + escapeHtml(decodeEntityText(nota.vendor_name)) + '</td>' +
-        '<td>' + escapeHtml(String(nota.channel || '—')) + '</td>' +
-        '<td class="is-numeric"><strong>' + formatCurrency(valor) + '</strong></td>' +
+        '<td><span class="overview-ranking__document">' +
+          escapeHtml(String(nota.invoice_code || '—')) + '</span>' +
+          (canal && canal !== 'sem canal' ? '<small>' + escapeHtml(canal) + '</small>' : '') + '</td>' +
+        '<td><strong class="overview-ranking__entity">' +
+          escapeHtml(decodeEntityText(nota.client)) + '</strong></td>' +
+        '<td><span class="overview-ranking__seller">' +
+          escapeHtml(decodeEntityText(nota.vendor_name)) + '</span></td>' +
+        '<td class="is-numeric"><strong>' + formatCurrency(valor) + '</strong>' +
+          (desconto > 0.005 ? '<small>desconto ' + formatCurrency(desconto) + '</small>' : '') + '</td>' +
         '<td class="is-numeric"><span class="overview-ranking__share">' +
           formatNumber(parte, 1) + '%</span></td></tr>';
     });
@@ -1373,17 +1388,25 @@
       kpis.push(['Fora do normal', formatNumber(fora, 0) + ' de ' + formatNumber(comFaixa.length, 0) + ' dias']);
     }
 
-    // As mesmas afordâncias de "Produtos em destaque": sem elas o drawer de
-    // receita vira uma tela de leitura, enquanto o outro é de trabalho.
-    var html = '<div class="overview-ranking__toolbar">' +
-      '<span class="text-muted">' + formatNumber(totalInvoices, 0) + ' notas em ' +
-        formatNumber(rows.length, 0) + ' dia(s)</span>' +
-      '<div class="overview-ranking__actions">' +
-        '<button type="button" class="btn btn-sm btn-outline-secondary" data-revenue-expand>' +
-          '<span class="material-symbols-rounded" aria-hidden="true">unfold_more</span> Expandir todos</button>' +
-        '<button type="button" class="btn btn-sm btn-outline-secondary" data-revenue-csv>' +
-          '<span class="material-symbols-rounded" aria-hidden="true">download</span> Exportar CSV</button>' +
-      '</div></div>';
+    // MESMAS CLASSES de "Clientes em destaque", não classes do Bootstrap.
+    //
+    // A primeira versão usou `btn btn-sm btn-outline-secondary` e o drawer
+    // ficou visualmente estranho ao lado dos irmãos: outro peso de botão, outro
+    // espaçamento, sem o selo de escopo. O shell já tem o vocabulário
+    // (`__meta`, `__action`, `__scope`) — reaproveitá-lo é o que faz as três
+    // telas parecerem a mesma tela.
+    var html = '<div class="overview-ranking__meta">' +
+      '<span role="status" aria-live="polite">' +
+        formatNumber(totalInvoices, 0) + ' notas em ' + formatNumber(rows.length, 0) + ' dia(s)</span>' +
+      '<span class="overview-ranking__meta-actions">' +
+        '<button type="button" class="overview-ranking__action" data-revenue-expand aria-pressed="false">' +
+          '<span class="material-symbols-rounded" aria-hidden="true">unfold_more</span>Expandir todos</button>' +
+        '<button type="button" class="overview-ranking__action" data-revenue-csv>' +
+          '<span class="material-symbols-rounded" aria-hidden="true">download</span>Exportar CSV</button>' +
+      '</span>' +
+      '<span class="overview-ranking__scope">' +
+        '<span class="material-symbols-rounded" aria-hidden="true">verified</span>' +
+        'Orç-PD · remessas excluídas</span></div>';
 
     html += '<div class="overview-ranking__kpis">';
     kpis.forEach(function (kpi) {
