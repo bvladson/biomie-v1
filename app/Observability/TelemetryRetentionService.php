@@ -230,6 +230,19 @@ final class TelemetryRetentionService
                 'date_column' => 'occurred_at',
                 'days' => max(30, (int) ($this->retentionDays['events'] ?? 90)),
             ],
+            // `biomie_sync_runs` nao tinha politica NENHUMA: 677 linhas/dia
+            // desde 2026-05-17, ja em 56.905 linhas e 63,7 MB. E a tabela que o
+            // `api/omie_status.php` consulta seis vezes por request — ela
+            // crescendo e o motivo de aquele endpoint ter degradado, e os
+            // indices novos so adiam o problema se ela nunca parar de crescer.
+            //
+            // 180 dias, o dobro das metricas: a trilha de sync e o que responde
+            // "por que faltou dado em maio?", pergunta que se faz meses depois.
+            [
+                'table' => 'biomie_sync_runs',
+                'date_column' => 'started_at',
+                'days' => max(90, (int) ($this->retentionDays['sync_runs'] ?? 180)),
+            ],
         ];
     }
 }

@@ -70,6 +70,13 @@ BIOMIE_PHP_BIN=/usr/bin/php
 # arquivo nenhum. Retencao de 14 dias em /var/backups/biomie (0700).
 0 3 * * *      root     /bin/sh /var/www/biomie/live/cron/hostinger/db_backup.sh
 
+# --- retenção ----------------------------------------------------------------
+# `cron/retention_cleanup.php` existia desde sempre e NUNCA foi agendado: spans
+# (463 mil linhas / 440 MB), métricas (538 mil / 210 MB) e a trilha de sync
+# (57 mil, 677/dia) cresciam para sempre com a política escrita e parada.
+# Semanal, domingo 04:40 — a janela mais quieta, sem concorrer com nada.
+40 4 * * 0     www-data /bin/sh /var/www/biomie/live/cron/hostinger/retention_cleanup.sh
+
 # --- noturnos (eram 01:30/02:00/02:30/02:45/03:15 UTC) ----------------------
 30 22 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/enrich_clients_governance.sh
 0  23 * * *    www-data /bin/sh /var/www/biomie/live/cron/hostinger/compute_forecasts.sh
