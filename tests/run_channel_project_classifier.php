@@ -71,6 +71,19 @@ $check(
     $withoutProject,
 );
 
+$canonicalWriter = (string) file_get_contents(__DIR__ . '/../app/Canonical/CanonicalWriteRepository.php');
+$check(
+    'invoice_writer_accepts_classifier_outros_channel',
+    substr_count($canonicalWriter, "['varejo', 'licitacao', 'outros']") >= 2,
+    null,
+);
+$check(
+    'invoice_writer_keeps_outros_out_of_commercial_visibility',
+    str_contains($canonicalWriter, "'outros' => 'outros'")
+        && str_contains($canonicalWriter, "'visible' => \$visible ?? (\$channel === 'varejo' ? 1 : 0)"),
+    null,
+);
+
 $failed = array_values(array_filter($checks, static fn (array $row): bool => !$row['ok']));
 echo json_encode([
     'ok' => $failed === [],

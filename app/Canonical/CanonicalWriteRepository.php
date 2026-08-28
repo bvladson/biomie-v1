@@ -1204,7 +1204,7 @@ final class CanonicalWriteRepository
     private function resolveInvoiceVisibility(array $invoice): array
     {
         $explicit = strtolower(trim((string) ($invoice['business_channel'] ?? '')));
-        if (in_array($explicit, ['varejo', 'licitacao'], true)) {
+        if (in_array($explicit, ['varejo', 'licitacao', 'outros'], true)) {
             return $this->visibilityResult(
                 $explicit,
                 'payload_business_channel',
@@ -1235,7 +1235,7 @@ final class CanonicalWriteRepository
         );
 
         $channel = strtolower(trim((string) $classification['channel']));
-        if (!in_array($channel, ['varejo', 'licitacao'], true)) {
+        if (!in_array($channel, ['varejo', 'licitacao', 'outros'], true)) {
             throw new \RuntimeException('Classificador retornou canal fiscal invalido.');
         }
 
@@ -1265,7 +1265,11 @@ final class CanonicalWriteRepository
     ): array {
         return [
             'channel' => $channel,
-            'scope' => $channel === 'licitacao' ? 'licitacao' : 'comercial',
+            'scope' => match ($channel) {
+                'licitacao' => 'licitacao',
+                'outros' => 'outros',
+                default => 'comercial',
+            },
             'visible' => $visible ?? ($channel === 'varejo' ? 1 : 0),
             'source' => $source,
             'confidence' => $confidence,
