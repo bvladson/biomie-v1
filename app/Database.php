@@ -6,6 +6,8 @@ namespace BIomie;
 
 use BIomie\Observability\RequestPerformanceContext;
 use BIomie\Support\CaBundleResolver;
+use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use RuntimeException;
 
@@ -45,9 +47,15 @@ final class Database
         $sslCa = trim((string) $config->get($connection . '.ssl_ca', ''));
         $persistent = (bool) $config->get($connection . '.persistent', false);
         $probeOnPoolReuse = (bool) $config->get($connection . '.probe_on_pool_reuse', false);
+        $appTimezone = trim((string) $config->get('app.timezone', 'America/Fortaleza'));
+        try {
+            $sessionTimezone = (new DateTimeImmutable('now', new DateTimeZone($appTimezone)))->format('P');
+        } catch (\Throwable $exception) {
+            throw new RuntimeException(sprintf('Timezone da aplicacao invalida: "%s".', $appTimezone), 0, $exception);
+        }
 
         $poolKey = $driver . ':' . $user . '@' . $host . ':' . $port . '/' . $name
-            . ':charset=' . $charset . ':ssl=' . (int) $sslEnabled;
+            . ':charset=' . $charset . ':ssl=' . (int) $sslEnabled . ':timezone=' . $sessionTimezone;
         self::registerPoolKey($connection, $poolKey);
 
         if (isset(self::$pool[$poolKey])) {
@@ -92,6 +100,13 @@ final class Database
 
         $pdo = @new PDO($dsn, $user, $pass, $options);
         RequestPerformanceContext::increment('db_connections_opened');
+
+        // MySQL/MariaDB herda o fuso global do servidor (UTC nesta VPS), enquanto
+        // o BIomie opera em America/Fortaleza. Sem alinhar a sessao, NOW() grava
+        // tres horas no futuro em relacao aos logs PHP e quebra freshness/DLQ.
+        // Usamos o offset calculado pelo PHP porque servidores gerenciados nem
+        // sempre carregam as tabelas de timezone necessarias para nomes IANA.
+        $pdo->exec('SET SESSION time_zone = ' . $pdo->quote($sessionTimezone));
 
         if ($sslEnabled) {
             $status = $pdo->query("SHOW STATUS LIKE 'Ssl_cipher'")->fetch(PDO::FETCH_ASSOC);
