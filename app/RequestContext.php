@@ -150,12 +150,43 @@ final class RequestContext
     public static function route(): string
     {
         if (PHP_SAPI === 'cli') {
-            return implode(' ', $_SERVER['argv'] ?? []);
+            return self::maskSecrets(implode(' ', $_SERVER['argv'] ?? []));
         }
 
         $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
         $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
-        return trim($method . ' ' . $uri);
+        return trim($method . ' ' . self::maskSecrets($uri));
+    }
+
+    /**
+     * Mascara segredos que viajam na rota antes de ela chegar a spans, logs e
+     * envelopes de erro. O token do webhook Omie é a própria credencial da URL
+     * (/webhooks/omie/<empresa>/<token>): até 21/09/2026 ele era gravado
+     * inteiro em biomie_operational_spans.route_name e no biomie.log. Fica só
+     * o final (wh_****7a3c), o bastante para distinguir tokens entre rotações.
+     */
+    public static function maskSecrets(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $value = preg_replace_callback(
+            '#(/webhooks/omie/[^/?\s]+/)([^/?\s]+)#i',
+            static fn (array $m): string => $m[1] . self::maskedTail($m[2]),
+            $value
+        ) ?? $value;
+
+        return preg_replace_callback(
+            '/((?:[?&]|--)(?:token|path_token)=)([^&\s]*)/i',
+            static fn (array $m): string => $m[1] . self::maskedTail($m[2]),
+            $value
+        ) ?? $value;
+    }
+
+    private static function maskedTail(string $secret): string
+    {
+        return 'wh_****' . (strlen($secret) > 8 ? substr($secret, -4) : '');
     }
 
     private static function sanitize(string $value): string

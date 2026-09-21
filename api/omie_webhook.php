@@ -361,13 +361,8 @@ function sanitizeWebhookRequestUri(string $uri): string
         return '';
     }
 
-    $uri = preg_replace(
-        '#(/webhooks/omie/[^/?]+/)[^/?]+#i',
-        '$1[redacted]',
-        $uri
-    ) ?? $uri;
-
-    return preg_replace('/([?&](?:token|path_token)=)[^&]*/i', '$1[redacted]', $uri) ?? $uri;
+    // Mesma regra dos spans e do logger: uma implementação só.
+    return \BIomie\RequestContext::maskSecrets($uri);
 }
 
 function sanitizeWebhookQueryString(string $queryString): string
