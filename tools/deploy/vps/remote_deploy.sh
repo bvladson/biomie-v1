@@ -126,7 +126,8 @@ for contract in \
     run_finance_enrichment_cron_contract.php \
     run_file_job_queue_coalescing_contract.php \
     run_superseded_delta_cleanup_contract.php \
-    run_release_info_contract.php
+    run_release_info_contract.php \
+    run_failure_visibility_contract.php
 do
     output="/tmp/biomie_${contract%.php}.out"
     if ! sudo -u www-data php "$REL/tests/$contract" >"$output" 2>&1; then

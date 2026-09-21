@@ -131,9 +131,7 @@ final class IntelligenceJobSla
                 $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
                 $lastOk = $row['ultimo_ok'] ?? null;
-                $ageHours = $lastOk !== null
-                    ? max(0.0, (time() - (strtotime((string) $lastOk) ?: time())) / 3600)
-                    : null;
+                $ageHours = $lastOk !== null ? self::ageHoursSinceUtc((string) $lastOk) : null;
                 $severity = self::severityFor($job, $ageHours);
 
                 $jobs[$job] = [
@@ -152,6 +150,23 @@ final class IntelligenceJobSla
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * intelligence_job_runs é gravada pelo Python em UTC (db.py fixa
+     * time_zone '+00:00'), mas o PHP roda em America/Fortaleza. O
+     * strtotime() de antes lia o valor como horário local e subestimava a
+     * idade em 3 h: o alerta de job parado chegava 3 h atrasado.
+     */
+    public static function ageHoursSinceUtc(string $utcDateTime, ?int $now = null): float
+    {
+        try {
+            $then = new \DateTimeImmutable($utcDateTime, new \DateTimeZone('UTC'));
+        } catch (\Exception) {
+            return 0.0;
+        }
+
+        return max(0.0, (($now ?? time()) - $then->getTimestamp()) / 3600);
     }
 
     private static function worse(string $a, string $b): string

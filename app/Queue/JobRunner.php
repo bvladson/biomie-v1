@@ -360,7 +360,7 @@ final class JobRunner
         $runId = trim((string) ($payload['run_id'] ?? ''));
         $result = $service->runDelta($domains, null, $runId !== '' ? $runId : null);
         if (empty($result['ok'])) {
-            throw new RuntimeException('Sync delta Omie falhou.');
+            throw new RuntimeException(self::deltaFailureMessage($result, $runId));
         }
 
         return $result + [
@@ -544,5 +544,35 @@ final class JobRunner
         }
 
         return ['start' => $start, 'end' => $end];
+    }
+
+    /**
+     * Mensagem de falha do delta com o motivo real de cada domínio.
+     *
+     * Antes era só "Sync delta Omie falhou.": de 24/08 a 08/09/2026 isso
+     * escondeu, em 592 itens da dead-letter, que uma única NF de canal
+     * "outros" travava o delta comercial da MAG_FILIAL. O resumo vem do
+     * DatabaseErrorEnvelope (já sanitizado); o worker ainda passa tudo por
+     * SecretMask e corta em 500 caracteres.
+     *
+     * @param array<string,mixed> $result
+     */
+    public static function deltaFailureMessage(array $result, string $runId = ''): string
+    {
+        $reasons = [];
+        foreach ((array) ($result['results'] ?? []) as $row) {
+            if (!is_array($row) || ($row['status'] ?? '') !== 'failed_terminal') {
+                continue;
+            }
+            $domain = trim((string) ($row['domain'] ?? '?'));
+            $message = trim((string) ($row['message'] ?? ''));
+            $reasons[] = $domain . ': ' . ($message !== '' ? mb_substr($message, 0, 160) : 'sem detalhe');
+            if (count($reasons) === 3) {
+                break;
+            }
+        }
+
+        $prefix = 'Sync delta Omie falhou' . ($runId !== '' ? ' [run ' . $runId . ']' : '');
+        return $reasons === [] ? $prefix . '.' : $prefix . ': ' . implode('; ', $reasons);
     }
 }
