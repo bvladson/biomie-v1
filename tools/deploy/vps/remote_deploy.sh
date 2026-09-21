@@ -8,6 +8,7 @@ STAMP="$2"         # 20260803_194500
 KEEP="$3"          # quantas releases manter
 VERSION="$4"       # ex.: 6452289-20260803_194500
 TARBALL="$5"       # /tmp/biomie-deploy-<stamp>.tar
+COMMIT_FULL="${6:-}"  # sha completo do commit deployado (release.json)
 
 REL="$BASE/releases/$STAMP"
 SHARED="$BASE/shared"
@@ -66,6 +67,34 @@ return [
 ];
 EOF
 
+# ------------------------------------------- 4b. identidade da release
+# config/release.json diz qual commit está no ar: o app mostra no rodapé
+# ("v2026.09.21.1 • 74c9a28") e anexa aos envelopes de erro. Numeração
+# AAAA.MM.DD.N; o contador vive em shared/ para sobreviver à limpeza de
+# releases antigas e só avança depois do smoke test (seção 8).
+DAY="$(date '+%Y.%m.%d')"
+SEQ_FILE="$SHARED/release-seq"
+LAST_SEQ="$(cat "$SEQ_FILE" 2>/dev/null || true)"
+if [ "${LAST_SEQ% *}" = "$DAY" ]; then
+    SEQ=$(( ${LAST_SEQ#* } + 1 ))
+else
+    SEQ=1
+fi
+RELEASE="$DAY.$SEQ"
+[ -n "$COMMIT_FULL" ] || COMMIT_FULL="${VERSION%%-*}"
+printf '%s' "$COMMIT_FULL" | grep -Eq '^[0-9a-f]{7,40}$' \
+    || fail "commit inválido para release.json: '$COMMIT_FULL'"
+cat > "$REL/config/release.json" <<EOF
+{
+  "release": "$RELEASE",
+  "commit": "$COMMIT_FULL",
+  "deployed_at": "$(date -Iseconds)",
+  "release_dir": "$STAMP",
+  "version": "$VERSION"
+}
+EOF
+log "release $RELEASE · commit ${COMMIT_FULL:0:7}"
+
 # ------------------------------------------------------------ 5. permissões
 log "ajustando permissões"
 chown -R biomie:www-data "$REL"
@@ -96,7 +125,8 @@ for contract in \
     run_invoice_channel_visibility_contract.php \
     run_finance_enrichment_cron_contract.php \
     run_file_job_queue_coalescing_contract.php \
-    run_superseded_delta_cleanup_contract.php
+    run_superseded_delta_cleanup_contract.php \
+    run_release_info_contract.php
 do
     output="/tmp/biomie_${contract%.php}.out"
     if ! sudo -u www-data php "$REL/tests/$contract" >"$output" 2>&1; then
@@ -197,6 +227,7 @@ elif [ "$SERVED" != "$VERSION" ]; then
     fail "opcache/symlink não pegou a release nova"
 fi
 log "smoke OK (HTTP $CODE · versão servida: ${SERVED:-?})"
+printf '%s %s\n' "$DAY" "$SEQ" > "$SEQ_FILE"
 
 # --------------------------------------------------------------- 9. limpeza
 CURRENT="$(readlink -f "$BASE/live")"
@@ -207,4 +238,4 @@ ls -1dt "$BASE"/releases/*/ 2>/dev/null | tail -n +$((KEEP + 1)) | while read -r
     rm -rf "$old"
 done
 
-log "DEPLOY OK — live = $STAMP (versão $VERSION)"
+log "DEPLOY OK — live = $STAMP (release $RELEASE · versão $VERSION)"

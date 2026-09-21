@@ -296,7 +296,9 @@ final class DatabaseErrorEnvelope
         try {
             $release = Asset::buildVersion();
             $facts['release'] = $release;
-            $facts['release_sha'] = self::extractSha($release);
+            // release.json é a fonte certa; o carimbo do build.php fica como
+            // reserva para releases anteriores a ele.
+            $facts['release_sha'] = ReleaseInfo::commitShort() ?? self::extractSha($release);
         } catch (Throwable) {
             $facts['release'] = null;
             $facts['release_sha'] = null;

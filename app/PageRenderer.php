@@ -6,6 +6,7 @@ namespace BIomie;
 
 use BIomie\Support\Asset;
 use BIomie\Support\HttpCache;
+use BIomie\Support\ReleaseInfo;
 use BIomie\Support\TenantContext;
 use Throwable;
 
@@ -109,7 +110,9 @@ final class PageRenderer
                 'user' => is_array($user) ? $user : null,
                 'isAdmin' => $isAdmin,
                 'appName' => (string) ($context['appName'] ?? 'BIomie'),
-                'appVersion' => (string) ($context['appVersion'] ?? ''),
+                // Rodapé da barra lateral: "v2026.09.21.1 • 74c9a28", do
+                // config/release.json gerado pelo deploy. Vazio fora de release.
+                'appVersion' => (string) ($context['appVersion'] ?? ReleaseInfo::label()),
                 'environment' => (string) ($context['environment'] ?? getenv('APP_ENV') ?: 'production'),
             ],
         ]);

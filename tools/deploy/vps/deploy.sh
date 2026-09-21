@@ -40,6 +40,7 @@ step "verificando o repositório"
     fail "há mudanças não commitadas. O deploy sai do git — commite antes."
 }
 COMMIT="$(git rev-parse --short "$REF")"
+COMMIT_FULL="$(git rev-parse "$REF")"
 echo "    deployando $COMMIT ($(git log -1 --format=%s "$REF"))"
 
 # ------------------------------------ 1b. contratos PHP × Python conferem?
@@ -112,7 +113,7 @@ $SSH "cat > /tmp/biomie_remote_deploy.sh" < tools/deploy/vps/remote_deploy.sh
 
 # ------------------------------------------------------------- 5. executar
 step "executando o deploy na VPS"
-$SSH "bash /tmp/biomie_remote_deploy.sh '$BASE' '$STAMP' '$KEEP' '$VERSION' '$REMOTE_TAR'"
+$SSH "bash /tmp/biomie_remote_deploy.sh '$BASE' '$STAMP' '$KEEP' '$VERSION' '$REMOTE_TAR' '$COMMIT_FULL'"
 
 step "pronto"
 echo "    https://biomie.magmoveiscorporativos.com.br/biomie/"
