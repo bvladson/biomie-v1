@@ -29,6 +29,10 @@ return [
     'DB_NAME'         => '',
     'DB_USER'         => '',
     'DB_PASS'         => '',
+    // Alvo esperado por ESTA máquina: production | legacy | other. Na máquina de
+    // desenvolvimento, que lê a produção por túnel (tools/dev/db_tunnel.sh) com
+    // usuário somente-leitura, use 'production'. bin/biomie aborta se não bater.
+    'DB_EXPECTED_TARGET' => '',
     'DB_TIMEOUT'      => '5',
     // Ative somente apos medir estabilidade do provedor; o pool ja reutiliza a conexao no request.
     'DB_PERSISTENT'   => '0',

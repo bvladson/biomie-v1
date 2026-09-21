@@ -11,7 +11,9 @@ use RuntimeException;
  * BARREIRA ESTRUTURAL — impede ESCRITA acidental no banco de PRODUÇÃO.
  *
  * ─── POR QUE EXISTE ─────────────────────────────────────────────────────────
- * Nesta instalação o ambiente LOCAL conecta direto ao banco de PRODUÇÃO
+ * Produção é o MariaDB da VPS (`biomie` em srv1851839); a máquina local o lê
+ * por túnel SSH com usuário somente-leitura. Antes da migração, o LOCAL
+ * conectava direto ao banco de produção de então
  * (`u106688109_Comercial` em br-asc-web1659.main-hosting.eu). Em 2026-07-23 uma
  * migration rodou "local" e, por isso, foi aplicada em produção. Não houve dano
  * (era aditiva), mas o CAMINHO é perigoso: no MariaDB, DDL (CREATE/ALTER/DROP)
@@ -36,8 +38,28 @@ use RuntimeException;
  */
 final class ProductionDatabaseGuard
 {
-    /** Bancos reconhecidos como PRODUÇÃO. */
-    private const PRODUCTION_DATABASES = ['u106688109_Comercial'];
+    public const TARGET_PRODUCTION = 'production';
+    public const TARGET_LEGACY = 'legacy';
+    public const TARGET_OTHER = 'other';
+
+    /**
+     * PRODUÇÃO é reconhecida pelo par servidor + banco: o nome "biomie"
+     * sozinho é genérico demais — uma cópia local ou de staging pode tê-lo.
+     *
+     * Até 21/09/2026 esta lista tinha só `u106688109_Comercial`: depois da
+     * migração para a VPS o guard protegia o banco ANTIGO e deixava a produção
+     * real (`biomie` em srv1851839) sem barreira nenhuma contra migration.
+     */
+    private const PRODUCTION_TARGETS = [
+        ['server' => 'srv1851839', 'database' => 'biomie'],
+    ];
+
+    /**
+     * Legado congelado da Hostinger: sem app nem cron desde 21/09/2026, guardado
+     * como evidência. Escrita só com BIOMIE_ALLOW_LEGACY_WRITE=1 — a flag de
+     * produção NÃO serve aqui, para um deploy de produção nunca alcançá-lo.
+     */
+    private const LEGACY_DATABASES = ['u106688109_Comercial'];
 
     /**
      * Garante que uma ESCRITA estrutural no banco corrente está autorizada.
@@ -47,15 +69,27 @@ final class ProductionDatabaseGuard
      */
     public static function assertWriteAllowed(PDO $pdo, string $operation = 'escrita estrutural'): void
     {
-        if (!self::isProduction($pdo)) {
-            return; // não é produção — libere
+        $target = self::currentTarget($pdo);
+        if ($target === self::TARGET_OTHER) {
+            return; // nem produção nem legado — libere
+        }
+
+        $database = self::currentDatabase($pdo);
+        if ($target === self::TARGET_LEGACY) {
+            if (getenv('BIOMIE_ALLOW_LEGACY_WRITE') === '1') {
+                return;
+            }
+            throw new RuntimeException(
+                'LEGADO BLOQUEADO: "' . $operation . '" contra o banco "' . $database . '" recusada. '
+                . 'Este é o banco antigo da Hostinger, congelado como evidência desde 21/09/2026. '
+                . 'Nenhum SQL foi executado. Produção fica na VPS (biomie em srv1851839).'
+            );
         }
 
         if (self::isExplicitlyAllowed()) {
             return; // produção + intenção declarada — libere
         }
 
-        $database = self::currentDatabase($pdo);
         throw new RuntimeException(
             'PRODUÇÃO BLOQUEADA: "' . $operation . '" contra o banco "' . $database . '" recusada. '
             . 'Nenhum SQL foi executado. Esta máquina não declarou intenção de escrever em produção. '
@@ -65,16 +99,39 @@ final class ProductionDatabaseGuard
         );
     }
 
-    /** O banco corrente é de produção? */
+    /** O banco corrente é protegido (produção ou legado congelado)? */
     public static function isProduction(PDO $pdo): bool
     {
-        return self::isProductionDatabase(self::currentDatabase($pdo));
+        return self::currentTarget($pdo) !== self::TARGET_OTHER;
     }
 
-    /** Um nome de banco é de produção? Testável sem conexão. */
+    /** production | legacy | other, a partir do banco e do servidor conectados. */
+    public static function currentTarget(PDO $pdo): string
+    {
+        $row = $pdo->query('SELECT DATABASE(), @@hostname')->fetch(PDO::FETCH_NUM) ?: ['', ''];
+
+        return self::classify((string) ($row[0] ?? ''), (string) ($row[1] ?? ''));
+    }
+
+    /** Classificação testável sem conexão. */
+    public static function classify(string $database, string $server = ''): string
+    {
+        foreach (self::PRODUCTION_TARGETS as $target) {
+            if ($database === $target['database'] && strcasecmp($server, $target['server']) === 0) {
+                return self::TARGET_PRODUCTION;
+            }
+        }
+
+        return in_array($database, self::LEGACY_DATABASES, true) ? self::TARGET_LEGACY : self::TARGET_OTHER;
+    }
+
+    /**
+     * Um nome de banco é protegido? Só reconhece o legado: produção exige
+     * também o servidor (ver classify()).
+     */
     public static function isProductionDatabase(string $database): bool
     {
-        return in_array($database, self::PRODUCTION_DATABASES, true);
+        return self::classify($database) !== self::TARGET_OTHER;
     }
 
     /**
@@ -96,7 +153,11 @@ final class ProductionDatabaseGuard
     /** Como assertWriteAllowed, mas retorna bool — para testar o próprio guard. */
     public static function isWriteAllowed(PDO $pdo): bool
     {
-        return !self::isProduction($pdo) || self::isExplicitlyAllowed();
+        return match (self::currentTarget($pdo)) {
+            self::TARGET_OTHER => true,
+            self::TARGET_LEGACY => getenv('BIOMIE_ALLOW_LEGACY_WRITE') === '1',
+            default => self::isExplicitlyAllowed(),
+        };
     }
 
     private static function currentDatabase(PDO $pdo): string

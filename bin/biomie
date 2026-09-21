@@ -10,6 +10,7 @@ use BIomie\Database;
 use BIomie\Logger;
 use BIomie\RequestContext;
 use BIomie\Support\CliGuard;
+use BIomie\Support\EnvironmentGuard;
 
 $root = dirname(__DIR__);
 
@@ -28,6 +29,12 @@ try {
     $config = new Config();
     $logger = new Logger($root . '/storage/logs/biomie-cli.log');
     $pdo = Database::connect($config, 'db');
+    // Onde estamos, antes de qualquer comando: o quadro vai para STDERR (não
+    // suja --json) e o comando aborta se o banco não for o esperado — em
+    // DB_EXPECTED_TARGET ou em --expect=production|legacy|other.
+    $environment = EnvironmentGuard::describe($pdo, $config);
+    fwrite(STDERR, EnvironmentGuard::banner($environment) . PHP_EOL);
+    EnvironmentGuard::assertExpected($environment, isset($args['expect']) ? (string) $args['expect'] : null);
     $registry = AdminCommandRegistry::build($pdo, $logger, $config);
 
     if ($commandName === 'list') {

@@ -136,6 +136,10 @@ return [
         'name'    => env('DB_NAME', '', $secrets),
         'user'    => env('DB_USER', '', $secrets),
         'pass'    => env('DB_PASS', '', $secrets),
+        // Alvo que ESTA máquina espera: production | legacy | other. Os scripts
+        // administrativos (bin/biomie, tools/dev/whereami.php) abortam se a
+        // conexão cair em outro — ver EnvironmentGuard. Vazio = só avisa.
+        'expected_target' => env('DB_EXPECTED_TARGET', '', $secrets),
         'charset' => 'utf8mb4',
         'timeout' => (int) env('DB_TIMEOUT', '5', $secrets),
         // wait_timeout da SESSAO. O host gerenciado usa wait_timeout=20s, baixo demais

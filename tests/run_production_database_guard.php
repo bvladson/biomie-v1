@@ -50,6 +50,21 @@ putenv('BIOMIE_ALLOW_PRODUCTION=0');
 $check('env =0 NÃO declara intenção', !G::isExplicitlyAllowed());
 putenv('BIOMIE_ALLOW_PRODUCTION');
 
+// ── 2b. Classificação servidor + banco (21/09/2026) ─────────────────────────
+// Depois da migração para a VPS o guard protegia só o banco ANTIGO e deixava a
+// produção real sem barreira. Produção agora é o par servidor+banco; o nome
+// "biomie" sozinho não basta; o legado da Hostinger segue protegido pelo nome.
+$check('🔴 produção real reconhecida (biomie @ srv1851839)',
+    G::classify('biomie', 'srv1851839') === G::TARGET_PRODUCTION);
+$check('servidor sem diferenciar maiúsculas',
+    G::classify('biomie', 'SRV1851839') === G::TARGET_PRODUCTION);
+$check('"biomie" em outro servidor NÃO é produção (cópia local/staging)',
+    G::classify('biomie', 'notebook-dev') === G::TARGET_OTHER);
+$check('🔴 legado congelado reconhecido em qualquer servidor',
+    G::classify('u106688109_Comercial', 'br-asc-web1659') === G::TARGET_LEGACY);
+$check('banco _test continua fora da proteção',
+    G::classify('u106688109_test', 'srv1851839') === G::TARGET_OTHER);
+
 // ── 3. O guard NÃO atrapalha bancos de não-produção (test_db) ───────────────
 // test_pdo aponta para o banco _test — o guard deve LIBERAR (não é produção).
 $pdo = test_pdo();
