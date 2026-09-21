@@ -139,30 +139,41 @@ try {
             $result = $runner->run($job);
             $result['worker_duration_ms'] = max(0, (int) round((microtime(true) - $jobStartedAt) * 1000));
             $queue->complete($job, $result);
+            $currentJob = $queue->find((string) ($job['job_id'] ?? ''));
             $results[] = [
                 'job_id' => $job['job_id'] ?? null,
                 'type' => $job['type'] ?? null,
-                'status' => 'completed',
+                'status' => ($currentJob['status'] ?? '') === 'queued' ? 'completed_and_requeued' : 'completed',
                 'duration_ms' => $result['worker_duration_ms'],
             ];
         } catch (Throwable $exception) {
             $message = SecretMask::sanitizeErrorMessage($exception->getMessage(), 500);
-            $transient = isTransientJobFailure($exception);
-            $attempts = (int) ($job['attempts'] ?? 1);
-            $maxAttempts = max(1, (int) ($job['max_attempts'] ?? 3));
-            $willRetry = $transient && $attempts < $maxAttempts;
-            $queue->fail($job, $message, $transient);
-            if (!$willRetry) {
-                $deadLetters?->recordJobFailure($job, $message, canRetry: $transient);
+            if (isDeferrableJobContention($exception)) {
+                $queue->defer($job, $message, 60);
+                $results[] = [
+                    'job_id' => $job['job_id'] ?? null,
+                    'type' => $job['type'] ?? null,
+                    'status' => 'deferred',
+                    'message' => $message,
+                ];
+            } else {
+                $transient = isTransientJobFailure($exception);
+                $attempts = (int) ($job['attempts'] ?? 1);
+                $maxAttempts = max(1, (int) ($job['max_attempts'] ?? 3));
+                $willRetry = $transient && $attempts < $maxAttempts;
+                $queue->fail($job, $message, $transient);
+                if (!$willRetry) {
+                    $deadLetters?->recordJobFailure($job, $message, canRetry: $transient);
+                }
+                $failedJobs++;
+                $results[] = [
+                    'job_id' => $job['job_id'] ?? null,
+                    'type' => $job['type'] ?? null,
+                    'status' => $willRetry ? 'failed_retryable' : 'failed_terminal',
+                    'transient' => $transient,
+                    'message' => $message,
+                ];
             }
-            $failedJobs++;
-            $results[] = [
-                'job_id' => $job['job_id'] ?? null,
-                'type' => $job['type'] ?? null,
-                'status' => $willRetry ? 'failed_retryable' : 'failed_terminal',
-                'transient' => $transient,
-                'message' => $message,
-            ];
         }
 
         $processed++;
@@ -170,7 +181,7 @@ try {
     }
 
     $payload = [
-        'ok' => true,
+        'ok' => $failedJobs === 0,
         'worker_id' => $workerId,
         'processed' => $processed,
         'failed' => $failedJobs,
@@ -190,6 +201,8 @@ try {
         fclose($fileLock);
     }
 }
+
+exit($failedJobs === 0 ? 0 : 1);
 
 /**
  * @param list<string> $argv
@@ -225,6 +238,13 @@ function isTransientJobFailure(Throwable $exception): bool
     }
 
     return true;
+}
+
+function isDeferrableJobContention(Throwable $exception): bool
+{
+    $message = mb_strtolower($exception->getMessage());
+    return str_contains($message, 'outro sync fiscal da empresa ja esta em execucao')
+        || str_contains($message, 'outro sync fiscal da empresa já está em execução');
 }
 
 function parseMemoryLimitMb(string $value): int

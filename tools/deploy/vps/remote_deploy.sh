@@ -91,6 +91,21 @@ sudo -u www-data php -r "
   echo \"bootstrap+banco OK\n\";
 " || fail "a release não sobe com a config real — symlink NÃO foi trocado"
 
+log "checando contratos operacionais críticos"
+for contract in \
+    run_invoice_channel_visibility_contract.php \
+    run_finance_enrichment_cron_contract.php \
+    run_file_job_queue_coalescing_contract.php \
+    run_superseded_delta_cleanup_contract.php
+do
+    output="/tmp/biomie_${contract%.php}.out"
+    if ! sudo -u www-data php "$REL/tests/$contract" >"$output" 2>&1; then
+        tail -40 "$output"
+        fail "contrato $contract reprovou — symlink NÃO foi trocado"
+    fi
+    log "  $contract OK"
+done
+
 # ------------------------------------- 6b. serviço Python (services/python)
 # O venv fica em shared/ e NÃO dentro da release: recriar 200 MB de pacotes a
 # cada deploy seria lento e deixaria o rollback sem venv. As dependências só são

@@ -19,8 +19,8 @@ final class FileJobQueue implements JobQueueInterface
     private array $statuses = [
         'queued',
         'running',
-        'completed',
         'failed_retryable',
+        'completed',
         'failed_terminal',
         'cancelled',
     ];
@@ -35,6 +35,11 @@ final class FileJobQueue implements JobQueueInterface
 
     public function enqueue(string $queue, string $type, array $payload = [], array $options = []): array
     {
+        return $this->withMutationLock(fn (): array => $this->enqueueLocked($queue, $type, $payload, $options));
+    }
+
+    private function enqueueLocked(string $queue, string $type, array $payload, array $options): array
+    {
         $payload['company_id'] ??= TenantContext::companyId();
         $payload['canal'] ??= TenantContext::canal();
         $queue = $this->slug($queue !== '' ? $queue : 'default');
@@ -48,7 +53,19 @@ final class FileJobQueue implements JobQueueInterface
 
         $jobId = substr(hash('sha256', $idempotencyKey), 0, 40);
         $existing = $this->find($jobId);
-        if ($existing !== null && in_array((string) ($existing['status'] ?? ''), ['queued', 'running', 'failed_retryable'], true)) {
+        $dedupeStatuses = ['queued', 'running', 'failed_retryable'];
+        if (!empty($options['dedupe_completed'])) {
+            $dedupeStatuses[] = 'completed';
+        }
+        if ($existing !== null && in_array((string) ($existing['status'] ?? ''), $dedupeStatuses, true)) {
+            if (($existing['status'] ?? '') !== 'completed' && !empty($options['coalesce_running'])) {
+                $existing['last_requested_at'] = date(DATE_ATOM);
+                $existing['updated_at'] = $existing['last_requested_at'];
+                if ($existing['status'] === 'running') {
+                    $existing['rerun_requested_at'] = $existing['last_requested_at'];
+                }
+                $this->writeJson($this->jobPath((string) $existing['status'], (string) $existing['queue'], $jobId), $existing);
+            }
             return [
                 'queued' => false,
                 'job_id' => $jobId,
@@ -84,6 +101,12 @@ final class FileJobQueue implements JobQueueInterface
 
         $path = $this->jobPath('queued', $queue, $jobId);
         $this->writeJson($path, $job);
+        foreach (['completed', 'failed_terminal', 'cancelled'] as $oldStatus) {
+            $oldPath = $this->jobPath($oldStatus, $queue, $jobId);
+            if (is_file($oldPath)) {
+                unlink($oldPath);
+            }
+        }
         $this->logger?->info('job.enqueued', [
             'job_id' => $jobId,
             'idempotency_key' => $idempotencyKey,
@@ -104,6 +127,11 @@ final class FileJobQueue implements JobQueueInterface
     }
 
     public function claimNext(array $queues = [], int $limit = 1): ?array
+    {
+        return $this->withMutationLock(fn (): ?array => $this->claimNextLocked($queues, $limit));
+    }
+
+    private function claimNextLocked(array $queues, int $limit): ?array
     {
         $allowedQueues = array_values(array_filter(array_map(fn (string $queue): string => $this->slug($queue), $queues)));
         $candidates = array_merge(
@@ -154,6 +182,7 @@ final class FileJobQueue implements JobQueueInterface
             }
 
             $job['status'] = 'running';
+            unset($job['rerun_requested_at']);
             $job['attempts'] = (int) ($job['attempts'] ?? 0) + 1;
             $job['started_at'] = date(DATE_ATOM);
             $job['reserved_at'] = $job['started_at'];
@@ -172,12 +201,40 @@ final class FileJobQueue implements JobQueueInterface
 
     public function complete(array $job, array $result = []): void
     {
+        $this->withMutationLock(fn () => $this->completeLocked($job, $result));
+    }
+
+    private function completeLocked(array $job, array $result): void
+    {
         $path = (string) ($job['_path'] ?? '');
         if ($path === '' || !is_file($path)) {
             return;
         }
 
+        $job = $this->readJson($path) ?? $job;
         $finishedAt = date(DATE_ATOM);
+        if (!empty($job['rerun_requested_at'])) {
+            $job['status'] = 'queued';
+            $job['attempts'] = 0;
+            $job['created_at'] = $job['rerun_requested_at'];
+            $job['available_at'] = $finishedAt;
+            $job['next_attempt_at'] = $finishedAt;
+            $job['updated_at'] = $finishedAt;
+            $job['previous_result'] = $result;
+            $job['locked_by'] = null;
+            $job['locked_at'] = null;
+            $job['lock_expires_at'] = null;
+            unset($job['_path'], $job['rerun_requested_at'], $job['finished_at'], $job['started_at'],
+                $job['reserved_at'], $job['failed_at'], $job['last_error'], $job['error_summary'], $job['result']);
+            $this->writeJson($path, $job);
+            $this->moveJob($path, $this->jobPath('queued', (string) $job['queue'], (string) $job['job_id']));
+            $this->logger?->info('job.completed_and_requeued', [
+                'job_id' => $job['job_id'],
+                'type' => $job['type'],
+                'reason' => 'Novo sinal recebido durante a execução.',
+            ]);
+            return;
+        }
         $job['status'] = 'completed';
         $job['finished_at'] = $finishedAt;
         $job['updated_at'] = $finishedAt;
@@ -185,7 +242,7 @@ final class FileJobQueue implements JobQueueInterface
         unset($job['_path']);
         $target = $this->jobPath('completed', (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
         $this->writeJson($path, $job);
-        @rename($path, $target);
+        $this->moveJob($path, $target);
         $this->logger?->info('job.completed', [
             'job_id' => $job['job_id'] ?? null,
             'type' => $job['type'] ?? null,
@@ -196,11 +253,17 @@ final class FileJobQueue implements JobQueueInterface
 
     public function fail(array $job, string $message, bool $retryable = true): void
     {
+        $this->withMutationLock(fn () => $this->failLocked($job, $message, $retryable));
+    }
+
+    private function failLocked(array $job, string $message, bool $retryable): void
+    {
         $path = (string) ($job['_path'] ?? '');
         if ($path === '' || !is_file($path)) {
             return;
         }
 
+        $job = $this->readJson($path) ?? $job;
         $message = SecretMask::sanitizeErrorMessage($message, 500);
         $attempts = (int) ($job['attempts'] ?? 1);
         $maxAttempts = max(1, (int) ($job['max_attempts'] ?? 3));
@@ -231,12 +294,57 @@ final class FileJobQueue implements JobQueueInterface
 
         $target = $this->jobPath($status, (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
         $this->writeJson($path, $job);
-        @rename($path, $target);
+        $this->moveJob($path, $target);
         $this->logger?->error($canRetry ? 'job.failed_retryable' : 'job.failed_terminal', [
             'job_id' => $job['job_id'] ?? null,
             'type' => $job['type'] ?? null,
             'attempts' => $attempts,
             'max_attempts' => $maxAttempts,
+            'message' => $message,
+        ]);
+    }
+
+    /**
+     * Devolve um job à fila sem consumir tentativa. Usado quando outro processo
+     * ainda possui um lock operacional; contenção não é falha do payload.
+     *
+     * @param array<string,mixed> $job
+     */
+    public function defer(array $job, string $message, int $delaySeconds = 60): void
+    {
+        $this->withMutationLock(fn () => $this->deferLocked($job, $message, $delaySeconds));
+    }
+
+    private function deferLocked(array $job, string $message, int $delaySeconds): void
+    {
+        $path = (string) ($job['_path'] ?? '');
+        if ($path === '' || !is_file($path)) {
+            return;
+        }
+
+        $job = $this->readJson($path) ?? $job;
+        $now = date(DATE_ATOM);
+        $availableAt = date(DATE_ATOM, time() + max(1, $delaySeconds));
+        $message = SecretMask::sanitizeErrorMessage($message, 500);
+        $job['status'] = 'queued';
+        $job['attempts'] = max(0, (int) ($job['attempts'] ?? 1) - 1);
+        $job['last_error'] = $message;
+        $job['error_summary'] = mb_substr($message, 0, 255);
+        $job['available_at'] = $availableAt;
+        $job['next_attempt_at'] = $availableAt;
+        $job['updated_at'] = $now;
+        $job['locked_by'] = null;
+        $job['locked_at'] = null;
+        $job['lock_expires_at'] = null;
+        unset($job['_path']);
+
+        $target = $this->jobPath('queued', (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
+        $this->writeJson($path, $job);
+        $this->moveJob($path, $target);
+        $this->logger?->info('job.deferred', [
+            'job_id' => $job['job_id'] ?? null,
+            'type' => $job['type'] ?? null,
+            'available_at' => $availableAt,
             'message' => $message,
         ]);
     }
@@ -257,6 +365,11 @@ final class FileJobQueue implements JobQueueInterface
     }
 
     public function releaseExpiredLocks(int $ttlSeconds = 900): int
+    {
+        return $this->withMutationLock(fn (): int => $this->releaseExpiredLocksLocked($ttlSeconds));
+    }
+
+    private function releaseExpiredLocksLocked(int $ttlSeconds): int
     {
         $released = 0;
         foreach (glob($this->jobsDir . '/running_job_*.json') ?: [] as $path) {
@@ -297,7 +410,7 @@ final class FileJobQueue implements JobQueueInterface
 
             $target = $this->jobPath($status, (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
             $this->writeJson($path, $job);
-            @rename($path, $target);
+            $this->moveJob($path, $target);
             $released++;
         }
 
@@ -334,6 +447,11 @@ final class FileJobQueue implements JobQueueInterface
      */
     public function retry(string $jobId): ?array
     {
+        return $this->withMutationLock(fn (): ?array => $this->retryLocked($jobId));
+    }
+
+    private function retryLocked(string $jobId): ?array
+    {
         $jobId = trim($jobId);
         if ($jobId === '') {
             return null;
@@ -356,7 +474,84 @@ final class FileJobQueue implements JobQueueInterface
                 unset($job['_path']);
                 $target = $this->jobPath('queued', (string) ($job['queue'] ?? 'default'), (string) ($job['job_id'] ?? ''));
                 $this->writeJson($path, $job);
-                @rename($path, $target);
+                $this->moveJob($path, $target);
+                return $this->publicJob($job);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Cancela um job ainda pendente sem apagar seu histórico. Se o worker já o
+     * tiver reservado, a transição não ocorre e o chamador recebe null.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function cancel(string $jobId, string $reason): ?array
+    {
+        return $this->withMutationLock(fn (): ?array => $this->cancelLocked($jobId, $reason));
+    }
+
+    /**
+     * Cancela somente se o snapshot observado pelo chamador ainda for o estado
+     * pendente atual. Isso protege limpezas contra uma transição concorrente de
+     * worker entre a inspeção e a ação.
+     *
+     * @param array<string,mixed> $expected
+     * @return array<string,mixed>|null
+     */
+    public function cancelIfUnchanged(string $jobId, string $reason, array $expected): ?array
+    {
+        return $this->withMutationLock(function () use ($jobId, $reason, $expected): ?array {
+            $current = $this->find($jobId);
+            if ($current === null || $this->jobFingerprint($current) !== $this->jobFingerprint($expected)) {
+                return null;
+            }
+
+            return $this->cancelLocked($jobId, $reason);
+        });
+    }
+
+    private function cancelLocked(string $jobId, string $reason): ?array
+    {
+        $jobId = trim($jobId);
+        if (preg_match('/^[a-f0-9]{40}$/D', $jobId) !== 1) {
+            return null;
+        }
+
+        foreach (['queued', 'failed_retryable'] as $status) {
+            foreach (glob($this->jobsDir . "/{$status}_job_*_{$jobId}.json") ?: [] as $path) {
+                $job = $this->readJson($path);
+                if (!is_array($job)) {
+                    continue;
+                }
+
+                $now = date(DATE_ATOM);
+                $reason = SecretMask::sanitizeErrorMessage($reason, 500);
+                $job['status'] = 'cancelled';
+                $job['cancel_reason'] = $reason;
+                $job['finished_at'] = $now;
+                $job['updated_at'] = $now;
+                $job['next_attempt_at'] = null;
+                $job['locked_by'] = null;
+                $job['locked_at'] = null;
+                $job['lock_expires_at'] = null;
+                unset($job['_path']);
+
+                $target = $this->jobPath(
+                    'cancelled',
+                    (string) ($job['queue'] ?? 'default'),
+                    (string) ($job['job_id'] ?? '')
+                );
+                $this->writeJson($path, $job);
+                $this->moveJob($path, $target);
+                $this->logger?->info('job.cancelled', [
+                    'job_id' => $job['job_id'] ?? null,
+                    'type' => $job['type'] ?? null,
+                    'reason' => $reason,
+                ]);
+
                 return $this->publicJob($job);
             }
         }
@@ -468,14 +663,38 @@ final class FileJobQueue implements JobQueueInterface
 
     private function writeJson(string $path, array $payload): void
     {
-        $temp = $path . '.tmp';
-        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-        if ($json === false) {
-            return;
+        $temp = $path . '.' . bin2hex(random_bytes(6)) . '.tmp';
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        if (file_put_contents($temp, $json, LOCK_EX) !== strlen($json)) {
+            throw new \RuntimeException('Falha ao persistir o estado do job.');
         }
 
-        @file_put_contents($temp, $json, LOCK_EX);
-        @rename($temp, $path);
+        $this->moveJob($temp, $path);
+    }
+
+    private function moveJob(string $source, string $target): void
+    {
+        if (!rename($source, $target)) {
+            throw new \RuntimeException('Falha ao realizar a transição do job.');
+        }
+    }
+
+    /** O lock cobre apenas operações locais curtas, nunca a execução do job. */
+    private function withMutationLock(callable $operation): mixed
+    {
+        $handle = fopen($this->jobsDir . '/.mutation.lock', 'c');
+        if ($handle === false) {
+            throw new \RuntimeException('Não foi possível abrir o lock da fila.');
+        }
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                throw new \RuntimeException('Não foi possível adquirir o lock da fila.');
+            }
+            return $operation();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
     /**
@@ -488,6 +707,16 @@ final class FileJobQueue implements JobQueueInterface
         return $job;
     }
 
+    /**
+     * @param array<string,mixed> $job
+     */
+    private function jobFingerprint(array $job): string
+    {
+        unset($job['_path']);
+        ksort($job);
+        return hash('sha256', json_encode($job, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    }
+
     private function pruneOld(int $maxCompleted = 50): void
     {
         foreach (['completed', 'failed_terminal'] as $status) {
@@ -496,9 +725,18 @@ final class FileJobQueue implements JobQueueInterface
                 continue;
             }
 
-            sort($files);
+            // Conclusões recentes sustentam a deduplicação de inbox. Hashes de
+            // nomes não representam idade: preserve 24h e ordene pelo término.
+            $dates = [];
+            foreach ($files as $path) {
+                $job = $this->readJson($path);
+                $dates[$path] = strtotime((string) ($job['finished_at'] ?? $job['updated_at'] ?? '')) ?: time();
+            }
+            usort($files, static fn (string $left, string $right): int => $dates[$left] <=> $dates[$right]);
             foreach (array_slice($files, 0, count($files) - $maxCompleted) as $path) {
-                @unlink($path);
+                if ($dates[$path] < time() - 86400) {
+                    @unlink($path);
+                }
             }
         }
     }

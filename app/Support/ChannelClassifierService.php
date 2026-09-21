@@ -8,7 +8,7 @@ use PDO;
 use Throwable;
 
 /**
- * Engine de classificação de canal comercial (varejo / licitação).
+ * Engine de classificação de canal comercial (varejo / licitação / outros).
  *
  * Carrega as regras da tabela biomie_channel_classification_rules para a
  * empresa configurada e as aplica em ordem de prioridade ascendente.
@@ -19,6 +19,9 @@ use Throwable;
  */
 final class ChannelClassifierService
 {
+    /** @var list<string> Domínio canônico compartilhado com as escritas fiscais. */
+    public const CHANNELS = ['varejo', 'licitacao', 'outros'];
+
     /** @var list<array{id:int,rule_type:string,match_value:string,target_channel:string,confidence:string}> */
     private array $rules = [];
     private bool  $rulesLoaded = false;
@@ -81,12 +84,26 @@ final class ChannelClassifierService
         return ['channel' => 'varejo', 'confidence' => 'baixa', 'rule_id' => null];
     }
 
+    /**
+     * Normaliza e valida um valor contra o domínio persistido no banco.
+     * Retorna null para ausência, tipo inesperado ou membro desconhecido.
+     */
+    public static function normalizeChannel(mixed $channel): ?string
+    {
+        if (!is_string($channel)) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($channel));
+        return in_array($normalized, self::CHANNELS, true) ? $normalized : null;
+    }
+
     // ─── Classificação retroativa em lote ─────────────────────────────────────
 
     /**
      * Classifica pedidos não classificados (ou sem channel_confidence = 'manual').
      *
-     * @return array{pedidos_total:int, pedidos_varejo:int, pedidos_licitacao:int}
+     * @return array{pedidos_total:int, pedidos_varejo:int, pedidos_licitacao:int, pedidos_outros:int}
      */
     public function classifyPedidos(bool $dryRun = false): array
     {
@@ -99,7 +116,12 @@ final class ChannelClassifierService
                AND (channel_confidence IS NULL OR channel_confidence != 'manual')"
         );
 
-        $stats = ['pedidos_total' => \count($rows), 'pedidos_varejo' => 0, 'pedidos_licitacao' => 0];
+        $stats = [
+            'pedidos_total' => \count($rows),
+            'pedidos_varejo' => 0,
+            'pedidos_licitacao' => 0,
+            'pedidos_outros' => 0,
+        ];
         if ($rows === []) {
             return $stats;
         }
@@ -126,7 +148,7 @@ final class ChannelClassifierService
     /**
      * Classifica notas fiscais não classificadas.
      *
-     * @return array{nfs_total:int, nfs_varejo:int, nfs_licitacao:int}
+     * @return array{nfs_total:int, nfs_varejo:int, nfs_licitacao:int, nfs_outros:int}
      */
     public function classifyNFs(bool $dryRun = false): array
     {
@@ -139,7 +161,12 @@ final class ChannelClassifierService
                AND (channel_confidence IS NULL OR channel_confidence != 'manual')"
         );
 
-        $stats = ['nfs_total' => \count($rows), 'nfs_varejo' => 0, 'nfs_licitacao' => 0];
+        $stats = [
+            'nfs_total' => \count($rows),
+            'nfs_varejo' => 0,
+            'nfs_licitacao' => 0,
+            'nfs_outros' => 0,
+        ];
         if ($rows === []) {
             return $stats;
         }

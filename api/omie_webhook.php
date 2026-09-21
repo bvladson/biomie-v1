@@ -178,22 +178,34 @@ try {
         'limit' => 20,
         'domains' => [$domain],
     ], [
-        'idempotency_key' => sprintf('webhook.inbox.process|company:%d|%s|%s', $companyId, $domain, date('Y-m-d-H-i')),
+        // Um sinal por registro persistido: nenhum evento que chegue enquanto
+        // outro job termina fica sem uma nova oportunidade de processamento.
+        'idempotency_key' => sprintf(
+            'webhook.inbox.process|company:%d|inbox:%s',
+            $companyId,
+            (string) ($result['inbox_id'] ?? RequestContext::id())
+        ),
         'max_attempts' => 5,
+        'priority' => 1,
+        'dedupe_completed' => true,
     ]);
 
     // WEBHOOK-DRIVEN INCREMENTAL (Fase 6.1): além de primar o cursor, dispara um
     // delta real da empresa+domínio. O worker (company-aware) busca na Omie e
-    // atualiza o canônico em ≤5min — sem esperar o cron */15. Debounce por
-    // empresa+domínio+minuto evita tempestade de chamadas Omie num burst.
+    // atualiza o canônico em ≤5min — sem esperar o cron */15. O id fixo por
+    // empresa+domínio funciona como singleton: enquanto houver delta pendente,
+    // em execução ou aguardando retry, novos webhooks reutilizam o mesmo job.
+    // Um sinal durante a execução garante mais uma passagem ao concluí-la.
     $syncQueueResult = null;
     if (in_array($domain, ['commercial', 'finance'], true)) {
         $syncQueueResult = $jobQueue->enqueue('high', 'omie.delta.sync', [
             'company_id' => $companyId,
             'domains' => [$domain],
         ], [
-            'idempotency_key' => sprintf('omie.delta.sync|company:%d|%s|%s', $companyId, $domain, date('Y-m-d-H-i')),
+            'idempotency_key' => sprintf('omie.delta.sync|company:%d|%s', $companyId, $domain),
+            'coalesce_running' => true,
             'max_attempts' => 3,
+            'priority' => 4,
         ]);
     }
     $telemetry->recordEvent('INFO', 'webhook.accepted', 'Webhook Omie recebido e persistido.', [

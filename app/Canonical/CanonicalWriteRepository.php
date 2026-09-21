@@ -614,14 +614,18 @@ final class CanonicalWriteRepository
             return null;
         }
 
-        $channel = strtolower(trim((string) ($row['business_channel'] ?? '')));
-        if (!in_array($channel, ['varejo', 'licitacao'], true)) {
+        $channel = ChannelClassifierService::normalizeChannel($row['business_channel'] ?? null);
+        if ($channel === null) {
             return null;
         }
 
         $scope = strtolower(trim((string) ($row['business_unit_scope'] ?? '')));
         if ($scope === '') {
-            $scope = $channel === 'licitacao' ? 'licitacao' : 'comercial';
+            $scope = match ($channel) {
+                'licitacao' => 'licitacao',
+                'outros' => 'outros',
+                default => 'comercial',
+            };
         }
 
         $ruleId = (int) ($row['channel_rule_id'] ?? 0);
@@ -1203,8 +1207,8 @@ final class CanonicalWriteRepository
      */
     private function resolveInvoiceVisibility(array $invoice): array
     {
-        $explicit = strtolower(trim((string) ($invoice['business_channel'] ?? '')));
-        if (in_array($explicit, ['varejo', 'licitacao', 'outros'], true)) {
+        $explicit = ChannelClassifierService::normalizeChannel($invoice['business_channel'] ?? null);
+        if ($explicit !== null) {
             return $this->visibilityResult(
                 $explicit,
                 'payload_business_channel',
@@ -1234,9 +1238,11 @@ final class CanonicalWriteRepository
             (string) ($invoice['projeto_id_omie'] ?? ''),
         );
 
-        $channel = strtolower(trim((string) $classification['channel']));
-        if (!in_array($channel, ['varejo', 'licitacao', 'outros'], true)) {
-            throw new \RuntimeException('Classificador retornou canal fiscal invalido.');
+        $channel = ChannelClassifierService::normalizeChannel($classification['channel'] ?? null);
+        if ($channel === null) {
+            throw new \RuntimeException(
+                'Classificador retornou canal fiscal invalido; esperado varejo, licitacao ou outros.'
+            );
         }
 
         $confidence = strtolower(trim((string) $classification['confidence']));
@@ -1351,8 +1357,8 @@ final class CanonicalWriteRepository
      */
     private function resolveBusinessChannel(array $record): string
     {
-        $explicit = strtolower(trim((string) ($record['business_channel'] ?? '')));
-        if (in_array($explicit, ['varejo', 'licitacao', 'outros'], true)) {
+        $explicit = ChannelClassifierService::normalizeChannel($record['business_channel'] ?? null);
+        if ($explicit !== null) {
             return $explicit;
         }
 
