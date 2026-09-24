@@ -34,12 +34,35 @@
 
   /* Painel + o controle que o próprio componente usa para fechar. Clicar
      nesse controle percorre o caminho de fechamento real do componente. */
+  /* O rotulo so e aplicado quando o painel nao tem nome acessivel proprio.
+     'fechar' precisa casar com a classe REAL criada pelo componente: o help
+     cria 'business-help-drawer-backdrop', nao 'business-help-backdrop'. */
   var REGISTRO = [
-    { nome: 'busca',  painel: '.omnisearch-panel',                    fechar: '[data-mobile-search-close]' },
-    { nome: 'filtro', painel: '.biomie-vendor-filter__panel--mobile', fechar: '[data-vendor-filter-close]' },
-    { nome: 'ajuda',  painel: '.business-help-drawer',                fechar: '.business-help-backdrop' },
-    { nome: 'dossie', painel: '.mag-drawer',                          fechar: '#overlay' }
+    { nome: 'busca',  rotulo: 'Busca global',
+      painel: '.omnisearch-panel',                    fechar: '[data-mobile-search-close]' },
+    { nome: 'filtro', rotulo: 'Filtro de vendedor',
+      painel: '.biomie-vendor-filter__panel--mobile', fechar: '[data-vendor-filter-close]' },
+    { nome: 'ajuda',  rotulo: 'Explicacao do indicador',
+      painel: '.business-help-drawer',                fechar: '.business-help-drawer-backdrop' },
+    { nome: 'dossie', rotulo: 'Dossie do cliente',
+      painel: '.mag-drawer',                          fechar: '#overlay' }
   ];
+
+  var seqId = 0;
+
+  /* Nome acessivel. Ordem: o que o componente ja declara > titulo dentro do
+     painel (via aria-labelledby, que e o preferido do padrao de dialogs) >
+     rotulo do registro. Nunca sobrescreve nome existente. */
+  function nomear(painel, reg) {
+    if (painel.hasAttribute('aria-label') || painel.hasAttribute('aria-labelledby')) return;
+    var titulo = painel.querySelector('h1,h2,h3,h4,[data-overlay-title]');
+    if (titulo && (titulo.textContent || '').trim()) {
+      if (!titulo.id) titulo.id = 'overlay-titulo-' + (++seqId);
+      painel.setAttribute('aria-labelledby', titulo.id);
+      return;
+    }
+    painel.setAttribute('aria-label', reg.rotulo || reg.nome);
+  }
 
   /* Regiões que ficam inertes com um modal aberto. Lista explícita em vez de
      "todos os irmãos": um backdrop também é irmão, e inertizá-lo impediria o
@@ -141,6 +164,7 @@
 
     if (!painel.hasAttribute('role')) painel.setAttribute('role', 'dialog');
     painel.setAttribute('aria-modal', 'true');
+    nomear(painel, reg);
   }
 
   function fechou() {

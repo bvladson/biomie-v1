@@ -123,6 +123,38 @@ function visivel(el){var c=getComputedStyle(el);return c.display!=='none'&&el.ge
   var n=['pBusca','pFiltro','pDossie'].filter(function(id){return visivel(document.getElementById(id));}).length;
   ok('10 nunca mais de um modal visivel', n<=1, 'visiveis='+n);
 
+
+  // 11-12. SEMANTICA DO OVERLAY ATIVO
+  var ativoEl = ['pBusca','pFiltro','pDossie'].map(function(id){return document.getElementById(id);})
+                 .filter(visivel)[0];
+  ok('11 overlay ativo tem role=dialog e aria-modal=true',
+     !!ativoEl && ativoEl.getAttribute('role')==='dialog' && ativoEl.getAttribute('aria-modal')==='true',
+     ativoEl?('role='+ativoEl.getAttribute('role')+' modal='+ativoEl.getAttribute('aria-modal')):'sem overlay');
+
+  function nomeAcessivel(el){
+    if(!el) return "";
+    var rot=el.getAttribute('aria-label');
+    if(rot && rot.trim()) return rot.trim();
+    var ref=el.getAttribute('aria-labelledby');
+    if(ref){var t=document.getElementById(ref); if(t) return (t.textContent||"").trim();}
+    return "";
+  }
+  ok('12 overlay ativo tem nome acessivel', nomeAcessivel(ativoEl).length>0,
+     'nome="'+nomeAcessivel(ativoEl)+'"');
+
+  // 13. FECHAR E CONFERIR OS ANCESTRAIS DE QUEM RECUPERA O FOCO
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  await esperar(250);
+  if(visivel(document.getElementById('pDossie'))){ document.getElementById('overlay').click(); await esperar(250); }
+  var quemFocou = document.activeElement;
+  var sujos = [];
+  for(var n = quemFocou; n && n !== document; n = n.parentElement){
+    if(n.hasAttribute && (n.hasAttribute('inert') || n.getAttribute('aria-hidden')==='true')){
+      sujos.push((n.tagName||'').toLowerCase()+'.'+((n.className||'')+'').split(' ')[0]);
+    }
+  }
+  ok('13 nenhum ancestral de quem recuperou o foco segue inert ou aria-hidden',
+     sujos.length===0, 'foco='+(quemFocou&&quemFocou.id||'?')+(sujos.length?' sujos='+sujos.join(','):''));
   var falhas=R.filter(function(l){return l.indexOf('FALHOU')===0;}).length;
   document.title='RESULTADO';
   var pre=document.createElement('xmp'); pre.id='res';

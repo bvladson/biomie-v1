@@ -71,12 +71,11 @@
   /* No desktop é um popover posicionado junto do gatilho. Num celular de
      320px um popover de 330px encosta nas duas bordas e some sob o teclado;
      vira folha ancorada embaixo. */
-  .business-help-backdrop {
+  .business-help-drawer-backdrop {
     z-index: var(--z-mobile-scrim, 340);
   }
 
-  .business-help-drawer,
-  .business-help-portal {
+  .business-help-drawer {
     z-index: var(--z-mobile-sheet, 350);
   }
 
