@@ -209,7 +209,7 @@ style.innerHTML = `
   max-width: 100vw;
   background: var(--page-surface);
   box-shadow: -4px 0 24px rgba(0,0,0,0.2);
-  z-index: 1000;
+  z-index: var(--mag-drawer-z, 1000);
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.1, 0, 0.1, 1);
   display: flex;

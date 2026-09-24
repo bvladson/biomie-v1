@@ -262,7 +262,12 @@
   // Portal: o painel usa position:fixed, mas dentro do .topbar o backdrop-filter
   // cria um containing block que desloca/aprisiona o fixed. Mover o painel para
   // <body> garante coordenadas de viewport reais e stacking acima do conteúdo.
-  if (panel && panel.parentElement !== document.body) {
+  // No mobile a topbar de desktop e display:none e nao existe sino ali: o
+  // portal so faria o painel escapar desse display:none e cobrir a navegacao.
+  // Sem portal, o painel permanece dentro do header e some junto com ele.
+  var semPortalNoMobile = window.matchMedia
+    && window.matchMedia("(max-width: 767px)").matches;
+  if (!semPortalNoMobile && panel && panel.parentElement !== document.body) {
     document.body.appendChild(panel);
   }
 

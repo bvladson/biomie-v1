@@ -39,6 +39,7 @@ final class PageAssetRegistry
         'assets/css/commercial-documents.css',
         'assets/css/commercial-language.css',
         'assets/css/commercial-card-help.css',
+        'assets/css/mobile-overlays.css', // politica de overlays mobile (por ultimo)
     ];
 
     /** JS utilitário core — carregado em todas as páginas antes do </body> */

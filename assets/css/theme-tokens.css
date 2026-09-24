@@ -39,6 +39,20 @@
   --z-popover:       9000;   /* dropdowns / pickers acima do drawer */
   --z-toast:         9999;   /* toasts / modais — camada mais alta */
 
+  /* ── Camadas de overlay MOBILE ────────────────────────────────────────────
+     No celular, um overlay modal cobre a navegação por definição — por isso
+     estas camadas ficam ACIMA de --z-mobile-nav (330). O teto do mobile é
+     --z-mobile-alert: dentro de @media (max-width: 767px) nada deve declarar
+     valor maior. Números como 99999 ou 10051 são bug, não intenção: quem
+     precisa aparecer acima da navegação usa --z-mobile-sheet, não um número
+     escolhido para "ganhar" de todos os outros.                              */
+  --z-mobile-scrim:   340;   /* fundo escurecido de qualquer overlay mobile */
+  --z-mobile-sheet:   350;   /* bottom sheet e drawer */
+  --z-mobile-modal:   360;   /* modal de tela cheia (busca global) */
+  --z-mobile-drawer-backdrop: 400; /* = valor ja usado por .mag-drawer-backdrop */
+  --z-mobile-drawer:  410;   /* = valor ja usado por .mag-drawer no design system */
+  --z-mobile-alert:   420;   /* teto do mobile: nada deve declarar acima disto */
+
   /* ── Breakpoints canônicos (referência) ───────────────────────────────────
      CSS puro não permite var() em @media; use SEMPRE estes valores ao criar
      novas media queries para manter consistência responsiva:

@@ -1,0 +1,119 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   mobile-overlays — política única de overlays no celular
+   Auditoria de 24/09/2026.
+
+   O PROBLEMA
+   Cinco componentes movem seu painel para o <body> com appendChild. No
+   desktop isso é correto: dentro da .topbar existe backdrop-filter, que cria
+   containing block e aprisiona um position:fixed. Mas ao sair do header o
+   painel também escapa do `display:none` que esconde a topbar no mobile — e,
+   declarando z-index fora de escala, passa por cima da navegação.
+
+   Medido: bottom nav = 330 · notificações = 99999 · ajuda = 10051.
+   A escala documentada em theme-tokens.css tem teto 9000.
+
+   A POLÍTICA
+   Um overlay mobile ocupa uma das quatro camadas de theme-tokens.css:
+
+     --z-mobile-scrim            340   fundo escurecido de sheet
+     --z-mobile-sheet            350   bottom sheet
+     --z-mobile-modal            360   modal de tela cheia
+     --z-mobile-drawer-backdrop  400   fundo do drawer (valor ja existente)
+     --z-mobile-drawer           410   drawer lateral (valor ja existente)
+     --z-mobile-alert            420   teto — nada acima disto no mobile
+
+   Ficam acima de --z-mobile-nav (330) de propósito: um overlay modal cobre a
+   navegação. O que não pode é um painel *não modal* cobri-la.
+
+   CLASSIFICAÇÃO DOS CINCO COMPONENTES
+
+   | componente             | no mobile? | gatilho                  | apresentação   | camada |
+   |------------------------|------------|--------------------------|----------------|--------|
+   | notifications.js       | NÃO MONTA  | sino só existe na topbar |  —             |  —     |
+   |                        |            | de desktop, escondida    |                |        |
+   | global-search.js       | sim        | data-mobile-search-open  | modal cheio    | modal  |
+   | vendor-filter.js       | sim        | data-vendor-filter-toggle| bottom sheet   | sheet  |
+   | commercial-card-help.js| sim        | [data-business-help-...] | bottom sheet   | sheet  |
+   | client_dossier.js      | sim        | clique no registro       | drawer         | sheet  |
+
+   Quem controla abrir/fechar continua sendo o próprio componente: este
+   arquivo não toca em estado, só em camada e forma. Nenhuma API, dado ou
+   regra comercial é alterada.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── notifications: não existe no celular ─────────────────────────────────
+     O sino vive em views/partials/topbar.php, que é display:none no mobile.
+     Sem gatilho, o painel portalizado só pode aparecer por acidente. O JS
+     deixou de portalizar (assets/js/notifications.js); esta regra é a rede de
+     proteção para um painel que já tenha sido movido antes desta versão. */
+  .biomie-notif__panel {
+    display: none !important;
+  }
+
+  /* ── global-search: modal de tela cheia ───────────────────────────────── */
+  .omnisearch-overlay,
+  .omnisearch-panel--mobile {
+    z-index: var(--z-mobile-modal, 360);
+  }
+
+  .omnisearch-panel {
+    z-index: var(--z-mobile-modal, 360);
+  }
+
+  /* ── vendor-filter: bottom sheet ──────────────────────────────────────────
+     Sem regra aqui de proposito: o proprio filters.css passou a declarar
+     var(--z-mobile-sheet) e var(--z-mobile-scrim). Um componente que sabe
+     sua camada nao precisa ser corrigido de fora. */
+
+  /* ── commercial-card-help: bottom sheet em vez de popover ─────────────── */
+  /* No desktop é um popover posicionado junto do gatilho. Num celular de
+     320px um popover de 330px encosta nas duas bordas e some sob o teclado;
+     vira folha ancorada embaixo. */
+  .business-help-backdrop {
+    z-index: var(--z-mobile-scrim, 340);
+  }
+
+  .business-help-drawer,
+  .business-help-portal {
+    z-index: var(--z-mobile-sheet, 350);
+  }
+
+  .business-help-popover {
+    position: fixed;
+    z-index: var(--z-mobile-sheet, 350);
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 72vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  }
+
+  /* ── client_dossier: drawer ───────────────────────────────────────────── */
+  /* No celular o drawer de 400px ocupa a tela inteira em vez de deixar uma
+     faixa inútil de conteúdo à esquerda. */
+  /* O client_dossier injeta o CSS do drawer por <style> em runtime, e estilo
+     injetado vence folha externa de mesma especificidade. Por isso a camada
+     chega por custom property, que ele lê como var(--mag-drawer-z). */
+  :root { --mag-drawer-z: var(--z-mobile-drawer, 410); }
+
+  .mag-drawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .mag-drawer-overlay,
+  .drawer-overlay {
+    z-index: var(--z-mobile-scrim, 340);
+  }
+
+  /* ── Regra geral: nada acima do teto ──────────────────────────────────── */
+  /* Um overlay que precise aparecer sobre um bottom sheet usa
+     --z-mobile-alert. Acima disso não há camada: é bug. */
+}
