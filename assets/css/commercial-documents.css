@@ -776,3 +776,183 @@ body[data-page="orders"] .nf-periodo-host {
   .biomie-drawer--document .biomie-drawer__stats, .document-party-grid, .document-composition { grid-template-columns: 1fr; }
   .document-composition__row--accent { grid-column: auto; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CAMADA DE APRESENTAÇÃO MOBILE — tela NFs (views/pedidos.html)
+   Auditoria de 24/09/2026.
+
+   PROBLEMA: `.nf-periodo-table` declara `min-width: 980px`. Numa tela de
+   430px isso é 2,3x a largura disponível, e o resultado é scroll horizontal
+   como experiência principal. Somado a `.nf-table-scroll { max-height:620px;
+   overflow:auto }`, o usuário enfrentava dois scrolls aninhados.
+
+   ESTRATÉGIA: no mobile a mesma <tr> é reposicionada como card por CSS Grid.
+   Nenhuma mudança no JS, na API ou no DOM — `renderRow()` continua idêntico,
+   e o desktop não é tocado (tudo abaixo vive dentro do @media).
+
+   NÃO usamos `overflow-x: hidden`: a causa (min-width) foi removida.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* 1 ─ Remove a largura mínima que causava o scroll horizontal */
+  .nf-periodo-table {
+    min-width: 0;
+    display: block;
+  }
+
+  /* 2 ─ Remove o scroll aninhado: a página rola, o componente não */
+  .nf-table-scroll {
+    max-height: none;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  /* 3 - Cabecalho fora do fluxo.
+     Clipar com position:absolute nao bastou: a <tr> do thead mantinha caixa
+     de 504px e aparecia como estouro em qualquer medicao de largura. Como a
+     <tr> de dados vira grid, a semantica de tabela ja se perde para o leitor
+     de tela; quem descreve a linha e o aria-label aplicado por renderRow()
+     ("Abrir detalhes da NF NNNN"). */
+  .nf-periodo-table thead { display: none; }
+
+  .nf-periodo-table tbody { display: block; }
+
+  /* 4 ─ Cada <tr> vira um card. As áreas dão a hierarquia:
+         documento e valor na primeira linha, cliente em largura cheia,
+         contexto comercial e ação embaixo. */
+  .nf-periodo-table tbody tr.nf-document-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    grid-template-areas:
+      "doc   valor"
+      "cli   cli"
+      "ctx   acao";
+    gap: 8px 12px;
+    align-items: start;
+    margin: 0 0 10px;
+    padding: 12px;
+    border: 1px solid var(--mag-border, rgba(0, 0, 0, 0.08));
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .nf-periodo-table tbody tr.nf-document-row:focus-visible {
+    outline: 2px solid var(--page-accent, #1a7f37);
+    outline-offset: 2px;
+  }
+
+  /* 5 ─ Células viram blocos. `min-width: 0` é o que impede o conteúdo
+         longo (razão social, CNPJ) de esticar a coluna além da viewport. */
+  .nf-periodo-table tbody tr.nf-document-row > td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(1) { grid-area: doc; }
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(2) { grid-area: cli; }
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(3) { grid-area: ctx; }
+
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(4) {
+    grid-area: valor;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(5) {
+    grid-area: acao;
+    justify-self: end;
+  }
+
+  /* 6 ─ Texto longo quebra em vez de empurrar a linha.
+         No desktop `.nf-cell-title` usa nowrap + ellipsis, o que no card
+         truncaria justamente o nome do cliente. */
+  .nf-periodo-table .nf-cell-title,
+  .nf-periodo-table .nf-cell-meta {
+    overflow: visible;
+    white-space: normal;
+    text-align: left;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+  }
+
+  .nf-periodo-table .nf-cell-stack { gap: 3px; }
+
+  /* Cliente é o elemento de reconhecimento: ganha destaque no card */
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(2) .nf-cell-title {
+    overflow-wrap: anywhere;   /* razao social sem espacos nao estoura o card */
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  /* 7 ─ Valor é a informação de decisão: maior e sem quebrar */
+  .nf-periodo-table .nf-base-value {
+    display: block;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  .nf-periodo-table .nf-total-value {
+    display: block;
+    white-space: nowrap;
+  }
+
+  /* 8 ─ Ícone menor para não roubar largura do número da NF */
+  .nf-periodo-table .nf-cell-icon {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+  }
+
+  .nf-periodo-table .nf-cell-icon .material-symbols-rounded { font-size: 17px; }
+
+  /* 9 ─ Ações com alvo de toque confortável (~44px) */
+  .nf-periodo-table .nf-open-button,
+  .nf-periodo-table .nf-map-button {
+    min-height: 40px;
+  }
+
+  /* 10 ─ Estados vazio/erro também precisam virar bloco, senão a <tr>
+          continua table-row dentro de um tbody já em display:block */
+  .nf-periodo-table tbody > tr:not(.nf-document-row) { display: block; }
+
+  .nf-periodo-table tbody > tr:not(.nf-document-row) > td {
+    display: block;
+    padding: 28px 12px;
+    text-align: center;
+  }
+
+  /* 11 ─ Barra de resumo e paginação em coluna única */
+  .nf-table-summary-bar { grid-template-columns: minmax(0, 1fr); }
+
+  .nf-table-pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* ── Afinacao do card de NF apos medicao a 320/360/390/430 ───────────────── */
+@media (max-width: 767px) {
+
+  /* O numero da NF e curto e identifica o registro: nao deve quebrar em duas
+     linhas a 320px. O nome do cliente continua quebrando normalmente. */
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(1) .nf-cell-title,
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(1) .nf-cell-meta {
+    white-space: nowrap;
+  }
+
+  /* Contexto comercial lado a lado em vez de empilhado: -1 linha por card */
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(3) .nf-cell-stack {
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 4px 12px;
+  }
+
+  .nf-periodo-table tbody tr.nf-document-row { gap: 6px 10px; }
+  .nf-periodo-table tbody tr.nf-document-row > td:nth-child(2) .nf-cell-stack { gap: 2px; }
+}
