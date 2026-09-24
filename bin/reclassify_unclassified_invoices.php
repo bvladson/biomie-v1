@@ -91,21 +91,31 @@ foreach ($companies as $company) {
 
     $r = $repository->reclassifyUnclassifiedInvoices($apply);
 
-    $sai = 0.0;
-    $entra = 0.0;
+    // As telas Orc-PD filtram por business_channel = 'varejo' (OverviewDetailBuilder,
+    // commercial_dashboard), nao pela flag de visibilidade. O impacto na tela e
+    // medido pelo CANAL; a flag e reportada a parte porque tambem e corrigida.
+    $saiOrcPd = 0.0;
+    $entraOrcPd = 0.0;
+    $flagCorrigida = 0;
     foreach ($r['mudancas'] as $m) {
-        if ($m['antes']['visible'] === 1 && $m['depois']['visible'] === 0) {
-            $sai += $m['valor_base_comercial_nf'];
+        $eraVarejo = $m['antes']['channel'] === 'varejo';
+        $seraVarejo = $m['depois']['channel'] === 'varejo';
+        if ($eraVarejo && !$seraVarejo) {
+            $saiOrcPd += $m['valor_base_comercial_nf'];
         }
-        if ($m['antes']['visible'] === 0 && $m['depois']['visible'] === 1) {
-            $entra += $m['valor_base_comercial_nf'];
+        if (!$eraVarejo && $seraVarejo) {
+            $entraOrcPd += $m['valor_base_comercial_nf'];
+        }
+        if ($m['antes']['visible'] !== $m['depois']['visible']) {
+            $flagCorrigida++;
         }
     }
     $totalAlteradas += $r['alteradas'];
 
     printf(
-        "%-12s sem classificacao=%d  mudam=%d  iguais=%d  sai do comercial=%s  entra no comercial=%s%s\n",
-        $company['slug'], $r['total'], $r['alteradas'], $r['iguais'], $brl($sai), $brl($entra),
+        "%-12s sem classificacao=%d  mudam=%d  iguais=%d  Orc-PD: sai %s / entra %s  flag corrigida em %d%s\n",
+        $company['slug'], $r['total'], $r['alteradas'], $r['iguais'],
+        $brl($saiOrcPd), $brl($entraOrcPd), $flagCorrigida,
         $r['aplicado'] ? '  [GRAVADO]' : ''
     );
     foreach ($r['mudancas'] as $m) {
