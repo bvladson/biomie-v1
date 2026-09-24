@@ -74,7 +74,7 @@ export const NfPeriodoTable = (() => {
         <div class="nf-table-summary-bar" id="nfPeriodoSummary" aria-live="polite"></div>
 
         <div class="nf-table-scroll">
-          <table class="nf-periodo-table">
+          <table class="nf-periodo-table" data-mobile-records>
             <thead>
               <tr>
                 <th class="sortable" data-col="numero_nf">Documento fiscal</th>
@@ -218,7 +218,7 @@ export const NfPeriodoTable = (() => {
     const mapLink = `<a class="nf-map-button" data-biomie-action="noop" href="mapa_vendas.php?layer=mapa_composto_ceara&date_from=${startParam}&date_to=${endParam}" target="_blank" rel="noopener" title="Ver no mapa"><span class="material-symbols-rounded" aria-hidden="true">map</span></a>`;
 
     return `<tr class="nf-document-row" tabindex="0" ${invoiceAttrs} aria-label="Abrir detalhes da NF ${esc(row.numero_nf || '')}">
-      <td>
+      <td data-mobile-area="identidade">
         <div class="nf-cell-main">
           <span class="material-symbols-rounded nf-cell-icon" aria-hidden="true">receipt_long</span>
           <div class="nf-cell-stack">
@@ -228,26 +228,26 @@ export const NfPeriodoTable = (() => {
           </div>
         </div>
       </td>
-      <td>
+      <td data-mobile-area="titulo">
         <div class="nf-cell-stack">
           <button type="button" class="nf-inline-action nf-cell-title" ${clientAttrs}>${esc(row.nome_cliente || 'Cliente nao informado')}</button>
           <span class="nf-cell-meta"><span class="material-symbols-rounded" aria-hidden="true">badge</span>${esc(document || 'Documento nao informado')}</span>
         </div>
       </td>
-      <td>
+      <td data-mobile-area="contexto">
         <div class="nf-cell-stack">
           ${vendorCell}
           ${orderCell}
         </div>
       </td>
-      <td>
+      <td data-mobile-area="valor">
         <div class="nf-cell-stack">
           <span class="nf-base-value">${fmtBrl(row.base_comercial || 0)}</span>
           <span class="nf-total-value">Total fiscal ${fmtBrl(row.valor_total || row.base_comercial || 0)}</span>
           ${renderSignals(row)}
         </div>
       </td>
-      <td>
+      <td data-mobile-area="acoes">
         <div class="nf-cell-main">
           <button type="button" class="nf-open-button" ${invoiceAttrs}><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>Detalhes</button>
           ${mapLink}

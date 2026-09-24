@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   mobile-records — padrão de lista de registros no celular
+   Extraído da tela NFs em 24/09/2026.
+
+   PARA QUE SERVE
+   Uma tabela de registros (uma NF, um produto, um vendedor por linha) não se
+   lê bem num celular. Este arquivo converte a MESMA <tr> num card, por CSS,
+   sem tocar no DOM, no JS nem na API — e sem afetar o desktop, porque tudo
+   vive dentro de @media (max-width: 767px).
+
+   POR QUE NÃO O data-mobile-card-table ANTIGO
+   Aquele padrão faz `td { display:flex; justify-content:space-between }` e
+   imprime o rótulo via ::before. Numa tabela de 5 ou 6 colunas o registro
+   vira 6 faixas de "RÓTULO .......... valor", com o valor encostado na borda
+   direita. Quando o conteúdo é mais largo que a tela, o valor sai de vista e
+   sobra só a coluna de rótulos — foi o que aconteceu em Maiores NFs.
+   Aqui a linha vira um card com hierarquia: o que identifica no topo, o
+   número que decide em destaque, o resto embaixo.
+
+   COMO USAR
+   1. no <table>, adicione o atributo:            data-mobile-records
+   2. no CSS do módulo, mapeie as colunas às áreas (a ordem muda por tela):
+
+        @media (max-width: 767px) {
+          .minha-tabela tbody tr > td:nth-child(1) { grid-area: identidade; }
+          .minha-tabela tbody tr > td:nth-child(2) { grid-area: titulo; }
+          .minha-tabela tbody tr > td:nth-child(3) { grid-area: contexto; }
+          .minha-tabela tbody tr > td:nth-child(4) { grid-area: valor; }
+          .minha-tabela tbody tr > td:nth-child(5) { grid-area: acoes; }
+        }
+
+   3. acrescente só a semântica própria da tela (tamanhos, cores, ícones).
+
+   AS QUATRO ÁREAS
+
+        ┌───────────────────────────────────────┐
+        │ identidade                      valor │   o que é · quanto é
+        │ titulo                                │   quem/qual, largura cheia
+        │ contexto                        acoes │   secundário · ações
+        └───────────────────────────────────────┘
+
+   A regra que sustenta tudo é minmax(0, ...) nas colunas e min-width: 0 nas
+   células: sem isso o conteúdo intrínseco (razão social, CNPJ) obriga a
+   track a crescer além da tela, e é daí que vem o scroll horizontal.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── Estrutura: a tabela deixa de ser tabela ──────────────────────────── */
+
+  table[data-mobile-records] {
+    min-width: 0;
+    display: block;
+  }
+
+  /* O cabeçalho sai do fluxo. Clipar com position:absolute não basta: a <tr>
+     do thead mantém caixa com a largura somada das colunas e reaparece como
+     estouro em qualquer medição. Como a <tr> de dados vira grid, a semântica
+     de tabela já se perde para o leitor de tela — quem descreve a linha é o
+     aria-label que cada módulo aplica. */
+  table[data-mobile-records] thead { display: none; }
+
+  table[data-mobile-records] tbody { display: block; }
+
+  /* ── O card ───────────────────────────────────────────────────────────── */
+
+  table[data-mobile-records] tbody > tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    grid-template-areas:
+      "identidade valor"
+      "titulo     titulo"
+      "contexto   acoes";
+    gap: var(--mobile-record-gap, 6px) 10px;
+    align-items: start;
+    margin: 0 0 10px;
+    padding: 12px;
+    border: 1px solid var(--mag-border, rgba(0, 0, 0, 0.08));
+    border-radius: var(--mobile-record-radius, 14px);
+    background: var(--mag-surface, #fff);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  table[data-mobile-records] tbody > tr:focus-visible {
+    outline: 2px solid var(--page-accent, #1a7f37);
+    outline-offset: 2px;
+  }
+
+  /* ── Células ──────────────────────────────────────────────────────────── */
+
+  /* min-width: 0 é o que impede o conteúdo de esticar a coluna. Por padrão
+     um filho de grid tem min-width: auto, ou seja, nunca encolhe abaixo do
+     próprio conteúdo. */
+  table[data-mobile-records] tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  table[data-mobile-records] tbody > tr > td:empty { display: none; }
+
+  /* ── Áreas ────────────────────────────────────────────────────────────── */
+
+  table[data-mobile-records] tbody > tr > td[data-mobile-area="identidade"] { grid-area: identidade; }
+  table[data-mobile-records] tbody > tr > td[data-mobile-area="titulo"]     { grid-area: titulo; }
+  table[data-mobile-records] tbody > tr > td[data-mobile-area="contexto"]   { grid-area: contexto; }
+
+  table[data-mobile-records] tbody > tr > td[data-mobile-area="valor"],
+  table[data-mobile-records] tbody > tr > td.mobile-record-value {
+    grid-area: valor;
+    justify-self: end;
+    text-align: right;
+  }
+
+  table[data-mobile-records] tbody > tr > td[data-mobile-area="acoes"],
+  table[data-mobile-records] tbody > tr > td.mobile-record-actions {
+    grid-area: acoes;
+    justify-self: end;
+  }
+
+  /* ── Texto ────────────────────────────────────────────────────────────── */
+
+  /* No desktop os títulos costumam usar nowrap + ellipsis para caber na
+     coluna. Dentro do card isso trunca justamente o nome que identifica o
+     registro, então aqui o texto quebra. */
+  table[data-mobile-records] tbody > tr .mobile-record-wrap {
+    overflow: visible;
+    white-space: normal;
+    text-align: left;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+  }
+
+  /* Razão social sem espaços não pode estourar o card */
+  table[data-mobile-records] tbody > tr td[data-mobile-area="titulo"] .mobile-record-wrap {
+    overflow-wrap: anywhere;
+  }
+
+  /* ── Estados vazio / erro / carregando ────────────────────────────────── */
+
+  /* Sem isto a <tr> do estado vazio continua table-row dentro de um tbody
+     que já é block, e o colspan deixa de valer. */
+  table[data-mobile-records] tbody > tr.is-estado-vazio,
+  table[data-mobile-records] tbody > tr:has(> td[colspan]) {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  table[data-mobile-records] tbody > tr:has(> td[colspan]) > td {
+    display: block;
+    padding: 28px 12px;
+    text-align: center;
+  }
+
+  /* ── Toque ────────────────────────────────────────────────────────────── */
+
+  table[data-mobile-records] tbody > tr [data-mobile-area="acoes"] button,
+  table[data-mobile-records] tbody > tr [data-mobile-area="acoes"] a {
+    min-height: 40px;
+  }
+}

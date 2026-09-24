@@ -35,6 +35,7 @@ final class PageAssetRegistry
         'assets/css/context-filters.css',  // filtros compactos do header
         'assets/css/global-search.css',    // Busca global (omnibox do topbar)
         'assets/css/biomie-drawer.css',    // EST.R1 Fase 0.3 — padrão global de drawers
+        'assets/css/mobile-records.css',   // padrao de lista de registros no celular
         'assets/css/commercial-documents.css',
         'assets/css/commercial-language.css',
         'assets/css/commercial-card-help.css',
