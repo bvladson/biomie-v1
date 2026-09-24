@@ -1,0 +1,132 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comportamento dos overlays</title>
+<!--
+  Teste de comportamento do mobile-overlay-controller (24/09/2026).
+
+  Abra este arquivo no navegador com largura <= 767px, ou rode headless:
+    chrome --headless=new --window-size=520,900 --virtual-time-budget=14000            --dump-dom tools/dev/mobile_overlay_behavior_test.html
+
+  Os overlays aqui sao simulacoes minimas: o que se testa e o CONTROLADOR,
+  cujo contrato e "painel ficou visivel -> aplicar politica". Os toques usam
+  pointerdown SEM focus(), como o Safari do iOS faz — foi esse caso que
+  revelou a necessidade de rastrear o ultimo gatilho.
+
+  Resultado esperado: 10/10, FALHAS=0.
+-->
+<style>
+body{margin:0;font-family:system-ui;padding:60px 0 80px}
+.mag-mobile-topbar{position:fixed;top:0;left:0;right:0;height:52px;background:#0f172a;color:#fff;z-index:330}
+.mag-bottom-nav{position:fixed;bottom:0;left:0;right:0;height:60px;background:#fff;border-top:1px solid #ccc;z-index:330}
+.shell{padding:12px}
+.oculto{display:none}
+.omnisearch-panel{position:fixed;inset:0;background:#fff;z-index:360;padding:16px}
+.biomie-vendor-filter__panel--mobile{position:fixed;inset:auto 0 0;height:60vh;background:#fff;z-index:350;padding:16px}
+.mag-drawer{position:fixed;inset:0 0 0 auto;width:100%;background:#fff;z-index:410;padding:16px}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:340}
+</style></head><body>
+<div class="mag-mobile-topbar"><button id="tBusca">abrir busca</button><button id="tFiltro">abrir filtro</button></div>
+<div class="shell"><button id="fundoBtn">botao do fundo</button><a href="#" id="fundoLink">link do fundo</a></div>
+<nav class="mag-bottom-nav"><a href="#" id="navLink">Painel</a></nav>
+
+<div class="omnisearch-panel oculto" id="pBusca">
+  <input id="campoBusca"><button data-mobile-search-close id="fecharBusca">fechar</button><a href="#" id="linkBusca">ajuda</a>
+</div>
+<div class="biomie-vendor-filter__panel--mobile oculto" id="pFiltro">
+  <input id="campoFiltro"><button data-vendor-filter-close id="fecharFiltro">fechar</button>
+</div>
+<div class="mag-drawer oculto" id="pDossie"><button id="btnDossie">acao</button></div>
+<div id="overlay" class="oculto"></div>
+
+<script src="../../assets/js/mobile-overlay-controller.js"></script>
+<script>
+function mostrar(id){document.getElementById(id).classList.remove('oculto');}
+function esconder(id){document.getElementById(id).classList.add('oculto');}
+document.getElementById('tBusca').addEventListener('click',function(){mostrar('pBusca');});
+document.getElementById('tFiltro').addEventListener('click',function(){mostrar('pFiltro');});
+document.getElementById('fecharBusca').addEventListener('click',function(){esconder('pBusca');});
+document.getElementById('fecharFiltro').addEventListener('click',function(){esconder('pFiltro');});
+document.getElementById('overlay').addEventListener('click',function(){esconder('pDossie');esconder('overlay');});
+
+var R=[];
+function ok(nome,cond,detalhe){R.push((cond?'PASSOU  ':'FALHOU  ')+nome+(detalhe?'  ['+detalhe+']':''));}
+function esperar(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function visivel(el){var c=getComputedStyle(el);return c.display!=='none'&&el.getBoundingClientRect().width>0;}
+
+(async function(){
+  await esperar(120);
+
+  // 1. EXCLUSIVIDADE
+  // toque de iOS: pointerdown SEM focus(), que e como o Safari se comporta
+  function tocar(id){var el=document.getElementById(id);
+    el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));
+    el.click();}
+  tocar('tBusca');
+  await esperar(150);
+  var buscaAberta = visivel(document.getElementById('pBusca'));
+  tocar('tFiltro');
+  await esperar(250);
+  ok('1 exclusividade: abrir filtro fecha a busca',
+     !visivel(document.getElementById('pBusca')) && visivel(document.getElementById('pFiltro')),
+     'busca='+visivel(document.getElementById('pBusca'))+' filtro='+visivel(document.getElementById('pFiltro')));
+
+  // 2. FOCO ENTRA NO OVERLAY
+  ok('2 foco entrou no overlay ativo',
+     document.getElementById('pFiltro').contains(document.activeElement),
+     'ativo='+(document.activeElement&&document.activeElement.id));
+
+  // 3. FUNDO INERTE
+  var shell=document.querySelector('.shell'), nav=document.querySelector('.mag-bottom-nav');
+  ok('3 fundo inerte (shell e bottom nav)',
+     shell.hasAttribute('inert') && nav.hasAttribute('inert'),
+     'shell='+shell.hasAttribute('inert')+' nav='+nav.hasAttribute('inert'));
+
+  // 4. TAB NAO SAI DO OVERLAY
+  var alvos=document.getElementById('pFiltro').querySelectorAll('input,button');
+  alvos[alvos.length-1].focus();
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true}));
+  await esperar(60);
+  ok('4 Tab no ultimo volta para o primeiro',
+     document.activeElement===alvos[0], 'foco='+(document.activeElement&&document.activeElement.id));
+
+  alvos[0].focus();
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true}));
+  await esperar(60);
+  ok('5 Shift+Tab no primeiro volta para o ultimo',
+     document.activeElement===alvos[alvos.length-1], 'foco='+(document.activeElement&&document.activeElement.id));
+
+  // 6. FOCO QUE ESCAPA VOLTA
+  document.getElementById('fundoBtn').focus();
+  await esperar(80);
+  ok('6 foco que escapa para o fundo retorna ao overlay',
+     document.getElementById('pFiltro').contains(document.activeElement),
+     'foco='+(document.activeElement&&document.activeElement.id));
+
+  // 7. ESC FECHA
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  await esperar(200);
+  ok('7 Esc fecha o overlay ativo', !visivel(document.getElementById('pFiltro')));
+
+  // 8. FOCO VOLTA AO GATILHO
+  ok('8 foco retorna ao gatilho que abriu',
+     document.activeElement===document.getElementById('tFiltro'),
+     'foco='+(document.activeElement&&document.activeElement.id));
+
+  // 9. INERCIA REMOVIDA
+  ok('9 inercia removida ao fechar',
+     !shell.hasAttribute('inert') && !nav.hasAttribute('inert'));
+
+  // 10. NAO ACUMULA TRES
+  tocar('tBusca'); await esperar(220);
+  tocar('tFiltro'); await esperar(220);
+  mostrar('pDossie'); mostrar('overlay'); await esperar(200);
+  var n=['pBusca','pFiltro','pDossie'].filter(function(id){return visivel(document.getElementById(id));}).length;
+  ok('10 nunca mais de um modal visivel', n<=1, 'visiveis='+n);
+
+  var falhas=R.filter(function(l){return l.indexOf('FALHOU')===0;}).length;
+  document.title='RESULTADO';
+  var pre=document.createElement('xmp'); pre.id='res';
+  pre.textContent='[[' + R.join(' ~ ') + ' ~ TOTAL: '+(R.length-falhas)+'/'+R.length+' ~ FALHAS='+falhas+']]';
+  document.body.appendChild(pre);
+})();
+</script></body></html>

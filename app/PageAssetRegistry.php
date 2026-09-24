@@ -62,6 +62,7 @@ final class PageAssetRegistry
         'assets/js/vendor-filter.js', // seletor global de vendedor (por empresa)
         'assets/js/context-filters.js', // periodo + filtros contextuais no header
         'assets/js/global-search.js', // busca global (omnibox do topbar)
+        'assets/js/mobile-overlay-controller.js', // exclusividade, foco e inercia dos overlays mobile
         'assets/js/modules/drilldown-router.js', // drawers ricos disponiveis a partir de qualquer pagina
     ];
 
