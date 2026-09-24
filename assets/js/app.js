@@ -1186,7 +1186,7 @@
       { render: (row) => B.commercialMetric('Clientes', formatNumber(row.customers_count || 0)) },
       { render: (row) => B.commercialMetric('NFs', formatNumber(row.orders || row.invoices_count)) },
       { render: (row) => B.commercialMetric('Receita', formatCurrency(row.revenue), 'accent') },
-      { render: (row) => B.commercialSignal('donut_large', row.share_pct != null ? Number(row.share_pct).toFixed(1) + '% do mix' : 'Sem participacao', row.share_pct != null ? 'neutral' : 'warning') }
+      { render: (row) => B.commercialSignal('donut_large', row.share_pct != null ? Number(row.share_pct).toFixed(1) + '% do mix' : 'Sem participacao', row.share_pct != null ? 'neutral' : 'warning') + (row.share_pct != null ? '<span class="mobile-share-bar" aria-hidden="true" style="--mobile-share:' + Math.max(0, Math.min(100, Number(row.share_pct))) + '"></span>' : '') }
     ], products, (emptyState && (emptyState.message || emptyState.title)) || 'Sem item fiscal Orç-PD no periodo.');
     annotateProductRows(products);
     initProductBreakdownDelegation();

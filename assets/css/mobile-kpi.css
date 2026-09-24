@@ -1,0 +1,85 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   mobile-kpi — números no celular, em dois tamanhos
+   Família 3 de 6. Auditoria de 24/09/2026.
+
+   POR QUE DOIS TAMANHOS
+   "KPI sempre 2 por linha" não sobrevive a 320px. Fazendo a conta com as
+   margens reais da página:
+
+       (320 − 16 − 16 − 12) / 2 = 138px por card
+
+   Em 138px, "R$ 302.425,56" quebra ou encolhe a ponto de perder a leitura.
+   Já "121 / Produtos" cabe com folga. Por isso:
+
+     destaque  valor monetário, métrica principal ou texto maior → largura toda
+     compacto  contador curto → duas colunas QUANDO couber
+
+   QUEM DECIDE O NÚMERO DE COLUNAS É O GRID, NÃO UMA MEDIA QUERY
+   O compacto usa `repeat(auto-fit, minmax(min(100%, 150px), 1fr))`. O piso de
+   150px faz a segunda coluna só existir quando há espaço para ela:
+
+       320px →  2×150 + 12 = 312 > 288 disponíveis  →  1 coluna
+       360px →  2×150 + 12 = 312 ≤ 328 disponíveis  →  2 colunas de 158px
+
+   O `min(100%, 150px)` evita que o piso estoure a tela em containers ainda
+   mais estreitos. Uma declaração no lugar de vários breakpoints.
+
+   COMO USAR
+     <div class="mobile-kpi-grid">                     contadores
+     <div class="mobile-kpi-grid mobile-kpi-grid--destaque">   monetários
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  .mobile-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    /* dense: um contador compacto seguido de um destaque deixaria um buraco
+       de meia largura ao lado dele. O dense deixa o proximo compacto subir
+       para esse buraco — so move o compacto, nunca o destaque, e so quando ha
+       duas colunas. Os cards de KPI nao sao interativos, entao a diferenca
+       entre ordem visual e ordem do DOM nao afeta a navegacao por teclado. */
+    grid-auto-flow: row dense;
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+
+  /* Destaque: sempre uma coluna, qualquer que seja a largura. */
+  .mobile-kpi-grid--destaque {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Um card marcado individualmente ocupa a linha inteira mesmo dentro de um
+     grid compacto — serve para o caso misto. */
+  .mobile-kpi-grid > .mobile-kpi--destaque {
+    grid-column: 1 / -1;
+  }
+
+  /* Conteúdo do card: nada pode esticar a coluna. */
+  .mobile-kpi-grid > * {
+    min-width: 0;
+  }
+
+  .mobile-kpi-grid .biomie-kpi-card__value,
+  .mobile-kpi-grid .kpi-value {
+    overflow-wrap: break-word;
+  }
+
+  /* No destaque o número é o protagonista. */
+  .mobile-kpi-grid--destaque .biomie-kpi-card__value,
+  .mobile-kpi--destaque .biomie-kpi-card__value {
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    line-height: 1.15;
+  }
+
+  /* No compacto o subtítulo costuma ser uma frase inteira; limitamos a duas
+     linhas para o card não virar um parágrafo. */
+  .mobile-kpi-grid:not(.mobile-kpi-grid--destaque) .biomie-kpi-card__sub {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.7rem;
+    line-height: 1.3;
+  }
+}

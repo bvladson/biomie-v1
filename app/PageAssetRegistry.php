@@ -36,6 +36,10 @@ final class PageAssetRegistry
         'assets/css/global-search.css',    // Busca global (omnibox do topbar)
         'assets/css/biomie-drawer.css',    // EST.R1 Fase 0.3 — padrão global de drawers
         'assets/css/mobile-records.css',   // padrao de lista de registros no celular
+        'assets/css/mobile-kpi.css',       // numeros: destaque e compacto
+        'assets/css/mobile-ranking.css',   // comparacao de magnitude
+        'assets/css/mobile-chart.css',     // graficos em largura total
+        'assets/css/mobile-table.css',     // comparacao bidimensional real
         'assets/css/commercial-documents.css',
         'assets/css/commercial-language.css',
         'assets/css/commercial-card-help.css',
@@ -63,6 +67,7 @@ final class PageAssetRegistry
         'assets/js/context-filters.js', // periodo + filtros contextuais no header
         'assets/js/global-search.js', // busca global (omnibox do topbar)
         'assets/js/mobile-overlay-controller.js', // exclusividade, foco e inercia dos overlays mobile
+        'assets/js/mobile-table.js', // alternador Resumo/Tabela e dica de rolagem
         'assets/js/modules/drilldown-router.js', // drawers ricos disponiveis a partir de qualquer pagina
     ];
 

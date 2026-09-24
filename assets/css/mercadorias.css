@@ -425,3 +425,174 @@ body.mag-clean-page .product-donut-canvas {
     top: 52px !important;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Produtos faturados no celular — semântica própria sobre mobile-records
+   Auditoria de 24/09/2026.
+
+   Estrutura do card vem de assets/css/mobile-records.css. Aqui fica só o que
+   é deste dado:
+
+       Cadeira Orlando Presidente          nome (largura toda)
+       R$ 38.450,00                        receita, em destaque
+       12,8% do mix                        participação
+       ███████░░░░░░░░░░░░░░               barra na proporção real
+       Quantidade   Clientes   NFs         três contadores lado a lado
+
+   A barra usa a participação REAL no total vendido, não relativa ao maior
+   produto: é "quanto das vendas este item representa", então 12,8% ocupa
+   12,8% da largura. Rankings (mobile-ranking) é que normalizam pelo maior.
+
+   ESPECIFICIDADE: o atributo aparece duas vezes de propósito. Este arquivo é
+   ligado direto no <head> da página, e sua ordem em relação às famílias
+   depende do layout. Com [data-mobile-records="produtos"][data-mobile-records]
+   (0,2,3) a regra vence a da família (0,1,3) em qualquer ordem de carga.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* No desktop a barra não existe visualmente. */
+.mobile-share-bar { display: none; }
+
+@media (max-width: 767px) {
+
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      "nome    nome    nome"
+      "receita receita receita"
+      "share   share   share"
+      "qtd     cli     nfs";
+    gap: 6px 10px;
+  }
+
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr > td:nth-child(1) { grid-area: nome; }
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr > td:nth-child(2) { grid-area: qtd; }
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr > td:nth-child(3) { grid-area: cli; }
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr > td:nth-child(4) { grid-area: nfs; }
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr > td:nth-child(5) {
+    grid-area: receita;
+    justify-self: start;
+    text-align: left;
+  }
+  table[data-mobile-records="produtos"][data-mobile-records] tbody > tr > td:nth-child(6) { grid-area: share; }
+
+  /* #productsTable td declara padding 8px em cima e embaixo no desktop. Por
+     ser seletor de ID (1,0,1), vence qualquer combinacao de classe/atributo do
+     padrao — o card herdava 16px por linha de grid. Neutralizado com o mesmo
+     ID (1,0,2), sem !important. */
+  #productsTable > tr > td {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  /* Receita é o número de decisão. */
+  table[data-mobile-records="produtos"] td:nth-child(5) .commercial-metric__value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* O rótulo "Receita" é redundante quando o valor está em destaque logo
+     abaixo do nome; os três contadores mantêm o rótulo, que é o que dá
+     sentido a "34" e "8". */
+  table[data-mobile-records="produtos"] td:nth-child(5) .commercial-metric__label {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Contadores: rótulo pequeno em cima, número embaixo, sem espaço morto. */
+  table[data-mobile-records="produtos"] td:nth-child(2) .commercial-metric,
+  table[data-mobile-records="produtos"] td:nth-child(3) .commercial-metric,
+  table[data-mobile-records="produtos"] td:nth-child(4) .commercial-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  table[data-mobile-records="produtos"] td:nth-child(2) .commercial-metric__label,
+  table[data-mobile-records="produtos"] td:nth-child(3) .commercial-metric__label,
+  table[data-mobile-records="produtos"] td:nth-child(4) .commercial-metric__label {
+    color: var(--mag-muted, #64748b);
+    font-size: 0.68rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* Identidade: ícone ao lado do nome (não numa linha própria) e menor. */
+  /* .pd-trigger-cell declara display:grid (mercadorias.css) e o elemento tem
+     as duas classes: sem display:flex explicito ele continuava grid de uma
+     coluna, e flex-direction nao tem efeito em grid. */
+  table[data-mobile-records="produtos"] .commercial-entity {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  table[data-mobile-records="produtos"] .commercial-entity__icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 8px;
+  }
+
+  table[data-mobile-records="produtos"] .commercial-entity__icon .material-symbols-rounded {
+    font-size: 16px;
+  }
+
+  /* O nome NUNCA é truncado. No desktop o título usa overflow:hidden com
+     ellipsis; no card isso cortava justamente o que identifica o produto.
+     anywhere quebra descrições sem espaço, comuns em cadastro de ERP. */
+  table[data-mobile-records="produtos"] .commercial-entity__title {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    text-align: left;
+    font-size: 0.875rem;
+    line-height: 1.3;
+  }
+
+  /* O SKU continua sendo o botão que abre o Produto 360, mas como texto
+     discreto sob o nome, não como pílula numa linha própria. Alvo de toque
+     mantido em 32px. */
+  table[data-mobile-records="produtos"] .commercial-entity__body .commercial-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--mag-muted, #64748b);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Barra de participação. */
+  .mobile-share-bar {
+    display: block;
+    position: relative;
+    height: 6px;
+    margin-top: 5px;
+    border-radius: 999px;
+    background: var(--mag-surface-muted, #eef2f7);
+    overflow: hidden;
+  }
+
+  .mobile-share-bar::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(var(--mobile-share, 0) * 1%);
+    min-width: 2px;
+    border-radius: inherit;
+    background: var(--page-accent, #96140a);
+  }
+}

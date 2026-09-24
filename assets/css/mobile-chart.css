@@ -1,0 +1,54 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   mobile-chart — visualizações analíticas no celular
+   Família 4 de 6. Auditoria de 24/09/2026.
+
+   REGRA ÚNICA: um gráfico analítico ocupa 100% da largura e nunca fica ao
+   lado de outro. Dois gráficos lado a lado num celular produzem dois gráficos
+   ilegíveis. A exceção são KPIs simples, que têm a própria família.
+
+   Também serve para tirar do caminho o que é redundante no celular: a página
+   do Mix traz dois gráficos de participação (productsShareChart e
+   productsShareChartLegacy) dizendo a mesma coisa. No desktop os dois ficam;
+   no celular o legado sai, porque meia tela gasta repetindo informação é meia
+   tela a menos para o que importa.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* Qualquer grade de gráficos vira coluna única. */
+  .charts-grid,
+  .mobile-chart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .charts-grid > *,
+  .mobile-chart-grid > * {
+    min-width: 0;
+  }
+
+  /* O canvas acompanha a largura do card, sem altura fixa herdada do desktop. */
+  .chart-card canvas,
+  .mobile-chart canvas {
+    width: 100% !important;
+    max-width: 100%;
+    height: auto !important;
+    max-height: 46vh;
+  }
+
+  .chart-card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .chart-card-header {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Redundante no celular: mesma leitura de productsShareChart. */
+  .mobile-chart--redundante {
+    display: none !important;
+  }
+}

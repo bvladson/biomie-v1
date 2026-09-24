@@ -150,12 +150,12 @@
       </div>
 
       <div class="section-label anim d2" id="cards">Indicadores Orçamento-PD</div>
-      <section class="biomie-kpi-grid">
-        <article class="biomie-kpi-card biomie-kpi-card--info anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Mercadoria Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">inventory_2</span></div><div class="biomie-kpi-card__value" data-bind="summary-merchandise">-</div><div class="biomie-kpi-card__sub">Valor do mix de itens</div></article>
-        <article class="biomie-kpi-card anim d2"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><div class="biomie-kpi-card__value" data-bind="summary-revenue">-</div><div class="biomie-kpi-card__sub">Base comercial da NF</div></article>
+      <section class="biomie-kpi-grid mobile-kpi-grid">
+        <article class="biomie-kpi-card biomie-kpi-card--info anim d2 mobile-kpi--destaque"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Mercadoria Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">inventory_2</span></div><div class="biomie-kpi-card__value" data-bind="summary-merchandise">-</div><div class="biomie-kpi-card__sub">Valor do mix de itens</div></article>
+        <article class="biomie-kpi-card anim d2 mobile-kpi--destaque"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Faturamento Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">payments</span></div><div class="biomie-kpi-card__value" data-bind="summary-revenue">-</div><div class="biomie-kpi-card__sub">Base comercial da NF</div></article>
         <article class="biomie-kpi-card biomie-kpi-card--neutral anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Produtos vendidos</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div><div class="biomie-kpi-card__value" data-bind="summary-products-count">-</div><div class="biomie-kpi-card__sub">Itens distintos faturados</div></article>
-        <article class="biomie-kpi-card biomie-kpi-card--warning anim d3"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Descontos</span><span class="material-symbols-rounded biomie-kpi-card__icon">money_off</span></div><div class="biomie-kpi-card__value" data-bind="summary-discounts">-</div><div class="biomie-kpi-card__sub">Desconto concedido</div></article>
-        <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ticket médio Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Valor médio por NF</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--warning anim d3 mobile-kpi--destaque"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Descontos</span><span class="material-symbols-rounded biomie-kpi-card__icon">money_off</span></div><div class="biomie-kpi-card__value" data-bind="summary-discounts">-</div><div class="biomie-kpi-card__sub">Desconto concedido</div></article>
+        <article class="biomie-kpi-card biomie-kpi-card--success anim d4 mobile-kpi--destaque"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Ticket médio Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">sell</span></div><div class="biomie-kpi-card__value" data-bind="summary-ticket">-</div><div class="biomie-kpi-card__sub">Valor médio por NF</div></article>
         <article class="biomie-kpi-card biomie-kpi-card--success anim d4"><div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">NFs Orç-PD</span><span class="material-symbols-rounded biomie-kpi-card__icon">receipt_long</span></div><div class="biomie-kpi-card__value" data-bind="summary-orders">-</div><div class="biomie-kpi-card__sub">Notas que formam o mix</div></article>
       </section>
 
@@ -196,7 +196,7 @@
         <div id="productSearchFeedback" class="biomie-table-feedback" style="display:none;margin:0 16px;"></div>
         <div id="productFreshnessBar" class="product-freshness-bar" style="display:none;padding:2px 16px 6px;"></div>
         <div class="biomie-table-wrap commercial-table-wrap">
-          <table class="mag-table mag-table-clean commercial-table commercial-table--product" data-mobile-card-table>
+          <table class="mag-table mag-table-clean commercial-table commercial-table--product" data-mobile-records="produtos">
             <thead>
               <tr>
                 <th id="th-prod-produto" class="nf-th-sortable" data-sort-field="produto">Produto <span class="nf-sort-icon">↕</span></th>
@@ -229,7 +229,7 @@
 
       <section class="charts-grid mag-chart-below-table" hidden>
         <div class="chart-card anim d5">
-          <div class="chart-card-header"><div><h3>Participação no mix Orç-PD</h3><small>Top itens por participação na receita comercial</small></div></div>
+          <div class="chart-card-header mobile-chart--redundante"><div><h3>Participação no mix Orç-PD</h3><small>Top itens por participação na receita comercial</small></div></div>
           <div class="chart-body mag-chart-container mag-chart-md" style="height:320px"><canvas id="productsShareChartLegacy"></canvas></div>
         </div>
       </section>
@@ -306,7 +306,7 @@
         </div>
 
         <!-- KPIs globais -->
-        <div class="biomie-kpi-grid" id="estoqueKpiGrid" style="margin-bottom:12px;">
+        <div class="biomie-kpi-grid mobile-kpi-grid" id="estoqueKpiGrid" style="margin-bottom:12px;">
           <article class="biomie-kpi-card">
             <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi1Label">Produtos distintos</span><span class="material-symbols-rounded biomie-kpi-card__icon">category</span></div>
             <div class="biomie-kpi-card__value" id="estoqueKpi1">—</div>
@@ -322,7 +322,7 @@
             <div class="biomie-kpi-card__value" id="estoqueKpi3">—</div>
             <div class="biomie-kpi-card__sub" id="estoqueKpi3Sub">Com alto giro nos últimos 30 dias</div>
           </article>
-          <article class="biomie-kpi-card">
+          <article class="biomie-kpi-card mobile-kpi--destaque">
             <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label" id="estoqueKpi4Label">Última venda</span><span class="material-symbols-rounded biomie-kpi-card__icon">schedule</span></div>
             <div class="biomie-kpi-card__value" id="estoqueKpi4">—</div>
             <div class="biomie-kpi-card__sub" id="estoqueKpi4Sub">Data da NF mais recente</div>
@@ -642,7 +642,7 @@
         </div>
 
         <!-- KPIs globais -->
-        <div class="biomie-kpi-grid" id="prodR2KpiGrid" style="margin-bottom:12px;">
+        <div class="biomie-kpi-grid mobile-kpi-grid" id="prodR2KpiGrid" style="margin-bottom:12px;">
           <article class="biomie-kpi-card biomie-kpi-card--success">
             <div class="biomie-kpi-card__head"><span class="biomie-kpi-card__label">Com ação sugerida</span><span class="material-symbols-rounded biomie-kpi-card__icon">rocket_launch</span></div>
             <div class="biomie-kpi-card__value" id="prodR2KpiTotal">—</div>
