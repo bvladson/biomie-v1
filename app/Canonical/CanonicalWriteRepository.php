@@ -607,6 +607,121 @@ final class CanonicalWriteRepository
      * @param array<string,mixed>|false $row
      * @return array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int}|null
      */
+    /**
+     * Reaplica a classificação de canal às NFs que nunca a receberam.
+     *
+     * POR QUE EXISTE
+     * A classificação acontece na escrita (upsertInvoice), e a sincronização só
+     * revisita uma janela recente. NFs gravadas enquanto o caminho de escrita não
+     * classificava — no incidente de 2026, as sincronizadas entre 30/06 e 23/07 —
+     * ficaram com channel_classified_at NULL e nunca mais foram tocadas. Com
+     * isso passavam por fora de todas as regras de canal, inclusive as de venda
+     * intra-grupo (cliente_cnpj_list), e algumas licitações ficaram visíveis no
+     * escopo comercial.
+     *
+     * O QUE FAZ
+     * Usa exatamente o mesmo caminho da escrita: resolveInvoiceVisibility() para
+     * decidir (override manual > regra de vendedor > classificador) e
+     * updateInvoiceVisibility() para gravar. Nenhuma regra nova, nenhuma regra
+     * alterada. Override manual é preservado por construção.
+     *
+     * DIFERENÇA PARA bin/classify_channels.php
+     * Aquele comando reclassifica TODAS as NFs não-manuais usando apenas o
+     * classificador, sem a regra de escopo por vendedor que a escrita aplica.
+     * Este método mexe só no que nunca foi classificado e segue a escrita.
+     *
+     * @return array{total:int, alteradas:int, iguais:int, aplicado:bool, mudancas:list<array<string,mixed>>}
+     */
+    public function reclassifyUnclassifiedInvoices(bool $apply = false): array
+    {
+        $stmt = $this->pdo()->prepare(
+            'SELECT nota_key, numero_nf, data_emissao, nome_cliente,
+                    codigo_vendedor_omie, nome_vendedor, observacoes,
+                    documento_cliente, projeto_id_omie,
+                    business_channel, is_biomie_commercial_visible,
+                    valor_base_comercial_nf
+               FROM ' . self::TABLE_INVOICES . '
+              WHERE company_id = :company_id
+                AND channel_classified_at IS NULL
+                AND (channel_confidence IS NULL OR channel_confidence <> \'manual\')
+              ORDER BY data_emissao, numero_nf'
+        );
+        $stmt->execute(['company_id' => $this->companyId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $resultado = [
+            'total' => \count($rows),
+            'alteradas' => 0,
+            'iguais' => 0,
+            'aplicado' => false,
+            'mudancas' => [],
+        ];
+        if ($rows === []) {
+            return $resultado;
+        }
+
+        $decisoes = [];
+        foreach ($rows as $row) {
+            // Mesmo formato que chega do Omie: sem canal explícito no payload.
+            $visibility = $this->resolveInvoiceVisibility([
+                'business_channel' => null,
+                'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
+                'nome_vendedor' => (string) ($row['nome_vendedor'] ?? ''),
+                'observacoes' => (string) ($row['observacoes'] ?? ''),
+                'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
+                'projeto_id_omie' => (string) ($row['projeto_id_omie'] ?? ''),
+            ]);
+            $decisoes[] = [(string) $row['nota_key'], $visibility];
+
+            $mudou = (string) $row['business_channel'] !== (string) $visibility['channel']
+                || (int) $row['is_biomie_commercial_visible'] !== (int) $visibility['visible'];
+            if (!$mudou) {
+                $resultado['iguais']++;
+                continue;
+            }
+            $resultado['alteradas']++;
+            $resultado['mudancas'][] = [
+                'numero_nf' => $row['numero_nf'],
+                'data_emissao' => $row['data_emissao'],
+                'nome_cliente' => $row['nome_cliente'],
+                'valor_base_comercial_nf' => (float) $row['valor_base_comercial_nf'],
+                'antes' => ['channel' => $row['business_channel'], 'visible' => (int) $row['is_biomie_commercial_visible']],
+                'depois' => ['channel' => $visibility['channel'], 'visible' => (int) $visibility['visible']],
+                'fonte' => $visibility['source'],
+                'rule_id' => $visibility['rule_id'],
+            ];
+        }
+
+        if (!$apply) {
+            return $resultado;
+        }
+
+        // Grava também as NFs cujo canal não muda: o objetivo é não sobrar
+        // nenhuma linha sem classificação registrada (regra, confiança, data).
+        $pdo = $this->pdo();
+        $iniciou = !$pdo->inTransaction();
+        if ($iniciou) {
+            ($this->beginTransaction)();
+            $pdo = $this->pdo();
+        }
+        try {
+            foreach ($decisoes as [$notaKey, $visibility]) {
+                $this->updateInvoiceVisibility($notaKey, $visibility);
+            }
+            if ($iniciou && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($iniciou && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+        $resultado['aplicado'] = true;
+
+        return $resultado;
+    }
+
     private function existingManualInvoiceVisibility(array|false $row): ?array
     {
         if (!is_array($row)
