@@ -130,7 +130,7 @@ if ($csvPath !== '') {
     fputcsv($csv, [
         'empresa', 'tipo', 'documento', 'data', 'valor', 'vendedor', 'cliente',
         'canal_atual', 'canal_proposto', 'motivo', 'origem_regra', 'rule_id',
-    ], ';');
+    ], ';', '"', '');
 }
 
 echo $apply ? "MODO: GRAVAR (--apply)\n" : "MODO: SIMULACAO (nada sera gravado; use --apply para gravar)\n";
@@ -154,7 +154,7 @@ $relatar = static function (
     foreach ($r['mudancas'] as $m) {
         $de = $lado($m['antes']);
         $para = $lado($m['depois']);
-        $chave = "{$de} -> {$para}";
+        $chave = $de === $para ? "{$de} (só a flag de visibilidade)" : "{$de} -> {$para}";
         $direcoes[$chave] ??= ['n' => 0, 'valor' => 0.0];
         $direcoes[$chave]['n']++;
         $direcoes[$chave]['valor'] += (float) $m[$campoValor];
@@ -167,7 +167,7 @@ $relatar = static function (
                 number_format((float) $m[$campoValor], 2, ',', ''),
                 $m['nome_vendedor'] ?? '', $m['nome_cliente'] ?? '',
                 $de, $para, $texto, $origem, $ruleId ?? '',
-            ], ';');
+            ], ';', '"', '');
         }
     }
 
