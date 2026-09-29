@@ -10,8 +10,11 @@
  *   POST { action:"grant",  user_id, company_id, can_varejo, can_licitacao, role?, is_default? }
  *   POST { action:"revoke", user_id, company_id }
  *
- * Segurança: capability users.manage; admin NÃO pode alterar o PRÓPRIO acesso
- * (anti-escalada); isolamento garantido pela própria natureza do vínculo.
+ * Segurança: capability users.manage. No PRÓPRIO acesso o admin só ajusta os
+ * canais (varejo/licitação) de empresas que já acessa, com confirm_self e log
+ * company_access_self_channels; não remove o próprio acesso, não se dá empresa
+ * nova, não muda o próprio papel nem a empresa padrão (anti-escalada).
+ * Isolamento garantido pela própria natureza do vínculo.
  *
  * Permissão: users.manage
  */
@@ -87,8 +90,30 @@ try {
     if ($userId <= 0 || $companyId <= 0) {
         Http::json(['ok' => false, 'message' => 'user_id e company_id são obrigatórios.', 'request_id' => RequestContext::id()], 400);
     }
+    // Próprio acesso: o bloqueio total deixava o ÚNICO admin sem como corrigir o
+    // próprio escopo (caso Uni Design, 29/09/2026: preso em "Licitação" com as
+    // vendas em varejo). Regra: pode ajustar só os CANAIS (varejo/licitação) de
+    // empresas que JÁ acessa, com confirmação explícita e log próprio. Continua
+    // proibido: remover o próprio acesso, se dar uma empresa nova, mudar o próprio
+    // papel ou a empresa padrão (anti-escalada).
+    $selfLink = null;
     if ($userId === $actorId) {
-        Http::json(['ok' => false, 'message' => 'Por segurança, você não pode alterar o seu próprio acesso.', 'request_id' => RequestContext::id()], 403);
+        if ($action !== 'grant') {
+            Http::json(['ok' => false, 'message' => 'Por segurança, você não pode remover o seu próprio acesso.', 'request_id' => RequestContext::id()], 403);
+        }
+        $own = $pdo->prepare(
+            'SELECT can_varejo, can_licitacao, role_override, is_default
+               FROM biomie_user_companies WHERE user_id = :uid AND company_id = :cid'
+        );
+        $own->execute([':uid' => $actorId, ':cid' => $companyId]);
+        $selfLink = $own->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($selfLink === null) {
+            Http::json(['ok' => false, 'message' => 'Você não pode se dar acesso a uma empresa nova; peça a outro administrador.', 'request_id' => RequestContext::id()], 403);
+        }
+        if (empty($body['confirm_self'])) {
+            Http::json(['ok' => false, 'error' => 'self_confirmation_required',
+                'message' => 'Confirme que está alterando os seus próprios canais.', 'request_id' => RequestContext::id()], 409);
+        }
     }
 
     // Valida que user e empresa existem/ativos
@@ -111,6 +136,12 @@ try {
         $isDefault = !empty($body['is_default']) ? 1 : 0;
         $role = strtolower(trim((string) ($body['role'] ?? '')));
         $roleOverride = ($role !== '' && in_array($role, Roles::VALID_ROLES, true)) ? $role : null;
+        if ($selfLink !== null) {
+            // No próprio acesso só os canais mudam: papel e empresa padrão ficam
+            // exatamente como estão, o que vier no corpo é ignorado.
+            $roleOverride = $selfLink['role_override'] !== null ? (string) $selfLink['role_override'] : null;
+            $isDefault = (int) $selfLink['is_default'];
+        }
         $defaultCanal = $canVarejo === 1 ? 'varejo' : 'licitacao';
 
         // Upsert do vínculo
@@ -137,10 +168,12 @@ try {
                 ->execute([':uid' => $userId, ':cid' => $companyId]);
         }
 
-        recordAccessLog($actorId, 'company_access_grant', $userId, $companyId, [
+        recordAccessLog($actorId, $selfLink !== null ? 'company_access_self_channels' : 'company_access_grant', $userId, $companyId, [
             'can_varejo' => $canVarejo, 'can_licitacao' => $canLicitacao,
             'role_override' => $roleOverride, 'is_default' => $isDefault,
-        ]);
+        ] + ($selfLink !== null ? ['antes' => [
+            'can_varejo' => (int) $selfLink['can_varejo'], 'can_licitacao' => (int) $selfLink['can_licitacao'],
+        ]] : []));
 
         Http::json(['ok' => true, 'message' => 'Acesso concedido/atualizado.', 'request_id' => RequestContext::id()]);
     }

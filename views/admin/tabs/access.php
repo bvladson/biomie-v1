@@ -166,9 +166,14 @@
           function syncRow(tr) {
             var has = tr.querySelector('[data-acc-has]').checked;
             var self = isSelf();
-            ['[data-acc-varejo]', '[data-acc-licit]', '[data-acc-role]', '[data-acc-default]'].forEach(function (sel) {
+            // No próprio acesso só os canais são editáveis (o servidor aplica a mesma regra).
+            ['[data-acc-varejo]', '[data-acc-licit]'].forEach(function (sel) {
               var el = tr.querySelector(sel);
-              if (el) el.disabled = self || !has; // canais/papel/padrão só fazem sentido com acesso
+              if (el) el.disabled = !has; // canais só fazem sentido com acesso
+            });
+            ['[data-acc-role]', '[data-acc-default]'].forEach(function (sel) {
+              var el = tr.querySelector(sel);
+              if (el) el.disabled = self || !has;
             });
             tr.classList.toggle('acc-row--off', !has);
 
@@ -204,7 +209,9 @@
           function renderRows() {
             if (!DATA) return;
             var self = isSelf();
-            hintEl.textContent = self ? '— você não pode alterar o próprio acesso.' : '';
+            hintEl.textContent = self
+              ? '— no seu próprio acesso você altera só os canais (Varejo/Licitação) das empresas que já acessa; empresas, papel e padrão ficam com outro administrador.'
+              : '';
             root.querySelector('[data-acc-toolbar]').style.display = self ? 'none' : '';
 
             var roleOpts = ['<option value="">(papel global)</option>'].concat(
@@ -219,8 +226,8 @@
                   '<td><strong>' + esc(c.nome_fantasia || c.slug) + '</strong>' +
                     '<div class="admin-small" style="color:var(--mag-muted,#64748b)">' + esc(c.slug) + '</div></td>' +
                   '<td style="text-align:center"><input type="checkbox" data-acc-has ' + (s.has ? 'checked' : '') + ' ' + dis + '></td>' +
-                  '<td style="text-align:center"><input type="checkbox" data-acc-varejo ' + (s.varejo ? 'checked' : '') + ' ' + dis + '></td>' +
-                  '<td style="text-align:center"><input type="checkbox" data-acc-licit ' + (s.licitacao ? 'checked' : '') + ' ' + dis + '></td>' +
+                  '<td style="text-align:center"><input type="checkbox" data-acc-varejo ' + (s.varejo ? 'checked' : '') + '></td>' +
+                  '<td style="text-align:center"><input type="checkbox" data-acc-licit ' + (s.licitacao ? 'checked' : '') + '></td>' +
                   '<td><select class="admin-input" data-acc-role ' + dis + ' style="min-width:130px">' + roleOpts + '</select></td>' +
                   '<td style="text-align:center"><input type="radio" name="acc-default" data-acc-default ' + (s.is_default ? 'checked' : '') + ' ' + dis + '></td>' +
                 '</tr>';
@@ -266,6 +273,11 @@
             var pending = dirtyRows();
             if (!pending.length) return;
             var u = uid();
+            var self = isSelf();
+            if (self && !window.confirm(
+              'Você está alterando os SEUS PRÓPRIOS canais (Varejo/Licitação) em ' + pending.length +
+              ' empresa(s). A mudança fica registrada no log de auditoria e seus contextos abertos serão encerrados. Confirmar?'
+            )) return;
             var btn = root.querySelector('[data-acc-save-all]');
             btn.disabled = true;
             var done = 0, failed = 0;
@@ -283,7 +295,7 @@
               var payload = st.has
                 ? { action: 'grant', user_id: u, company_id: st.cid,
                     can_varejo: st.varejo, can_licitacao: st.licitacao,
-                    role: st.role, is_default: st.is_default, csrf_token: csrf() }
+                    role: st.role, is_default: st.is_default, confirm_self: self, csrf_token: csrf() }
                 : { action: 'revoke', user_id: u, company_id: st.cid, csrf_token: csrf() };
 
               saveMsg.textContent = 'Salvando ' + (i + 1) + ' de ' + pending.length + '…';
