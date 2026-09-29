@@ -2,7 +2,7 @@
           <div class="admin-panel">
             <div style="margin-bottom:16px">
               <h2 style="margin:0"><span class="material-symbols-rounded">person_add</span> Vendedor ausente</h2>
-              <p class="admin-small" style="margin-top:4px">Notas e pedidos que vieram do Omie <strong>sem vendedor</strong>. Escolha um vendedor do cadastro do Omie: a mudan&ccedil;a vale <strong>s&oacute; no BIomie</strong> &mdash; o Omie n&atilde;o &eacute; alterado.</p>
+              <p class="admin-small" style="margin-top:4px">Notas e pedidos que vieram do Omie <strong>sem vendedor</strong> ou com um <strong>vendedor desconhecido</strong> (c&oacute;digo fora do cadastro). Escolha um vendedor do cadastro do Omie: a mudan&ccedil;a vale <strong>s&oacute; no BIomie</strong> &mdash; o Omie n&atilde;o &eacute; alterado. Enquanto ningu&eacute;m atribui, o valor continua em Varejo e dentro de &ldquo;Todas&rdquo;.</p>
               <p class="admin-small" style="margin-top:2px;color:var(--mag-muted,#64748b)">O canal segue a regra oficial: vendedor &ldquo;Licita&ccedil;&atilde;o&rdquo; &rarr; licita&ccedil;&atilde;o; qualquer outro &rarr; varejo. Se o Omie passar a informar um vendedor, o Omie vence e a atribui&ccedil;&atilde;o deixa de valer. Os indicadores do m&ecirc;s s&atilde;o recalculados em seguida.</p>
             </div>
 
@@ -71,9 +71,11 @@
                 summaryEl.textContent = '';
                 return;
               }
-              var pend = state.rows.filter(function (r) { return !r.atribuicao_id; });
-              var feitas = state.rows.length - pend.length;
-              summaryEl.textContent = pend.length + ' sem vendedor · ' + feitas + ' com vendedor atribuído no BI';
+              var ausentes = state.rows.filter(function (r) { return r.situacao === 'missing'; }).length;
+              var desconhecidos = state.rows.filter(function (r) { return r.situacao === 'unresolved'; }).length;
+              var feitas = state.rows.filter(function (r) { return r.situacao === 'bi'; }).length;
+              summaryEl.textContent = ausentes + ' sem vendedor · ' + desconhecidos + ' com vendedor desconhecido · '
+                + feitas + ' com vendedor atribuído no BI';
               rowsEl.innerHTML = state.rows.map(function (r, i) {
                 var tipo = r.tipo === 'nf' ? 'NF' : 'Pedido';
                 var op = '<strong>' + tipo + ' ' + esc(r.documento) + '</strong><br><span class="admin-small" style="color:var(--mag-muted,#94a3b8)">' + esc(r.status || '') + '</span>';
@@ -83,10 +85,15 @@
                        + '<br><span class="admin-small" style="color:var(--mag-muted,#94a3b8)">Omie: sem vendedor · ' + esc(r.motivo || '') + '</span>';
                   acao = '<button type="button" class="btn-secondary btn-sm" data-sa-remove="' + i + '">Remover</button>';
                 } else {
-                  var codInfo = (r.codigo_vendedor_omie && r.codigo_vendedor_omie !== '0')
-                    ? '<br><span class="admin-small" style="color:var(--warning,#d97706)">Código ' + esc(r.codigo_vendedor_omie) + ' fora do cadastro</span>' : '';
-                  vend = '<select class="admin-input btn-sm" data-sa-seller="' + i + '" style="min-width:190px">' + sellerOptions() + '</select>'
-                       + '<br><input class="admin-input btn-sm" data-sa-motivo="' + i + '" placeholder="Motivo (obrigatório)" style="min-width:190px;margin-top:4px">' + codInfo;
+                  // Dois problemas diferentes: o Omie não mandou vendedor, ou mandou
+                  // um código que o cadastro não resolve (desativado, cadastro
+                  // incompleto, falha no sync do cadastro de vendedores).
+                  var situ = r.situacao === 'unresolved'
+                    ? '<span class="admin-small" style="color:var(--warning,#d97706);font-weight:700">Vendedor desconhecido</span>'
+                      + '<span class="admin-small" style="color:var(--mag-muted,#94a3b8)"> · código ' + esc(r.codigo_vendedor_omie) + ' fora do cadastro</span>'
+                    : '<span class="admin-small" style="color:var(--mag-muted,#64748b);font-weight:700">Sem vendedor no Omie</span>';
+                  vend = situ + '<br><select class="admin-input btn-sm" data-sa-seller="' + i + '" style="min-width:190px;margin-top:4px">' + sellerOptions() + '</select>'
+                       + '<br><input class="admin-input btn-sm" data-sa-motivo="' + i + '" placeholder="Motivo (obrigatório)" style="min-width:190px;margin-top:4px">';
                   acao = '<button type="button" class="btn-primary btn-sm" data-sa-assign="' + i + '">Atribuir</button>';
                 }
                 return '<tr>' +

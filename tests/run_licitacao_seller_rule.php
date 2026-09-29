@@ -84,6 +84,14 @@ $check('Expert NF 1: "Sem vendedor" + instituto => varejo (sem override), origem
 $r = $resolve->invoke($repo, $nf('', 'CLIENTE'));
 $check('vendedor vazio => varejo / seller_missing (continua em Todas)',
     $r['channel'] === 'varejo' && (int) $r['visible'] === 1 && $r['source'] === LicitacaoSeller::SOURCE_MISSING, $canal($r));
+$r = $resolve->invoke($repo, $nf('Sem vendedor', 'CLIENTE', '12.345.678/0001-90', '8916374948'));
+$check('código fora do cadastro ("Sem vendedor" com código) => varejo / seller_unresolved',
+    $r['channel'] === 'varejo' && $r['source'] === LicitacaoSeller::SOURCE_UNRESOLVED, $canal($r));
+$check('sellerStatus distingue omie / missing / unresolved',
+    LicitacaoSeller::sellerStatus('7002', 'ROBERTO SIQ.') === 'omie'
+    && LicitacaoSeller::sellerStatus('0', 'Sem vendedor') === 'missing'
+    && LicitacaoSeller::sellerStatus('', '') === 'missing'
+    && LicitacaoSeller::sellerStatus('8916374948', 'Sem vendedor') === 'unresolved');
 $r = $resolve->invoke($repo, $nf('NUBIA OLIVEIRA', 'INSTITUTO DE PESOS E MEDIDAS'));
 $check('Ergo NF 270: NUBIA + IPEM => varejo', $r['channel'] === 'varejo', $canal($r));
 

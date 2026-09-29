@@ -17,6 +17,7 @@ use BIomie\Migrations\AbstractMigration;
  */
 return new class extends AbstractMigration {
     private const TABLE = 'biomie_seller_assignments';
+    private const CANONICAL = ['biomie_notas_fiscais_canonicas', 'biomie_pedidos_canonicos'];
 
     public function getVersion(): string
     {
@@ -54,6 +55,30 @@ return new class extends AbstractMigration {
                 KEY idx_seller_assignment_status (company_id, status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
+
+        // Origem do VENDEDOR, separada da origem do canal (visibility_rule_source):
+        //   omie       — o Omie mandou um vendedor identificado
+        //   bi         — atribuído no BIomie (o Omie segue sem vendedor)
+        //   missing    — o Omie não mandou vendedor
+        //   unresolved — o Omie mandou um código que o cadastro não resolve
+        foreach (self::CANONICAL as $table) {
+            $pdo->exec(
+                "ALTER TABLE {$table}
+                   ADD COLUMN IF NOT EXISTS seller_source VARCHAR(16) NULL
+                   COMMENT 'omie | bi | missing | unresolved' AFTER nome_vendedor"
+            );
+            // Estado atual do histórico (atribuições ainda não existem aqui).
+            $pdo->exec(
+                "UPDATE {$table}
+                    SET seller_source = CASE
+                        WHEN COALESCE(TRIM(nome_vendedor), '') NOT IN ('', 'Sem vendedor', 'Sem vendedor definido', 'Vendedor nao informado')
+                            THEN 'omie'
+                        WHEN COALESCE(TRIM(codigo_vendedor_omie), '') IN ('', '0') THEN 'missing'
+                        ELSE 'unresolved'
+                    END
+                  WHERE seller_source IS NULL"
+            );
+        }
     }
 
     public function down(PDO $pdo): void
@@ -88,5 +113,8 @@ return new class extends AbstractMigration {
                     p.channel_classified_at = NULL"
         );
         $pdo->exec('DROP TABLE ' . self::TABLE);
+        foreach (self::CANONICAL as $table) {
+            $pdo->exec("ALTER TABLE {$table} DROP COLUMN IF EXISTS seller_source");
+        }
     }
 };

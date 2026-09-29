@@ -21,8 +21,17 @@ usuário na empresa era "Licitação" e as NFs são varejo. O dado existia; o co
 - Não se infere canal por cliente, CNAE, órgão público, observação (pregão/edital/empenho) ou projeto.
 - Nome por **igualdade** normalizada: "LICITAÇÃO", "licitacao", " Licitação " casam;
   "Licitante", "Licitações", "João Licitação" não.
-- Vendedor atribuído no BIomie (NF/pedido sem vendedor no Omie): Admin → Vendedor ausente.
-  Muda só o BI; origem ganha `:atribuido_bi`; se o Omie passar a informar vendedor, o Omie vence.
+- Vendedor da operação, nesta ordem: intra-grupo decide o canal antes de tudo; depois o
+  vendedor vindo do Omie; depois a atribuição no BIomie (só se o Omie estiver sem vendedor);
+  por fim `seller_missing` (Omie não enviou vendedor) ou `seller_unresolved` (enviou código
+  que o cadastro não resolve — "vendedor desconhecido").
+- Atribuição no BIomie: Admin → Vendedor ausente. Muda só o BI; se o Omie passar a informar
+  vendedor, o Omie vence (atribuição vira `superada`). Não altera "Todas": só redistribui
+  (sem vendedor → vendedor; no máximo varejo ↔ licitação se o escolhido for "Licitação").
+- Duas origens em campos separados: `visibility_rule_source` = por que o CANAL
+  (`seller_licitacao`, `seller_regular`, `seller_missing`, `seller_unresolved`, `intra_grupo`,
+  `manual_override`); `seller_source` = de onde veio o VENDEDOR (`omie`, `bi`, `missing`,
+  `unresolved`). Enquanto ninguém atribui: canal varejo, vendedor "Sem vendedor", incluído em "Todas".
 
 Códigos do vendedor "Licitação": MAG Filial 8766069381 · Expert 8766069241 ·
 Uni Design 10118842872 · MAG Matriz 10432605713 · Ergo 7467611512.
@@ -33,13 +42,14 @@ Uni Design 10118842872 · MAG Matriz 10432605713 · Ergo 7467611512.
 |---|---|---|
 | 20260929120000 | vínculos usuário×empresa com os 2 canais | restaura de `biomie_user_companies_canais_20260929` |
 | 20260929130000 | regras de canal por vendedor em todas as empresas | restaura de `biomie_channel_rules_20260929` |
-| 20260929140000 | tabela `biomie_seller_assignments` | devolve o vendedor original e remove a tabela |
+| 20260929140000 | tabela `biomie_seller_assignments` + coluna `seller_source` em NFs e pedidos (histórico preenchido: omie/missing/unresolved) | devolve o vendedor original, remove a tabela e a coluna |
 
 ## Testes
 
 ```
-Application regression: 0
-Known environment failures: 12
+Baseline conhecida (produção 1561661): 12 falhas ambientais
+Branch:                                12 falhas ambientais (as mesmas, suíte por suíte)
+Novas regressões:                      0
 ```
 
 As 12 falham igual no código de produção (baseline `1561661`) neste ambiente — mesma lista,
@@ -49,8 +59,8 @@ sem dados (readiness, quote_*, tenant_isolation), sem chave de cifra (multitenan
 suítes que esperam o banco de produção (test_database_guard, csrf, db_error_envelope,
 migration_pending) e dois checks estáticos antigos de geo (geo_summary, sales_by_neighborhood).
 
-Novos/estendidos: `run_mixed_company_context` (46), `run_licitacao_seller_rule` (36),
-`run_seller_assignment` (17).
+Novos/estendidos: `run_mixed_company_context` (46), `run_licitacao_seller_rule` (38),
+`run_seller_assignment` (26 — inclui o invariante permanente "atribuir vendedor não muda Todas").
 
 ## Runbook
 
@@ -81,10 +91,36 @@ Base comercial NF (autorizada, escopo comercial). Valores "antes" medidos em pro
 | Uni Design set/26 · ROBERTO SIQ. + CAIO - REV | R$ 2.938,00 + R$ 43.772,95 = R$ 46.710,95 |
 | Uni Design jul/26 · Todas | R$ 341.317,50 → **R$ 11.137,50** (NF 26, R$ 330.180,00, vira intra-grupo) |
 | Uni Design jun/26 · Todas | R$ 23.243,00 → **R$ 23.243,00** (só troca de coluna: licitação → varejo) |
-| MAG Filial jul/26 · Todas | R$ 1.134.892,56 → **R$ 1.126.913,19** (NF 1851, R$ 7.979,37, vira intra-grupo) |
+| MAG Filial jul/26 · Todas | R$ 1.134.892,56 → **R$ 1.126.913,19** (NF 1851, R$ 7.979,37, vira intra-grupo — ver abaixo) |
 | Expert e Ergo · Todas, todos os meses | **inalterados** (NF 1 da Expert e NF 270 da Ergo só trocam de coluna) |
 | Toda empresa/mês | Varejo + Licitação = Todas |
 | Toda empresa/mês | soma dos vendedores = Todas |
+
+### MAG Filial julho: por que R$ 7.979,37 e não R$ 8.017,47
+
+A prévia inicial mostrou "R$ 8.017,47" para MAG Filial varejo → intra-grupo: era a soma de
+**duas** NFs em qualquer status/escopo. Só uma está no universo comercial (medido em 29/09):
+
+| | NF 1851 | NF 1785 |
+|---|---|---|
+| Cliente | UNI DESIGN (grupo) | MAGAZINE DOS MOVEIS (grupo) |
+| Operação (`operation_scope`) | commercial (venda) | **remittance** (remessa) |
+| Total NF | R$ 7.979,37 | R$ 38,10 |
+| Mercadoria + IPI | 7.728,20 + 251,17 | 36,90 + 1,20 |
+| Frete / outras / seguro | 0 / 0 / 0 | 0 / 0 / 0 |
+| Base comercial (Total − frete − outras − seguro; IPI fica) | **R$ 7.979,37** | R$ 38,10 |
+| Em "Todas" hoje? | sim | não (remessa nunca conta) |
+| Impacto em "Todas" jul/26 | **− R$ 7.979,37** | R$ 0,00 |
+
+Julho por `data_ref` (data usada pelo painel) = por `data_emissao` = R$ 1.134.892,56 em 261 NFs.
+Atenção na conciliação com o Omie: a base do BI inclui IPI; o "Total de Mercadoria" do Omie não
+(na NF 1851: R$ 7.979,37 no BI × R$ 7.728,20 de mercadoria no Omie).
+
+### Invariante da tela "Vendedor ausente"
+
+Total da empresa antes de atribuir vendedor = total depois. A atribuição só move valor de
+"sem vendedor" para o vendedor escolhido e, se o escolhido for "Licitação", de varejo para
+licitação. Coberto por `run_seller_assignment`; conferir em produção na primeira atribuição.
 
 Regra (cobertos por teste, conferir em produção por amostragem):
 

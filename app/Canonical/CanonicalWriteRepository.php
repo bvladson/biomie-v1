@@ -36,6 +36,8 @@ final class CanonicalWriteRepository
     private ?bool $nfFiscalBasisColumnExists = null;
     private ?bool $nfProjectColumnExists     = null;
     private ?bool $nfOrderOperationColumnExists = null;
+    private ?bool $nfSellerSourceColumnExists = null;
+    private ?bool $ordSellerSourceColumnExists = null;
     private ?ChannelClassifierService $channelClassifier = null;
     /** @var array<string,array{channel:string,visible:int,source:string}>|null */
     private ?array $vendorScopeRules = null;
@@ -114,6 +116,7 @@ final class CanonicalWriteRepository
 
         // Vendedor atribuído no BIomie vale enquanto o Omie seguir sem vendedor.
         $order = $this->applySellerAssignment('pedido', (string) $pedidoId, $order, $sellerFromBi);
+        $sellerSource = $this->sellerSourceOf($order, (bool) $sellerFromBi);
 
         $hash = $this->hashing->hashOrder($order);
 
@@ -131,10 +134,11 @@ final class CanonicalWriteRepository
         // contexto que rodou o sync: na Uni Design os 50 pedidos ficaram
         // 'licitacao' enquanto as NFs deles eram varejo.
         $visibility = $this->existingManualInvoiceVisibility($row)
-            ?? $this->markBiAssigned($this->resolveInvoiceVisibility($order), $sellerFromBi);
+            ?? $this->resolveInvoiceVisibility($order);
 
         if ($row && ($row['hash_payload'] ?? '') === $hash) {
             $this->updateOrderVisibility($pedidoId, $visibility);
+            $this->writeSellerSource('pedido', (string) $pedidoId, $sellerSource);
             return 'unchanged';
         }
 
@@ -219,6 +223,7 @@ final class CanonicalWriteRepository
         ]);
 
         $this->updateOrderVisibility($pedidoId, $visibility);
+        $this->writeSellerSource('pedido', (string) $pedidoId, $sellerSource);
         $this->tryUpdateOrderScope($pedidoId, $order);
 
         return $row ? 'updated' : 'inserted';
@@ -266,21 +271,37 @@ final class CanonicalWriteRepository
     }
 
     /**
-     * Marca na origem que o vendedor veio do BIomie (ex.:
-     * "seller_licitacao:atribuido_bi") — o canal segue a regra normal.
+     * Origem do vendedor (coluna seller_source): 'bi' quando veio de atribuição
+     * no BIomie; senão o estado do que o Omie mandou (omie/missing/unresolved).
+     * Separada da origem do canal (visibility_rule_source) de propósito.
      *
-     * @param array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int} $visibility
-     * @return array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int}
+     * @param array<string,mixed> $record
      */
-    private function markBiAssigned(array $visibility, ?bool $fromBi): array
+    private function sellerSourceOf(array $record, bool $fromBi): string
     {
-        if ($fromBi === true && $visibility['confidence'] !== 'manual'
-            && !str_ends_with($visibility['source'], LicitacaoSeller::SUFFIX_BI_ASSIGNED)
-        ) {
-            $visibility['source'] = mb_substr($visibility['source'] . LicitacaoSeller::SUFFIX_BI_ASSIGNED, 0, 80);
-        }
+        return $fromBi
+            ? LicitacaoSeller::SELLER_BI
+            : LicitacaoSeller::sellerStatus(
+                (string) ($record['codigo_vendedor_omie'] ?? ''),
+                (string) ($record['nome_vendedor'] ?? ''),
+            );
+    }
 
-        return $visibility;
+    private function writeSellerSource(string $type, string $key, string $source): void
+    {
+        $table = $type === 'nf' ? self::TABLE_INVOICES : self::TABLE_ORDERS;
+        $exists = $type === 'nf'
+            ? ($this->nfSellerSourceColumnExists ??= $this->checkColumnExists($table, 'seller_source'))
+            : ($this->ordSellerSourceColumnExists ??= $this->checkColumnExists($table, 'seller_source'));
+        if (!$exists) {
+            return; // migração 20260929140000 ainda não aplicada
+        }
+        $this->pdo()->prepare(
+            'UPDATE ' . $table . '
+                SET seller_source = :src
+              WHERE company_id = :cid AND ' . ($type === 'nf' ? 'nota_key' : 'pedido_id_omie') . ' = :chave
+                AND NOT (seller_source <=> :src_cmp)'
+        )->execute(['src' => $source, 'src_cmp' => $source, 'cid' => $this->companyId, 'chave' => $key]);
     }
 
     /**
@@ -308,20 +329,21 @@ final class CanonicalWriteRepository
         }
 
         $visibility = $this->existingManualInvoiceVisibility($row)
-            ?? $this->markBiAssigned($this->resolveInvoiceVisibility([
+            ?? $this->resolveInvoiceVisibility([
                 'business_channel' => null,
                 'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
                 'nome_vendedor' => (string) ($row['nome_vendedor'] ?? ''),
                 'observacoes' => (string) ($row['observacoes'] ?? ''),
                 'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
                 'projeto_id_omie' => (string) ($row['projeto_id_omie'] ?? ''),
-            ]), $this->isBiAssigned($type, $key));
+            ]);
 
         if ($isNf) {
             $this->updateInvoiceVisibility($key, $visibility);
         } else {
             $this->updateOrderVisibility((int) $key, $visibility);
         }
+        $this->writeSellerSource($type, $key, $this->sellerSourceOf($row, $this->isBiAssigned($type, $key)));
 
         return $visibility;
     }
@@ -530,11 +552,12 @@ final class CanonicalWriteRepository
         $invoice['nota_key'] = $noteKey;
         // Vendedor atribuído no BIomie vale enquanto o Omie seguir sem vendedor.
         $invoice = $this->applySellerAssignment('nf', $noteKey, $invoice, $sellerFromBi);
+        $sellerSource = $this->sellerSourceOf($invoice, (bool) $sellerFromBi);
         // Backfills must enrich fiscal data without undoing an operator's
         // explicit channel decision. Automatic classification is only used
         // when the persisted row is not a manual override.
         $visibility = $this->existingManualInvoiceVisibility($row)
-            ?? $this->markBiAssigned($this->resolveInvoiceVisibility($invoice), $sellerFromBi);
+            ?? $this->resolveInvoiceVisibility($invoice);
         $invoice['business_channel'] = $visibility['channel'];
         $invoice['business_unit_scope'] = $visibility['scope'];
         $invoice['is_biomie_commercial_visible'] = $visibility['visible'];
@@ -555,6 +578,7 @@ final class CanonicalWriteRepository
             }
             try {
                 $this->updateInvoiceVisibility($noteKey, $visibility);
+                $this->writeSellerSource('nf', $noteKey, $sellerSource);
                 $this->tryUpdateInvoiceScope($noteKey, $invoice);
                 $this->tryUpdateFiscalBasis($noteKey, $invoice);
                 $this->tryUpdateInvoiceProject($noteKey, $invoice);
@@ -716,6 +740,7 @@ final class CanonicalWriteRepository
             $this->tryUpdateFiscalBasis($noteKey, $invoice);
             $this->tryUpdateInvoiceProject($noteKey, $invoice);
             $this->tryUpdateInvoiceOrderOperation($noteKey, $invoice);
+            $this->writeSellerSource('nf', $noteKey, $sellerSource);
 
             if ($startedTransaction && $pdo->inTransaction()) {
                 $pdo->commit();
@@ -841,8 +866,11 @@ final class CanonicalWriteRepository
                 'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
                 'projeto_id_omie' => (string) ($row['projeto_id_omie'] ?? ''),
             ]);
-            $visibility = $this->markBiAssigned($visibility, $this->isBiAssigned('nf', (string) $row['nota_key']));
-            $decisoes[] = [(string) $row['nota_key'], $visibility];
+            $decisoes[] = [
+                (string) $row['nota_key'],
+                $visibility,
+                $this->sellerSourceOf($row, $this->isBiAssigned('nf', (string) $row['nota_key'])),
+            ];
 
             $mudou = (string) $row['business_channel'] !== (string) $visibility['channel']
                 || (int) $row['is_biomie_commercial_visible'] !== (int) $visibility['visible'];
@@ -877,8 +905,9 @@ final class CanonicalWriteRepository
             $pdo = $this->pdo();
         }
         try {
-            foreach ($decisoes as [$notaKey, $visibility]) {
+            foreach ($decisoes as [$notaKey, $visibility, $sellerSource]) {
                 $this->updateInvoiceVisibility($notaKey, $visibility);
+                $this->writeSellerSource('nf', $notaKey, $sellerSource);
             }
             if ($iniciou && $pdo->inTransaction()) {
                 $pdo->commit();
@@ -931,14 +960,18 @@ final class CanonicalWriteRepository
         $decisoes = [];
         foreach ($rows as $row) {
             $visibility = $this->existingManualInvoiceVisibility($row)
-                ?? $this->markBiAssigned($this->resolveInvoiceVisibility([
+                ?? $this->resolveInvoiceVisibility([
                     'business_channel' => null,
                     'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
                     'nome_vendedor' => (string) ($row['nome_vendedor'] ?? ''),
                     'observacoes' => (string) ($row['observacoes'] ?? ''),
                     'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
-                ]), $this->isBiAssigned('pedido', (string) $row['pedido_id_omie']));
-            $decisoes[] = [(int) $row['pedido_id_omie'], $visibility];
+                ]);
+            $decisoes[] = [
+                (int) $row['pedido_id_omie'],
+                $visibility,
+                $this->sellerSourceOf($row, $this->isBiAssigned('pedido', (string) $row['pedido_id_omie'])),
+            ];
 
             $canalDepois = $visibility['channel'];
             $resultado['por_canal'][$canalDepois] ??= ['pedidos' => 0, 'valor' => 0.0];
@@ -976,8 +1009,9 @@ final class CanonicalWriteRepository
             $pdo = $this->pdo();
         }
         try {
-            foreach ($decisoes as [$pedidoId, $visibility]) {
+            foreach ($decisoes as [$pedidoId, $visibility, $sellerSource]) {
                 $this->updateOrderVisibility($pedidoId, $visibility);
+                $this->writeSellerSource('pedido', (string) $pedidoId, $sellerSource);
             }
             if ($iniciou && $pdo->inTransaction()) {
                 $pdo->commit();

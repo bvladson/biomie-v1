@@ -90,14 +90,12 @@ foreach ($pdo->query(
 )->fetchAll(PDO::FETCH_ASSOC) as $regra) {
     $regras[(int) $regra['id']] = $regra;
 }
-$motivo = static function (string $fonte, ?int $ruleId) use ($regras, &$motivo): array {
-    // Vendedor atribuído no BIomie: mesma explicação da regra + a marca.
-    if (str_ends_with($fonte, ':atribuido_bi')) {
-        [$texto, $origem] = $motivo(substr($fonte, 0, -strlen(':atribuido_bi')), $ruleId);
-        return [$texto . ' (vendedor atribuído no BI)', $origem . ':atribuido_bi'];
-    }
+$motivo = static function (string $fonte, ?int $ruleId) use ($regras): array {
     if ($fonte === 'seller_missing') {
-        return ['sem vendedor no Omie => varejo (regra: só o vendedor Licitação define licitação)', 'seller_missing'];
+        return ['Omie sem vendedor => varejo (só o vendedor Licitação define licitação)', 'seller_missing'];
+    }
+    if ($fonte === 'seller_unresolved') {
+        return ['código de vendedor fora do cadastro => varejo (vendedor desconhecido)', 'seller_unresolved'];
     }
     if ($ruleId !== null && isset($regras[$ruleId])) {
         $r = $regras[$ruleId];

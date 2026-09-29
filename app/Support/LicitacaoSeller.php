@@ -30,15 +30,24 @@ final class LicitacaoSeller
 {
     public const NORMALIZED_NAME = 'LICITACAO';
 
-    /** Origens gravadas em visibility_rule_source. */
+    /** Origem do CANAL — gravada em visibility_rule_source. */
     public const SOURCE_LICITACAO = 'seller_licitacao';
     public const SOURCE_REGULAR = 'seller_regular';
-    /** Sem vendedor no Omie: continua varejo (e dentro de "Todas"), mas a auditoria sabe por quê. */
+    /** Omie não enviou vendedor: continua varejo (e dentro de "Todas"), mas a auditoria sabe por quê. */
     public const SOURCE_MISSING = 'seller_missing';
+    /** Omie enviou um código que o cadastro de vendedores não resolve (desativado, cadastro incompleto). */
+    public const SOURCE_UNRESOLVED = 'seller_unresolved';
     public const SOURCE_INTRA_GRUPO = 'intra_grupo';
     public const SOURCE_MANUAL = 'manual_override';
-    /** Sufixo da origem quando o vendedor foi atribuído no BIomie (o Omie segue sem vendedor). */
-    public const SUFFIX_BI_ASSIGNED = ':atribuido_bi';
+
+    /**
+     * Origem do VENDEDOR — coluna própria seller_source, separada da origem do
+     * canal: filtrar "atribuídos no BI" ou "desconhecidos" não depende de string.
+     */
+    public const SELLER_OMIE = 'omie';
+    public const SELLER_BI = 'bi';
+    public const SELLER_MISSING = 'missing';
+    public const SELLER_UNRESOLVED = 'unresolved';
 
     /** Nomes que o mapeamento do Omie grava quando a operação não tem vendedor. */
     private const MISSING_NAMES = ['', 'SEM VENDEDOR', 'SEM VENDEDOR DEFINIDO', 'VENDEDOR NAO INFORMADO'];
@@ -66,12 +75,29 @@ final class LicitacaoSeller
 
     /**
      * A operação está sem vendedor identificável? Nome vazio ou placeholder do
-     * mapeamento ("Sem vendedor"). Um código que não está no cadastro chega com
-     * nome "Sem vendedor" e também conta como ausente — o BIomie não sabe quem é.
+     * mapeamento ("Sem vendedor"). Vale tanto para "Omie não mandou vendedor"
+     * quanto para "mandou um código que o cadastro não resolve" — em ambos o
+     * BIomie não sabe quem vendeu (ver sellerStatus para distinguir).
      */
     public static function isMissingSeller(string $name): bool
     {
         return \in_array(self::normalize($name), self::MISSING_NAMES, true);
+    }
+
+    /**
+     * Estado do vendedor como veio do Omie: 'omie' (identificado), 'missing'
+     * (Omie não enviou vendedor) ou 'unresolved' (enviou código, mas o nome não
+     * foi resolvido pelo cadastro). A atribuição no BI ('bi') é decidida pela
+     * escrita canônica, não aqui.
+     */
+    public static function sellerStatus(string $code, string $name): string
+    {
+        if (!self::isMissingSeller($name)) {
+            return self::SELLER_OMIE;
+        }
+        $code = trim($code);
+
+        return ($code === '' || $code === '0') ? self::SELLER_MISSING : self::SELLER_UNRESOLVED;
     }
 
     /**

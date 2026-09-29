@@ -19,8 +19,11 @@ use PDO;
  *   - a linha canônica passa a ter o vendedor escolhido (filtros por vendedor,
  *     ranking, metas e marts o enxergam);
  *   - o canal segue a regra oficial ({@see LicitacaoSeller}): atribuir o vendedor
- *     "Licitação" leva a licitação; qualquer outro, a varejo. A origem ganha o
- *     sufixo ":atribuido_bi" para a auditoria;
+ *     "Licitação" leva a licitação; qualquer outro, a varejo. A origem do canal
+ *     continua a da regra (seller_regular/seller_licitacao) e a origem do
+ *     VENDEDOR vai para a coluna própria seller_source = 'bi';
+ *   - a atribuição só redistribui: "Todas as operações" não muda (sai de "sem
+ *     vendedor", entra no vendedor escolhido; no máximo troca varejo↔licitação);
  *   - a escrita canônica reaplica a atribuição a cada sync ENQUANTO o Omie
  *     continuar sem vendedor. Se o Omie passar a ter vendedor, o Omie vence e a
  *     atribuição fica 'superada' (CanonicalWriteRepository::applySellerAssignment).
@@ -149,9 +152,14 @@ final class SellerAssignmentService
                NULL AS vendedor_original_codigo, NULL AS motivo, NULL AS atribuido_em';
         $aWhere = $join ? 'a.id IS NOT NULL OR ' : '';
 
+        // Situação: 'bi' (atribuído aqui), 'unresolved' (Omie mandou código fora
+        // do cadastro — "vendedor desconhecido") ou 'missing' (Omie sem vendedor).
+        $situacao = static fn (string $alias): string => ($join ? 'CASE WHEN a.id IS NOT NULL THEN \'bi\' ' : 'CASE ')
+            . "WHEN COALESCE(TRIM({$alias}.codigo_vendedor_omie), '') NOT IN ('', '0') THEN 'unresolved' ELSE 'missing' END";
         $sql = "SELECT 'nf' AS tipo, n.nota_key AS chave, n.numero_nf AS documento, n.data_emissao,
                        n.nome_cliente, n.valor_base_comercial_nf AS valor, n.status_fiscal AS status,
                        n.codigo_vendedor_omie, n.nome_vendedor, n.business_channel, n.visibility_rule_source,
+                       " . $situacao('n') . " AS situacao,
                        {$aCols}
                   FROM biomie_notas_fiscais_canonicas n {$nfAssign}
                  WHERE n.company_id = :cid1 AND ({$aWhere}{$nfMissing})
@@ -159,6 +167,7 @@ final class SellerAssignmentService
                 SELECT 'pedido', CAST(p.pedido_id_omie AS CHAR), p.codigo_pedido, p.data_emissao,
                        p.nome_cliente, p.valor_mercadorias, p.status_comercial,
                        p.codigo_vendedor_omie, p.nome_vendedor, p.business_channel, p.visibility_rule_source,
+                       " . $situacao('p') . ",
                        {$aCols}
                   FROM biomie_pedidos_canonicos p {$pedAssign}
                  WHERE p.company_id = :cid2 AND ({$aWhere}{$pedMissing})

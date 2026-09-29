@@ -86,10 +86,15 @@ final class ChannelClassifierService
 
             if ($hit) {
                 $source = self::sourceFor($rule);
-                // Mesmo canal (varejo), outra explicação: "não havia vendedor" é
-                // diferente de "o vendedor era o Roberto" numa auditoria.
-                if ($source === LicitacaoSeller::SOURCE_REGULAR && LicitacaoSeller::isMissingSeller($nomeVendedor)) {
-                    $source = LicitacaoSeller::SOURCE_MISSING;
+                // Mesmo canal (varejo), outra explicação: "não havia vendedor" e
+                // "código fora do cadastro" são diferentes de "o vendedor era o
+                // Roberto" numa auditoria.
+                if ($source === LicitacaoSeller::SOURCE_REGULAR) {
+                    $source = match (LicitacaoSeller::sellerStatus($codigo, $nomeVendedor)) {
+                        LicitacaoSeller::SELLER_MISSING => LicitacaoSeller::SOURCE_MISSING,
+                        LicitacaoSeller::SELLER_UNRESOLVED => LicitacaoSeller::SOURCE_UNRESOLVED,
+                        default => $source,
+                    };
                 }
                 return [
                     'channel'    => $rule['target_channel'],
