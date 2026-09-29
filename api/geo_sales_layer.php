@@ -66,7 +66,7 @@ try {
         Http::json([
             'ok' => false,
             'error' => 'unsupported_geo_scope',
-            'message' => 'O mapa territorial usa somente a base comercial validada. Remessas e licitacoes nao possuem separacao geografica confiavel neste mart.',
+            'message' => 'O mapa territorial usa somente a base comercial validada (varejo e licitacao). Remessas nao possuem separacao geografica confiavel neste mart.',
             'supported_scope' => 'orc_pd',
             'meta' => ['request_id' => RequestContext::id()],
         ], 422);

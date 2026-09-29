@@ -52,7 +52,8 @@ final class CommercialScopeSqlFilter
             CommercialPeriodScopeContext::SCOPE_ORC_PD => (function () use (&$conditions, $alias): void {
                 $conditions[] = "{$alias}.status_fiscal = 'autorizada'";
                 $conditions[] = "{$alias}.operation_scope = 'commercial'";
-                // Licitação excluded: BiVisibilityScope handles it
+                // Canal: o BiVisibilityScope aplica o universo do contexto
+                // (em "Todas as operações", varejo + licitação).
             })(),
 
             CommercialPeriodScopeContext::SCOPE_FATURADO => (function () use (&$conditions, $alias): void {
@@ -67,8 +68,11 @@ final class CommercialScopeSqlFilter
 
             CommercialPeriodScopeContext::SCOPE_LICITACAO => (function () use (&$conditions, $alias): void {
                 $conditions[] = "{$alias}.status_fiscal = 'autorizada'";
-                // Licitação: operation_scope = 'commercial' BUT is_biomie_commercial_visible = 0
-                $conditions[] = "({$alias}.operation_scope = 'commercial' AND COALESCE({$alias}.is_biomie_commercial_visible, 1) = 0)";
+                // Licitação é definida pelo CANAL, não pela flag de visibilidade:
+                // a flag zerada também cobre intra-grupo ('outros'), e havia NFs
+                // de licitação nunca classificadas com a flag em 1.
+                $conditions[] = "{$alias}.operation_scope = 'commercial'";
+                $conditions[] = "{$alias}.business_channel = 'licitacao'";
             })(),
 
             CommercialPeriodScopeContext::SCOPE_CANCELADO => (function () use (&$conditions, $alias): void {

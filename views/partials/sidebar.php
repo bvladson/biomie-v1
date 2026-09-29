@@ -143,10 +143,14 @@ $sidebarCompanyInitials = $sidebarIsConsolidado ? 'GR' : $sidebarManifest->initi
 $sidebarLogoIconPath    = $sidebarIsConsolidado ? '' : $sidebarManifest->logoIconPath();
 $sidebarLogoIcon        = $sidebarLogoIconPath !== '' ? \BIomie\Auth::url($sidebarLogoIconPath) : '';
 $sidebarActiveCanalLabel = match (mb_strtolower($sidebarTenantCanal)) {
-    'licitacao'   => 'Licitação',
+    'licitacao'   => 'Somente licitação',
     'consolidado' => 'Grupo',
-    default       => 'Varejo',
+    'mixed'       => 'Todas as operações',
+    default       => 'Somente varejo',
 };
+// Com os dois canais, a empresa abre em "Todas as operações": licitação é venda
+// e entra nos números; Varejo/Licitação viram filtro dentro da tela.
+$sidebarMixedEnabled = (bool) (new \BIomie\Config())->get('features.mixed_company_context_enabled', false);
 ?>
 <aside class="sidebar mag-sidebar" id="sidebar" aria-label="Navegação principal"<?php echo $magHasBadges ? ' data-sidebar-badges="1"' : ''; ?>>
   <div class="sidebar-logo">
@@ -312,7 +316,9 @@ $sidebarActiveCanalLabel = match (mb_strtolower($sidebarTenantCanal)) {
         $stcCnpj       = $stcMfst->cnpjLabel();
         $stcVar        = (bool) ($stc['can_varejo'] ?? false);
         $stcLic        = (bool) ($stc['can_licitacao'] ?? false);
-        $stcDefaultCanal = $stcVar ? 'varejo' : 'licitacao';
+        $stcDefaultCanal = ($stcVar && $stcLic && $sidebarMixedEnabled)
+            ? 'mixed'
+            : ($stcVar ? 'varejo' : 'licitacao');
         $stcIsSelected = !$sidebarIsConsolidado && $stcId === $sidebarTenantCompanyId;
         $stcIsActive   = $stcMfst->isActive();
 

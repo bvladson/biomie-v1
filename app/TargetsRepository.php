@@ -376,22 +376,28 @@ final class TargetsRepository
             return [];
         }
         $placeholders = [];
-        $params = [
-            'company_id' => $this->companyId(),
-            'canal' => $this->channel(),
-        ];
+        $channelPlaceholders = [];
+        $params = ['company_id' => $this->companyId()];
+        foreach ($this->channels() as $index => $channel) {
+            $key = 'canal_' . $index;
+            $channelPlaceholders[] = ':' . $key;
+            $params[$key] = $channel;
+        }
         foreach (array_values(array_unique($months)) as $index => $month) {
             $key = 'month_' . $index;
             $placeholders[] = ':' . $key;
             $params[$key] = $month;
         }
+        // Em "Todas as operações" a meta da empresa é a soma das metas de cada
+        // canal — o realizado também soma os dois.
         $stmt = $this->pdo->prepare(
-            'SELECT competencia, meta_valor
+            'SELECT competencia, SUM(meta_valor) AS meta_valor
                FROM biomie_company_targets
               WHERE company_id = :company_id
-                AND canal = :canal
+                AND canal IN (' . implode(', ', $channelPlaceholders) . ')
                 AND ativo = 1
-                AND competencia IN (' . implode(', ', $placeholders) . ')'
+                AND competencia IN (' . implode(', ', $placeholders) . ')
+              GROUP BY competencia'
         );
         $stmt->execute($params);
         $result = [];
@@ -605,9 +611,19 @@ final class TargetsRepository
         return $this->tenantCompanyId ?? TenantContext::companyId();
     }
 
-    private function channel(): string
+    /**
+     * Canais cujas metas de empresa compõem o contexto. mixed = os dois;
+     * antes caía em varejo e a meta de licitação sumia do "Todas as operações".
+     *
+     * @return list<string>
+     */
+    private function channels(): array
     {
         $channel = $this->tenantChannel ?? TenantContext::canal();
-        return $channel === 'licitacao' ? 'licitacao' : 'varejo';
+        return match ($channel) {
+            'licitacao' => ['licitacao'],
+            'mixed' => ['licitacao', 'varejo'],
+            default => ['varejo'],
+        };
     }
 }

@@ -113,10 +113,16 @@ final class TenantContextResolver
         $company = $this->authorizedCompany($userId, $companyId);
         // Normaliza E autoriza numa peça só. mixed exige os 2 canais + flag;
         // combinação inválida falha explícita (nunca cai para varejo).
+        // Sem canal pedido e com os dois canais, o padrão é "Todas as operações":
+        // abrir num canal só escondia a venda do outro (caso Uni Design, 09/2026).
+        $allowedScopes = self::companyAllowedScopes($company);
+        $defaultScope = ($this->mixedEnabled() && count($allowedScopes) === 2)
+            ? 'mixed'
+            : (string) ($company['default_canal'] ?? $company['canal_padrao'] ?? 'varejo');
         $scope = CompanyScopeNormalizer::normalize(
             (string) ($requestedBusinessScope ?? ''),
-            self::companyAllowedScopes($company),
-            (string) ($company['default_canal'] ?? $company['canal_padrao'] ?? 'varejo'),
+            $allowedScopes,
+            $defaultScope,
             $this->mixedEnabled(),
         );
         // scopeMap guarda os canais EFETIVOS: single = [ele], mixed = os dois.

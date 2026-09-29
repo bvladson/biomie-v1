@@ -213,10 +213,11 @@ return [
     'features' => [
         'flight_plan_v2' => true,
         // Contexto "Todas as operações" (varejo+licitação numa mesma empresa).
-        // OFF por padrão: o código é compatível e a opção fica INVISÍVEL até o
-        // dashboard consumir mixed corretamente (Fase D, Incremento 1B). Com OFF,
-        // criar contexto mixed é RECUSADO — contextos varejo/licitação intactos.
-        'mixed_company_context_enabled' => in_array(strtolower(env('BIOMIE_MIXED_COMPANY_CONTEXT_ENABLED', '0', $secrets)), ['1', 'true', 'yes', 'y', 'sim', 'on'], true),
+        // ON por padrão desde 29/09/2026: licitação é venda e entra nos números;
+        // o recorte por canal é FILTRO (toggle Varejo/Licitação), não contexto.
+        // Com OFF, criar contexto mixed é RECUSADO e cada empresa volta a abrir
+        // num canal só — o que escondia a venda de varejo da Uni Design.
+        'mixed_company_context_enabled' => in_array(strtolower(env('BIOMIE_MIXED_COMPANY_CONTEXT_ENABLED', '1', $secrets)), ['1', 'true', 'yes', 'y', 'sim', 'on'], true),
         // Camada canônica: ligar por módulo após primeiro sync bem-sucedido
         'canonical_reads_vendors' => (bool) env('CANONICAL_READS_VENDORS', '1', $secrets),
         'canonical_reads_orders' => (bool) env('CANONICAL_READS_ORDERS', '1', $secrets),

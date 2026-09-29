@@ -152,8 +152,10 @@ final class UserProvisioningService
             $normalized[$cid] = [
                 'company_id'    => $cid,
                 'role'          => $role,
+                // Licitação é venda: acesso novo enxerga os dois canais, a menos
+                // que o admin desmarque explicitamente.
                 'can_varejo'    => (bool) ($row['can_varejo'] ?? true),
-                'can_licitacao' => (bool) ($row['can_licitacao'] ?? false),
+                'can_licitacao' => (bool) ($row['can_licitacao'] ?? true),
                 'is_default'    => $isDefault,
             ];
             // Acesso sem canal nenhum não vê dado algum — Varejo é o padrão.

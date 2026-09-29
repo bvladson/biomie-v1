@@ -68,37 +68,15 @@ try {
     }
 
     // ── Filtro Comercial Inteligente (canal) ─────────────────────────────────
-    // O Plano de Voo (Rota Comercial) cobre APENAS Varejo — a Licitação é excluída
-    // por design (Fase L: FlightPlanV2Service pula vendedores de licitação). Então
-    // "propagar" o filtro aqui = declarar honestamente que o módulo NÃO cobre
-    // Licitação quando o usuário estreita só para ela, em vez de mostrar um plano
-    // de varejo como se fosse licitação. Varejo/Todas seguem normalmente.
+    // O Plano de Voo cobre o universo do CONTEXTO (em "Todas as operações":
+    // varejo + licitação). Ele não aplica o recorte de canal da preferência —
+    // o vendedor é a unidade do plano —, e isso sai declarado em meta.
+    // Pedido de canal fora do autorizado continua sendo 403.
     try {
         $flightScope = CommercialRequestScope::fromRequest($pdo, CommercialFilterPreferenceStore::PAGE_COMMERCIAL);
     } catch (CommercialScopeDeniedException $denied) {
         Http::json(['ok' => false, 'error' => 'channel_not_authorized',
             'message' => $denied->getMessage(), 'request_id' => RequestContext::id()], 403);
-    }
-    $flightChannels = $flightScope->resolved?->effectiveChannels ?? [];
-    if ($flightScope->isChannelNarrowed() && $flightChannels === ['licitacao']) {
-        Http::json([
-            'ok' => true,
-            'source' => 'flight_plan_v2',
-            'reason_code' => 'channel_licitacao_unsupported',
-            'message' => 'O Plano de Voo (Rota Comercial) acompanha metas de Varejo. '
-                . 'Para ver Licitação, use o painel comercial; selecione Varejo ou Todas as operações aqui.',
-            'team' => [],
-            'vendors' => [],
-            'meta' => [
-                'channel_scope' => $flightScope->resolved?->channelScopeMeta(),
-                'business_scope' => $flightScope->businessScope,
-            ],
-            'diagnostics' => [
-                'request_id' => RequestContext::id(),
-                'runtime_ms' => (int) ((microtime(true) - $fpStartTime) * 1000),
-                'served_from' => 'channel_guard',
-            ],
-        ]);
     }
 
     // Try snapshot for closed historical periods (no vendor filter, not forced)
@@ -166,6 +144,8 @@ try {
     // upsert e da página de metas: sales.sync OU settings.manage).
     $payload['meta']['can_edit_targets'] = Auth::hasCapability('sales.sync')
         || Auth::hasCapability('settings.manage');
+    $payload['meta']['business_scope'] = $flightScope->businessScope;
+    $payload['meta']['channel_refine_applied'] = false;
     $payload['source']      = 'flight_plan_v2';
     $payload['diagnostics'] = [
         'request_id'            => RequestContext::id(),

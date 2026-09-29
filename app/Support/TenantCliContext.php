@@ -56,8 +56,8 @@ final class TenantCliContext
 
         $companyId = (int) $company['id'];
         $canal = $channelSelector ?: (string) ($company['canal_padrao'] ?: 'varejo');
-        if (!in_array($canal, ['varejo', 'licitacao'], true)) {
-            throw new \InvalidArgumentException('--channel aceita somente varejo ou licitacao.');
+        if (!in_array($canal, ['varejo', 'licitacao', 'mixed'], true)) {
+            throw new \InvalidArgumentException('--channel aceita somente varejo, licitacao ou mixed.');
         }
         TenantContext::bootForCompany($pdo, $companyId, $canal);
 

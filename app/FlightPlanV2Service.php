@@ -247,10 +247,10 @@ final class FlightPlanV2Service
                 continue;
             }
 
+            // Licitação é venda: o vendedor entra no plano com o canal rotulado.
+            // Antes era descartado pelo NOME ("licitac") e o realizado dele sumia
+            // do total do time.
             $channel = (string) $aliasResolver->resolve($vendorName)['vendor_channel'];
-            if ($channel === VendorAliasResolver::CHANNEL_LICITACAO) {
-                continue;
-            }
 
             $metaDayBase = $periodWeight > 0 ? Support::money($targetPeriod / $periodWeight) : 0.0;
             $idealForPeriod = Support::money($metaDayBase * $elapsedWeight);

@@ -664,7 +664,7 @@
 
             cid = el.getAttribute('data-pv-co');
             if (cid) {
-              if (el.checked) st.companies[cid] = { role: 'viewer', can_varejo: true, can_licitacao: false, is_default: false };
+              if (el.checked) st.companies[cid] = { role: 'viewer', can_varejo: true, can_licitacao: true, is_default: false };
               else { delete st.companies[cid]; delete st.visibility[cid]; }
               reconcile(); render(); return;
             }

@@ -153,14 +153,22 @@ $magEnvironment = trim((string) ($environment ?? getenv('APP_ENV') ?: 'productio
     $tenantDisplayName = $tenantIsConsolidado
         ? 'Consolidado'
         : ($tenantManifest->name() ?: $tenantSlug);
+    // Contexto de um canal só é um RECORTE, não o faturamento da empresa: o
+    // rótulo diz "Somente ..." (no caso Uni Design, "Licitação" parecia o total
+    // e escondia R$ 46.710,95 de varejo).
     $tenantLabel      = match (mb_strtolower($tenantCanal)) {
-        'licitacao'    => 'Licitação',
+        'licitacao'    => 'Somente licitação',
         'consolidado'  => 'Grupo',
-        default        => 'Varejo',
+        'mixed'        => 'Todas as operações',
+        default        => 'Somente varejo',
+    };
+    $tenantBadgeTitle = match (mb_strtolower($tenantCanal)) {
+        'licitacao', 'varejo' => 'Exibindo só um canal. Para o faturamento total da empresa, escolha "Todas as operações" no menu do usuário.',
+        default => 'Empresa ativa — use o menu do usuário para trocar',
     };
     $tenantIcon = $tenantIsConsolidado ? 'hub' : 'business';
     ?>
-    <span class="mag-tenant-badge" title="Empresa ativa — use o menu do usuário para trocar">
+    <span class="mag-tenant-badge" title="<?php echo htmlspecialchars($tenantBadgeTitle, ENT_QUOTES, 'UTF-8'); ?>">
       <span class="material-symbols-rounded" aria-hidden="true"><?php echo $tenantIcon; ?></span>
       <?php echo htmlspecialchars($tenantDisplayName, ENT_QUOTES, 'UTF-8'); ?>
       <span class="mag-tenant-badge__canal"><?php echo htmlspecialchars($tenantLabel, ENT_QUOTES, 'UTF-8'); ?></span>

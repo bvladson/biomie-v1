@@ -288,7 +288,9 @@ final class TenantContext
         }
 
         $scope = strtolower(trim((string) ($canal ?: $company['canal_padrao'] ?: 'varejo')));
-        if (!in_array($scope, ['varejo', 'licitacao'], true)) {
+        // mixed chega aqui por job enfileirado a partir de "Todas as operações"
+        // (payload canal = TenantContext::canal()). Recusá-lo derrubava o job.
+        if (!in_array($scope, ['varejo', 'licitacao', 'mixed'], true)) {
             throw new \InvalidArgumentException('Canal inválido para contexto de execução.');
         }
 
@@ -307,7 +309,7 @@ final class TenantContext
             hash('sha256', 'cli-unrestricted-explicit-company'),
             0,
             [(int) $company['id']],
-            [(int) $company['id'] => [$scope]],
+            [(int) $company['id'] => CompanyScopeNormalizer::effectiveChannels($scope)],
         );
     }
 

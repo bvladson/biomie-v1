@@ -354,10 +354,10 @@
     const hint = document.getElementById('productScopeHint');
     if (hint) {
       hint.textContent = value === 'remittance'
-        ? 'Remessas isoladas do mix comercial Orc-PD. Licitacao continua excluida.'
+        ? 'Remessas isoladas do mix comercial Orc-PD.'
         : (value === 'all'
-          ? 'Visao combinada: Orc-PD + Remessas. Licitacao permanece excluida.'
-          : 'Orc-PD exclui Licitacao e Remessas. Use os chips para investigar remessas separadamente.');
+          ? 'Visao combinada: Orc-PD (varejo + licitacao) + Remessas.'
+          : 'Orc-PD inclui varejo e licitacao; remessas ficam fora. Use os chips para investigar remessas separadamente.');
     }
     if (updateUrl && window.history && history.replaceState) {
       const url = new URL(window.location.href);

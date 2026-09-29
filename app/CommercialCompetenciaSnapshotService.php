@@ -50,7 +50,9 @@ final class CommercialCompetenciaSnapshotService
     private function businessChannel(): string
     {
         $channel = strtolower(trim(\BIomie\Support\TenantContext::canal()));
-        if (!in_array($channel, ['varejo', 'licitacao', 'consolidado'], true)) {
+        // mixed ("Todas as operações") tem snapshot próprio: a chave única da
+        // tabela inclui business_channel, então nunca se mistura com varejo.
+        if (!in_array($channel, ['varejo', 'licitacao', 'mixed', 'consolidado'], true)) {
             throw new \LogicException('Canal ausente ou invalido para snapshot comercial.');
         }
         return $channel;

@@ -2733,7 +2733,7 @@
     $('geoScopeSelector')?.addEventListener('change', (event) => {
       if (event.target.value !== 'orc_pd') {
         event.target.value = 'orc_pd';
-        showFeedback('O mapa usa a base comercial validada. Remessas e licitacoes nao fazem parte deste mart geografico.', 'info');
+        showFeedback('O mapa usa a base comercial validada (varejo e licitacao). Remessas nao fazem parte deste mart geografico.', 'info');
         return;
       }
       applyGeoLayer();

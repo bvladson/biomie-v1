@@ -38,7 +38,7 @@
     'faturamento orc pd': {
       summary: 'Base comercial das notas fiscais classificadas como Orçamento-PD.',
       read: 'Mostra quanto foi efetivamente faturado neste canal comercial.',
-      scope: 'Remessas e licitações ficam fora quando indicado pelo recorte.',
+      scope: 'Inclui varejo e licitação; o filtro de operação isola um dos canais. Remessas e intra-grupo ficam fora.',
       icon: 'receipt_long', tone: 'revenue'
     },
     'notas faturadas orc pd': {
@@ -455,7 +455,7 @@
     'rota-comercial:vendas faturadas': {
       summary: 'Soma das notas fiscais autorizadas no período. É o faturamento comercial efetivamente confirmado.',
       read: 'Principal número de resultado. Compara diretamente com a Meta do período para medir atingimento real.',
-      scope: 'Usa data de competência fiscal. Exclui Licitação, Remessa e Entrega Finalizada (escopos separados).',
+      scope: 'Usa data de competência fiscal. Inclui varejo e licitação; exclui Remessa, intra-grupo e Entrega Finalizada.',
       action: 'Clique em um vendedor na tabela para ver quais notas formam o faturamento dele.',
       icon: 'paid', tone: 'revenue'
     },
@@ -567,7 +567,7 @@
     'index:vendas faturadas': {
       summary: 'Soma do valor base de todas as NFs autorizadas Orç-PD no período. É o principal resultado comercial da operação.',
       read: 'Compare com o gráfico de evolução abaixo e com a meta no Plano de Voo. Não inclui carteira, orçamentos, remessas ou licitação.',
-      scope: 'Usa data de competência fiscal (não data de emissão). Exclui Licitação, Remessa e Entrega Finalizada.',
+      scope: 'Usa data de competência fiscal (não data de emissão). Inclui varejo e licitação; exclui Remessa, intra-grupo e Entrega Finalizada.',
       action: 'Aplique filtros de vendedor, cliente ou produto para decompor de onde vem este valor.',
       icon: 'paid', tone: 'revenue'
     },
@@ -623,7 +623,7 @@
     'index:ranking comercial orc pd': {
       summary: 'Receita e ticket médio de cada vendedor no canal Orç-PD — quem gerou mais faturamento no período.',
       read: 'Vendedores com faturamento alto e ticket baixo dependem de volume. Com ticket alto e poucos clientes há risco de concentração. Compare os dois para entender a qualidade da venda.',
-      scope: 'Ordenado por faturamento decrescente. Exclui vendedores sem NF autorizada no período. Remessas e Licitação excluídas.',
+      scope: 'Ordenado por faturamento decrescente. Exclui vendedores sem NF autorizada no período. Inclui licitação; remessas e intra-grupo excluídos.',
       action: 'Clique em "Equipe" para abrir a análise completa com metas, atingimento, carteira e risco no Plano de Voo.',
       icon: 'leaderboard', tone: 'revenue'
     },
@@ -688,7 +688,7 @@
     'vendas faturadas': {
       formula: 'Soma da base comercial das notas fiscais autorizadas no período.',
       includes: ['Notas fiscais autorizadas', 'Período e filtros selecionados'],
-      excludes: ['Pedidos ainda não faturados', 'Notas canceladas', 'Remessas e licitações quando o recorte indicar exclusão'],
+      excludes: ['Pedidos ainda não faturados', 'Notas canceladas', 'Remessas e vendas intra-grupo'],
       related: ['Notas faturadas', 'Venda média', 'Canceladas', 'Carteira aceita'],
       questions: ['O resultado está concentrado em poucos clientes?', 'O ritmo atual é suficiente para o período?', 'A carteira cobre uma eventual queda do faturamento?']
     },
@@ -992,35 +992,35 @@
     'ranking comercial orc pd': {
       formula: 'Faturamento Orç-PD somado por vendedor. Ticket médio = faturamento do vendedor ÷ quantidade de NFs do vendedor no período.',
       includes: ['Vendedores com ao menos uma NF autorizada Orç-PD no período'],
-      excludes: ['Vendedores sem NF no período', 'Remessas e Licitação'],
+      excludes: ['Vendedores sem NF no período', 'Remessas e vendas intra-grupo'],
       related: ['Venda média Orç-PD', 'Clientes', 'Plano de Voo', 'Carteira aceita'],
       questions: ['Quem sustenta a maior parte do faturamento?', 'O ticket de cada vendedor está crescendo?', 'Há dependência excessiva de um único vendedor?']
     },
     'produtos em destaque orc pd': {
       formula: 'Faturamento Orç-PD somado por produto (SKU/descrição). Exibe os de maior participação no total do período.',
       includes: ['Itens de NFs autorizadas Orç-PD', 'Agrupados por produto'],
-      excludes: ['Itens de NFs canceladas', 'Remessas e Licitação'],
+      excludes: ['Itens de NFs canceladas', 'Remessas e vendas intra-grupo'],
       related: ['Venda média Orç-PD', 'Clientes', 'Carteira aceita', 'Product 360'],
       questions: ['Quais produtos sustentam a receita?', 'Há produto que sumiu do topo?', 'Os itens no topo têm estoque suficiente?']
     },
     'clientes em destaque orc pd': {
       formula: 'Faturamento Orç-PD somado por cliente. Exibe os de maior valor com frequência de NFs, ticket médio e data da última compra.',
       includes: ['Clientes com ao menos uma NF Orç-PD autorizada no período'],
-      excludes: ['Clientes sem NF no período', 'Remessas e Licitação'],
+      excludes: ['Clientes sem NF no período', 'Remessas e vendas intra-grupo'],
       related: ['Vendas faturadas', 'Clientes', 'Bairros que mais vendem', 'Carteira aceita'],
       questions: ['Há concentração nos 3 primeiros?', 'Algum cliente importante sumiu do ranking?', 'A data da última compra dos grandes clientes está recente?']
     },
     'etapas das vendas orc pd': {
       formula: 'Faturado = NFs autorizadas Orç-PD. Carteira = pedidos aceitos sem NF emitida. Cancelado = NFs ou pedidos com status cancelado. Agrupados por semana ou mês.',
       includes: ['NFs Orç-PD autorizadas, em carteira e canceladas'],
-      excludes: ['Orçamentos (etapa 10)', 'Remessas e Licitação'],
+      excludes: ['Orçamentos (etapa 10)', 'Remessas e vendas intra-grupo'],
       related: ['Vendas faturadas', 'Carteira aceita', 'Canceladas', 'Orçamentos'],
       questions: ['A proporção faturado/carteira está saudável?', 'Os cancelamentos cresceram?', 'Há represamento de carteira sem NF?']
     },
     'maiores nfs orcamento pd': {
       formula: 'NFs Orç-PD autorizadas ordenadas por base comercial decrescente. Exibe cliente, vendedor, quantidade de itens e valor.',
       includes: ['NFs autorizadas Orç-PD no período', 'Resolvidas com cliente e vendedor identificados'],
-      excludes: ['NFs canceladas', 'Remessas e Licitação'],
+      excludes: ['NFs canceladas', 'Remessas e vendas intra-grupo'],
       related: ['Venda média Orç-PD', 'Clientes em destaque', 'Ranking comercial', 'Recebimentos e risco'],
       questions: ['Quais NFs podem distorcer o ticket médio?', 'Há clientes repetidos nos topos?', 'O recebível dessas NFs está identificado?']
     },

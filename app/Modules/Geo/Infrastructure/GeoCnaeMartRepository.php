@@ -171,7 +171,7 @@ final class GeoCnaeMartRepository
              LEFT JOIN biomie_clientes_dim AS cd
                ON cd.codigo_cliente_omie = nf.codigo_cliente_omie AND cd.company_id = nf.company_id
              WHERE nf.company_id = {$companyId}
-               AND nf.business_channel = 'varejo'
+               AND nf.business_channel IN ('varejo', 'licitacao')
                AND nf.status_fiscal = 'autorizada'
                AND nf.codigo_cliente_omie IS NOT NULL
                AND COALESCE(nf.data_competencia, nf.data_emissao) IS NOT NULL"
