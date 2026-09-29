@@ -1534,8 +1534,16 @@ final class CanonicalWriteRepository
      */
     private function isHardExcluded(array $record): bool
     {
+        // Licitação é venda: exclusão pelo vendedor "Licitação" nunca descarta o
+        // registro (a política também ignora o código dele pelo cadastro; aqui
+        // cobre o vendedor que ainda nem chegou ao cadastro).
+        $vendorName = (string) ($record['nome_vendedor'] ?? $record['nome'] ?? '');
+        $vendorCode = LicitacaoSeller::isLicitacaoName($vendorName)
+            ? null
+            : ($record['codigo_vendedor_omie'] ?? $record['codigo_omie'] ?? null);
+
         return HardDataExclusionPolicy::matches($this->pdo(), [
-            'vendor_code' => $record['codigo_vendedor_omie'] ?? $record['codigo_omie'] ?? null,
+            'vendor_code' => $vendorCode,
             'nota_key' => $record['nota_key'] ?? null,
             'nota_id_omie' => $record['nota_id_omie'] ?? null,
             'chave_nfe' => $record['chave_nfe'] ?? null,

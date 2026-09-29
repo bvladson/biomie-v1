@@ -49,8 +49,11 @@ $pdo->exec("INSERT INTO biomie_vendedores_omie (company_id, codigo_omie, nome, a
     (" . CID . ", '" . COD_LICITACAO . "', 'Licitação', 1), (" . CID . ", '8766948159', 'ROBERTO SIQ.', 1)");
 $pdo->exec("INSERT INTO biomie_channel_classification_rules (company_id, priority, rule_type, match_value, target_channel, confidence, ativo) VALUES
     (" . CID . ", 999, 'default', '', 'varejo', 'baixa', 1)");
+// Como em produção: o vendedor Licitação E NFs listadas uma a uma (as 11 de
+// 08/06/2026), mais uma regra com outro motivo que tem de continuar valendo.
 $pdo->exec("INSERT INTO biomie_data_exclusion_rules (company_id, entity_type, identifier_type, identifier_value, reason, active) VALUES
     (" . CID . ", 'vendor', 'vendor_code', '" . COD_LICITACAO . "', '" . MOTIVO . "', 1),
+    (" . CID . ", 'invoice', 'nota_key', 'omie:t94fev', '" . MOTIVO . "', 1),
     (" . CID . ", 'invoice', 'nota_key', 'omie:t94outra', 'Duplicidade de importacao', 1)");
 $pdo->exec('DROP TABLE IF EXISTS biomie_channel_rules_20260929');
 $regraVendedor = require dirname(__DIR__) . '/database/migrations/Version20260929130000_LicitacaoPorVendedor.php';
@@ -86,24 +89,35 @@ $linha = static fn (PDO $c): array => $c->query("SELECT business_channel ch, vis
     FROM biomie_notas_fiscais_canonicas WHERE company_id = " . CID . " AND nota_key = 'omie:t94paracuru'")
     ->fetch(PDO::FETCH_ASSOC) ?: [];
 
-// 1. Antes: a exclusão dura descarta a NF de licitação.
+$nfFev = ['nota_key' => 'omie:t94fev', 'nota_id_omie' => 94002, 'numero_nf' => '00000402', 'data_emissao' => '2026-02-10',
+    'data_competencia' => '2026-02-10', 'valor_total' => 15000.00, 'valor_mercadorias' => 15000.00] + $nf;
+$existe = static fn (PDO $c, string $key): bool => (int) $c->query("SELECT COUNT(*) FROM biomie_notas_fiscais_canonicas
+    WHERE company_id = " . CID . " AND nota_key = '{$key}'")->fetchColumn() === 1;
+
+// 1. Com as regras ATIVAS: a trava de código já não deixa o vendedor Licitação
+//    ser descartado (antes do 29/09 esta NF era 'skipped').
 $c1 = $conexao();
 $antes = $repo($c1)->upsertInvoice($nf);
-$check('🔴 antes da migração: NF do vendedor Licitação é descartada (skipped)', $antes === 'skipped' && $linha($c1) === [], $antes);
+$l = $linha($c1);
+$check('🔴 trava: com a regra ativa, NF do vendedor Licitação já entra (antes era descartada)',
+    $antes === 'inserted' && ($l['ch'] ?? '') === 'licitacao' && ($l['src'] ?? '') === 'seller_licitacao', [$antes, $l]);
+$check('NF listada uma a uma com motivo de licitação ainda é descartada antes da migração',
+    $repo($c1)->upsertInvoice($nfFev) === 'skipped' && !$existe($c1, 'omie:t94fev'));
 
 // 2. Migração: desativa só as regras de licitação.
 $reativar->up($pdo);
-$ativas = $pdo->query('SELECT reason, active FROM biomie_data_exclusion_rules WHERE company_id = ' . CID . ' ORDER BY id')
+$ativas = $pdo->query('SELECT identifier_value, reason, active FROM biomie_data_exclusion_rules WHERE company_id = ' . CID . ' ORDER BY id')
     ->fetchAll(PDO::FETCH_ASSOC);
-$check('migração desativa a regra de licitação', (int) $ativas[0]['active'] === 0, $ativas);
-$check('🔴 regra com outro motivo continua ativa', (int) $ativas[1]['active'] === 1, $ativas);
+$check('migração desativa as regras de licitação (vendedor e NF)',
+    (int) $ativas[0]['active'] === 0 && (int) $ativas[1]['active'] === 0, $ativas);
+$check('🔴 regra com outro motivo continua ativa', (int) $ativas[2]['active'] === 1, $ativas);
 
-// 3. Depois: a NF entra e é licitação pela regra oficial (código do vendedor).
+// 3. Depois: a NF listada entra — o valor volta para os números.
 $c2 = $conexao();
-$depois = $repo($c2)->upsertInvoice($nf);
-$l = $linha($c2);
-$check('🔴 depois da migração: NF entra na base', $depois === 'inserted' && (float) ($l['valor_total'] ?? 0) === 80750.00, [$depois, $l]);
-$check('🔴 e é classificada como licitação (seller_licitacao)', ($l['ch'] ?? '') === 'licitacao' && ($l['src'] ?? '') === 'seller_licitacao', $l);
+$depois = $repo($c2)->upsertInvoice($nfFev);
+$check('🔴 depois da migração: a NF listada entra e é licitação',
+    $depois === 'inserted' && $existe($c2, 'omie:t94fev'), $depois);
+$check('a NF de setembro continua na base (R$ 80.750,00)', (float) ($linha($c2)['valor_total'] ?? 0) === 80750.00, $linha($c2));
 
 // 4. down(): reativa exatamente.
 $reativar->down($pdo);

@@ -70,11 +70,46 @@ final class HardDataExclusionPolicy
                 }
             }
 
+            // Trava de regra de negócio (29/09/2026): licitação é venda. Uma
+            // exclusão pelo vendedor "Licitação" descartava, em silêncio, toda a
+            // licitação de uma empresa antes de gravar (MAG Filial, 08/06/2026:
+            // R$ 472 mil entre jul e set). Esse tipo de regra é IGNORADO aqui —
+            // e o check "Integridade Comercial" acusa a regra como crítica.
+            foreach (self::licitacaoSellerCodes($pdo, $companyId) as $code) {
+                unset($rules['vendor_code:' . $code]);
+            }
+
             self::$rulesByConnection[$cacheKey] = $rules;
             return $rules;
         } catch (\Throwable) {
             self::$rulesByConnection[$cacheKey] = [];
             return [];
         }
+    }
+
+    /**
+     * Códigos Omie do vendedor operacional "Licitação" da empresa (cadastro).
+     *
+     * @return list<string>
+     */
+    public static function licitacaoSellerCodes(PDO $pdo, int $companyId): array
+    {
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT codigo_omie, nome FROM biomie_vendedores_omie WHERE company_id = :company_id'
+            );
+            $stmt->execute(['company_id' => $companyId]);
+        } catch (\Throwable) {
+            return [];
+        }
+        $codes = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $code = trim((string) ($row['codigo_omie'] ?? ''));
+            if ($code !== '' && $code !== '0' && LicitacaoSeller::isLicitacaoName((string) ($row['nome'] ?? ''))) {
+                $codes[] = $code;
+            }
+        }
+
+        return $codes;
     }
 }

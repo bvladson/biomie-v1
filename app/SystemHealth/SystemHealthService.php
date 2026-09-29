@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BIomie\SystemHealth;
 
 use BIomie\SystemHealth\Checks\ApiCacheHealthCheck;
+use BIomie\SystemHealth\Checks\CommercialIntegrityHealthCheck;
 use BIomie\SystemHealth\Checks\MobileExperienceHealthCheck;
 use BIomie\SystemHealth\Checks\ServiceWorkerCacheHealthCheck;
 use BIomie\SystemHealth\Checks\ProductMixHealthCheck;
@@ -57,6 +58,8 @@ final class SystemHealthService
             new GeoDetailConsistencyHealthCheck($this->pdo),
             new ProhibitedManualImportHealthCheck($this->pdo),
             ...($this->pdo !== null ? [new OperationScopeHealthCheck($this->pdo)] : []),
+            // Vendas escondidas ou descartadas (incidente de 29/09/2026).
+            new CommercialIntegrityHealthCheck($this->pdo),
             new MobileExperienceHealthCheck(),
         ];
 

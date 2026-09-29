@@ -126,6 +126,10 @@ sudo -u www-data php bin/initial_sync_company.php --company=MAG_FILIAL --from=20
 sudo -u www-data php bin/reclassify_unclassified_invoices.php --company=MAG_FILIAL --todas --pedidos --apply
 # 6. rematerializar 2026 por empresa (MAG_FILIAL, EXPERT, UNI_DESIGN, MAG_MATRIZ, ERGOOFFICE)
 sudo -u www-data php bin/biomie gold:materialize-commercial --company=UNI_DESIGN --from=2026-01-01 --to=2026-09-30
+# 7. agendar a sentinela (na máquina local, pasta biomie-git) e verificar na VPS:
+#    tem de sair "OK" (exit 0) depois dos passos 4-6
+BIOMIE_VPS_KEY=~/.ssh/hostinger_srv1851839_ed25519 bash tools/deploy/vps/install_cron.sh --enable
+sudo -u www-data php bin/commercial_integrity_check.php
 ```
 
 Deploy aprovado ≠ dados reconciliados: os checks abaixo são obrigatórios depois do passo 5.
@@ -181,6 +185,29 @@ Regra (cobertos por teste, conferir em produção por amostragem):
 - cliente público + vendedor Licitação → licitação; cliente privado + vendedor Licitação → licitação
 - observação com pregão/edital/empenho não muda o canal
 - empresa do grupo + vendedor Licitação → intra-grupo; empresa do grupo + ROBERTO → intra-grupo
+
+## Proteções anti-regressão
+
+Cada causa do incidente tem uma trava (a venda não some) ou um alarme (alguém fica sabendo):
+
+| Causa | Proteção | Onde |
+|---|---|---|
+| Exclusão dura pelo vendedor "Licitação" | **Trava**: a política ignora a regra (pelo cadastro e pelo nome do vendedor no registro) | `HardDataExclusionPolicy`, `CanonicalWriteRepository::isHardExcluded` |
+| Ferramenta que apagou a licitação da Filial | **Removida**; se voltar, deploy aborta e o check fica crítico | `tools/dev/remove_licitacao_data.php` |
+| Contexto de um canal só (Uni Design) | "Todas" ligado por padrão; se desligar, deploy aborta e o check fica crítico; acesso de um canal só vira alerta | `config/env.php`, check |
+| Venda do Omie que não chega ao BI (qualquer causa) | **Alarme**: bronze × canônica, últimos 60 dias | check `venda_omie_fora_do_bi` |
+| NF nunca classificada / pedido × NF divergente | **Alarme** | check `nf_nunca_classificada`, `pedido_nf_divergente` |
+| Regra que descarta um vendedor inteiro | **Alarme** | check `exclusao_vendedor` |
+
+- **Check "Integridade Comercial"** (Admin → Saúde): `CommercialIntegrityHealthCheck`.
+- **Sentinela** de hora em hora (`cron/hostinger/commercial_integrity.sh`, minuto 40): alerta por
+  Telegram/webhook e no sininho, com dedup de 24 h. Manual: `php bin/commercial_integrity_check.php`
+  (exit 0 ok · 1 alerta · 2 crítico).
+- **Portão de deploy**: `run_commercial_regression_guard_contract.php` (16 checks, sem banco) roda no
+  `remote_deploy` antes da troca de versão, junto com `run_intercompany_channel_regression.php` e
+  `run_company_access_self_rule_contract.php`. Testado por mutação: recolocar a ferramenta ou
+  desligar "Todas" reprova o deploy.
+- Testes com banco: `run_commercial_integrity_guard` (16), `run_licitacao_filial_exclusion` (7).
 
 ## Fora desta release (próximos passos)
 

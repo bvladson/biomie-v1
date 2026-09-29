@@ -23,6 +23,9 @@ BIOMIE_PHP_BIN=/usr/bin/php
 */15 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/sync_finance.sh
 */15 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/ops_sentinel.sh
 0,30 * * * *   www-data /bin/sh /var/www/biomie/live/cron/hostinger/materialize.sh
+# Vendas escondidas ou descartadas (incidente de 29/09/2026). De hora em hora,
+# depois do sync/materialize; alerta com dedup de 24 h.
+40 * * * *     www-data /bin/sh /var/www/biomie/live/cron/hostinger/commercial_integrity.sh
 
 # --- agenda de orçamentos ---------------------------------------------------
 7,22,37,52 * * * *  www-data /bin/sh /var/www/biomie/live/cron/hostinger/quote_agenda_scan.sh

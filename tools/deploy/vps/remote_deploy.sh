@@ -128,7 +128,10 @@ for contract in \
     run_superseded_delta_cleanup_contract.php \
     run_release_info_contract.php \
     run_failure_visibility_contract.php \
-    run_secret_masking_contract.php
+    run_secret_masking_contract.php \
+    run_commercial_regression_guard_contract.php \
+    run_intercompany_channel_regression.php \
+    run_company_access_self_rule_contract.php
 do
     output="/tmp/biomie_${contract%.php}.out"
     if ! sudo -u www-data php "$REL/tests/$contract" >"$output" 2>&1; then
