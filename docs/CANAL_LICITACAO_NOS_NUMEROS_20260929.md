@@ -69,6 +69,27 @@ Uni Design 10118842872 · MAG Matriz 10432605713 · Ergo 7467611512.
 | 20260929120000 | vínculos usuário×empresa com os 2 canais | restaura de `biomie_user_companies_canais_20260929` |
 | 20260929130000 | regras de canal por vendedor em todas as empresas | restaura de `biomie_channel_rules_20260929` |
 | 20260929140000 | tabela `biomie_seller_assignments` + coluna `seller_source` em NFs e pedidos (histórico preenchido: omie/missing/unresolved) | devolve o vendedor original, remove a tabela e a coluna |
+| 20260929150000 | desativa as regras de exclusão dura da MAG Filial com motivo "Remocao solicitada: dados de Licitacao" (08/06/2026) | reativa as mesmas regras |
+
+### MAG Filial: a licitação era descartada antes de entrar
+
+Em 08/06/2026 foram criadas regras em `biomie_data_exclusion_rules` (MAG Filial): vendedor
+"Licitação" (código 8766069381) + 11 NFs, 11 pedidos, 4 títulos e 7 XMLs. A escrita canônica
+descarta tudo que casa com elas antes de gravar — nenhum contexto ou filtro mostrava a licitação
+da Filial. No bronze: 7 NFs de licitação descartadas entre 01/07 e 23/09/2026 (Total NF):
+
+| NF | Emissão | Cliente | Total NF |
+|---|---|---|---|
+| 1728 | 01/07 | Município de Paracuru | R$ 323.000,00 |
+| 1742 | 02/07 | Prefeitura de Fortaleza | R$ 9.870,00 |
+| 1895 | 20/07 | Correios | R$ 15,00 |
+| 2115 | 10/08 | Correios | R$ 252,50 |
+| 2285 | 24/08 | Município de Acaraú | R$ 37.030,00 |
+| 2335 | 28/08 | Município de Alcântaras/Câmara | R$ 21.480,00 |
+| 2537 | 23/09 | Município de Paracuru | R$ 80.750,00 |
+
+Total R$ 472.397,50. As 11 NFs anteriores a 08/06 não estão mais no bronze: voltam só buscando
+de novo no Omie (passo 5 do runbook), que também recupera as 142 NFs de abril ausentes (caso C).
 
 ## Testes
 
@@ -99,7 +120,11 @@ sudo -u www-data php bin/schema_migrate.php migrate
 sudo -u www-data php bin/reclassify_unclassified_invoices.php --company=all --todas --pedidos --csv=/tmp/reclass.csv
 # 4. aplicar
 sudo -u www-data php bin/reclassify_unclassified_invoices.php --company=all --todas --pedidos --apply
-# 5. rematerializar 2026 por empresa (MAG_FILIAL, EXPERT, UNI_DESIGN, MAG_MATRIZ, ERGOOFFICE)
+# 5. MAG Filial: buscar de novo no Omie o que a exclusão descartou (pedidos, NFs, títulos),
+#    jan–set/2026, sem marts (o passo 6 materializa); depois reclassificar só a Filial
+sudo -u www-data php bin/initial_sync_company.php --company=MAG_FILIAL --from=2026-01 --to=2026-09 --skip-marts
+sudo -u www-data php bin/reclassify_unclassified_invoices.php --company=MAG_FILIAL --todas --pedidos --apply
+# 6. rematerializar 2026 por empresa (MAG_FILIAL, EXPERT, UNI_DESIGN, MAG_MATRIZ, ERGOOFFICE)
 sudo -u www-data php bin/biomie gold:materialize-commercial --company=UNI_DESIGN --from=2026-01-01 --to=2026-09-30
 ```
 
@@ -117,7 +142,9 @@ Base comercial NF (autorizada, escopo comercial). Valores "antes" medidos em pro
 | Uni Design set/26 · ROBERTO SIQ. + CAIO - REV | R$ 2.938,00 + R$ 43.772,95 = R$ 46.710,95 |
 | Uni Design jul/26 · Todas | R$ 341.317,50 → **R$ 11.137,50** (NF 26, R$ 330.180,00, vira intra-grupo) |
 | Uni Design jun/26 · Todas | R$ 23.243,00 → **R$ 23.243,00** (só troca de coluna: licitação → varejo) |
-| MAG Filial jul/26 · Todas | R$ 1.134.892,56 → **R$ 1.126.913,19** (NF 1851, R$ 7.979,37, vira intra-grupo — ver abaixo) |
+| MAG Filial jul/26 · Todas | R$ 1.134.892,56 → R$ 1.126.913,19 depois da reclassificação (NF 1851 vira intra-grupo — ver abaixo); **depois do passo 5 soma a licitação recuperada** (NFs 1728, 1742, 1895: Total NF R$ 332.885,00; a base exata desconta frete/outras/seguro) |
+| MAG Filial set/26 · Licitação | **R$ 80.750,00** (NF 2537, Município de Paracuru) — base exata após o passo 5 |
+| MAG Filial · qualquer mês | nenhuma NF do vendedor "Licitação" pode ficar fora da canônica (conferir bronze × canônica) |
 | Expert e Ergo · Todas, todos os meses | **inalterados** (NF 1 da Expert e NF 270 da Ergo só trocam de coluna) |
 | Toda empresa/mês | Varejo + Licitação = Todas |
 | Toda empresa/mês | soma dos vendedores = Todas |
