@@ -279,7 +279,15 @@ final class GeoPeriodRebuildService
         $operationScopeFilter = $this->columnExists('biomie_notas_fiscais_canonicas', 'operation_scope')
             ? "\n               AND nf.operation_scope = 'commercial'"
             : '';
-        if ($this->columnExists('biomie_notas_fiscais_canonicas', 'is_biomie_commercial_visible')) {
+        // Mesmo universo dos marts (AbstractMartBuilder::visibilityFragment):
+        // licitação entra pelo canal; só varejo invisível e intra-grupo ficam
+        // fora. Com a flag sozinha, a fonte "perdia" a licitação que o mart tem.
+        if ($this->columnExists('biomie_notas_fiscais_canonicas', 'business_channel')
+            && $this->columnExists('biomie_notas_fiscais_canonicas', 'is_biomie_commercial_visible')
+        ) {
+            $visibilityFilter = "\n               AND (nf.business_channel = 'licitacao'"
+                . " OR COALESCE(nf.is_biomie_commercial_visible, 1) = 1)";
+        } elseif ($this->columnExists('biomie_notas_fiscais_canonicas', 'is_biomie_commercial_visible')) {
             $visibilityFilter = "\n               AND COALESCE(nf.is_biomie_commercial_visible, 1) = 1";
         } elseif ($this->columnExists('biomie_notas_fiscais_canonicas', 'nome_vendedor')) {
             $visibilityFilter = "\n               AND NOT UPPER(nf.nome_vendedor) LIKE '%LICITAC%'";

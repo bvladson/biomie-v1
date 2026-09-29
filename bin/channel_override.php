@@ -30,6 +30,7 @@ require dirname(__DIR__) . '/app/Bootstrap.php';
 use BIomie\Config;
 use BIomie\Database;
 use BIomie\Support\ChannelClassifierService;
+use BIomie\Support\LicitacaoSeller;
 
 $opts = [];
 foreach (array_slice($argv ?? [], 1) as $arg) {
@@ -113,7 +114,7 @@ if ($canal === 'auto') {
         'outros' => 'outros',
         default => 'comercial',
     };
-    $source = mb_substr('manual: ' . $motivo, 0, 80);
+    $source = mb_substr(LicitacaoSeller::SOURCE_MANUAL . ': ' . $motivo, 0, 80);
     $sql = "UPDATE {$table}
                SET business_channel = :canal, business_unit_scope = :scope,
                    is_biomie_commercial_visible = :vis, channel_confidence = 'manual',

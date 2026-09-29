@@ -10,6 +10,7 @@ use BIomie\Canonical\Support\CanonicalJsonCodec;
 use BIomie\Support\BiVisibilityScope;
 use BIomie\Support\ChannelClassifierService;
 use BIomie\Support\HardDataExclusionPolicy;
+use BIomie\Support\LicitacaoSeller;
 use Closure;
 use PDO;
 
@@ -45,8 +46,12 @@ final class CanonicalWriteRepository
         private readonly CanonicalHashing $hashing,
         private readonly CanonicalJsonCodec $codec,
         private readonly int $companyId,
-        private readonly string $businessChannel,
+        // Canal do contexto que rodou o sync. NÃO decide mais canal de nada: era
+        // o fallback que marcou os 50 pedidos da Uni Design como licitação.
+        // Mantido na assinatura por compatibilidade com os chamadores.
+        string $businessChannel = 'varejo',
     ) {
+        unset($businessChannel);
     }
 
     // ── Vendedores ───────────────────────────────────────────────────────────
@@ -1510,6 +1515,7 @@ final class CanonicalWriteRepository
             (string) ($invoice['observacoes'] ?? ''),
             preg_replace('/\D+/', '', (string) ($invoice['documento_cliente'] ?? '')) ?? '',
             (string) ($invoice['projeto_id_omie'] ?? ''),
+            $vendorCode,
         );
 
         $channel = ChannelClassifierService::normalizeChannel($classification['channel'] ?? null);
@@ -1524,10 +1530,14 @@ final class CanonicalWriteRepository
             $confidence = 'baixa';
         }
         $ruleId = (int) ($classification['rule_id'] ?? 0);
+        $source = trim((string) ($classification['source'] ?? ''));
+        if ($source === '') {
+            $source = $ruleId > 0 ? 'channel_classification_rule:' . $ruleId : 'channel_classifier_fallback';
+        }
 
         return $this->visibilityResult(
             $channel,
-            $ruleId > 0 ? 'channel_classification_rule:' . $ruleId : 'channel_classifier_fallback',
+            $source,
             $confidence,
             $ruleId > 0 ? $ruleId : null,
         );
@@ -1636,14 +1646,14 @@ final class CanonicalWriteRepository
             return $explicit;
         }
 
+        // Regra de negócio (LicitacaoSeller): vendedor "Licitação" => licitação;
+        // qualquer outro => varejo. Títulos ligados a NF/pedido herdam o canal
+        // deles depois (ChannelClassifierService::propagateRelatedChannels).
         $scope = strtolower(trim((string) ($record['business_unit_scope'] ?? '')));
         $vendorName = (string) ($record['nome_vendedor'] ?? $record['nome'] ?? '');
-        if ($scope === 'licitacao' || BiVisibilityScope::isLicitationName($vendorName)) {
-            return 'licitacao';
-        }
 
-        return in_array($this->businessChannel, ['varejo', 'licitacao'], true)
-            ? $this->businessChannel
+        return ($scope === 'licitacao' || LicitacaoSeller::isLicitacaoName($vendorName))
+            ? 'licitacao'
             : 'varejo';
     }
 

@@ -122,7 +122,12 @@ final class VendorAliasResolver
             }
         }
 
-        return str_contains($normalized, 'licitac') ? self::CHANNEL_LICITACAO : self::CHANNEL_OUTRO;
+        // Vendedor operacional "Licitação" (igualdade normalizada, ver LicitacaoSeller).
+        // Espaços ignorados: o iconv//TRANSLIT de normalize() rende "licitac ao"
+        // em algumas plataformas (Windows) e "licitacao" em outras (glibc).
+        return LicitacaoSeller::isLicitacaoName(str_replace(' ', '', $normalized))
+            ? self::CHANNEL_LICITACAO
+            : self::CHANNEL_OUTRO;
     }
 
     public function stripChannel(string $normalized): string

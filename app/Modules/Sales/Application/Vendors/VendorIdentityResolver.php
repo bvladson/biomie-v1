@@ -166,7 +166,8 @@ class VendorIdentityResolver
         foreach ($channelMap as $suffix => $channel) {
             if (str_ends_with($normalized, $suffix)) return $channel;
         }
-        if (str_contains($normalized, 'licitac')) return 'licitacao';
+        // Vendedor operacional "Licitação" (igualdade normalizada, ver LicitacaoSeller).
+        if (\BIomie\Support\LicitacaoSeller::isLicitacaoName($normalized)) return 'licitacao';
         return '';
     }
 

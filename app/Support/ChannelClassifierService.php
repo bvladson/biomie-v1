@@ -34,25 +34,37 @@ final class ChannelClassifierService
     // ─── Classificação de um registro individual ──────────────────────────────
 
     /**
-     * Classifica um registro pelo nome do vendedor, observações do pedido e
-     * CNPJ do cliente. Retorna channel + confidence + rule_id que disparou.
+     * Classifica um registro pelas regras da empresa, na prioridade cadastrada.
+     * Retorna channel + confidence + rule_id + source (origem legível gravada em
+     * visibility_rule_source). A regra de negócio vigente está descrita em
+     * {@see LicitacaoSeller}: vendedor "Licitação" (por código, com o nome como
+     * fallback) => licitação; qualquer outro vendedor => varejo.
      *
-     * @return array{channel:string, confidence:string, rule_id:int|null}
+     * @return array{channel:string, confidence:string, rule_id:int|null, source:string}
      */
     public function classify(
         string $nomeVendedor = '',
         string $observacoes  = '',
         string $cnpjCliente  = '',
-        string $projetoIdOmie = ''
+        string $projetoIdOmie = '',
+        string $codigoVendedor = ''
     ): array {
         $this->ensureRules();
 
         $vendedorLow = mb_strtolower($nomeVendedor, 'UTF-8');
         $obsLow      = mb_strtolower($observacoes, 'UTF-8');
+        $codigo      = trim($codigoVendedor);
 
         foreach ($this->rules as $rule) {
             $hit = match ($rule['rule_type']) {
                 'manual'             => false,  // nunca disparado automaticamente
+                'vendedor_id_list'   => $codigo !== '' && \in_array(
+                    $codigo,
+                    array_map('trim', explode(',', $rule['match_value'])),
+                    true
+                ),
+                'vendedor_nome_igual' => $nomeVendedor !== ''
+                    && LicitacaoSeller::normalize($nomeVendedor) === LicitacaoSeller::normalize($rule['match_value']),
                 'vendedor_nome_like' => $this->likeMatch($vendedorLow, $rule['match_value']),
                 'pedido_obs_like'    => $obsLow !== '' && $this->likeMatch($obsLow, $rule['match_value']),
                 'cliente_cnpj_list'  => $cnpjCliente !== '' && \in_array(
@@ -77,11 +89,37 @@ final class ChannelClassifierService
                     'channel'    => $rule['target_channel'],
                     'confidence' => $rule['confidence'],
                     'rule_id'    => (int) $rule['id'],
+                    'source'     => self::sourceFor($rule),
                 ];
             }
         }
 
-        return ['channel' => 'varejo', 'confidence' => 'baixa', 'rule_id' => null];
+        return [
+            'channel' => 'varejo',
+            'confidence' => 'baixa',
+            'rule_id' => null,
+            'source' => 'channel_classifier_fallback',
+        ];
+    }
+
+    /**
+     * Origem legível da decisão. Para os tipos da regra vigente usa o
+     * vocabulário de negócio; tipos legados continuam identificados pelo id.
+     *
+     * @param array{id:int|string,rule_type:string,target_channel:string} $rule
+     */
+    private static function sourceFor(array $rule): string
+    {
+        $type = (string) $rule['rule_type'];
+        $target = (string) $rule['target_channel'];
+
+        return match (true) {
+            \in_array($type, ['vendedor_id_list', 'vendedor_nome_igual'], true) && $target === 'licitacao'
+                => LicitacaoSeller::SOURCE_LICITACAO,
+            $type === 'cliente_cnpj_list' && $target === 'outros' => LicitacaoSeller::SOURCE_INTRA_GRUPO,
+            $type === 'default' && $target === 'varejo' => LicitacaoSeller::SOURCE_REGULAR,
+            default => 'channel_classification_rule:' . (int) $rule['id'],
+        };
     }
 
     /**
@@ -110,7 +148,7 @@ final class ChannelClassifierService
         $cid  = $this->companyId;
         $now  = date('Y-m-d H:i:s');
         $rows = $this->fetchRows(
-            "SELECT id, nome_vendedor, observacoes, documento_cliente
+            "SELECT id, codigo_vendedor_omie, nome_vendedor, observacoes, documento_cliente
              FROM biomie_pedidos_canonicos
              WHERE company_id = {$cid}
                AND (channel_confidence IS NULL OR channel_confidence != 'manual')"
@@ -155,7 +193,7 @@ final class ChannelClassifierService
         $cid  = $this->companyId;
         $now  = date('Y-m-d H:i:s');
         $rows = $this->fetchRows(
-            "SELECT id, nome_vendedor, observacoes, documento_cliente, projeto_id_omie
+            "SELECT id, codigo_vendedor_omie, nome_vendedor, observacoes, documento_cliente, projeto_id_omie
              FROM biomie_notas_fiscais_canonicas
              WHERE company_id = {$cid}
                AND (channel_confidence IS NULL OR channel_confidence != 'manual')"
@@ -302,12 +340,13 @@ final class ChannelClassifierService
                     (string) ($row['observacoes'] ?? ''),
                     preg_replace('/\D+/', '', (string) ($row['documento_cliente'] ?? '')) ?? '',
                     (string) ($row['projeto_id_omie'] ?? ''),
+                    (string) ($row['codigo_vendedor_omie'] ?? ''),
                 );
                 $upd->execute([
                     'ch'   => $res['channel'],
-                    // Invariante de visibilidade: só 'varejo' é comercial (Orç-PD).
-                    // licitacao e outros (ex.: intra-grupo) => is_biomie_commercial_visible=0,
-                    // ficando fora do escopo comercial mas preservados no seu próprio escopo.
+                    // Flag de visibilidade: 1 só para varejo. Licitação entra nos
+                    // números pelo CANAL (CommercialNfUniverse), não pela flag;
+                    // intra-grupo ('outros') fica fora.
                     'vis'  => $res['channel'] === 'varejo' ? 1 : 0,
                     'conf' => $res['confidence'],
                     'rid'  => $res['rule_id'],
@@ -342,6 +381,7 @@ final class ChannelClassifierService
                 (string) ($row['observacoes'] ?? ''),
                 preg_replace('/\D+/', '', (string) ($row['documento_cliente'] ?? '')) ?? '',
                 (string) ($row['projeto_id_omie'] ?? ''),
+                (string) ($row['codigo_vendedor_omie'] ?? ''),
             );
             $stats["{$prefix}_{$res['channel']}"]++;
         }

@@ -17,8 +17,6 @@ use PDO;
  */
 final class BiVisibilityScope
 {
-    private const LICITACAO_PATTERNS = ['LICITAC'];
-
     /**
      * Condição SQL para uso em arrays $where (sem AND).
      * Assume que a coluna já existe — usar getCondition() quando incerto.
@@ -174,17 +172,12 @@ final class BiVisibilityScope
     }
 
     /**
-     * Retorna true se o nome corresponde a um padrão de licitação conhecido.
+     * Retorna true se o vendedor é o vendedor operacional "Licitação".
+     * Igualdade normalizada, não substring — ver {@see LicitacaoSeller}.
      */
     public static function isLicitationName(string $name): bool
     {
-        $normalized = self::normalizeName($name);
-        foreach (self::LICITACAO_PATTERNS as $pat) {
-            if (str_contains($normalized, $pat)) {
-                return true;
-            }
-        }
-        return false;
+        return LicitacaoSeller::isLicitacaoName($name);
     }
 
     /** @return list<string> */

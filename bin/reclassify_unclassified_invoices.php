@@ -95,20 +95,23 @@ $motivo = static function (string $fonte, ?int $ruleId) use ($regras): array {
         $r = $regras[$ruleId];
         $valor = mb_strimwidth((string) $r['match_value'], 0, 40, '…');
         return match ((string) $r['rule_type']) {
-            'cliente_cnpj_list' => [
-                $r['target_channel'] === 'outros' ? "regra #{$ruleId}: cliente é empresa do grupo" : "regra #{$ruleId}: CNPJ do cliente na lista",
-                'cliente_cnpj',
-            ],
-            'projeto_id_list' => ["regra #{$ruleId}: projeto Omie na lista", 'projeto'],
-            'pedido_obs_like' => ["regra #{$ruleId}: observação contém {$valor}", 'observacao'],
-            'vendedor_nome_like' => ["regra #{$ruleId}: nome do vendedor contém {$valor} (regra legada por vendedor)", 'vendedor_legado'],
-            'default' => ["regra #{$ruleId}: padrão da empresa ({$r['target_channel']})", 'padrao_empresa'],
+            'cliente_cnpj_list' => $r['target_channel'] === 'outros'
+                ? ["regra #{$ruleId}: cliente é empresa do grupo (não é venda)", 'intra_grupo']
+                : ["regra #{$ruleId}: CNPJ do cliente na lista", 'cliente_cnpj'],
+            'vendedor_id_list' => ["regra #{$ruleId}: código do vendedor \"Licitação\" no Omie", 'seller_licitacao'],
+            'vendedor_nome_igual' => ["regra #{$ruleId}: vendedor = \"Licitação\" (nome normalizado)", 'seller_licitacao'],
+            'default' => $r['target_channel'] === 'varejo'
+                ? ["regra #{$ruleId}: vendedor comum => varejo", 'seller_regular']
+                : ["regra #{$ruleId}: padrão da empresa ({$r['target_channel']})", 'padrao_empresa'],
+            'projeto_id_list' => ["regra #{$ruleId}: projeto Omie na lista (legada)", 'projeto'],
+            'pedido_obs_like' => ["regra #{$ruleId}: observação contém {$valor} (legada)", 'observacao'],
+            'vendedor_nome_like' => ["regra #{$ruleId}: nome do vendedor contém {$valor} (legada)", 'vendedor_legado'],
             default => ["regra #{$ruleId}", (string) $r['rule_type']],
         };
     }
     return match (true) {
         $fonte === 'vendor_scope_rules' => ['regra de escopo do vendedor', 'escopo_vendedor'],
-        str_starts_with($fonte, 'manual') || $fonte === 'payload_business_channel' => ['override manual preservado', 'manual'],
+        str_starts_with($fonte, 'manual') || $fonte === 'payload_business_channel' => ['override manual preservado', 'manual_override'],
         default => ['sem regra aplicável (fallback varejo)', 'fallback'],
     };
 };
