@@ -8,6 +8,32 @@ Uni Design, setembro/2026: 33 NFs autorizadas, R$ 46.710,95 (fecha ao centavo co
 relatório Omie "Faturamento por Mês/Ano"). O painel mostrava **R$ 0,00**: o único contexto do
 usuário na empresa era "Licitação" e as NFs são varejo. O dado existia; o contexto escondia.
 
+## Causa raiz do incidente
+
+Uni Design aparecia zerada porque o usuário estava restrito ao contexto **Licitação**, enquanto
+as vendas de setembro estavam classificadas como **Varejo**. Além disso, havia filtro ativo de
+vendedor **"Licitação"**. O dado existia, mas o contexto e os filtros ocultavam o faturamento.
+
+Fatos medidos em produção (29/09/2026, somente leitura):
+
+- As 33 NFs de set/26 da Uni Design estão na base canônica, todas `varejo`, visíveis, somando
+  R$ 46.710,95 — ao centavo do relatório Omie. Nenhuma NF faltava.
+- O usuário `vlad` tinha, na Uni Design, `can_licitacao = 1` e `can_varejo = 0`. O acesso por
+  canal foi semeado a partir do `canal_padrao` da empresa (migração 20260621030000): empresa
+  "licitação" ⇒ só o contexto Licitação. O mesmo valia para Expert, MAG Matriz e Ergo.
+- No contexto Licitação o painel filtra `business_channel = 'licitacao'` ⇒ R$ 0,00. O painel
+  "Leitura da operação" usa o universo varejo + licitação e mostrava R$ 46.931 no mesmo mês —
+  duas telas, dois universos.
+- O filtro salvo "Vendedor: Licitação" zerava também o contexto certo: o vendedor Licitação não
+  teve venda na Uni Design em setembro.
+- Agravantes encontrados na investigação: os 50 pedidos da Uni Design herdavam o canal do
+  contexto do sync (`licitacao`) enquanto as NFs deles eram varejo; 257 NFs gravadas entre 30/06
+  e 23/07 nunca passaram pelas regras de canal (entre elas a NF 26, R$ 330.180,00, venda
+  intra-grupo contada como receita).
+
+Por isso a correção é de arquitetura, não de acesso: canal deixa de decidir se a venda existe e
+passa a ser um filtro, como o vendedor.
+
 ## Regra de negócio (definida pelo dono do BIomie)
 
 - Nenhuma venda comercial válida some por causa do canal. Empresa abre em
