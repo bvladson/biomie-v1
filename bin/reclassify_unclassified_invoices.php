@@ -90,7 +90,15 @@ foreach ($pdo->query(
 )->fetchAll(PDO::FETCH_ASSOC) as $regra) {
     $regras[(int) $regra['id']] = $regra;
 }
-$motivo = static function (string $fonte, ?int $ruleId) use ($regras): array {
+$motivo = static function (string $fonte, ?int $ruleId) use ($regras, &$motivo): array {
+    // Vendedor atribuído no BIomie: mesma explicação da regra + a marca.
+    if (str_ends_with($fonte, ':atribuido_bi')) {
+        [$texto, $origem] = $motivo(substr($fonte, 0, -strlen(':atribuido_bi')), $ruleId);
+        return [$texto . ' (vendedor atribuído no BI)', $origem . ':atribuido_bi'];
+    }
+    if ($fonte === 'seller_missing') {
+        return ['sem vendedor no Omie => varejo (regra: só o vendedor Licitação define licitação)', 'seller_missing'];
+    }
     if ($ruleId !== null && isset($regras[$ruleId])) {
         $r = $regras[$ruleId];
         $valor = mb_strimwidth((string) $r['match_value'], 0, 40, '…');

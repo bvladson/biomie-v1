@@ -40,6 +40,9 @@ final class CanonicalWriteRepository
     /** @var array<string,array{channel:string,visible:int,source:string}>|null */
     private ?array $vendorScopeRules = null;
 
+    /** @var array<string,array{id:int,codigo_vendedor_omie:string,nome_vendedor:string}>|null */
+    private ?array $sellerAssignments = null;
+
     public function __construct(
         private readonly Closure $pdoResolver,
         private readonly Closure $beginTransaction,
@@ -109,6 +112,9 @@ final class CanonicalWriteRepository
             return 'skipped';
         }
 
+        // Vendedor atribuído no BIomie vale enquanto o Omie seguir sem vendedor.
+        $order = $this->applySellerAssignment('pedido', (string) $pedidoId, $order, $sellerFromBi);
+
         $hash = $this->hashing->hashOrder($order);
 
         $existing = $this->pdo()->prepare(
@@ -125,7 +131,7 @@ final class CanonicalWriteRepository
         // contexto que rodou o sync: na Uni Design os 50 pedidos ficaram
         // 'licitacao' enquanto as NFs deles eram varejo.
         $visibility = $this->existingManualInvoiceVisibility($row)
-            ?? $this->resolveInvoiceVisibility($order);
+            ?? $this->markBiAssigned($this->resolveInvoiceVisibility($order), $sellerFromBi);
 
         if ($row && ($row['hash_payload'] ?? '') === $hash) {
             $this->updateOrderVisibility($pedidoId, $visibility);
@@ -216,6 +222,108 @@ final class CanonicalWriteRepository
         $this->tryUpdateOrderScope($pedidoId, $order);
 
         return $row ? 'updated' : 'inserted';
+    }
+
+    /**
+     * Aplica ao payload que chegou do Omie o vendedor atribuído no BIomie.
+     *
+     * Decide pelo que o OMIE mandou agora (nunca pela linha já gravada, que tem o
+     * vendedor atribuído): sem vendedor no Omie => usa a atribuição; com vendedor
+     * no Omie => o Omie vence e a atribuição vira 'superada'.
+     *
+     * @param array<string,mixed> $record
+     * @return array<string,mixed>
+     */
+    private function applySellerAssignment(string $type, string $key, array $record, ?bool &$applied = null): array
+    {
+        $applied = false;
+        $this->sellerAssignments ??= SellerAssignmentService::activeFor($this->pdo(), $this->companyId);
+        $mapKey = $type . '|' . $key;
+        $assignment = $this->sellerAssignments[$mapKey] ?? null;
+        if ($assignment === null) {
+            return $record;
+        }
+
+        $omieSeller = (string) ($record['nome_vendedor'] ?? '');
+        if (!LicitacaoSeller::isMissingSeller($omieSeller)) {
+            SellerAssignmentService::markSuperseded($this->pdo(), $assignment['id'], $omieSeller);
+            unset($this->sellerAssignments[$mapKey]);
+            return $record;
+        }
+
+        $record['codigo_vendedor_omie'] = $assignment['codigo_vendedor_omie'];
+        $record['nome_vendedor'] = $assignment['nome_vendedor'];
+        $applied = true;
+
+        return $record;
+    }
+
+    private function isBiAssigned(string $type, string $key): bool
+    {
+        $this->sellerAssignments ??= SellerAssignmentService::activeFor($this->pdo(), $this->companyId);
+
+        return isset($this->sellerAssignments[$type . '|' . $key]);
+    }
+
+    /**
+     * Marca na origem que o vendedor veio do BIomie (ex.:
+     * "seller_licitacao:atribuido_bi") — o canal segue a regra normal.
+     *
+     * @param array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int} $visibility
+     * @return array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int}
+     */
+    private function markBiAssigned(array $visibility, ?bool $fromBi): array
+    {
+        if ($fromBi === true && $visibility['confidence'] !== 'manual'
+            && !str_ends_with($visibility['source'], LicitacaoSeller::SUFFIX_BI_ASSIGNED)
+        ) {
+            $visibility['source'] = mb_substr($visibility['source'] . LicitacaoSeller::SUFFIX_BI_ASSIGNED, 0, 80);
+        }
+
+        return $visibility;
+    }
+
+    /**
+     * Reclassifica UMA NF ou pedido a partir da linha canônica atual, pelo mesmo
+     * caminho da escrita (override manual preservado). Usado depois de atribuir
+     * ou remover vendedor no BIomie.
+     *
+     * @return array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int}
+     */
+    public function reclassifyOne(string $type, string $key): array
+    {
+        $isNf = $type === 'nf';
+        $stmt = $this->pdo()->prepare(
+            'SELECT codigo_vendedor_omie, nome_vendedor, observacoes, documento_cliente,
+                    ' . ($isNf ? 'projeto_id_omie, visibility_rule_source,' : '') . '
+                    business_channel, business_unit_scope, is_biomie_commercial_visible,
+                    channel_confidence, channel_rule_id
+               FROM ' . ($isNf ? self::TABLE_INVOICES : self::TABLE_ORDERS) . '
+              WHERE company_id = :cid AND ' . ($isNf ? 'nota_key' : 'pedido_id_omie') . ' = :chave'
+        );
+        $stmt->execute(['cid' => $this->companyId, 'chave' => $key]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            throw new \InvalidArgumentException('Operação não encontrada para reclassificar.');
+        }
+
+        $visibility = $this->existingManualInvoiceVisibility($row)
+            ?? $this->markBiAssigned($this->resolveInvoiceVisibility([
+                'business_channel' => null,
+                'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
+                'nome_vendedor' => (string) ($row['nome_vendedor'] ?? ''),
+                'observacoes' => (string) ($row['observacoes'] ?? ''),
+                'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
+                'projeto_id_omie' => (string) ($row['projeto_id_omie'] ?? ''),
+            ]), $this->isBiAssigned($type, $key));
+
+        if ($isNf) {
+            $this->updateInvoiceVisibility($key, $visibility);
+        } else {
+            $this->updateOrderVisibility((int) $key, $visibility);
+        }
+
+        return $visibility;
     }
 
     /**
@@ -420,11 +528,13 @@ final class CanonicalWriteRepository
             ? trim((string) $row['nota_key'])
             : $incomingNoteKey;
         $invoice['nota_key'] = $noteKey;
+        // Vendedor atribuído no BIomie vale enquanto o Omie seguir sem vendedor.
+        $invoice = $this->applySellerAssignment('nf', $noteKey, $invoice, $sellerFromBi);
         // Backfills must enrich fiscal data without undoing an operator's
         // explicit channel decision. Automatic classification is only used
         // when the persisted row is not a manual override.
         $visibility = $this->existingManualInvoiceVisibility($row)
-            ?? $this->resolveInvoiceVisibility($invoice);
+            ?? $this->markBiAssigned($this->resolveInvoiceVisibility($invoice), $sellerFromBi);
         $invoice['business_channel'] = $visibility['channel'];
         $invoice['business_unit_scope'] = $visibility['scope'];
         $invoice['is_biomie_commercial_visible'] = $visibility['visible'];
@@ -731,6 +841,7 @@ final class CanonicalWriteRepository
                 'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
                 'projeto_id_omie' => (string) ($row['projeto_id_omie'] ?? ''),
             ]);
+            $visibility = $this->markBiAssigned($visibility, $this->isBiAssigned('nf', (string) $row['nota_key']));
             $decisoes[] = [(string) $row['nota_key'], $visibility];
 
             $mudou = (string) $row['business_channel'] !== (string) $visibility['channel']
@@ -820,13 +931,13 @@ final class CanonicalWriteRepository
         $decisoes = [];
         foreach ($rows as $row) {
             $visibility = $this->existingManualInvoiceVisibility($row)
-                ?? $this->resolveInvoiceVisibility([
+                ?? $this->markBiAssigned($this->resolveInvoiceVisibility([
                     'business_channel' => null,
                     'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
                     'nome_vendedor' => (string) ($row['nome_vendedor'] ?? ''),
                     'observacoes' => (string) ($row['observacoes'] ?? ''),
                     'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
-                ]);
+                ]), $this->isBiAssigned('pedido', (string) $row['pedido_id_omie']));
             $decisoes[] = [(int) $row['pedido_id_omie'], $visibility];
 
             $canalDepois = $visibility['channel'];

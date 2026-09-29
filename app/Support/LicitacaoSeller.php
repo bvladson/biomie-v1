@@ -33,8 +33,15 @@ final class LicitacaoSeller
     /** Origens gravadas em visibility_rule_source. */
     public const SOURCE_LICITACAO = 'seller_licitacao';
     public const SOURCE_REGULAR = 'seller_regular';
+    /** Sem vendedor no Omie: continua varejo (e dentro de "Todas"), mas a auditoria sabe por quê. */
+    public const SOURCE_MISSING = 'seller_missing';
     public const SOURCE_INTRA_GRUPO = 'intra_grupo';
     public const SOURCE_MANUAL = 'manual_override';
+    /** Sufixo da origem quando o vendedor foi atribuído no BIomie (o Omie segue sem vendedor). */
+    public const SUFFIX_BI_ASSIGNED = ':atribuido_bi';
+
+    /** Nomes que o mapeamento do Omie grava quando a operação não tem vendedor. */
+    private const MISSING_NAMES = ['', 'SEM VENDEDOR', 'SEM VENDEDOR DEFINIDO', 'VENDEDOR NAO INFORMADO'];
 
     /** Maiúsculas, sem acento, espaços colapsados e aparados. */
     public static function normalize(string $name): string
@@ -55,5 +62,24 @@ final class LicitacaoSeller
     public static function isLicitacaoName(string $name): bool
     {
         return self::normalize($name) === self::NORMALIZED_NAME;
+    }
+
+    /**
+     * A operação está sem vendedor identificável? Nome vazio ou placeholder do
+     * mapeamento ("Sem vendedor"). Um código que não está no cadastro chega com
+     * nome "Sem vendedor" e também conta como ausente — o BIomie não sabe quem é.
+     */
+    public static function isMissingSeller(string $name): bool
+    {
+        return \in_array(self::normalize($name), self::MISSING_NAMES, true);
+    }
+
+    /**
+     * Mesmo critério em SQL (collation _ci ignora caixa e acento).
+     * $column vem do código, nunca do usuário.
+     */
+    public static function missingSellerSql(string $column): string
+    {
+        return "COALESCE(TRIM({$column}), '') IN ('', 'Sem vendedor', 'Sem vendedor definido', 'Vendedor nao informado')";
     }
 }

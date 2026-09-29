@@ -79,7 +79,11 @@ $check('cliente privado + vendedor MARLENE => varejo', $r['channel'] === 'varejo
 
 // Casos reais da prévia de 29/09.
 $r = $resolve->invoke($repo, $nf('Sem vendedor', 'INSTITUTO MIRANTE DE CULTURA'));
-$check('Expert NF 1: "Sem vendedor" + instituto => varejo (sem override)', $r['channel'] === 'varejo', $canal($r));
+$check('Expert NF 1: "Sem vendedor" + instituto => varejo (sem override), origem seller_missing',
+    $r['channel'] === 'varejo' && $r['source'] === LicitacaoSeller::SOURCE_MISSING, $canal($r));
+$r = $resolve->invoke($repo, $nf('', 'CLIENTE'));
+$check('vendedor vazio => varejo / seller_missing (continua em Todas)',
+    $r['channel'] === 'varejo' && (int) $r['visible'] === 1 && $r['source'] === LicitacaoSeller::SOURCE_MISSING, $canal($r));
 $r = $resolve->invoke($repo, $nf('NUBIA OLIVEIRA', 'INSTITUTO DE PESOS E MEDIDAS'));
 $check('Ergo NF 270: NUBIA + IPEM => varejo', $r['channel'] === 'varejo', $canal($r));
 
@@ -104,8 +108,13 @@ $check('observação com "pregão/empenho" + ROBERTO => varejo', $r['channel'] =
 
 // Intra-grupo vem antes: venda para empresa do grupo não é receita.
 $r = $resolve->invoke($repo, $nf('Licitação', 'EXPERT MOVEIS', '26.537.584/0003-94'));
-$check('cliente do grupo + vendedor Licitação => intra-grupo (fora dos números)',
+$check('🔴 cliente do grupo + vendedor Licitação => intra-grupo (fora dos números)',
     $r['channel'] === 'outros' && (int) $r['visible'] === 0 && $r['source'] === LicitacaoSeller::SOURCE_INTRA_GRUPO, $canal($r));
+$r = $resolve->invoke($repo, $nf('ROBERTO SIQ.', 'EXPERT MOVEIS', '26.537.584/0003-94'));
+$check('🔴 cliente do grupo + vendedor ROBERTO => intra-grupo (precedência não se inverte)',
+    $r['channel'] === 'outros' && $r['source'] === LicitacaoSeller::SOURCE_INTRA_GRUPO, $canal($r));
+$r = $resolve->invoke($repo, $nf('Licitação', 'EXPERT MOVEIS', '26.537.584/0003-94', COD_LICITACAO_ERGO));
+$check('cliente do grupo + CÓDIGO do vendedor Licitação => intra-grupo', $r['channel'] === 'outros', $canal($r));
 
 // Override manual vence tudo.
 $m = $manual->invoke($repo, [

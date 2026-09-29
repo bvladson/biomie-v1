@@ -304,6 +304,7 @@ $tabAccess = [
     'users'       => (bool) ($can['users']      ?? false),
     'access'      => (bool) ($can['users']      ?? false),
     'seller-binding' => (bool) ($can['users']   ?? false),
+    'seller-assignment' => (bool) ($can['users'] ?? false),
     'profiles'    => (bool) ($can['users']      ?? false),
     'permissions' => (bool) ($can['users']      ?? false),
     'logs'        => (bool) ($can['logs']       ?? false),
@@ -337,7 +338,7 @@ $tabGroups = [
     [
         'label' => 'Pessoas e acessos',
         'icon'  => 'group',
-        'keys'  => ['users', 'access', 'seller-binding', 'profiles', 'permissions'],
+        'keys'  => ['users', 'access', 'seller-binding', 'seller-assignment', 'profiles', 'permissions'],
     ],
     [
         'label' => 'Seguran&ccedil;a e auditoria',
@@ -367,6 +368,7 @@ $tabs = [
     ['key' => 'users',         'label' => 'Usu&aacute;rios',          'icon' => 'group'],
     ['key' => 'access',        'label' => 'Acessos &amp; Empresas',   'icon' => 'admin_panel_settings'],
     ['key' => 'seller-binding','label' => 'V&iacute;nculo Vendedores','icon' => 'link'],
+    ['key' => 'seller-assignment','label' => 'Vendedor ausente','icon' => 'person_add'],
     ['key' => 'profiles',      'label' => 'Perfis',                   'icon' => 'badge'],
     ['key' => 'permissions',   'label' => 'Permiss&otilde;es',        'icon' => 'key'],
     ['key' => 'logs',          'label' => 'Logs',                     'icon' => 'receipt_long'],
@@ -487,6 +489,7 @@ $migrationStatus = is_array($migrationStatus ?? null) ? $migrationStatus : [];
         <?php include __DIR__ . '/admin/tabs/users.php'; ?>
         <?php include __DIR__ . '/admin/tabs/access.php'; ?>
         <?php include __DIR__ . '/admin/tabs/seller-binding.php'; ?>
+        <?php include __DIR__ . '/admin/tabs/seller-assignment.php'; ?>
         <?php include __DIR__ . '/admin/tabs/profiles.php'; ?>
         <?php include __DIR__ . '/admin/tabs/permissions.php'; ?>
         <?php include __DIR__ . '/admin/tabs/logs.php'; ?>

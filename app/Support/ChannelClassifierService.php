@@ -85,11 +85,17 @@ final class ChannelClassifierService
             };
 
             if ($hit) {
+                $source = self::sourceFor($rule);
+                // Mesmo canal (varejo), outra explicação: "não havia vendedor" é
+                // diferente de "o vendedor era o Roberto" numa auditoria.
+                if ($source === LicitacaoSeller::SOURCE_REGULAR && LicitacaoSeller::isMissingSeller($nomeVendedor)) {
+                    $source = LicitacaoSeller::SOURCE_MISSING;
+                }
                 return [
                     'channel'    => $rule['target_channel'],
                     'confidence' => $rule['confidence'],
                     'rule_id'    => (int) $rule['id'],
-                    'source'     => self::sourceFor($rule),
+                    'source'     => $source,
                 ];
             }
         }
