@@ -107,13 +107,23 @@ final class CanonicalWriteRepository
         $hash = $this->hashing->hashOrder($order);
 
         $existing = $this->pdo()->prepare(
-            'SELECT id, hash_payload FROM ' . self::TABLE_ORDERS .
+            'SELECT id, hash_payload, business_channel, channel_confidence,
+                    is_biomie_commercial_visible
+               FROM ' . self::TABLE_ORDERS .
             ' WHERE company_id = :company_id AND pedido_id_omie = :pid'
         );
         $existing->execute(['company_id' => $this->companyId, 'pid' => $pedidoId]);
         $row = $existing->fetch(PDO::FETCH_ASSOC);
 
+        // O pedido passa pelo MESMO classificador da NF (override manual >
+        // regra de vendedor > regras de canal). Antes herdava o canal do
+        // contexto que rodou o sync: na Uni Design os 50 pedidos ficaram
+        // 'licitacao' enquanto as NFs deles eram varejo.
+        $visibility = $this->existingManualInvoiceVisibility($row)
+            ?? $this->resolveInvoiceVisibility($order);
+
         if ($row && ($row['hash_payload'] ?? '') === $hash) {
+            $this->updateOrderVisibility($pedidoId, $visibility);
             return 'unchanged';
         }
 
@@ -170,7 +180,7 @@ final class CanonicalWriteRepository
         $stmt = $this->pdo()->prepare($sql);
         $stmt->execute([
             'company_id'     => $this->companyId,
-            'business_channel' => $this->resolveBusinessChannel($order),
+            'business_channel' => $visibility['channel'],
             'pedido_id'      => $pedidoId,
             'codigo'         => (string) ($order['codigo_pedido'] ?? ''),
             'integracao'     => $order['codigo_integracao'] ?? null,
@@ -197,9 +207,54 @@ final class CanonicalWriteRepository
             'fonte'          => CanonicalSyncSource::normalize($order['fonte_sync'] ?? null),
         ]);
 
+        $this->updateOrderVisibility($pedidoId, $visibility);
         $this->tryUpdateOrderScope($pedidoId, $order);
 
         return $row ? 'updated' : 'inserted';
+    }
+
+    /**
+     * Grava canal + visibilidade + auditoria da classificação no pedido. Só
+     * escreve quando algo muda ou quando o pedido nunca foi classificado.
+     *
+     * @param array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int} $visibility
+     */
+    private function updateOrderVisibility(int $pedidoId, array $visibility): void
+    {
+        $stmt = $this->pdo()->prepare(
+            'UPDATE ' . self::TABLE_ORDERS . '
+                SET business_channel = :channel,
+                    business_unit_scope = :scope,
+                    is_biomie_commercial_visible = :visible,
+                    visibility_rule_source = :source,
+                    visibility_checked_at = NOW(),
+                    channel_confidence = :confidence,
+                    channel_rule_id = :rule_id,
+                    channel_classified_at = NOW()
+              WHERE company_id = :company_id
+                AND pedido_id_omie = :pid
+                AND (business_channel <> :channel_cmp
+                     OR is_biomie_commercial_visible <> :visible_cmp
+                     OR NOT (visibility_rule_source <=> :source_cmp)
+                     OR NOT (channel_confidence <=> :confidence_cmp)
+                     OR NOT (channel_rule_id <=> :rule_id_cmp)
+                     OR channel_classified_at IS NULL)'
+        );
+        $stmt->execute([
+            'channel' => $visibility['channel'],
+            'scope' => $visibility['scope'],
+            'visible' => $visibility['visible'],
+            'source' => $visibility['source'],
+            'confidence' => $visibility['confidence'],
+            'rule_id' => $visibility['rule_id'],
+            'company_id' => $this->companyId,
+            'pid' => $pedidoId,
+            'channel_cmp' => $visibility['channel'],
+            'visible_cmp' => $visibility['visible'],
+            'source_cmp' => $visibility['source'],
+            'confidence_cmp' => $visibility['confidence'],
+            'rule_id_cmp' => $visibility['rule_id'],
+        ]);
     }
 
     private function tryUpdateOrderScope(int $pedidoId, array $order): void
@@ -604,10 +659,6 @@ final class CanonicalWriteRepository
     }
 
     /**
-     * @param array<string,mixed>|false $row
-     * @return array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int}|null
-     */
-    /**
      * Reaplica a classificação de canal às NFs que nunca a receberam.
      *
      * POR QUE EXISTE
@@ -630,9 +681,13 @@ final class CanonicalWriteRepository
      * classificador, sem a regra de escopo por vendedor que a escrita aplica.
      * Este método mexe só no que nunca foi classificado e segue a escrita.
      *
+     * $onlyUnclassified = false estende o mesmo passe a TODAS as NFs não-manuais:
+     * serve para alinhar ao conjunto de regras atual as NFs classificadas por
+     * uma versão anterior das regras. Continua simulando por padrão.
+     *
      * @return array{total:int, alteradas:int, iguais:int, aplicado:bool, mudancas:list<array<string,mixed>>}
      */
-    public function reclassifyUnclassifiedInvoices(bool $apply = false): array
+    public function reclassifyUnclassifiedInvoices(bool $apply = false, bool $onlyUnclassified = true): array
     {
         $stmt = $this->pdo()->prepare(
             'SELECT nota_key, numero_nf, data_emissao, nome_cliente,
@@ -642,7 +697,7 @@ final class CanonicalWriteRepository
                     valor_base_comercial_nf
                FROM ' . self::TABLE_INVOICES . '
               WHERE company_id = :company_id
-                AND channel_classified_at IS NULL
+                ' . ($onlyUnclassified ? 'AND channel_classified_at IS NULL' : '') . '
                 AND (channel_confidence IS NULL OR channel_confidence <> \'manual\')
               ORDER BY data_emissao, numero_nf'
         );
@@ -684,6 +739,7 @@ final class CanonicalWriteRepository
                 'numero_nf' => $row['numero_nf'],
                 'data_emissao' => $row['data_emissao'],
                 'nome_cliente' => $row['nome_cliente'],
+                'nome_vendedor' => $row['nome_vendedor'],
                 'valor_base_comercial_nf' => (float) $row['valor_base_comercial_nf'],
                 'antes' => ['channel' => $row['business_channel'], 'visible' => (int) $row['is_biomie_commercial_visible']],
                 'depois' => ['channel' => $visibility['channel'], 'visible' => (int) $visibility['visible']],
@@ -722,6 +778,109 @@ final class CanonicalWriteRepository
         return $resultado;
     }
 
+    /**
+     * Reaplica aos pedidos o classificador da escrita (o mesmo da NF).
+     *
+     * Os pedidos eram gravados com o canal do CONTEXTO que rodou o sync, sem
+     * passar pelas regras; upsertOrder() passou a classificar, mas pedidos com
+     * hash inalterado só são reclassificados quando o Omie os devolve de novo.
+     * Este passe alinha o estoque inteiro. Override manual é preservado.
+     * Simula por padrão; só grava com $apply.
+     *
+     * @return array{total:int, alteradas:int, iguais:int, aplicado:bool, por_canal:array<string,array{pedidos:int,valor:float}>, mudancas:list<array<string,mixed>>}
+     */
+    public function reclassifyOrders(bool $apply = false): array
+    {
+        $stmt = $this->pdo()->prepare(
+            'SELECT pedido_id_omie, codigo_pedido, data_emissao, nome_cliente,
+                    codigo_vendedor_omie, nome_vendedor, observacoes,
+                    documento_cliente, business_channel, channel_confidence,
+                    business_unit_scope, is_biomie_commercial_visible,
+                    channel_rule_id, valor_mercadorias
+               FROM ' . self::TABLE_ORDERS . '
+              WHERE company_id = :company_id
+              ORDER BY data_emissao, pedido_id_omie'
+        );
+        $stmt->execute(['company_id' => $this->companyId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $resultado = [
+            'total' => \count($rows),
+            'alteradas' => 0,
+            'iguais' => 0,
+            'aplicado' => false,
+            'por_canal' => [],
+            'mudancas' => [],
+        ];
+        $decisoes = [];
+        foreach ($rows as $row) {
+            $visibility = $this->existingManualInvoiceVisibility($row)
+                ?? $this->resolveInvoiceVisibility([
+                    'business_channel' => null,
+                    'codigo_vendedor_omie' => (string) ($row['codigo_vendedor_omie'] ?? ''),
+                    'nome_vendedor' => (string) ($row['nome_vendedor'] ?? ''),
+                    'observacoes' => (string) ($row['observacoes'] ?? ''),
+                    'documento_cliente' => (string) ($row['documento_cliente'] ?? ''),
+                ]);
+            $decisoes[] = [(int) $row['pedido_id_omie'], $visibility];
+
+            $canalDepois = $visibility['channel'];
+            $resultado['por_canal'][$canalDepois] ??= ['pedidos' => 0, 'valor' => 0.0];
+            $resultado['por_canal'][$canalDepois]['pedidos']++;
+            $resultado['por_canal'][$canalDepois]['valor'] += (float) $row['valor_mercadorias'];
+
+            $mudou = (string) $row['business_channel'] !== $canalDepois
+                || (int) $row['is_biomie_commercial_visible'] !== (int) $visibility['visible'];
+            if (!$mudou) {
+                $resultado['iguais']++;
+                continue;
+            }
+            $resultado['alteradas']++;
+            $resultado['mudancas'][] = [
+                'pedido' => $row['codigo_pedido'],
+                'data_emissao' => $row['data_emissao'],
+                'nome_cliente' => $row['nome_cliente'],
+                'nome_vendedor' => $row['nome_vendedor'],
+                'valor_mercadorias' => (float) $row['valor_mercadorias'],
+                'antes' => ['channel' => $row['business_channel'], 'visible' => (int) $row['is_biomie_commercial_visible']],
+                'depois' => ['channel' => $canalDepois, 'visible' => (int) $visibility['visible']],
+                'fonte' => $visibility['source'],
+                'rule_id' => $visibility['rule_id'],
+            ];
+        }
+
+        if (!$apply || $decisoes === []) {
+            return $resultado;
+        }
+
+        $pdo = $this->pdo();
+        $iniciou = !$pdo->inTransaction();
+        if ($iniciou) {
+            ($this->beginTransaction)();
+            $pdo = $this->pdo();
+        }
+        try {
+            foreach ($decisoes as [$pedidoId, $visibility]) {
+                $this->updateOrderVisibility($pedidoId, $visibility);
+            }
+            if ($iniciou && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($iniciou && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+        $resultado['aplicado'] = true;
+
+        return $resultado;
+    }
+
+    /**
+     * @param array<string,mixed>|false $row
+     * @return array{channel:string,scope:string,visible:int,source:string,confidence:string,rule_id:?int}|null
+     */
     private function existingManualInvoiceVisibility(array|false $row): ?array
     {
         if (!is_array($row)
