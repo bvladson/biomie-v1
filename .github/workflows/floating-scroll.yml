@@ -1,0 +1,63 @@
+name: Floating horizontal scroll
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - app/PageAssetRegistry.php
+      - app/PageRenderer.php
+      - assets/js/biomie-floating-scroll.js
+      - assets/css/**
+      - assets/js/mag-ui.js
+      - views/**
+      - tests/browser/**
+      - tests/run_floating_scroll_assets.php
+      - .github/workflows/floating-scroll.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Verify global asset registration and rendering
+        run: php tests/run_floating_scroll_assets.php
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # Test tooling stays outside the application; no production npm dependency.
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/biomie-scroll-tests" --no-save --package-lock=false playwright@1.64.1
+          "$RUNNER_TEMP/biomie-scroll-tests/node_modules/.bin/playwright" install --with-deps chromium firefox webkit
+      - name: Chromium and native zoom
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/biomie-scroll-tests/node_modules/playwright
+          FLOATING_SCROLL_ARTIFACTS: storage/diagnostics/floating-scroll
+        run: node --test tests/browser/*.test.cjs
+      - name: Firefox
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/biomie-scroll-tests/node_modules/playwright
+          FLOATING_SCROLL_ARTIFACTS: storage/diagnostics/floating-scroll
+          BROWSER: firefox
+        run: node --test tests/browser/floating-scroll.test.cjs
+      - name: WebKit
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/biomie-scroll-tests/node_modules/playwright
+          FLOATING_SCROLL_ARTIFACTS: storage/diagnostics/floating-scroll
+          BROWSER: webkit
+        run: node --test tests/browser/floating-scroll.test.cjs
+      - name: Attach browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: floating-scroll-browser-evidence
+          path: storage/diagnostics/floating-scroll
+          if-no-files-found: ignore

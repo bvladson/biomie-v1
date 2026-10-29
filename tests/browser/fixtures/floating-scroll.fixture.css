@@ -1,0 +1,27 @@
+/* Geometry only for synthetic scenarios. Product CSS remains loaded and unchanged. */
+html { scroll-behavior: auto; }
+body { margin: 0; }
+.fixture-header { height: 56px; padding: 12px 24px; background: #fff; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; }
+#fixture-main { margin: 24px; min-width: 0; }
+#fixture-main h1 { font-size: 22px; margin: 12px 0; }
+.fixture-actions { display: flex; gap: 12px; margin: 16px 0; }
+.fixture-actions button, #fixture-menu button, dialog button { padding: 8px; }
+.fixture-table { width: 2800px !important; min-width: 2800px !important; table-layout: fixed; border-collapse: collapse; }
+.fixture-table th, .fixture-table td { min-width: 140px; height: 40px; padding: 8px; border: 1px solid #ddd; white-space: nowrap; }
+.fixture-table--fit { width: 100% !important; min-width: 0 !important; }
+.fixture-table--fit th, .fixture-table--fit td { min-width: 0; }
+.fixture-page-footer { margin-top: 24px; height: 180px; padding: 24px; }
+.fixture-clip { height: 360px; overflow: hidden; border: 2px solid #94a3b8; padding: 12px; }
+.fixture-panel { height: 420px; overflow: auto; border: 2px solid #94a3b8; padding: 12px; }
+.fixture-panel .fixture-panel { height: 300px; }
+.fixture-panel-spacer { height: 80px; }
+.fixture-drawer-footer { min-height: 60px; padding: 12px; background: #fff; border-top: 1px solid #ddd; }
+.fixture-carousel { display: flex; overflow-x: auto; gap: 12px; margin: 12px 0; }
+.fixture-carousel > span { min-width: 400px; padding: 24px; }
+#fixture-menu { position: fixed; z-index: 1200; right: 24px; bottom: 0; width: 260px; height: 160px; padding: 16px; background: white; border: 1px solid #aaa; box-shadow: 0 8px 20px #0003; }
+#fixture-menu[hidden] { display: none; }
+#fixture-menu button { display: block; margin: 8px; }
+#fixture-modal { width: min(80vw, 900px); max-height: 80vh; padding: 24px; background: white; border: 1px solid #aaa; overflow: auto; }
+#fixture-modal::backdrop { background: #0006; }
+.fixture-fixed-footer { position: fixed; inset: auto 0 0; height: 76px; background: #fff; z-index: 500; padding: 20px; border-top: 1px solid #aaa; }
+@media (max-width: 767px) { #fixture-main { margin: 12px; } .fixture-header { height: 52px; } .fixture-header span { display: none; } }

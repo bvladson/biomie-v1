@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BIOMIE — fixture local da rolagem horizontal</title>
+  <link rel="stylesheet" href="/assets/css/theme-tokens.css">
+  <link rel="stylesheet" href="/assets/css/mag-design-system.css">
+  <link rel="stylesheet" href="/assets/css/shell-index.css">
+  <link rel="stylesheet" href="/assets/css/module-pages.css">
+  <link rel="stylesheet" href="/assets/css/mag-clean.css">
+  <link rel="stylesheet" href="/assets/css/mag-adminlte-clean.css">
+  <link rel="stylesheet" href="/assets/css/mag-mobile.css">
+  <link rel="stylesheet" href="/assets/css/mag-mobile-premium.css">
+  <link rel="stylesheet" href="/assets/css/filters.css">
+  <link rel="stylesheet" href="/assets/css/biomie-drawer.css">
+  <link rel="stylesheet" href="/assets/css/finance-realizado.css">
+  <link rel="stylesheet" href="/assets/css/flight-plan-clean.css">
+  <link rel="stylesheet" href="/assets/css/biomie-floating-scroll.css">
+  <link rel="stylesheet" href="/tests/browser/fixtures/floating-scroll.fixture.css">
+  <script src="/assets/js/biomie-floating-scroll.js" defer></script>
+  <script src="/tests/browser/fixtures/floating-scroll.fixture.js" defer></script>
+</head>
+<body class="mag-page mag-clean-page">
+  <header class="fixture-header"><strong>BIOMIE</strong><span>Validação local • dados sintéticos</span></header>
+  <main id="fixture-main">
+    <h1>Posições de estoque</h1>
+    <p>Fixture sem APIs, banco de dados ou autenticação. Os estilos da aplicação são carregados do repositório.</p>
+    <div class="fixture-actions">
+      <button id="replace-table" type="button">Simular resposta AJAX</button>
+      <button id="toggle-menu" type="button">Abrir menu</button>
+      <button id="toggle-modal" type="button">Abrir modal</button>
+    </div>
+    <section id="fixture-slot" class="mag-data-table-simple"></section>
+    <footer class="fixture-page-footer">Rodapé da página — a tabela pode continuar muito além da área visível.</footer>
+  </main>
+  <nav id="fixture-bottom-nav" class="mag-bottom-nav" aria-label="Navegação inferior">
+    <ul class="mag-bottom-nav__list"><li class="mag-bottom-nav__item"><a class="mag-bottom-nav__link" href="#">Início</a></li><li class="mag-bottom-nav__item"><a class="mag-bottom-nav__link" href="#">Estoque</a></li><li class="mag-bottom-nav__item"><a class="mag-bottom-nav__link" href="#">Mais</a></li></ul>
+  </nav>
+  <div id="fixture-menu" class="biomie-column-filter-popover" role="menu" hidden><button role="menuitem">Filtro de família</button><button role="menuitem">Exportar</button></div>
+  <dialog id="fixture-modal" aria-labelledby="fixture-modal-title"><h2 id="fixture-modal-title">Filtros avançados</h2><button id="close-modal">Fechar</button><div id="modal-table-slot"></div></dialog>
+</body>
+</html>
