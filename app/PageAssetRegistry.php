@@ -28,6 +28,7 @@ final class PageAssetRegistry
         'assets/css/mag-mobile-premium.css', // Fase R — visual premium mobile
         'assets/css/filters.css',          // Fase Q — motor global de filtros
         'assets/css/biomie-drawer.css',    // EST.R1 Fase 0.3 — padrão global de drawers
+        'assets/css/biomie-floating-scroll.css', // Rolagem horizontal acessível em tabelas extensas
     ];
 
     /** JS utilitário core — carregado em todas as páginas antes do </body> */
@@ -45,6 +46,7 @@ final class PageAssetRegistry
         'assets/js/pwa.js',
         'assets/js/cache-refresh.js',
         'assets/js/mobile-shell.js',
+        'assets/js/biomie-floating-scroll.js',
     ];
 
     /**
