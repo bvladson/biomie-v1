@@ -13,7 +13,7 @@
 # congelado desde agosto — diagnósticos feitos daqui liam dados velhos.
 set -euo pipefail
 
-HOST="${BIOMIE_VPS_HOST:-179.197.238.57}"
+HOST="${BIOMIE_VPS_HOST:-203.0.113.10}"
 KEY="${BIOMIE_VPS_KEY:-$HOME/.ssh/id_ed25519_biomie_vps}"
 PORT="${BIOMIE_DB_TUNNEL_PORT:-33306}"
 
