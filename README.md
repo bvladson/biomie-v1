@@ -72,3 +72,11 @@ Para publicação, o endereço real da VPS foi trocado pelo IP de documentação
 `203.0.113.10` (RFC 5737) e o identificador da instância por `srv-vps`. Nenhuma credencial
 foi versionada em nenhum momento — `.env` e `config/*.local.php` sempre estiveram no
 `.gitignore`, o que o histórico confirma.
+
+---
+
+## Autoria
+
+Projeto meu — concepção, arquitetura, implementação, implantação e operação em produção.
+Durante o desenvolvimento usei assistentes de IA (Codex e Claude) como ferramenta de apoio;
+a condução e as decisões técnicas são minhas.
