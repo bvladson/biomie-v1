@@ -18,7 +18,7 @@
 # este serviço não usa aquele.
 set -euo pipefail
 
-HOST="${BIOMIE_VPS_HOST:-179.197.238.57}"
+HOST="${BIOMIE_VPS_HOST:-203.0.113.10}"
 SSH_USER="${BIOMIE_VPS_USER:-root}"
 KEY="${BIOMIE_VPS_KEY:-$HOME/.ssh/id_ed25519_biomie_vps}"
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=15 -i $KEY ${SSH_USER}@${HOST}"
