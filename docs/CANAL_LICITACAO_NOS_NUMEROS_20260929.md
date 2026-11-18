@@ -113,7 +113,7 @@ Novos/estendidos: `run_mixed_company_context` (46), `run_licitacao_seller_rule` 
 
 ```
 # 1. deploy (máquina local, pasta biomie-git)
-BIOMIE_VPS_KEY=~/.ssh/hostinger_srv1851839_ed25519 bash tools/deploy/vps/deploy.sh --skip-minify
+BIOMIE_VPS_KEY=~/.ssh/id_ed25519_vps bash tools/deploy/vps/deploy.sh --skip-minify
 # 2. VPS, /var/www/biomie/live
 sudo -u www-data php bin/schema_migrate.php migrate
 # 3. simulação oficial (somente leitura) + revisão do CSV
@@ -128,7 +128,7 @@ sudo -u www-data php bin/reclassify_unclassified_invoices.php --company=MAG_FILI
 sudo -u www-data php bin/biomie gold:materialize-commercial --company=UNI_DESIGN --from=2026-01-01 --to=2026-09-30
 # 7. agendar a sentinela (na máquina local, pasta biomie-git) e verificar na VPS:
 #    tem de sair "OK" (exit 0) depois dos passos 4-6
-BIOMIE_VPS_KEY=~/.ssh/hostinger_srv1851839_ed25519 bash tools/deploy/vps/install_cron.sh --enable
+BIOMIE_VPS_KEY=~/.ssh/id_ed25519_vps bash tools/deploy/vps/install_cron.sh --enable
 sudo -u www-data php bin/commercial_integrity_check.php
 ```
 
