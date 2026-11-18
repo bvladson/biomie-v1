@@ -11,7 +11,7 @@ use RuntimeException;
  * BARREIRA ESTRUTURAL — impede ESCRITA acidental no banco de PRODUÇÃO.
  *
  * ─── POR QUE EXISTE ─────────────────────────────────────────────────────────
- * Produção é o MariaDB da VPS (`biomie` em srv1851839); a máquina local o lê
+ * Produção é o MariaDB da VPS (`biomie` em srv-vps); a máquina local o lê
  * por túnel SSH com usuário somente-leitura. Antes da migração, o LOCAL
  * conectava direto ao banco de produção de então
  * (`u106688109_Comercial` em br-asc-web1659.main-hosting.eu). Em 2026-07-23 uma
@@ -48,10 +48,10 @@ final class ProductionDatabaseGuard
      *
      * Até 21/09/2026 esta lista tinha só `u106688109_Comercial`: depois da
      * migração para a VPS o guard protegia o banco ANTIGO e deixava a produção
-     * real (`biomie` em srv1851839) sem barreira nenhuma contra migration.
+     * real (`biomie` em srv-vps) sem barreira nenhuma contra migration.
      */
     private const PRODUCTION_TARGETS = [
-        ['server' => 'srv1851839', 'database' => 'biomie'],
+        ['server' => 'srv-vps', 'database' => 'biomie'],
     ];
 
     /**
@@ -82,7 +82,7 @@ final class ProductionDatabaseGuard
             throw new RuntimeException(
                 'LEGADO BLOQUEADO: "' . $operation . '" contra o banco "' . $database . '" recusada. '
                 . 'Este é o banco antigo da Hostinger, congelado como evidência desde 21/09/2026. '
-                . 'Nenhum SQL foi executado. Produção fica na VPS (biomie em srv1851839).'
+                . 'Nenhum SQL foi executado. Produção fica na VPS (biomie em srv-vps).'
             );
         }
 
