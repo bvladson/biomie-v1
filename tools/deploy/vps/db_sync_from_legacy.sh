@@ -12,7 +12,7 @@
 # próprio config/.env.local.php e monta o comando dentro do servidor.
 set -euo pipefail
 
-VPS_HOST="${BIOMIE_VPS_HOST:-179.197.238.57}"
+VPS_HOST="${BIOMIE_VPS_HOST:-203.0.113.10}"
 VPS_USER="${BIOMIE_VPS_USER:-root}"
 VPS_KEY="${BIOMIE_VPS_KEY:-$HOME/.ssh/id_ed25519_biomie_vps}"
 VPS_ROOT="${BIOMIE_VPS_BASE:-/var/www/biomie}/live"
